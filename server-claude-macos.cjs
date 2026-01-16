@@ -2418,6 +2418,13 @@ app.get('/claude-analytics', async (req, res) => {
         cacheCreation: 18.75e-6,
         cacheRead: 1.50e-6
       },
+      // Claude Haiku 4.5: $0.80/M input, $4/M output, $1/M cache_creation, $0.08/M cache_read
+      haiku: {
+        input: 0.80e-6,
+        output: 4e-6,
+        cacheCreation: 1e-6,
+        cacheRead: 0.08e-6
+      },
       // Gemini 2.5 Pro
       'gemini-pro': {
         input: 1.25e-6,       // $1.25/M
@@ -2673,6 +2680,11 @@ app.get('/claude-analytics', async (req, res) => {
                       const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
                       projectStats.sessions++;
                       projectStats.messages += messageCount;
+
+                      // Also update project's byDate sessions/messages for time-range filtering
+                      const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                      projectDateStats.sessions++;
+                      projectDateStats.messages += messageCount;
                     }
                   }
                 } catch (e) {
@@ -2835,6 +2847,11 @@ app.get('/claude-analytics', async (req, res) => {
                     const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
                     projectStats.sessions++;
                     projectStats.messages += messageCount;
+
+                    // Also update project's byDate sessions/messages for time-range filtering
+                    const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                    projectDateStats.sessions++;
+                    projectDateStats.messages += messageCount;
                   }
                 }
               } catch (e) {
@@ -2854,7 +2871,7 @@ app.get('/claude-analytics', async (req, res) => {
 
       // Limits to prevent stack overflow in pkg binary
       const MAX_PROJECTS = 50;
-      const MAX_FILES_PER_PROJECT = 500;  // Increased to handle subagents
+      const MAX_FILES_PER_PROJECT = 10000;  // Increased to handle large projects with many subagents
       const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
       let projectCount = 0;
 
@@ -3050,6 +3067,11 @@ app.get('/claude-analytics', async (req, res) => {
                   const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
                   projectStats.sessions++;
                   projectStats.messages += messageCount;
+
+                  // Also update project's byDate sessions/messages for time-range filtering
+                  const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                  projectDateStats.sessions++;
+                  projectDateStats.messages += messageCount;
                 }
               }
             } catch (e) {

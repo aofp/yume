@@ -1,13 +1,7 @@
-console.log('════════════════════════════════════════════════════════════════════');
-console.log('🪟 YUME SERVER: Windows External Server (server-claude-windows.cjs)');
-console.log('🪟 Platform-specific server for Windows - aligned with macOS flow');
-console.log('🪟 Edit code at: server-claude-windows.cjs');
-console.log('🪟 Uses external file for easier debugging and updates');
-console.log('════════════════════════════════════════════════════════════════════');
 
 /**
- * Windows-compatible server that runs claude CLI directly
- * Aligned with macOS server - NO SDK, NO API KEY - just direct claude CLI calls with streaming
+ * macOS-compatible server that runs claude CLI directly
+ * IDENTICAL TO WINDOWS SERVER - NO SDK, NO API KEY - just direct claude CLI calls with streaming
  */
 // Safe console wrapper to handle closed file descriptors in production
 const originalConsole = {
@@ -166,57 +160,6 @@ function processWrapperLine(line, sessionId) {
       session.messageCount++;
     }
     
-    // Detect /compact command starting and generate summary
-    if (data.type === 'user' && data.message?.content) {
-      const content = typeof data.message.content === 'string' 
-        ? data.message.content 
-        : (Array.isArray(data.message.content) 
-            ? data.message.content.find(c => c.type === 'text')?.text 
-            : '');
-      if (content?.trim() === '/compact') {
-        session.compactInProgress = true;
-        console.log(`🗜️ [WRAPPER] Detected /compact command starting`);
-        
-        // Generate our own summary from conversation history
-        const recentMessages = session.history.slice(-20); // Last 20 API messages
-        let summary = `✅ Conversation compacted successfully!\n\n`;
-        summary += `📊 Compaction Summary:\n`;
-        summary += `• Messages compressed: ${session.messageCount}\n`;
-        summary += `• Tokens saved: ${session.totalTokens.toLocaleString()}\n`;
-        
-        // Find the main topics discussed
-        const userMessages = recentMessages.filter(m => m.type === 'user');
-        if (userMessages.length > 0) {
-          summary += `\n📝 Recent context:\n`;
-          const topics = userMessages.slice(-3).map(m => {
-            const content = m.data?.message?.content;
-            let text = '';
-            if (typeof content === 'string') {
-              text = content;
-            } else if (Array.isArray(content)) {
-              const textBlock = content.find(c => c.type === 'text');
-              text = textBlock?.text || '';
-            }
-            // Clean up and truncate
-            text = text.replace(/\n+/g, ' ').trim();
-            if (text.length > 80) {
-              text = text.substring(0, 77) + '...';
-            }
-            return text;
-          }).filter(t => t);
-          
-          topics.forEach((topic, i) => {
-            summary += `• ${topic}\n`;
-          });
-        }
-        
-        summary += `\n✨ Context reset - you can continue normally.`;
-        
-        session.compactSummary = summary;
-        console.log(`🗜️ [WRAPPER] Generated compact summary: ${summary.substring(0, 100)}...`);
-      }
-    }
-    
     // Update tokens if usage present
     // CRITICAL: Skip 'result' messages - they contain CUMULATIVE session totals, not per-turn usage!
     // The result message sums up all cache_read_input_tokens across ALL turns, which corrupts
@@ -262,26 +205,6 @@ function processWrapperLine(line, sessionId) {
       }
     }
     
-    // Track if this is during a compact operation
-    if (data.type === 'assistant' && session.compactInProgress) {
-      // Capture assistant messages during compaction for summary
-      if (data.message?.content) {
-        let content = '';
-        if (typeof data.message.content === 'string') {
-          content = data.message.content;
-        } else if (Array.isArray(data.message.content)) {
-          content = data.message.content
-            .filter(c => c.type === 'text')
-            .map(c => c.text)
-            .join('');
-        }
-        if (content) {
-          session.compactSummary = content;
-          console.log(`🗜️ [WRAPPER] Captured compact summary: ${content.substring(0, 100)}...`);
-        }
-      }
-    }
-    
     // Detect compaction - Claude's /compact returns 0 tokens 
     if (data.type === 'result' && 
         (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0)) &&
@@ -294,17 +217,15 @@ function processWrapperLine(line, sessionId) {
       session.wasCompacted = true;
       session.tokensSaved += savedTokens;
       wrapperState.stats.compacts++;
-
+      
       // Reset tokens
       session.inputTokens = 0;
       session.outputTokens = 0;
       session.totalTokens = 0;
       
-      // Use Claude's summary if we captured it, otherwise use fallback
-      if (session.compactSummary) {
-        data.result = session.compactSummary;
-        delete session.compactSummary; // Clean up
-      } else if (!data.result || data.result === '') {
+      // Don't overwrite data.result - Claude provides its own summary!
+      // If Claude didn't provide a summary (empty result), add a minimal one
+      if (!data.result || data.result === '') {
         data.result = `Conversation compacted. Saved ${savedTokens.toLocaleString()} tokens.`;
       }
       
@@ -315,7 +236,6 @@ function processWrapperLine(line, sessionId) {
         compactCount: session.compactCount
       };
       
-      session.compactInProgress = false; // Clear flag
       console.log(`🗜️ [WRAPPER] Compaction complete`);
     }
     
@@ -367,239 +287,6 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
 
-// Claude execution mode settings
-let CLAUDE_EXECUTION_MODE = 'auto'; // 'native-windows', 'wsl', or 'auto'
-let NATIVE_WINDOWS_CLAUDE_PATH = null;
-let WSL_CLAUDE_PATH = null;
-
-// Helper function to load Claude settings from storage
-function loadClaudeSettings() {
-  try {
-    const settingsPath = isWindows 
-      ? join(process.env.APPDATA || process.env.USERPROFILE, 'yume', 'claude_settings.json')
-      : join(homedir(), '.config', 'yume', 'claude_settings.json');
-    
-    if (existsSync(settingsPath)) {
-      const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
-      console.log('📋 Loaded Claude settings:', settings.settings?.executionMode || 'not set');
-      
-      if (settings.settings?.executionMode) {
-        CLAUDE_EXECUTION_MODE = settings.settings.executionMode;
-      }
-      if (settings.detection?.nativeWindows?.path) {
-        NATIVE_WINDOWS_CLAUDE_PATH = settings.detection.nativeWindows.path;
-        console.log('🎯 Native Windows Claude path:', NATIVE_WINDOWS_CLAUDE_PATH);
-      }
-      if (settings.detection?.wsl?.path) {
-        WSL_CLAUDE_PATH = settings.detection.wsl.path;
-        console.log('🎯 WSL Claude path:', WSL_CLAUDE_PATH);
-      }
-    }
-  } catch (e) {
-    console.log('⚠️ Could not load Claude settings, using defaults:', e.message);
-  }
-}
-
-// Path translation utilities
-function windowsToWslPath(windowsPath) {
-  // Convert C:\Users\... to /mnt/c/Users/...
-  if (!windowsPath) return windowsPath;
-  const normalized = windowsPath.replace(/\\/g, '/');
-  const match = normalized.match(/^([A-Z]):(.*)/i);
-  if (match) {
-    return `/mnt/${match[1].toLowerCase()}${match[2]}`;
-  }
-  return normalized;
-}
-
-function wslToWindowsPath(wslPath) {
-  // Convert /mnt/c/Users/... to C:\Users\...
-  if (!wslPath) return wslPath;
-  const match = wslPath.match(/^\/mnt\/([a-z])(.*)/i);
-  if (match) {
-    return `${match[1].toUpperCase()}:${match[2].replace(/\//g, '\\')}`;
-  }
-  return wslPath;
-}
-
-// Helper function to create native Windows command for claude
-function createNativeWindowsClaudeCommand(args, workingDir, message) {
-  let claudePath = NATIVE_WINDOWS_CLAUDE_PATH || 'claude';
-  let nodeExe = null;
-  let claudeJs = null;
-  
-  // Check if this is a .cmd file - if so, we need to find Node.js and the actual .js file
-  if (claudePath.endsWith('.cmd')) {
-    console.log(`📦 Detected .cmd file, looking for Node.js and actual JS file...`);
-    
-    // Find Node.js executable
-    const possibleNodePaths = [
-      'C:\\Program Files\\nodejs\\node.exe',
-      'C:\\Program Files (x86)\\nodejs\\node.exe',
-      process.env.ProgramFiles + '\\nodejs\\node.exe',
-      process.env['ProgramFiles(x86)'] + '\\nodejs\\node.exe',
-    ].filter(Boolean);
-    
-    for (const nodePath of possibleNodePaths) {
-      if (existsSync(nodePath)) {
-        nodeExe = nodePath;
-        break;
-      }
-    }
-    
-    // Check if Node.js is in the npm directory itself
-    if (!nodeExe) {
-      const npmDir = require('path').dirname(claudePath);
-      const nodeInNpm = require('path').join(npmDir, 'node.exe');
-      if (existsSync(nodeInNpm)) {
-        nodeExe = nodeInNpm;
-        console.log(`✅ Found Node.js in npm directory: ${nodeExe}`);
-      }
-    }
-    
-    // Try to find Node.js via PATH (most reliable)
-    if (!nodeExe) {
-      try {
-        const { execSync } = require('child_process');
-        const whereNode = execSync('where node', { encoding: 'utf8', windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-        if (whereNode) {
-          const paths = whereNode.split('\n').map(p => p.trim()).filter(p => p.endsWith('.exe'));
-          if (paths.length > 0) {
-            nodeExe = paths[0];
-            console.log(`✅ Found Node.js via PATH: ${nodeExe}`);
-          }
-        }
-      } catch (e) {
-        // Try PowerShell as fallback
-        try {
-          const psResult = execSync('powershell -Command "Get-Command node | Select-Object -ExpandProperty Source"', { 
-            encoding: 'utf8', 
-            windowsHide: true,
-            stdio: ['pipe', 'pipe', 'ignore']
-          }).trim();
-          if (psResult && psResult.endsWith('.exe')) {
-            nodeExe = psResult;
-            console.log(`✅ Found Node.js via PowerShell: ${nodeExe}`);
-          }
-        } catch (e2) {
-          console.error('⚠️ Could not find Node.js via where or PowerShell');
-        }
-      }
-    }
-    
-    // Find the actual Claude JS file
-    const path = require('path');
-    const cmdDir = path.dirname(claudePath);
-    console.log(`📂 Looking for Claude JS relative to: ${cmdDir}`);
-    
-    const possibleJsPaths = [
-      // npm global installation paths
-      path.join(cmdDir, 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
-      path.join(cmdDir, '..', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
-      path.join(cmdDir, '..', 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
-      // Check in the npm global node_modules
-      path.join(process.env.APPDATA || '', 'npm', 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
-      // Check relative to the .cmd file
-      claudePath.replace('.cmd', '.js'),
-      claudePath.replace('claude.cmd', '..\\@anthropic-ai\\claude-cli\\bin\\claude.js'),
-      // Additional paths to check
-      path.join(cmdDir, 'node_modules', 'claude', 'bin', 'claude.js'),
-      path.join(cmdDir, '..', 'lib', 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
-    ].filter(Boolean);
-    
-    console.log(`🔍 Checking ${possibleJsPaths.length} possible paths for Claude JS...`);
-    for (const jsPath of possibleJsPaths) {
-      const exists = existsSync(jsPath);
-      console.log(`  ${exists ? '✅' : '❌'} ${jsPath}`);
-      if (exists) {
-        claudeJs = jsPath;
-        break;
-      }
-    }
-    
-    if (nodeExe && claudeJs) {
-      console.log(`✅ Using Node.js to run Claude directly:`);
-      console.log(`  Node: ${nodeExe}`);
-      console.log(`  Claude JS: ${claudeJs}`);
-      claudePath = nodeExe;
-      args = [claudeJs, ...args];
-    } else if (!nodeExe) {
-      console.error(`❌ Could not find Node.js executable`);
-      console.error(`  Checked standard paths and PATH environment`);
-      console.error(`  Please ensure Node.js is installed and in PATH`);
-      // Try to fall back to .cmd file with shell
-      console.log(`⚠️ Falling back to .cmd file execution with shell`);
-    } else if (!claudeJs) {
-      console.error(`❌ Could not find Claude JavaScript file`);
-      console.error(`  Checked paths relative to: ${cmdDir}`);
-      console.error(`  Node.js found at: ${nodeExe}`);
-      // Try to fall back to .cmd file with shell
-      console.log(`⚠️ Falling back to .cmd file execution with shell`);
-    }
-  }
-  
-  console.log(`🖥️ Creating native Windows Claude command`);
-  console.log(`  Claude path: ${claudePath}`);
-  console.log(`  Working dir: ${workingDir}`);
-  console.log(`  Args: ${args.join(' ')}`);
-  
-  if (message) {
-    // For native Windows, we need to write to a temp file for large messages
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-    
-    const windowsTempFile = path.join(os.tmpdir(), `yume-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`);
-    
-    try {
-      fs.writeFileSync(windowsTempFile, message, 'utf8');
-      console.log(`  Temp file: ${windowsTempFile} (${message.length} chars)`);
-    } catch (err) {
-      console.error(`❌ Failed to write temp file: ${err.message}`);
-      throw err;
-    }
-    
-    // Return command, args, input handled flag, and temp file
-    return [claudePath, args, true, windowsTempFile];
-  } else {
-    // Title generation - no input needed
-    return [claudePath, args, false, null];
-  }
-}
-
-// Helper function to choose the appropriate command builder
-function getClaudeCommand(args, workingDir, message) {
-  // Always load latest settings
-  loadClaudeSettings();
-  
-  // Convert paths based on execution mode
-  let effectiveWorkingDir = workingDir;
-  
-  if (CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
-    // Use native Windows execution
-    console.log('🖥️ Using native Windows Claude execution');
-    return createNativeWindowsClaudeCommand(args, workingDir, message);
-  } else if (CLAUDE_EXECUTION_MODE === 'wsl' || (isWindows && !NATIVE_WINDOWS_CLAUDE_PATH)) {
-    // Use WSL execution (also fallback for Windows if no native path)
-    console.log('🐧 Using WSL Claude execution');
-    effectiveWorkingDir = windowsToWslPath(workingDir);
-    return createWslClaudeCommand(args, effectiveWorkingDir, message);
-  } else if (CLAUDE_EXECUTION_MODE === 'auto') {
-    // Auto mode - prefer native Windows if available
-    if (NATIVE_WINDOWS_CLAUDE_PATH) {
-      console.log('🤖 Auto mode: Using native Windows Claude');
-      return createNativeWindowsClaudeCommand(args, workingDir, message);
-    } else if (isWindows) {
-      console.log('🤖 Auto mode: Falling back to WSL');
-      effectiveWorkingDir = windowsToWslPath(workingDir);
-      return createWslClaudeCommand(args, effectiveWorkingDir, message);
-    }
-  }
-  
-  // Non-Windows systems - return standard command
-  return [CLAUDE_PATH, args, false, null];
-}
-
 // Helper function to create WSL command for claude
 function createWslClaudeCommand(args, workingDir, message) {
   // Use full path to WSL.exe - Node in temp directory needs this
@@ -615,86 +302,88 @@ function createWslClaudeCommand(args, workingDir, message) {
   
   // For the main message, run Claude with the args
   if (message) {
-    // Find Claude path - try dynamic detection first, then fallback to known locations
+    // Try multiple possible Claude paths in WSL
+    // First check which paths exist
     const { execFileSync } = require('child_process');
     let claudePath = null;
     
-    // First get WSL username
-    let wslUser = 'yuru'; // default from your system
+    // First, get the actual WSL username dynamically
+    let wslUser = 'user'; // fallback default
     try {
       wslUser = execFileSync(wslPath, ['-e', 'bash', '-c', 'whoami'], {
         encoding: 'utf8',
         windowsHide: true
       }).trim();
-      console.log(`🔍 WSL user: ${wslUser}`);
+      console.log(`🔍 WSL user detected: ${wslUser}`);
     } catch (e) {
-      console.log(`⚠️ Could not detect WSL user, using default: ${wslUser}`);
+      console.warn('⚠️ Could not detect WSL user, using default');
     }
     
-    // Try to source .bashrc and get claude alias
-    try {
-      console.log(`🔎 Finding Claude path by sourcing .bashrc...`);
-      const typeCmd = `. /home/${wslUser}/.bashrc 2>/dev/null && type claude 2>/dev/null`;
-      const typeOutput = execFileSync(wslPath, ['-e', 'bash', '-c', typeCmd], {
-        encoding: 'utf8',
-        windowsHide: true
-      }).trim();
-      
-      if (typeOutput) {
-        console.log(`🔍 'type claude' output: ${typeOutput}`);
+    // Potential paths to check (in order of preference) - using dynamic user
+    const possiblePaths = [
+      `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,  // User-specific claude install
+      `~/.npm-global/bin/claude`,  // npm global install
+      `~/node_modules/.bin/claude`,  // Local install in home
+      `/usr/local/bin/claude`,  // System-wide install
+      `/usr/bin/claude`,  // System binary
+      `~/.local/bin/claude`  // User local bin
+    ];
+    
+    // Find the first working Claude path
+    for (const path of possiblePaths) {
+      try {
+        // Expand ~ to $HOME and check if file exists
+        const checkCmd = path.startsWith('~') 
+          ? `[ -f "${path.replace('~', '$HOME')}" ] && echo "exists"`
+          : `[ -f "${path}" ] && echo "exists"`;
         
-        // Parse alias format: claude is aliased to `/home/yuru/.claude/local/claude'
-        if (typeOutput.includes('is aliased to')) {
-          const match = typeOutput.match(/is aliased to [`']([^`']+)[`']/);
-          if (match) {
-            claudePath = match[1];
-            console.log(`✅ CLAUDE PATH FROM ALIAS: ${claudePath}`);
+        const result = execFileSync(wslPath, ['-e', 'bash', '-c', checkCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (result === 'exists') {
+          // For paths with ~, we need to expand to actual home path
+          if (path.startsWith('~')) {
+            // Get actual home directory
+            const homeDir = execFileSync(wslPath, ['-e', 'bash', '-c', 'echo $HOME'], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            claudePath = path.replace('~', homeDir);
+          } else {
+            claudePath = path;
           }
+          console.log(`✅ Found Claude at: ${claudePath}`);
+          break;
         }
+      } catch (e) {
+        // Path doesn't exist, continue checking
       }
-    } catch (e) {
-      console.log(`⚠️ Could not get claude from .bashrc`);
     }
     
-    // If not found, check the known location from your system
+    // If still not found, try 'which claude'
     if (!claudePath) {
-      const knownPath = `/home/${wslUser}/.claude/local/claude`;
-      console.log(`🔎 Checking known location: ${knownPath}`);
       try {
-        const exists = execFileSync(wslPath, ['-e', 'bash', '-c', `[ -f "${knownPath}" ] && echo "yes"`], {
+        const whichResult = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude'], {
           encoding: 'utf8',
           windowsHide: true
         }).trim();
         
-        if (exists === 'yes') {
-          claudePath = knownPath;
-          console.log(`✅ CLAUDE FOUND AT: ${claudePath}`);
+        if (whichResult) {
+          claudePath = whichResult;
+          console.log(`✅ Found Claude via 'which': ${claudePath}`);
         }
       } catch (e) {
-        // File doesn't exist
+        // Claude not in PATH
       }
     }
     
-    // If still not found, check PATH
+    // Default to a dynamic path if nothing found (will fail but with clear error)
     if (!claudePath) {
-      try {
-        claudePath = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude 2>/dev/null'], {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-        if (claudePath) {
-          console.log(`✅ CLAUDE PATH FROM WHICH: ${claudePath}`);
-        }
-      } catch (e) {
-        // Not in PATH
-      }
-    }
-    
-    // If Claude path not found, error out clearly
-    if (!claudePath) {
-      const errorMsg = `Claude CLI not found in WSL. Checked: /home/${wslUser}/.claude/local/claude. Please ensure Claude is installed.`;
-      console.error(`❌ ${errorMsg}`);
-      throw new Error(errorMsg);
+      claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+      console.log(`⚠️ Claude not found in WSL, using default path: ${claudePath}`);
+      console.log('⚠️ Please install Claude CLI in WSL: npm install -g @anthropic-ai/claude-cli');
     }
     
     // Build the command with all the args - quote ones that need it
@@ -709,42 +398,23 @@ function createWslClaudeCommand(args, workingDir, message) {
     
     // For very long messages, use a temp file to avoid command line length limits
     // Create temp file in WSL /tmp with unique name
-    const wslTempFileName = `/tmp/yume-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
+    const tempFileName = `/tmp/yume-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
     
-    // For large messages, write to a Windows temp file first to avoid command line limits
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
+    // Write message to temp file, then cat it to Claude, then delete temp file
+    // Use base64 encoding to safely pass the message content to WSL
+    const messageBase64 = Buffer.from(message).toString('base64');
     
-    // Create a Windows temp file
-    const windowsTempFile = path.join(os.tmpdir(), `yume-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`);
-    
-    try {
-      // Write the message directly to the Windows temp file
-      fs.writeFileSync(windowsTempFile, message, 'utf8');
-    } catch (err) {
-      console.error(`❌ Failed to write temp file: ${err.message}`);
-      throw err;
-    }
-    
-    // Convert Windows path to WSL path for the temp file
-    const windowsTempDrive = windowsTempFile[0].toLowerCase();
-    const windowsTempPath = windowsTempFile.substring(2).replace(/\\/g, '/');
-    const wslWindowsTempFile = `/mnt/${windowsTempDrive}${windowsTempPath}`;
-    
-    // Build the WSL command - copy from Windows temp to WSL temp, pipe to claude, cleanup both files
-    // Use trap to ensure cleanup happens even on errors
-    const script = `trap 'rm -f "${wslTempFileName}"' EXIT; cd "${wslWorkingDir}" && cat "${wslWindowsTempFile}" > "${wslTempFileName}" && rm -f "${wslWindowsTempFile}" && cat "${wslTempFileName}" | ${claudePath} ${argsStr} 2>&1`;
+    // Build the WSL command - decode base64, write to temp, pipe to claude, cleanup
+    const script = `cd "${wslWorkingDir}" && echo "${messageBase64}" | base64 -d > "${tempFileName}" && cat "${tempFileName}" | ${claudePath} ${argsStr} 2>&1; rm -f "${tempFileName}"`;
     
     console.log(`🔍 WSL script (main message):`);
     console.log(`  Working dir: ${wslWorkingDir}`);
     console.log(`  Claude path: ${claudePath}`);
     console.log(`  Args: ${argsStr}`);
     console.log(`  Message length: ${message.length} chars`);
-    console.log(`  Windows temp file: ${windowsTempFile}`);
-    console.log(`  WSL temp file: ${wslTempFileName}`);
+    console.log(`  Using temp file: ${tempFileName}`);
     
-    return [wslPath, ['-e', 'bash', '-c', script], true, windowsTempFile];
+    return [wslPath, ['-e', 'bash', '-c', script], true];
   } else {
     // Title generation - use same path detection
     const { execFileSync } = require('child_process');
@@ -823,133 +493,19 @@ function createWslClaudeCommand(args, workingDir, message) {
       console.log(`⚠️ Claude not found for title gen, using default: ${claudePath}`);
     }
     
-    // For title generation, build command with the provided args
-    const argsStr = args.map(arg => {
-      // Only quote args that contain spaces or special characters
-      if (arg.includes(' ') || arg.includes(':') || arg.includes('(') || arg.includes(')') || arg.includes(',')) {
-        // Escape single quotes properly for bash
-        return `'${arg.replace(/'/g, "'\\''")}'`;
-      }
-      return arg;
-    }).join(' ');
+    // For title generation, use direct WSL with full path
+    const script = `cat | ${claudePath} --print --output-format json --model claude-sonnet-4-5-20250929 2>&1`;
     
-    // For title generation with -p flag, no stdin needed
-    const script = `cd "${wslWorkingDir}" && ${claudePath} ${argsStr} 2>&1`;
-    
-    console.log(`🔍 WSL script (title gen) with args: ${argsStr}`);
+    console.log(`🔍 WSL script (title gen)`);
     return [wslPath, ['-e', 'bash', '-c', script], false];
   }
 }
 
 if (isWindows) {
-  // Load Claude settings to determine execution mode
-  loadClaudeSettings();
-
-  // Auto-detect native Windows Claude if not already set
-  if (!NATIVE_WINDOWS_CLAUDE_PATH) {
-    console.log('🔍 Auto-detecting native Windows Claude CLI...');
-
-    // Common Windows installation paths for Claude
-    const appData = process.env.APPDATA || '';
-    const userProfile = process.env.USERPROFILE || '';
-    const localAppData = process.env.LOCALAPPDATA || '';
-
-    const possibleNativeWindowsPaths = [
-      // npm global installation (most common)
-      join(appData, 'npm', 'claude.cmd'),
-      join(appData, 'npm', 'claude.exe'),
-      // User-specific installations
-      join(userProfile, '.claude', 'local', 'claude.exe'),
-      join(localAppData, 'Programs', 'claude', 'claude.exe'),
-      join(localAppData, 'Claude', 'claude.exe'),
-      // Scoop
-      join(userProfile, 'scoop', 'apps', 'claude', 'current', 'claude.exe'),
-      join(userProfile, 'scoop', 'shims', 'claude.exe'),
-      // Chocolatey
-      'C:\\ProgramData\\chocolatey\\bin\\claude.exe',
-      // Program Files
-      'C:\\Program Files\\Claude\\claude.exe',
-      'C:\\Program Files (x86)\\Claude\\claude.exe',
-    ].filter(Boolean);
-
-    // Check common paths first
-    for (const checkPath of possibleNativeWindowsPaths) {
-      try {
-        if (existsSync(checkPath)) {
-          NATIVE_WINDOWS_CLAUDE_PATH = checkPath;
-          console.log(`✅ Found native Windows Claude at: ${checkPath}`);
-          break;
-        }
-      } catch (e) {
-        // Continue searching
-      }
-    }
-
-    // If not found in common paths, try 'where claude' command
-    if (!NATIVE_WINDOWS_CLAUDE_PATH) {
-      try {
-        const whereResult = execSync('where claude', {
-          encoding: 'utf8',
-          windowsHide: true,
-          stdio: ['pipe', 'pipe', 'ignore']
-        }).trim();
-        if (whereResult) {
-          const paths = whereResult.split('\n').map(p => p.trim()).filter(p => p);
-          for (const foundPath of paths) {
-            if (foundPath.endsWith('.exe') || foundPath.endsWith('.cmd')) {
-              NATIVE_WINDOWS_CLAUDE_PATH = foundPath;
-              console.log(`✅ Found native Windows Claude via 'where': ${foundPath}`);
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        console.log('⚠️ "where claude" command failed or claude not in PATH');
-      }
-    }
-
-    // If still not found, also check if 'claude' command works directly
-    if (!NATIVE_WINDOWS_CLAUDE_PATH) {
-      try {
-        execSync('claude --version', {
-          encoding: 'utf8',
-          windowsHide: true,
-          stdio: ['pipe', 'pipe', 'ignore'],
-          timeout: 5000
-        });
-        // If we get here, 'claude' is in PATH
-        NATIVE_WINDOWS_CLAUDE_PATH = 'claude';
-        console.log(`✅ 'claude' command is available in PATH`);
-      } catch (e) {
-        // Not available
-      }
-    }
-  }
-
-  console.log('════════════════════════════════════════════════════════════════════');
-  console.log('🔍 PLATFORM: Windows detected');
-  console.log('🔍 CLAUDE EXECUTION MODE:', CLAUDE_EXECUTION_MODE);
-  if (NATIVE_WINDOWS_CLAUDE_PATH) {
-    console.log('✅ Native Windows Claude available:', NATIVE_WINDOWS_CLAUDE_PATH);
-  }
-  if (WSL_CLAUDE_PATH) {
-    console.log('✅ WSL Claude available:', WSL_CLAUDE_PATH);
-  }
-  console.log('════════════════════════════════════════════════════════════════════');
-
-  // Set marker based on mode - PREFER native Windows if available
-  if (NATIVE_WINDOWS_CLAUDE_PATH && (CLAUDE_EXECUTION_MODE === 'native-windows' || CLAUDE_EXECUTION_MODE === 'auto')) {
-    CLAUDE_PATH = 'NATIVE_WINDOWS_CLAUDE';
-    console.log('🎯 Using native Windows Claude CLI');
-  } else if (NATIVE_WINDOWS_CLAUDE_PATH && !WSL_CLAUDE_PATH) {
-    // If only native Windows is available, use it regardless of mode
-    CLAUDE_PATH = 'NATIVE_WINDOWS_CLAUDE';
-    console.log('🎯 Using native Windows Claude CLI (only option available)');
-  } else {
-    CLAUDE_PATH = 'WSL_CLAUDE'; // Fall back to WSL
-    console.log('🎯 Using WSL Claude CLI');
-  }
-
+  // On Windows, Claude only runs in WSL, so we'll use our comprehensive command builder
+  console.log('🔍 Windows detected, Claude will be invoked through WSL with comprehensive path detection...');
+  CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
+  
 } else {
   // macOS/Linux paths
   const possibleClaudePaths = [
@@ -1019,7 +575,7 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 1200000, // 20 minutes - support long-running operations
+  pingTimeout: 600000, // 10 minutes - prevent timeout during long operations
   pingInterval: 30000, // 30 seconds heartbeat
   upgradeTimeout: 60000, // 60 seconds for upgrade
   maxHttpBufferSize: 5e8, // 500mb - handle large contexts
@@ -1029,6 +585,62 @@ const io = new Server(httpServer, {
 
 app.use(cors());
 app.use(express.json());
+
+// Serve built frontend for vscode at /vscode-app
+// In dev: proxy to vite, in prod: serve static files
+// Read vite port from tauri config or use default
+let VITE_DEV_PORT = 50490;
+try {
+  const tauriConfig = JSON.parse(readFileSync(join(__dirname, 'src-tauri', 'tauri.conf.json'), 'utf-8'));
+  const match = tauriConfig?.build?.devUrl?.match(/:(\d+)/);
+  if (match) VITE_DEV_PORT = parseInt(match[1]);
+} catch (e) { /* ignore */ }
+const VITE_DEV_URL = process.env.VITE_DEV_URL || `http://127.0.0.1:${VITE_DEV_PORT}`;
+
+// Helper to proxy requests to vite
+async function proxyToVite(req, res, targetPath) {
+  const targetUrl = VITE_DEV_URL + targetPath;
+  try {
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: {
+        'Accept': req.headers.accept || '*/*',
+        'Accept-Encoding': 'identity'
+      }
+    });
+
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      const buffer = Buffer.from(await response.arrayBuffer());
+      return res.send(buffer);
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Proxy vite internal paths (must be before /vscode-app)
+app.use(['/@vite', '/@react-refresh', '/@fs', '/src', '/node_modules', '/public'], async (req, res, next) => {
+  const result = await proxyToVite(req, res, req.originalUrl);
+  if (!result) next();
+});
+
+// Serve frontend for vscode at /vscode-app
+app.use('/vscode-app', async (req, res, next) => {
+  const result = await proxyToVite(req, res, req.url);
+  if (result) return;
+
+  // Fallback: serve from dist/renderer if available
+  const distPath = join(__dirname, 'dist', 'renderer');
+  if (existsSync(distPath)) {
+    return express.static(distPath)(req, res, next);
+  }
+
+  res.status(503).send('Frontend not available');
+});
 
 // ALWAYS use dynamic port - for BOTH development AND production
 const PORT = (() => {
@@ -1065,13 +677,15 @@ const PORT = (() => {
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
-let activeBashProcesses = new Map();  // Map of sessionId -> bash process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
-let stoppedSessions = new Map(); // Map of sessionId -> boolean - tracks sessions that should stop processing buffered data
-let killedProcessPIDs = new Set(); // Set of PIDs that were killed due to resume failure - ignore their buffered data
+
+// VSCode extension connection tracking
+let vscodeConnections = new Set(); // Set of socket.id from vscode clients
+let vscodeConnected = false; // Quick flag for vscode connection status
+let cachedSettings = null; // Cached settings from main app to sync to vscode
 
 // Add process spawn mutex to prevent race conditions
 let isSpawningProcess = false;
@@ -1169,43 +783,42 @@ function queueMessage(sessionId, message, socket, immediate = false) {
     return;
   }
 
-  // Add to batch
+  // Queue non-priority message
   batch.messages.push(message);
 
-  // Set timer if not already set
+  // Start batch timer if not already running
   if (!batch.timer) {
     batch.timer = setTimeout(() => flushBatch(sessionId), BATCH_INTERVAL_MS);
   }
 }
 
-// Flush all messages in the batch
+// Flush all batched messages for a session
 function flushBatch(sessionId) {
   const batch = messageBatches.get(sessionId);
-  if (!batch || batch.messages.length === 0) {
-    if (batch) {
-      clearTimeout(batch.timer);
-      batch.timer = null;
+  if (!batch) return;
+
+  if (batch.timer) {
+    clearTimeout(batch.timer);
+    batch.timer = null;
+  }
+
+  if (batch.messages.length > 0 && batch.socket) {
+    // Emit batched messages
+    if (batch.messages.length === 1) {
+      batch.socket.emit(`message:${sessionId}`, batch.messages[0]);
+    } else {
+      // Emit as batch for multiple messages
+      batch.socket.emit(`messageBatch:${sessionId}`, batch.messages);
     }
-    return;
+    batch.messages = [];
   }
-
-  // Emit all messages
-  const socket = batch.socket;
-  for (const msg of batch.messages) {
-    socket.emit(`message:${sessionId}`, msg);
-  }
-
-  // Clear the batch
-  batch.messages = [];
-  clearTimeout(batch.timer);
-  batch.timer = null;
 }
 
-// Cleanup batch for a session
+// Cleanup batch state for a session
 function cleanupBatch(sessionId) {
   const batch = messageBatches.get(sessionId);
   if (batch) {
-    clearTimeout(batch.timer);
+    if (batch.timer) clearTimeout(batch.timer);
     messageBatches.delete(sessionId);
   }
 }
@@ -1238,38 +851,14 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     ];
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
-
+    
     // Ensure Node.js is in PATH for Claude CLI
     const enhancedEnv = { ...process.env };
-
-    // CRITICAL FIX: On Windows native mode, override SHELL to use PowerShell
-    // This prevents Claude CLI's Bash tool from using /usr/bin/bash (from Git Bash/WSL)
-    if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
-      // Set SHELL to PowerShell for Windows native mode
-      enhancedEnv.SHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-      enhancedEnv.COMSPEC = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
-
-      // Add Node.js to PATH using Windows path separator (;)
-      const nodePaths = [
-        'C:\\Program Files\\nodejs',
-        'C:\\Program Files (x86)\\nodejs',
-        process.env.ProgramFiles && `${process.env.ProgramFiles}\\nodejs`,
-      ].filter(Boolean);
-
-      for (const nodePath of nodePaths) {
-        if (existsSync(nodePath) && !enhancedEnv.PATH?.includes(nodePath)) {
-          enhancedEnv.PATH = `${nodePath};${enhancedEnv.PATH || ''}`;
-          break;
-        }
-      }
-    } else if (!isWindows) {
-      // Unix systems - add homebrew path if needed
-      const nodeBinDir = '/opt/homebrew/bin';
-      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
-      }
+    const nodeBinDir = '/opt/homebrew/bin';
+    if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
+      enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
-
+    
     // Use a dedicated yume-title-gen directory for title generation
     // This keeps title generation sessions separate from main project sessions
     const titleGenDir = join(homedir(), '.yume-title-gen');
@@ -1284,65 +873,40 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       console.log('⚠️ Could not create title gen directory, using home:', e.message);
     }
     
-    const child = isWindows ? 
+    const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
       (() => {
-        // Use getClaudeCommand to determine the right execution mode
-        const [command, commandArgs, inputHandled, tempFile] = getClaudeCommand(titleArgs, titleGenDir, null);
-        
-        if (command === 'C:\\Windows\\System32\\wsl.exe') {
-          // WSL mode - need to handle WSL-specific directory
-          const { execSync } = require('child_process');
-          let wslUser = 'user';
-          try {
-            wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
-              encoding: 'utf8',
-              windowsHide: true
-            }).trim();
-          } catch (e) {
-            // Use default
-          }
-          
-          const wslTitleGenDir = `/home/${wslUser}/.yume-title-gen`;
-          try {
-            execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
-              windowsHide: true
-            });
-          } catch (e) {
-            console.log('⚠️ Could not create WSL title gen directory:', e.message);
-          }
+        // Get WSL username dynamically for title gen dir
+        const { execSync } = require('child_process');
+        let wslUser = 'user';
+        try {
+          wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+            encoding: 'utf8',
+            windowsHide: true
+          }).trim();
+        } catch (e) {
+          // Use default
         }
         
-        const spawnOpts = {
+        // For WSL, use a dedicated directory in WSL home with dynamic user
+        const wslTitleGenDir = `/home/${wslUser}/.yume-title-gen`;
+        
+        // Create the WSL directory if needed
+        try {
+          execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
+            windowsHide: true
+          });
+        } catch (e) {
+          console.log('⚠️ Could not create WSL title gen directory:', e.message);
+        }
+        
+        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, wslTitleGenDir, null);
+        return spawn(wslCommand, wslArgs, {
           cwd: titleGenDir,
           env: enhancedEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
           windowsHide: true,
           detached: false
-        };
-        
-        // For .cmd files on Windows, we need shell: true
-        // BUT not if we're running Node.js directly
-        if ((command.endsWith('.cmd') || command.endsWith('.bat')) && !command.endsWith('node.exe')) {
-          spawnOpts.shell = true;
-          
-          // Add Node.js to PATH for .cmd execution
-          const nodePaths = [
-            'C:\\Program Files\\nodejs',
-            'C:\\Program Files (x86)\\nodejs',
-            process.env.ProgramFiles + '\\nodejs',
-          ].filter(Boolean);
-          
-          for (const nodePath of nodePaths) {
-            if (existsSync(nodePath)) {
-              spawnOpts.env = { ...spawnOpts.env };
-              spawnOpts.env.PATH = nodePath + ';' + (spawnOpts.env.PATH || process.env.PATH);
-              console.log(`✅ Added Node.js to PATH for .cmd execution: ${nodePath}`);
-              break;
-            }
-          }
-        }
-        
-        return spawn(command, commandArgs, spawnOpts);
+        });
       })() :
       spawn(CLAUDE_PATH, titleArgs, {
       cwd: titleGenDir,
@@ -1425,12 +989,365 @@ const MAX_LINE_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB max buffer for large resp
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     pid: process.pid,
     service: 'yume-claude',
-    claudeCodeLoaded: true
+    claudeCodeLoaded: true,
+    port: PORT,
+    sessions: Object.keys(sessions).length
   });
+});
+
+// Claude usage limits endpoint (for vscode mode - mirrors tauri get_claude_usage_limits)
+app.get('/claude-usage-limits', async (req, res) => {
+  try {
+    // Read credentials from macOS keychain
+    const { execSync } = require('child_process');
+    let credentialsJson;
+    try {
+      credentialsJson = execSync(
+        'security find-generic-password -s "Claude Code-credentials" -w',
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+      ).trim();
+    } catch (e) {
+      return res.status(401).json({ error: 'No Claude credentials found in keychain' });
+    }
+
+    const credentials = JSON.parse(credentialsJson);
+    const oauth = credentials.claudeAiOauth;
+    if (!oauth || !oauth.accessToken) {
+      return res.status(401).json({ error: 'No OAuth credentials found' });
+    }
+
+    // Call Anthropic usage API
+    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'User-Agent': 'claude-code/2.0.76',
+        'Authorization': `Bearer ${oauth.accessToken}`,
+        'anthropic-beta': 'oauth-2025-04-20'
+      }
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      return res.status(response.status).json({ error: `Usage API returned ${response.status}: ${body}` });
+    }
+
+    const apiData = await response.json();
+    res.json({
+      five_hour: apiData.five_hour,
+      seven_day: apiData.seven_day,
+      seven_day_opus: apiData.seven_day_opus,
+      seven_day_sonnet: apiData.seven_day_sonnet,
+      subscription_type: oauth.subscriptionType,
+      rate_limit_tier: oauth.rateLimitTier
+    });
+  } catch (e) {
+    console.error('[UsageLimits] Error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// VSCode extension status endpoint
+app.get('/vscode-status', (req, res) => {
+  res.json({
+    connected: vscodeConnected,
+    count: vscodeConnections.size
+  });
+});
+
+// VSCode proxy - forwards to vite dev server (uses VITE_DEV_PORT defined earlier)
+app.use('/vscode', async (req, res, next) => {
+  const targetUrl = `http://127.0.0.1:${VITE_DEV_PORT}${req.url}`;
+  try {
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: { ...req.headers, host: `127.0.0.1:${VITE_DEV_PORT}` }
+    });
+
+    // Forward headers
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'transfer-encoding') {
+        res.setHeader(key, value);
+      }
+    });
+
+    res.status(response.status);
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (e) {
+    // Vite not running, serve 503
+    res.status(503).send('yume dev server not running');
+  }
+});
+
+// VSCode UI entry point - serves the actual yume app via proxy
+app.get('/vscode-ui', (req, res) => {
+  const cwd = req.query.cwd || '';
+  // Redirect to our proxy endpoint which serves the frontend
+  res.redirect(`/vscode-app/?vscode=1&cwd=${encodeURIComponent(cwd)}&port=${PORT}`);
+});
+
+// Legacy VSCode proxy UI endpoint - minimal fallback
+app.get('/vscode-ui-minimal', (req, res) => {
+  // Serve a minimal proxy page that connects to the same server
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yume</title>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #000;
+      --fg: #e0e0e0;
+      --fg-dim: #666;
+      --accent: #7dd3fc;
+      --input-bg: #111;
+      --border: #333;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--fg);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--fg-dim);
+    }
+    .status { display: flex; align-items: center; gap: 6px; }
+    .status.connected { color: #4ade80; }
+    .status.disconnected { color: #f87171; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .message {
+      padding: 10px 14px;
+      border-radius: 8px;
+      max-width: 90%;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .message.user {
+      background: var(--accent);
+      color: #000;
+      align-self: flex-end;
+      border-radius: 8px 8px 2px 8px;
+    }
+    .message.assistant {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      border-radius: 8px 8px 8px 2px;
+    }
+    .message.system {
+      background: transparent;
+      color: var(--fg-dim);
+      font-size: 11px;
+      align-self: center;
+      font-style: italic;
+    }
+    .message.tool {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4e;
+      font-size: 11px;
+      color: #a0a0c0;
+    }
+    .input-area {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+    textarea {
+      flex: 1;
+      background: var(--input-bg);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      min-height: 44px;
+      max-height: 200px;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 12px;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .streaming { opacity: 0.7; }
+    .empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg-dim);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="status disconnected" id="status">
+      <span class="dot"></span>
+      <span id="status-text">connecting...</span>
+    </div>
+    <span id="session-info"></span>
+  </div>
+  <div class="messages" id="messages">
+    <div class="empty">yume vscode proxy</div>
+  </div>
+  <div class="input-area">
+    <textarea id="input" placeholder="type a message..." rows="1"></textarea>
+    <button id="send" disabled>send</button>
+  </div>
+  <script>
+    const PORT = window.location.port || ${PORT};
+    let socket = null;
+    let sessionId = null;
+    let streaming = false;
+    let streamingContent = '';
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const statusEl = document.getElementById('status');
+    const statusTextEl = document.getElementById('status-text');
+    const sessionInfoEl = document.getElementById('session-info');
+
+    function setStatus(connected, text) {
+      statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+      statusTextEl.textContent = text;
+      sendBtn.disabled = !connected || streaming;
+    }
+
+    function addMessage(role, content, id) {
+      const empty = messagesEl.querySelector('.empty');
+      if (empty) empty.remove();
+
+      let el = id ? document.getElementById('msg-' + id) : null;
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'message ' + role;
+        if (id) el.id = 'msg-' + id;
+        messagesEl.appendChild(el);
+      }
+      el.textContent = content;
+      el.className = 'message ' + role + (streaming && role === 'assistant' ? ' streaming' : '');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return el;
+    }
+
+    function connect() {
+      socket = io('http://localhost:' + PORT, { transports: ['websocket'], query: { client: 'vscode-ui' } });
+
+      socket.on('connect', () => {
+        setStatus(true, 'connected');
+        socket.emit('vscode:connected');
+
+        // Create session
+        socket.emit('createSession', {
+          workingDirectory: new URLSearchParams(window.location.search).get('cwd') || '~'
+        }, (res) => {
+          if (res?.sessionId) {
+            sessionId = res.sessionId;
+            sessionInfoEl.textContent = sessionId.slice(0, 8);
+            setupMessageHandlers();
+          }
+        });
+      });
+
+      socket.on('disconnect', () => setStatus(false, 'disconnected'));
+      socket.on('connect_error', (e) => setStatus(false, 'error: ' + e.message));
+    }
+
+    function setupMessageHandlers() {
+      socket.on('message:' + sessionId, handleMessage);
+      socket.on('messageBatch:' + sessionId, (batch) => batch.forEach(handleMessage));
+    }
+
+    function handleMessage(data) {
+      const msg = data.message || data;
+      const type = msg.type;
+
+      if (type === 'assistant') {
+        streaming = true;
+        sendBtn.disabled = true;
+        const content = msg.message?.content || msg.content || '';
+        if (typeof content === 'string') {
+          streamingContent = content;
+          addMessage('assistant', content, 'streaming');
+        }
+      } else if (type === 'result' || type === 'streaming_end') {
+        streaming = false;
+        sendBtn.disabled = false;
+        const el = document.getElementById('msg-streaming');
+        if (el) el.id = '';
+        streamingContent = '';
+      } else if (type === 'user') {
+        // already shown
+      } else if (type === 'tool_use' || type === 'tool_result') {
+        const name = msg.message?.name || msg.name || 'tool';
+        addMessage('tool', name + ': ' + (msg.message?.input ? JSON.stringify(msg.message.input).slice(0,100) : '...'));
+      }
+    }
+
+    function send() {
+      const text = inputEl.value.trim();
+      if (!text || !sessionId || streaming) return;
+
+      addMessage('user', text);
+      socket.emit('sendMessage', { sessionId, message: text });
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+    }
+
+    sendBtn.onclick = send;
+    inputEl.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    };
+    inputEl.oninput = () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+    };
+
+    connect();
+  </script>
+</body>
+</html>`);
 });
 
 // Delete a project and all its sessions
@@ -1485,15 +1402,14 @@ app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
 app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   try {
     const { projectPath, sessionId } = req.params;
-
+    
     console.log('Loading session request:');
     console.log('  - Raw projectPath:', projectPath);
     console.log('  - SessionId:', sessionId);
     console.log('  - Platform:', platform());
-    console.log('  - Execution mode:', CLAUDE_EXECUTION_MODE);
-
-    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
-      // Load from WSL (WSL mode)
+    
+    if (isWindows) {
+      // Load from WSL
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -1884,7 +1800,98 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
           }
         }
 
-        // Extract title from messages
+        // Generate synthetic result messages for each turn (user -> assistant sequence)
+        // This allows the frontend to display metadata like tokens, model, etc.
+        const processedMessages = [];
+        let turnStartTimestamp = null;
+        let currentTurnToolCount = 0;
+        let currentTurnUsage = null;
+        let currentTurnModel = null;
+
+        for (let i = 0; i < messages.length; i++) {
+          const msg = messages[i];
+          processedMessages.push(msg);
+
+          // Track turn start when we see a user message
+          if (msg.type === 'user') {
+            // Check if this is a tool_result (continuation) or new user message
+            const content = msg.message?.content;
+            const isToolResult = Array.isArray(content) && content.some(c => c.type === 'tool_result');
+            if (!isToolResult) {
+              turnStartTimestamp = msg.timestamp;
+              currentTurnToolCount = 0;
+              currentTurnUsage = null;
+              currentTurnModel = null;
+            } else {
+              // Tool results don't start new turns
+              currentTurnToolCount++;
+            }
+          }
+
+          // Track assistant message data
+          if (msg.type === 'assistant') {
+            if (msg.message?.usage) {
+              currentTurnUsage = msg.message.usage;
+            }
+            if (msg.message?.model) {
+              currentTurnModel = msg.message.model;
+            }
+            // Count tool_use blocks
+            const content = msg.message?.content;
+            if (Array.isArray(content)) {
+              currentTurnToolCount += content.filter(c => c.type === 'tool_use').length;
+            }
+
+            // Check if this is the last assistant message before next user message (or end)
+            const nextMsg = messages[i + 1];
+            const isEndOfTurn = !nextMsg ||
+              (nextMsg.type === 'user' &&
+               !(Array.isArray(nextMsg.message?.content) &&
+                 nextMsg.message.content.some(c => c.type === 'tool_result')));
+
+            if (isEndOfTurn && currentTurnUsage) {
+              // Calculate duration from turn start to this message
+              let durationMs = 0;
+              if (turnStartTimestamp && msg.timestamp) {
+                const startTime = new Date(turnStartTimestamp).getTime();
+                const endTime = new Date(msg.timestamp).getTime();
+                durationMs = endTime - startTime;
+              }
+
+              // Calculate cost based on model and tokens
+              const input = currentTurnUsage.input_tokens || 0;
+              const output = currentTurnUsage.output_tokens || 0;
+              const cacheRead = currentTurnUsage.cache_read_input_tokens || 0;
+              const cacheCreation = currentTurnUsage.cache_creation_input_tokens || 0;
+
+              let costUsd = 0;
+              if (currentTurnModel?.includes('opus')) {
+                // Opus pricing: $15/M input, $75/M output, cache read $1.5/M, cache create $18.75/M
+                costUsd = (input * 15 + output * 75 + cacheRead * 1.5 + cacheCreation * 18.75) / 1000000;
+              } else {
+                // Sonnet pricing: $3/M input, $15/M output, cache read $0.3/M, cache create $3.75/M
+                costUsd = (input * 3 + output * 15 + cacheRead * 0.3 + cacheCreation * 3.75) / 1000000;
+              }
+
+              // Create synthetic result message
+              processedMessages.push({
+                type: 'result',
+                subtype: 'success',
+                is_error: false,
+                duration_ms: durationMs,
+                usage: currentTurnUsage,
+                total_cost_usd: costUsd,
+                model: currentTurnModel,
+                tool_count: currentTurnToolCount,
+                num_turns: Math.floor((i + 1) / 2), // Approximate turn count
+                id: `result-${msg.uuid || i}`,
+                timestamp: msg.timestamp
+              });
+            }
+          }
+        }
+
+        // Extract title from original messages (before processing added result messages)
         let title = null;
 
         // Check for title in last message
@@ -1934,8 +1941,8 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         res.json({
           sessionId,
           projectPath: actualPath,
-          messages,
-          sessionCount: messages.length,
+          messages: processedMessages, // Use processed messages with synthetic result messages
+          sessionCount: processedMessages.length,
           title,
           usage: {
             // Return CURRENT context snapshot, not accumulated totals
@@ -2073,10 +2080,55 @@ app.get('/yume-session/:provider/:sessionId', async (req, res) => {
   }
 });
 
+// Analytics cache to prevent repeated heavy computation
+let analyticsCache = null;
+let analyticsCacheTime = 0;
+const ANALYTICS_CACHE_TTL_MS = 60000; // Cache for 1 minute
+let analyticsInProgress = false;
+
 // Analytics endpoint - reads all Claude sessions and extracts token usage
+// Uses caching to prevent stack overflow from repeated heavy computation
 app.get('/claude-analytics', async (req, res) => {
-  console.log('📊 Loading analytics from all Claude sessions...');
-  
+  console.log('📊 Analytics request received');
+
+  // Return cached data if fresh enough
+  const now = Date.now();
+  if (analyticsCache && (now - analyticsCacheTime) < ANALYTICS_CACHE_TTL_MS) {
+    console.log('📊 Returning cached analytics (age: ' + Math.round((now - analyticsCacheTime) / 1000) + 's)');
+    return res.json(analyticsCache);
+  }
+
+  // Prevent concurrent analytics computations (can cause stack overflow)
+  if (analyticsInProgress) {
+    console.log('📊 Analytics computation in progress, returning stale cache or empty');
+    if (analyticsCache) {
+      return res.json(analyticsCache);
+    }
+    return res.json({
+      totalSessions: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+      byModel: {},
+      byProvider: {
+        claude: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
+        gemini: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
+        openai: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } }
+      },
+      byDate: {},
+      byProject: {},
+      cached: true,
+      computing: true
+    });
+  }
+
+  analyticsInProgress = true;
+  console.log('📊 Computing fresh analytics...');
+
+  // Helper to yield to event loop - resets V8 call stack (fixes pkg binary stack overflow)
+  const yieldToEventLoop = () => new Promise(resolve => setImmediate(resolve));
+
   try {
     const analytics = {
       totalSessions: 0,
@@ -2089,10 +2141,7 @@ app.get('/claude-analytics', async (req, res) => {
         cacheCreation: 0,
         cacheRead: 0
       },
-      byModel: {
-        opus: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
-        sonnet: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } }
-      },
+      byModel: {},
       byProvider: {
         claude: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
         gemini: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
@@ -2101,6 +2150,11 @@ app.get('/claude-analytics', async (req, res) => {
       byDate: {},
       byProject: {}
     };
+
+    // Global dedup set - tracks messageId:requestId across ALL files (ccusage compatible)
+    const globalProcessedHashes = new Set();
+    // Track sessions we've already counted (for session count dedup)
+    const countedSessions = new Set();
 
     const createTokenBreakdown = () => ({
       input: 0,
@@ -2112,12 +2166,50 @@ app.get('/claude-analytics', async (req, res) => {
     const createModelTotals = () => ({
       sessions: 0,
       tokens: 0,
-      cost: 0
+      cost: 0,
+      tokenBreakdown: createTokenBreakdown()
     });
 
+    // Normalize model name to a readable key
+    const normalizeModelName = (modelString) => {
+      if (!modelString) return 'unknown';
+      const lower = modelString.toLowerCase();
+      // Claude models
+      if (lower.includes('opus')) return 'opus';
+      if (lower.includes('sonnet')) return 'sonnet';
+      if (lower.includes('haiku')) return 'haiku';
+      // Gemini models (check specific patterns for 2.5-pro/flash format)
+      if (lower.includes('2.5-pro') || lower.includes('gemini-pro')) return 'gemini-pro';
+      if (lower.includes('2.5-flash') || lower.includes('gemini-flash')) return 'gemini-flash';
+      if (lower.includes('gemini')) return 'gemini';
+      // OpenAI/Codex models (check mini first since it's more specific)
+      if (lower.includes('5.1-codex') || lower.includes('codex-mini')) return 'gpt-codex-mini';
+      if (lower.includes('5.2-codex') || lower.includes('codex')) return 'gpt-codex';
+      if (lower.includes('gpt')) return 'gpt';
+      // Return original if no match
+      return modelString;
+    };
+
+    // Ensure model stats exist in analytics.byModel
+    const ensureModelStats = (analytics, modelKey) => {
+      if (!analytics.byModel[modelKey]) {
+        analytics.byModel[modelKey] = createModelTotals();
+      }
+      return analytics.byModel[modelKey];
+    };
+
+    // Ensure model stats exist in dateStats.byModel
+    const ensureDateModelStats = (dateStats, modelKey) => {
+      if (!dateStats.byModel[modelKey]) {
+        dateStats.byModel[modelKey] = createModelTotals();
+      }
+      return dateStats.byModel[modelKey];
+    };
+
     // Scan yume-cli sessions for analytics
-    const scanYumeCliAnalytics = async (provider, analytics, pricing) => {
-      const { readdir, readFile, stat } = fs.promises;
+    // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
+    // The async promise queue causes crashes when closing many file handles
+    const scanYumeCliAnalytics = (provider, analytics, pricing) => {
       const sessionsDir = join(homedir(), '.yume', 'sessions', provider);
 
       if (!existsSync(sessionsDir)) {
@@ -2126,7 +2218,7 @@ app.get('/claude-analytics', async (req, res) => {
       }
 
       try {
-        const files = await readdir(sessionsDir);
+        const files = fs.readdirSync(sessionsDir);
         const jsonFiles = files.filter(f => f.endsWith('.json'));
 
         console.log(`📊 Scanning ${jsonFiles.length} ${provider} session files...`);
@@ -2134,7 +2226,7 @@ app.get('/claude-analytics', async (req, res) => {
         for (const file of jsonFiles) {
           try {
             const filePath = join(sessionsDir, file);
-            const content = await readFile(filePath, 'utf8');
+            const content = fs.readFileSync(filePath, 'utf8');
             const session = JSON.parse(content);
 
             // Get usage from session
@@ -2238,10 +2330,7 @@ app.get('/claude-analytics', async (req, res) => {
       tokens: 0,
       cost: 0,
       tokenBreakdown: createTokenBreakdown(),
-      byModel: {
-        opus: createModelTotals(),
-        sonnet: createModelTotals()
-      }
+      byModel: {}
     });
 
     const createProjectStats = (lastUsed) => ({
@@ -2260,6 +2349,17 @@ app.get('/claude-analytics', async (req, res) => {
       cost: 0,
       tokenBreakdown: createTokenBreakdown()
     });
+
+    const MAX_ANALYTICS_JSONL_LINE_LENGTH = 256 * 1024;
+    const sanitizeAnalyticsLine = (rawLine, contextLabel) => {
+      const trimmed = rawLine.trim();
+      if (!trimmed) return null;
+      if (trimmed.length > MAX_ANALYTICS_JSONL_LINE_LENGTH) {
+        debugLog(`[Analytics] Skipping oversized line in ${contextLabel} (${trimmed.length} chars)`);
+        return null;
+      }
+      return trimmed;
+    };
 
     const addTokenBreakdown = (target, delta) => {
       target.input += delta.input;
@@ -2299,10 +2399,12 @@ app.get('/claude-analytics', async (req, res) => {
     };
 
     // Pricing per token (matching ccusage methodology)
-    // Claude Sonnet: $3/M input, $15/M output, $3.75/M cache_creation, $0.30/M cache_read
-    // Claude Opus: $15/M input, $75/M output, $18.75/M cache_creation, $1.50/M cache_read
-    // Gemini Flash: $0.075/1K = $0.75/M input, $0.30/1K = $3/M output
-    // GPT-4o: $2.50/M input, $10/M output
+    // Claude Sonnet 4.5: $3/M input, $15/M output, $3.75/M cache_creation, $0.30/M cache_read
+    // Claude Opus 4.5: $15/M input, $75/M output, $18.75/M cache_creation, $1.50/M cache_read
+    // Gemini 2.5 Pro: $1.25/M input, $10/M output
+    // Gemini 2.5 Flash: $0.15/M input, $0.60/M output ($3.50/M thinking output)
+    // GPT-5.2-Codex: $1.75/M input, $14/M output
+    // GPT-5.1-Codex-Mini: $0.25/M input, $2/M output
     const pricing = {
       sonnet: {
         input: 3e-6,
@@ -2316,252 +2418,274 @@ app.get('/claude-analytics', async (req, res) => {
         cacheCreation: 18.75e-6,
         cacheRead: 1.50e-6
       },
-      gemini: {
-        input: 0.075e-6,      // $0.075/1K = $0.75/M (Gemini 1.5 Flash)
-        output: 0.30e-6,      // $0.30/1K = $3/M
-        cacheCreation: 0.038e-6,
-        cacheRead: 0.019e-6
+      // Claude Haiku 4.5: $0.80/M input, $4/M output, $1/M cache_creation, $0.08/M cache_read
+      haiku: {
+        input: 0.80e-6,
+        output: 4e-6,
+        cacheCreation: 1e-6,
+        cacheRead: 0.08e-6
       },
-      openai: {
-        input: 2.5e-6,        // $2.50/M (GPT-4o)
+      // Gemini 2.5 Pro
+      'gemini-pro': {
+        input: 1.25e-6,       // $1.25/M
         output: 10e-6,        // $10/M
+        cacheCreation: 0.625e-6,  // estimated 50% of input
+        cacheRead: 0.3125e-6      // estimated 25% of input
+      },
+      // Gemini 2.5 Flash
+      'gemini-flash': {
+        input: 0.15e-6,       // $0.15/M
+        output: 0.60e-6,      // $0.60/M (standard), $3.50/M (thinking)
+        cacheCreation: 0.075e-6,
+        cacheRead: 0.0375e-6
+      },
+      // Fallback for generic gemini
+      gemini: {
+        input: 1.25e-6,       // Use pro pricing as fallback
+        output: 10e-6,
+        cacheCreation: 0.625e-6,
+        cacheRead: 0.3125e-6
+      },
+      // GPT-5.2-Codex
+      'gpt-codex': {
+        input: 1.75e-6,       // $1.75/M
+        output: 14e-6,        // $14/M
         cacheCreation: 0,
         cacheRead: 0
+      },
+      // GPT-5.1-Codex-Mini
+      'gpt-codex-mini': {
+        input: 0.25e-6,       // $0.25/M
+        output: 2e-6,         // $2/M
+        cacheCreation: 0,
+        cacheRead: 0
+      },
+      // Fallback for generic gpt/openai
+      openai: {
+        input: 1.75e-6,       // Use codex pricing as fallback
+        output: 14e-6,
+        cacheCreation: 0,
+        cacheRead: 0
+      },
+      gpt: {
+        input: 1.75e-6,
+        output: 14e-6,
+        cacheCreation: 0,
+        cacheRead: 0
+      },
+      // Default rates for unknown models (use sonnet rates as fallback)
+      default: {
+        input: 3e-6,
+        output: 15e-6,
+        cacheCreation: 3.75e-6,
+        cacheRead: 0.30e-6
       }
     };
-
+    
     // Determine the Claude projects directory based on platform
+    // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
     let projectsDir;
     if (isWindows) {
       // Directly access WSL filesystem through Windows mount - no wsl.exe commands
-      const { readdir, readFile, stat } = fs.promises;
+
+      // Try different WSL mount paths and users
+      const possibleUsers = ['yuru', 'muuko', process.env.USER, process.env.USERNAME].filter(Boolean);
+      const possibleDistros = ['Ubuntu', 'Ubuntu-20.04', 'Ubuntu-22.04', 'Ubuntu-24.04'];
+      const possiblePrefixes = ['\\\\wsl$', '\\\\wsl.localhost'];
+
+      console.log('📊 Analytics: Searching for WSL Claude projects...');
+      console.log('  Possible users:', possibleUsers);
+      console.log('  Possible distros:', possibleDistros);
 
       let wslProjectsPath = null;
+      let attemptCount = 0;
 
-      // Only try WSL paths if not in native-windows mode
-      if (CLAUDE_EXECUTION_MODE !== 'native-windows') {
-        // Try different WSL mount paths and users
-        const possibleUsers = ['yuru', 'muuko', process.env.USER, process.env.USERNAME].filter(Boolean);
-        const possibleDistros = ['Ubuntu', 'Ubuntu-20.04', 'Ubuntu-22.04', 'Ubuntu-24.04'];
-        const possiblePrefixes = ['\\\\wsl$', '\\\\wsl.localhost'];
-
-        console.log('📊 Analytics: Searching for WSL Claude projects...');
-        console.log('  Possible users:', possibleUsers);
-        console.log('  Possible distros:', possibleDistros);
-
-        let attemptCount = 0;
-
-        for (const prefix of possiblePrefixes) {
-          for (const distro of possibleDistros) {
-            for (const user of possibleUsers) {
-              const testPath = `${prefix}\\${distro}\\home\\${user}\\.claude\\projects`;
-              attemptCount++;
-              try {
-                await stat(testPath);
-                wslProjectsPath = testPath;
-                console.log(`✅ Found WSL Claude projects at: ${testPath} (attempt ${attemptCount})`);
-                break;
-              } catch (e) {
-                // Silent - try next combination
-              }
+      for (const prefix of possiblePrefixes) {
+        for (const distro of possibleDistros) {
+          for (const user of possibleUsers) {
+            const testPath = `${prefix}\\${distro}\\home\\${user}\\.claude\\projects`;
+            attemptCount++;
+            try {
+              fs.statSync(testPath);
+              wslProjectsPath = testPath;
+              console.log(`✅ Found WSL Claude projects at: ${testPath} (attempt ${attemptCount})`);
+              break;
+            } catch (e) {
+              // Silent - try next combination
             }
-            if (wslProjectsPath) break;
           }
           if (wslProjectsPath) break;
         }
+        if (wslProjectsPath) break;
+      }
 
-        if (!wslProjectsPath) {
-          console.log(`❌ WSL Claude projects not found after ${attemptCount} attempts`);
-        }
-      } else {
-        console.log('📊 Analytics: Native Windows mode - skipping WSL, using Windows projects');
+      if (!wslProjectsPath) {
+        console.log(`❌ WSL Claude projects not found after ${attemptCount} attempts`);
       }
 
       if (wslProjectsPath) {
         try {
-          const projectDirs = await readdir(wslProjectsPath);
+          const projectDirs = fs.readdirSync(wslProjectsPath);
           console.log(`Found ${projectDirs.length} projects in WSL directory`);
-          
-          // Process projects
-          for (const projectName of projectDirs) {
+
+          // Process projects (limit to prevent memory issues)
+          const maxProjects = 10;
+          let wslProjectCount = 0;
+          for (const projectName of projectDirs.slice(0, maxProjects)) {
+            // Yield every 3 projects to reset V8 call stack
+            if (wslProjectCount > 0 && wslProjectCount % 3 === 0) {
+              await yieldToEventLoop();
+            }
+            wslProjectCount++;
+
             const projectPath = path.win32.join(wslProjectsPath, projectName);
-            
+
             try {
-              const stats = await stat(projectPath);
+              const stats = fs.statSync(projectPath);
               if (!stats.isDirectory()) continue;
-              
+
               console.log(`Processing WSL project: ${projectName}`);
-              
+
               // Get session files
-              const sessionFiles = await readdir(projectPath);
+              const sessionFiles = fs.readdirSync(projectPath);
               const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
               console.log(`  Found ${jsonlFiles.length} session files`);
-              
-              // Process sessions
-              for (const sessionFile of jsonlFiles) {
+
+              // Process sessions (limit to prevent memory issues)
+              const maxSessions = 20;
+              let wslSessionCount = 0;
+              for (const sessionFile of jsonlFiles.slice(0, maxSessions)) {
+                // Yield every 5 sessions to reset V8 call stack
+                if (wslSessionCount > 0 && wslSessionCount % 5 === 0) {
+                  await yieldToEventLoop();
+                }
+                wslSessionCount++;
                 try {
                   const sessionPath = path.win32.join(projectPath, sessionFile);
-                  const fileStats = await stat(sessionPath);
-                  
+                  const fileStats = fs.statSync(sessionPath);
+
                   // Skip very large files
                   if (fileStats.size > 10 * 1024 * 1024) {
                     console.log(`  Skipping large file: ${sessionFile} (${fileStats.size} bytes)`);
                     continue;
                   }
-                  
+
                   console.log(`  Reading session: ${sessionFile} (${fileStats.size} bytes)`);
-                  const content = await readFile(sessionPath, 'utf8');
-                  
-                  // Parse lines to extract analytics from Claude CLI format
-                  const allLines = content.split('\n').filter(line => line.trim());
-                  console.log(`    Total lines in file: ${allLines.length}`);
+                  const content = fs.readFileSync(sessionPath, 'utf8');
 
-                  let sessionTokens = 0;
-                  let sessionCost = 0;
-                  let sessionModel = 'sonnet';
-                  let sessionDate = formatDateKey(new Date());
+                  // Parse JSONL file - ccusage compatible per-message processing
+                  const allLines = content.split('\n');
+                  const sessionLastUsed = fileStats.mtime.getTime();
+                  const cleanProjectName = projectName.replace(/-/g, '/');
+                  let sessionHasData = false;
                   let messageCount = 0;
-                  let sessionTokenBreakdown = createTokenBreakdown();
+                  const countedMessageRequestIds = new Set();
 
-                  // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
-                  let totalInputTokens = 0;
-                  let totalOutputTokens = 0;
-                  let totalCacheCreationTokens = 0;
-                  let totalCacheReadTokens = 0;
-                  let lastResultUsage = null;
-                  const seenRequestIds = new Set();
-                  const countedAssistantRequestIds = new Set();
+                  for (const rawLine of allLines) {
+                    const sanitizedLine = sanitizeAnalyticsLine(rawLine, `${projectName}/${sessionFile}`);
+                    if (!sanitizedLine) continue;
 
-                  for (const line of allLines) {
                     try {
-                      const data = JSON.parse(line);
+                      const data = JSON.parse(sanitizedLine);
 
-                      // Claude CLI uses type: "assistant" for assistant messages
-                      if (data.type === 'assistant' && data.message) {
-                        // Detect model from message
-                        if (data.message.model) {
-                          sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
-                        }
-                        if (data.requestId) {
-                          if (!countedAssistantRequestIds.has(data.requestId)) {
-                            countedAssistantRequestIds.add(data.requestId);
-                            messageCount++;
-                          }
-                        } else {
-                          messageCount++;
-                        }
-                        if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
-                          seenRequestIds.add(data.requestId);
-                          totalInputTokens += data.message.usage.input_tokens || 0;
-                          totalOutputTokens += data.message.usage.output_tokens || 0;
-                          totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
-                          totalCacheReadTokens += data.message.usage.cache_read_input_tokens || 0;
-                        }
-                      }
-
-                      // Also check for standalone result messages (legacy format)
-                      if (data.type === 'result' && data.usage) {
-                        lastResultUsage = data.usage;
-                        if (data.requestId && !seenRequestIds.has(data.requestId)) {
-                          seenRequestIds.add(data.requestId);
-                          totalInputTokens += data.usage.input_tokens || 0;
-                          totalOutputTokens += data.usage.output_tokens || 0;
-                          totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
-                          totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
-                        }
-                      }
-
-                      // Count user messages too
+                      // Count messages
                       if (data.type === 'user') {
                         messageCount++;
+                      } else if (data.type === 'assistant' && data.requestId) {
+                        if (!countedMessageRequestIds.has(data.requestId)) {
+                          countedMessageRequestIds.add(data.requestId);
+                          messageCount++;
+                        }
                       }
 
-                      // Get timestamp from any message
-                      if (data.timestamp) {
-                        sessionDate = formatDateKey(new Date(data.timestamp));
+                      // ccusage compatible: check if message has usage.input_tokens
+                      const usage = data.message?.usage;
+                      if (!usage || typeof usage.input_tokens !== 'number') continue;
+
+                      // Global dedup by messageId:requestId
+                      const messageId = data.message?.id;
+                      const requestId = data.requestId;
+                      if (messageId && requestId) {
+                        const hashKey = `${messageId}:${requestId}`;
+                        if (globalProcessedHashes.has(hashKey)) continue;
+                        globalProcessedHashes.add(hashKey);
                       }
+
+                      const messageDate = data.timestamp ? formatDateKey(new Date(data.timestamp)) : formatDateKey(new Date());
+                      const model = normalizeModelName(data.message?.model);
+                      const inputTokens = usage.input_tokens || 0;
+                      const outputTokens = usage.output_tokens || 0;
+                      const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                      const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                      const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+
+                      if (totalTokens === 0) continue;
+                      sessionHasData = true;
+
+                      const rates = pricing[model] || pricing.default;
+                      const cost = (inputTokens * rates.input) +
+                                   (outputTokens * rates.output) +
+                                   (cacheCreationTokens * rates.cacheCreation) +
+                                   (cacheReadTokens * rates.cacheRead);
+
+                      const msgBreakdown = { input: inputTokens, output: outputTokens, cacheCreation: cacheCreationTokens, cacheRead: cacheReadTokens };
+
+                      analytics.totalTokens += totalTokens;
+                      analytics.totalCost += cost;
+                      addTokenBreakdown(analytics.tokenBreakdown, msgBreakdown);
+
+                      const modelStats = ensureModelStats(analytics, model);
+                      modelStats.tokens += totalTokens;
+                      modelStats.cost += cost;
+                      addTokenBreakdown(modelStats.tokenBreakdown, msgBreakdown);
+
+                      const providerStats = analytics.byProvider.claude;
+                      providerStats.tokens += totalTokens;
+                      providerStats.cost += cost;
+                      addTokenBreakdown(providerStats.tokenBreakdown, msgBreakdown);
+
+                      const dateStats = ensureDateStats(messageDate);
+                      dateStats.tokens += totalTokens;
+                      dateStats.cost += cost;
+                      addTokenBreakdown(dateStats.tokenBreakdown, msgBreakdown);
+                      const dateModelStats = ensureDateModelStats(dateStats, model);
+                      dateModelStats.tokens += totalTokens;
+                      dateModelStats.cost += cost;
+
+                      const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                      projectStats.tokens += totalTokens;
+                      projectStats.cost += cost;
+                      const projectDateStats = ensureProjectDateStats(projectStats, messageDate);
+                      projectDateStats.tokens += totalTokens;
+                      projectDateStats.cost += cost;
+                      addTokenBreakdown(projectDateStats.tokenBreakdown, msgBreakdown);
                     } catch (e) {
                       // Skip invalid JSON
                     }
                   }
 
-                  const hasTokenTotals = totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0;
-                  if (!hasTokenTotals && lastResultUsage) {
-                    totalInputTokens = lastResultUsage.input_tokens || 0;
-                    totalOutputTokens = lastResultUsage.output_tokens || 0;
-                    totalCacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
-                    totalCacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
-                  }
+                  if (sessionHasData) {
+                    const sessionKey = `${projectName}/${sessionFile}`;
+                    if (!countedSessions.has(sessionKey)) {
+                      countedSessions.add(sessionKey);
+                      analytics.totalSessions++;
+                      analytics.totalMessages += messageCount;
+                      analytics.byProvider.claude.sessions++;
 
-                  if (totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0) {
-                    sessionTokens = totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens;
-                    sessionTokenBreakdown = {
-                      input: totalInputTokens,
-                      output: totalOutputTokens,
-                      cacheCreation: totalCacheCreationTokens,
-                      cacheRead: totalCacheReadTokens
-                    };
+                      const sessionDate = formatDateKey(new Date(sessionLastUsed));
+                      const dateStats = ensureDateStats(sessionDate);
+                      dateStats.sessions++;
+                      dateStats.messages += messageCount;
 
-                    // Calculate cost from token totals
-                    const rates = pricing[sessionModel];
-                    sessionCost = (totalInputTokens * rates.input) +
-                                 (totalOutputTokens * rates.output) +
-                                 (totalCacheCreationTokens * rates.cacheCreation) +
-                                 (totalCacheReadTokens * rates.cacheRead);
-                  }
+                      const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                      projectStats.sessions++;
+                      projectStats.messages += messageCount;
 
-                  console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
-                  
-                  // Update analytics if session has data
-                  if (sessionTokens > 0) {
-                    console.log(`    Session: ${sessionTokens} tokens, $${sessionCost.toFixed(4)}`);
-                    const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
-                    const sessionLastUsed = fileStats.mtime.getTime();
-
-                    analytics.totalSessions++;
-                    analytics.totalMessages += messageCount;
-                    analytics.totalTokens += sessionTokens;
-                    analytics.totalCost += sessionCost;
-
-                    addTokenBreakdown(analytics.tokenBreakdown, sessionTokenBreakdown);
-
-                    const modelStats = analytics.byModel[modelKey];
-                    modelStats.sessions++;
-                    modelStats.tokens += sessionTokens;
-                    modelStats.cost += sessionCost;
-                    addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
-
-                    // Track provider breakdown - Claude sessions
-                    const providerStats = analytics.byProvider.claude;
-                    providerStats.sessions++;
-                    providerStats.tokens += sessionTokens;
-                    providerStats.cost += sessionCost;
-                    addTokenBreakdown(providerStats.tokenBreakdown, sessionTokenBreakdown);
-
-                    const dateStats = ensureDateStats(sessionDate);
-                    dateStats.sessions++;
-                    dateStats.messages += messageCount;
-                    dateStats.tokens += sessionTokens;
-                    dateStats.cost += sessionCost;
-                    addTokenBreakdown(dateStats.tokenBreakdown, sessionTokenBreakdown);
-                    const dateModelStats = dateStats.byModel[modelKey];
-                    dateModelStats.sessions++;
-                    dateModelStats.tokens += sessionTokens;
-                    dateModelStats.cost += sessionCost;
-
-                    // Update project breakdown (clean project name)
-                    const cleanProjectName = projectName.replace(/-/g, '/');
-                    const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
-                    projectStats.sessions++;
-                    projectStats.messages += messageCount;
-                    projectStats.tokens += sessionTokens;
-                    projectStats.cost += sessionCost;
-                    const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
-                    projectDateStats.sessions++;
-                    projectDateStats.messages += messageCount;
-                    projectDateStats.tokens += sessionTokens;
-                    projectDateStats.cost += sessionCost;
-                    addTokenBreakdown(projectDateStats.tokenBreakdown, sessionTokenBreakdown);
+                      // Also update project's byDate sessions/messages for time-range filtering
+                      const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                      projectDateStats.sessions++;
+                      projectDateStats.messages += messageCount;
+                    }
                   }
                 } catch (e) {
                   console.error(`  Error processing session ${sessionFile}:`, e.message);
@@ -2582,190 +2706,153 @@ app.get('/claude-analytics', async (req, res) => {
       if (!wslProjectsPath) {
         console.log('WSL mount not accessible, trying Windows path...');
         const windowsProjectsPath = path.win32.join(homedir(), '.claude', 'projects');
-        
+
         try {
-          const projectDirs = await readdir(windowsProjectsPath);
+          const projectDirs = fs.readdirSync(windowsProjectsPath);
           console.log(`Found ${projectDirs.length} projects in Windows directory`);
-          
-          // Process projects
-          for (const projectName of projectDirs) {
+
+          // Process limited number of projects
+          for (const projectName of projectDirs.slice(0, 5)) {
             const projectPath = path.win32.join(windowsProjectsPath, projectName);
-            const stats = await stat(projectPath);
-            
+            const stats = fs.statSync(projectPath);
+
             if (!stats.isDirectory()) continue;
-            
+
             console.log(`Processing Windows project: ${projectName}`);
-            
+
             // Get session files
-            const sessionFiles = await readdir(projectPath);
+            const sessionFiles = fs.readdirSync(projectPath);
             const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
             console.log(`  Found ${jsonlFiles.length} session files`);
-            
-            // Process sessions
-            for (const sessionFile of jsonlFiles) {
+
+            // Process limited number of sessions
+            for (const sessionFile of jsonlFiles.slice(0, 10)) {
               try {
                 const sessionPath = path.win32.join(projectPath, sessionFile);
-                const fileStats = await stat(sessionPath);
-                
+                const fileStats = fs.statSync(sessionPath);
+
                 // Skip very large files
                 if (fileStats.size > 10 * 1024 * 1024) {
                   console.log(`  Skipping large file: ${sessionFile} (${fileStats.size} bytes)`);
                   continue;
                 }
-                
+
                 console.log(`  Reading session: ${sessionFile} (${fileStats.size} bytes)`);
-                const content = await readFile(sessionPath, 'utf8');
-                
-                // Parse lines to extract analytics from Claude CLI format
-                const allLines = content.split('\n').filter(line => line.trim());
-                console.log(`    Total lines in file: ${allLines.length}`);
+                const content = fs.readFileSync(sessionPath, 'utf8');
 
-                let sessionTokens = 0;
-                let sessionCost = 0;
-                let sessionModel = 'sonnet';
-                let sessionDate = formatDateKey(new Date());
+                // Parse JSONL file - ccusage compatible per-message processing
+                const allLines = content.split('\n');
+                const sessionLastUsed = fileStats.mtime.getTime();
+                const cleanProjectName = projectName.replace(/-/g, '/');
+                let sessionHasData = false;
                 let messageCount = 0;
-                let sessionTokenBreakdown = createTokenBreakdown();
+                const countedMessageRequestIds = new Set();
 
-                // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
-                let totalInputTokens = 0;
-                let totalOutputTokens = 0;
-                let totalCacheCreationTokens = 0;
-                let totalCacheReadTokens = 0;
-                let lastResultUsage = null;
-                const seenRequestIds = new Set();
-                const countedAssistantRequestIds = new Set();
+                for (const rawLine of allLines) {
+                  const sanitizedLine = sanitizeAnalyticsLine(rawLine, `${projectName}/${sessionFile}`);
+                  if (!sanitizedLine) continue;
 
-                for (const line of allLines) {
                   try {
-                    const data = JSON.parse(line);
+                    const data = JSON.parse(sanitizedLine);
 
-                    // Claude CLI uses type: "assistant" for assistant messages
-                    if (data.type === 'assistant' && data.message) {
-                      // Detect model from message
-                      if (data.message.model) {
-                        sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
-                      }
-                      if (data.requestId) {
-                        if (!countedAssistantRequestIds.has(data.requestId)) {
-                          countedAssistantRequestIds.add(data.requestId);
-                          messageCount++;
-                        }
-                      } else {
-                        messageCount++;
-                      }
-                      if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
-                        seenRequestIds.add(data.requestId);
-                        totalInputTokens += data.message.usage.input_tokens || 0;
-                        totalOutputTokens += data.message.usage.output_tokens || 0;
-                        totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
-                        totalCacheReadTokens += data.message.usage.cache_read_input_tokens || 0;
-                      }
-                    }
-
-                    // Also check for standalone result messages (legacy format)
-                    if (data.type === 'result' && data.usage) {
-                      lastResultUsage = data.usage;
-                      if (data.requestId && !seenRequestIds.has(data.requestId)) {
-                        seenRequestIds.add(data.requestId);
-                        totalInputTokens += data.usage.input_tokens || 0;
-                        totalOutputTokens += data.usage.output_tokens || 0;
-                        totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
-                        totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
-                      }
-                    }
-
-                    // Count user messages too
+                    // Count messages
                     if (data.type === 'user') {
                       messageCount++;
+                    } else if (data.type === 'assistant' && data.requestId) {
+                      if (!countedMessageRequestIds.has(data.requestId)) {
+                        countedMessageRequestIds.add(data.requestId);
+                        messageCount++;
+                      }
                     }
 
-                    // Get timestamp from any message
-                    if (data.timestamp) {
-                      sessionDate = formatDateKey(new Date(data.timestamp));
+                    // ccusage compatible: check if message has usage.input_tokens
+                    const usage = data.message?.usage;
+                    if (!usage || typeof usage.input_tokens !== 'number') continue;
+
+                    // Global dedup by messageId:requestId
+                    const messageId = data.message?.id;
+                    const requestId = data.requestId;
+                    if (messageId && requestId) {
+                      const hashKey = `${messageId}:${requestId}`;
+                      if (globalProcessedHashes.has(hashKey)) continue;
+                      globalProcessedHashes.add(hashKey);
                     }
+
+                    const messageDate = data.timestamp ? formatDateKey(new Date(data.timestamp)) : formatDateKey(new Date());
+                    const model = normalizeModelName(data.message?.model);
+                    const inputTokens = usage.input_tokens || 0;
+                    const outputTokens = usage.output_tokens || 0;
+                    const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                    const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                    const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+
+                    if (totalTokens === 0) continue;
+                    sessionHasData = true;
+
+                    const rates = pricing[model] || pricing.default;
+                    const cost = (inputTokens * rates.input) +
+                                 (outputTokens * rates.output) +
+                                 (cacheCreationTokens * rates.cacheCreation) +
+                                 (cacheReadTokens * rates.cacheRead);
+
+                    const msgBreakdown = { input: inputTokens, output: outputTokens, cacheCreation: cacheCreationTokens, cacheRead: cacheReadTokens };
+
+                    analytics.totalTokens += totalTokens;
+                    analytics.totalCost += cost;
+                    addTokenBreakdown(analytics.tokenBreakdown, msgBreakdown);
+
+                    const modelStats = ensureModelStats(analytics, model);
+                    modelStats.tokens += totalTokens;
+                    modelStats.cost += cost;
+                    addTokenBreakdown(modelStats.tokenBreakdown, msgBreakdown);
+
+                    const providerStats = analytics.byProvider.claude;
+                    providerStats.tokens += totalTokens;
+                    providerStats.cost += cost;
+                    addTokenBreakdown(providerStats.tokenBreakdown, msgBreakdown);
+
+                    const dateStats = ensureDateStats(messageDate);
+                    dateStats.tokens += totalTokens;
+                    dateStats.cost += cost;
+                    addTokenBreakdown(dateStats.tokenBreakdown, msgBreakdown);
+                    const dateModelStats = ensureDateModelStats(dateStats, model);
+                    dateModelStats.tokens += totalTokens;
+                    dateModelStats.cost += cost;
+
+                    const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                    projectStats.tokens += totalTokens;
+                    projectStats.cost += cost;
+                    const projectDateStats = ensureProjectDateStats(projectStats, messageDate);
+                    projectDateStats.tokens += totalTokens;
+                    projectDateStats.cost += cost;
+                    addTokenBreakdown(projectDateStats.tokenBreakdown, msgBreakdown);
                   } catch (e) {
                     // Skip invalid JSON
                   }
                 }
 
-                const hasTokenTotals = totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0;
-                if (!hasTokenTotals && lastResultUsage) {
-                  totalInputTokens = lastResultUsage.input_tokens || 0;
-                  totalOutputTokens = lastResultUsage.output_tokens || 0;
-                  totalCacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
-                  totalCacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
-                }
+                if (sessionHasData) {
+                  const sessionKey = `${projectName}/${sessionFile}`;
+                  if (!countedSessions.has(sessionKey)) {
+                    countedSessions.add(sessionKey);
+                    analytics.totalSessions++;
+                    analytics.totalMessages += messageCount;
+                    analytics.byProvider.claude.sessions++;
 
-                if (totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0) {
-                  sessionTokens = totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens;
-                  sessionTokenBreakdown = {
-                    input: totalInputTokens,
-                    output: totalOutputTokens,
-                    cacheCreation: totalCacheCreationTokens,
-                    cacheRead: totalCacheReadTokens
-                  };
+                    const sessionDate = formatDateKey(new Date(sessionLastUsed));
+                    const dateStats = ensureDateStats(sessionDate);
+                    dateStats.sessions++;
+                    dateStats.messages += messageCount;
 
-                  // Calculate cost from token totals
-                  const rates = pricing[sessionModel];
-                  sessionCost = (totalInputTokens * rates.input) +
-                               (totalOutputTokens * rates.output) +
-                               (totalCacheCreationTokens * rates.cacheCreation) +
-                               (totalCacheReadTokens * rates.cacheRead);
-                }
+                    const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                    projectStats.sessions++;
+                    projectStats.messages += messageCount;
 
-                console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
-
-                // Update analytics
-                if (sessionTokens > 0) {
-                  console.log(`    Session: ${sessionTokens} tokens, $${sessionCost.toFixed(4)}`);
-
-                  const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
-                  const sessionLastUsed = fileStats.mtime.getTime();
-
-                  analytics.totalSessions++;
-                  analytics.totalMessages += messageCount;
-                  analytics.totalTokens += sessionTokens;
-                  analytics.totalCost += sessionCost;
-
-                  addTokenBreakdown(analytics.tokenBreakdown, sessionTokenBreakdown);
-
-                  const modelStats = analytics.byModel[modelKey];
-                  modelStats.sessions++;
-                  modelStats.tokens += sessionTokens;
-                  modelStats.cost += sessionCost;
-                  addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
-
-                  // Track provider breakdown - Claude sessions
-                  const providerStats = analytics.byProvider.claude;
-                  providerStats.sessions++;
-                  providerStats.tokens += sessionTokens;
-                  providerStats.cost += sessionCost;
-                  addTokenBreakdown(providerStats.tokenBreakdown, sessionTokenBreakdown);
-
-                  const dateStats = ensureDateStats(sessionDate);
-                  dateStats.sessions++;
-                  dateStats.messages += messageCount;
-                  dateStats.tokens += sessionTokens;
-                  dateStats.cost += sessionCost;
-                  addTokenBreakdown(dateStats.tokenBreakdown, sessionTokenBreakdown);
-                  const dateModelStats = dateStats.byModel[modelKey];
-                  dateModelStats.sessions++;
-                  dateModelStats.tokens += sessionTokens;
-                  dateModelStats.cost += sessionCost;
-
-                  const cleanProjectName = projectName.replace(/-/g, '/');
-                  const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
-                  projectStats.sessions++;
-                  projectStats.messages += messageCount;
-                  projectStats.tokens += sessionTokens;
-                  projectStats.cost += sessionCost;
-                  const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
-                  projectDateStats.sessions++;
-                  projectDateStats.messages += messageCount;
-                  projectDateStats.tokens += sessionTokens;
-                  projectDateStats.cost += sessionCost;
-                  addTokenBreakdown(projectDateStats.tokenBreakdown, sessionTokenBreakdown);
+                    // Also update project's byDate sessions/messages for time-range filtering
+                    const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                    projectDateStats.sessions++;
+                    projectDateStats.messages += messageCount;
+                  }
                 }
               } catch (e) {
                 console.error(`  Error processing session ${sessionFile}:`, e.message);
@@ -2778,172 +2865,214 @@ app.get('/claude-analytics', async (req, res) => {
       }
     } else {
       // Non-Windows: read directly from filesystem
-      const { readdir, readFile, stat } = fs.promises;
+      // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
+      // The async promise queue causes crashes when closing many file handles
       const projectsDir = join(homedir(), '.claude', 'projects');
-      
-      try {
-        const projectDirs = await readdir(projectsDir);
-        
-        for (const projectName of projectDirs) {
-          const projectPath = join(projectsDir, projectName);
-          const stats = await stat(projectPath);
-          
-          if (!stats.isDirectory()) continue;
-          
-          // Get all session files
-          const sessionFiles = await readdir(projectPath);
-          const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
-          
-          for (const sessionFile of jsonlFiles) {
+
+      // Limits to prevent stack overflow in pkg binary
+      const MAX_PROJECTS = 50;
+      const MAX_FILES_PER_PROJECT = 10000;  // Increased to handle large projects with many subagents
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
+      let projectCount = 0;
+
+      // Recursive function to find all .jsonl files in a directory (ccusage compatible)
+      const findJsonlFilesRecursively = (dir, files = [], depth = 0) => {
+        if (depth > 5) return files; // Prevent infinite recursion
+        try {
+          const entries = fs.readdirSync(dir);
+          for (const entry of entries) {
+            const fullPath = join(dir, entry);
             try {
-              const sessionPath = join(projectPath, sessionFile);
-              const fileStats = await stat(sessionPath);
-              const content = await readFile(sessionPath, 'utf8');
-              
+              const st = fs.statSync(fullPath);
+              if (st.isDirectory()) {
+                findJsonlFilesRecursively(fullPath, files, depth + 1);
+              } else if (entry.endsWith('.jsonl')) {
+                files.push(fullPath);
+              }
+            } catch (e) { /* skip inaccessible */ }
+          }
+        } catch (e) { /* skip inaccessible dirs */ }
+        return files;
+      };
+
+      try {
+        const projectDirs = fs.readdirSync(projectsDir);
+
+        for (const projectName of projectDirs) {
+          if (projectCount >= MAX_PROJECTS) {
+            console.log(`📊 Reached max projects limit (${MAX_PROJECTS}), stopping`);
+            break;
+          }
+
+          // Yield every 5 projects to reset V8 call stack (prevents pkg binary crash)
+          if (projectCount > 0 && projectCount % 5 === 0) {
+            await yieldToEventLoop();
+          }
+
+          const projectPath = join(projectsDir, projectName);
+          let stats;
+          try {
+            stats = fs.statSync(projectPath);
+          } catch (e) {
+            continue; // Skip inaccessible paths
+          }
+
+          if (!stats.isDirectory()) continue;
+          projectCount++;
+
+          // Get all session files RECURSIVELY (including subagents/)
+          const jsonlFiles = findJsonlFilesRecursively(projectPath).slice(0, MAX_FILES_PER_PROJECT);
+
+          let sessionCount = 0;
+          for (const sessionPath of jsonlFiles) {
+            // Yield every 10 sessions to reset V8 call stack
+            if (sessionCount > 0 && sessionCount % 10 === 0) {
+              await yieldToEventLoop();
+            }
+            sessionCount++;
+            try {
+              // sessionPath is now a full path from recursive search
+              const sessionFileName = require('path').basename(sessionPath);
+              const fileStats = fs.statSync(sessionPath);
+
+              // Skip large files to prevent memory issues
+              if (fileStats.size > MAX_FILE_SIZE) {
+                console.log(`📊 Skipping large file: ${sessionFileName} (${Math.round(fileStats.size / 1024 / 1024)}MB)`);
+                continue;
+              }
+
+              const content = fs.readFileSync(sessionPath, 'utf8');
+
               // Parse JSONL file - Claude CLI format
-              const lines = content.split('\n').filter(line => line.trim());
-              let sessionTokens = 0;
-              let sessionCost = 0;
-              let sessionModel = 'sonnet';
-              let sessionDate = formatDateKey(new Date());
+              // NEW: Process each message individually and assign to its OWN date (ccusage compatible)
+              const lines = content.split('\n');
+              const sessionLastUsed = fileStats.mtime.getTime();
+              const cleanProjectName = projectName.replace(/-/g, '/');
+              let sessionHasData = false;
               let messageCount = 0;
-              let sessionTokenBreakdown = createTokenBreakdown();
+              const countedMessageRequestIds = new Set();
 
-              // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
-              let totalInputTokens = 0;
-              let totalOutputTokens = 0;
-              let totalCacheCreationTokens = 0;
-              let totalCacheReadTokens = 0;
-              let lastResultUsage = null;
-              const seenRequestIds = new Set();
-              const countedAssistantRequestIds = new Set();
+              for (const rawLine of lines) {
+                const sanitizedLine = sanitizeAnalyticsLine(rawLine, `${projectName}/${sessionFileName}`);
+                if (!sanitizedLine) continue;
 
-              for (const line of lines) {
                 try {
-                  const data = JSON.parse(line);
+                  const data = JSON.parse(sanitizedLine);
 
-                  // Claude CLI uses type: "assistant" for assistant messages
-                  if (data.type === 'assistant' && data.message) {
-                    // Detect model from message
-                    if (data.message.model) {
-                      sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
-                    }
-                    if (data.requestId) {
-                      if (!countedAssistantRequestIds.has(data.requestId)) {
-                        countedAssistantRequestIds.add(data.requestId);
-                        messageCount++;
-                      }
-                    } else {
-                      messageCount++;
-                    }
-                    if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
-                      seenRequestIds.add(data.requestId);
-                      totalInputTokens += data.message.usage.input_tokens || 0;
-                      totalOutputTokens += data.message.usage.output_tokens || 0;
-                      totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
-                      totalCacheReadTokens += data.message.usage.cache_read_input_tokens || 0;
-                    }
-                  }
-
-                  // Also check for standalone result messages (legacy format)
-                  if (data.type === 'result' && data.usage) {
-                    lastResultUsage = data.usage;
-                    if (data.requestId && !seenRequestIds.has(data.requestId)) {
-                      seenRequestIds.add(data.requestId);
-                      totalInputTokens += data.usage.input_tokens || 0;
-                      totalOutputTokens += data.usage.output_tokens || 0;
-                      totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
-                      totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
-                    }
-                  }
-
-                  // Count user messages too
+                  // Count messages (user and assistant)
                   if (data.type === 'user') {
                     messageCount++;
+                  } else if (data.type === 'assistant' && data.requestId) {
+                    if (!countedMessageRequestIds.has(data.requestId)) {
+                      countedMessageRequestIds.add(data.requestId);
+                      messageCount++;
+                    }
                   }
 
-                  // Get timestamp from any message
-                  if (data.timestamp) {
-                    sessionDate = formatDateKey(new Date(data.timestamp));
+                  // ccusage compatible: check if message has usage.input_tokens (not type-specific)
+                  const usage = data.message?.usage;
+                  if (!usage || typeof usage.input_tokens !== 'number') continue;
+
+                  // Global dedup by messageId:requestId (ccusage algorithm)
+                  const messageId = data.message?.id;
+                  const requestId = data.requestId;
+                  if (messageId && requestId) {
+                    const hashKey = `${messageId}:${requestId}`;
+                    if (globalProcessedHashes.has(hashKey)) continue;
+                    globalProcessedHashes.add(hashKey);
                   }
+
+                  // Get message date from its own timestamp (not session-level)
+                  const messageDate = data.timestamp ? formatDateKey(new Date(data.timestamp)) : formatDateKey(new Date());
+
+                  // Get model and calculate cost for this message
+                  const model = normalizeModelName(data.message?.model);
+                  const inputTokens = usage.input_tokens || 0;
+                  const outputTokens = usage.output_tokens || 0;
+                  const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                  const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                  const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+
+                  if (totalTokens === 0) continue;
+                  sessionHasData = true;
+
+                  const rates = pricing[model] || pricing.default;
+                  const cost = (inputTokens * rates.input) +
+                               (outputTokens * rates.output) +
+                               (cacheCreationTokens * rates.cacheCreation) +
+                               (cacheReadTokens * rates.cacheRead);
+
+                  const msgBreakdown = {
+                    input: inputTokens,
+                    output: outputTokens,
+                    cacheCreation: cacheCreationTokens,
+                    cacheRead: cacheReadTokens
+                  };
+
+                  // Update totals
+                  analytics.totalTokens += totalTokens;
+                  analytics.totalCost += cost;
+                  addTokenBreakdown(analytics.tokenBreakdown, msgBreakdown);
+
+                  // Update model stats
+                  const modelStats = ensureModelStats(analytics, model);
+                  modelStats.tokens += totalTokens;
+                  modelStats.cost += cost;
+                  addTokenBreakdown(modelStats.tokenBreakdown, msgBreakdown);
+
+                  // Update provider stats (Claude)
+                  const providerStats = analytics.byProvider.claude;
+                  providerStats.tokens += totalTokens;
+                  providerStats.cost += cost;
+                  addTokenBreakdown(providerStats.tokenBreakdown, msgBreakdown);
+
+                  // Update date stats (per-message date assignment)
+                  const dateStats = ensureDateStats(messageDate);
+                  dateStats.tokens += totalTokens;
+                  dateStats.cost += cost;
+                  addTokenBreakdown(dateStats.tokenBreakdown, msgBreakdown);
+                  const dateModelStats = ensureDateModelStats(dateStats, model);
+                  dateModelStats.tokens += totalTokens;
+                  dateModelStats.cost += cost;
+
+                  // Update project stats
+                  const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                  projectStats.tokens += totalTokens;
+                  projectStats.cost += cost;
+                  const projectDateStats = ensureProjectDateStats(projectStats, messageDate);
+                  projectDateStats.tokens += totalTokens;
+                  projectDateStats.cost += cost;
+                  addTokenBreakdown(projectDateStats.tokenBreakdown, msgBreakdown);
                 } catch (e) {
                   // Skip invalid lines
                 }
               }
 
-              const hasTokenTotals = totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0;
-              if (!hasTokenTotals && lastResultUsage) {
-                totalInputTokens = lastResultUsage.input_tokens || 0;
-                totalOutputTokens = lastResultUsage.output_tokens || 0;
-                totalCacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
-                totalCacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
-              }
+              // Count session and messages once per session file
+              if (sessionHasData) {
+                const sessionKey = sessionPath;  // Use full path as unique key
+                if (!countedSessions.has(sessionKey)) {
+                  countedSessions.add(sessionKey);
+                  analytics.totalSessions++;
+                  analytics.totalMessages += messageCount;
+                  analytics.byProvider.claude.sessions++;
 
-              if (totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0) {
-                sessionTokens = totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens;
-                sessionTokenBreakdown = {
-                  input: totalInputTokens,
-                  output: totalOutputTokens,
-                  cacheCreation: totalCacheCreationTokens,
-                  cacheRead: totalCacheReadTokens
-                };
+                  // Note: session/message counts for dates/projects are approximations
+                  // since messages span multiple dates - we count session for the file's mtime date
+                  const sessionDate = formatDateKey(new Date(sessionLastUsed));
+                  const dateStats = ensureDateStats(sessionDate);
+                  dateStats.sessions++;
+                  dateStats.messages += messageCount;
 
-                // Calculate cost from token totals
-                const rates = pricing[sessionModel];
-                sessionCost = (totalInputTokens * rates.input) +
-                             (totalOutputTokens * rates.output) +
-                             (totalCacheCreationTokens * rates.cacheCreation) +
-                             (totalCacheReadTokens * rates.cacheRead);
-              }
+                  const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                  projectStats.sessions++;
+                  projectStats.messages += messageCount;
 
-              // Update analytics
-              if (sessionTokens > 0) {
-                const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
-                const sessionLastUsed = fileStats.mtime.getTime();
-
-                analytics.totalSessions++;
-                analytics.totalMessages += messageCount;
-                analytics.totalTokens += sessionTokens;
-                analytics.totalCost += sessionCost;
-
-                addTokenBreakdown(analytics.tokenBreakdown, sessionTokenBreakdown);
-
-                const modelStats = analytics.byModel[modelKey];
-                modelStats.sessions++;
-                modelStats.tokens += sessionTokens;
-                modelStats.cost += sessionCost;
-                addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
-
-                // Track provider breakdown - Claude sessions
-                const providerStats = analytics.byProvider.claude;
-                providerStats.sessions++;
-                providerStats.tokens += sessionTokens;
-                providerStats.cost += sessionCost;
-                addTokenBreakdown(providerStats.tokenBreakdown, sessionTokenBreakdown);
-
-                const dateStats = ensureDateStats(sessionDate);
-                dateStats.sessions++;
-                dateStats.messages += messageCount;
-                dateStats.tokens += sessionTokens;
-                dateStats.cost += sessionCost;
-                addTokenBreakdown(dateStats.tokenBreakdown, sessionTokenBreakdown);
-                const dateModelStats = dateStats.byModel[modelKey];
-                dateModelStats.sessions++;
-                dateModelStats.tokens += sessionTokens;
-                dateModelStats.cost += sessionCost;
-
-                const cleanProjectName = projectName.replace(/-/g, '/');
-                const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
-                projectStats.sessions++;
-                projectStats.messages += messageCount;
-                projectStats.tokens += sessionTokens;
-                projectStats.cost += sessionCost;
-                const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
-                projectDateStats.sessions++;
-                projectDateStats.messages += messageCount;
-                projectDateStats.tokens += sessionTokens;
-                projectDateStats.cost += sessionCost;
-                addTokenBreakdown(projectDateStats.tokenBreakdown, sessionTokenBreakdown);
+                  // Also update project's byDate sessions/messages for time-range filtering
+                  const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                  projectDateStats.sessions++;
+                  projectDateStats.messages += messageCount;
+                }
               }
             } catch (e) {
               console.error(`Error processing session ${sessionFile}:`, e.message);
@@ -2955,14 +3084,21 @@ app.get('/claude-analytics', async (req, res) => {
       }
     }
 
-    // Scan yume-cli sessions (Gemini and OpenAI)
-    await scanYumeCliAnalytics('gemini', analytics, pricing);
-    await scanYumeCliAnalytics('openai', analytics, pricing);
+    // Scan yume-cli sessions (Gemini and OpenAI) - sync to avoid stack overflow
+    scanYumeCliAnalytics('gemini', analytics, pricing);
+    scanYumeCliAnalytics('openai', analytics, pricing);
 
     console.log(`📊 Analytics loaded: ${analytics.totalSessions} sessions, ${analytics.totalTokens} tokens`);
     console.log(`📊 Provider breakdown - Claude: ${analytics.byProvider.claude.sessions}, Gemini: ${analytics.byProvider.gemini.sessions}, OpenAI: ${analytics.byProvider.openai.sessions}`);
+
+    // Cache the result
+    analyticsCache = analytics;
+    analyticsCacheTime = Date.now();
+    analyticsInProgress = false;
+
     res.json(analytics);
   } catch (error) {
+    analyticsInProgress = false;
     console.error('Error loading analytics:', error);
     res.status(500).json({ error: 'Failed to load analytics', details: error.message });
   }
@@ -2974,9 +3110,9 @@ app.get('/claude-projects-quick', async (req, res) => {
     // Get pagination params from query string
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    // On Windows, check execution mode to determine which projects to load
-    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
-      console.log('🔍 Windows detected with WSL mode - loading projects from WSL');
+    // On Windows, load from WSL where Claude actually stores projects
+    if (isWindows) {
+      console.log('🔍 Windows detected - loading projects from WSL');
       
       // Get WSL username dynamically
       let wslUser = 'user';
@@ -3105,12 +3241,8 @@ app.get('/claude-projects-quick', async (req, res) => {
     }
     
     const claudeDir = join(homedir(), '.claude', 'projects');
-
-    if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows') {
-      console.log('🪟 Native Windows mode - loading projects from:', claudeDir);
-    } else {
-      console.log('Quick loading project list from:', claudeDir);
-    }
+    
+    console.log('Quick loading project list from:', claudeDir);
     
     // Check if projects directory exists
     if (!existsSync(claudeDir)) {
@@ -3120,7 +3252,7 @@ app.get('/claude-projects-quick', async (req, res) => {
     
     const { readdir, stat } = fs.promises;
     const projectDirs = await readdir(claudeDir);
-
+    
     // Quick filter for directories only
     const projectPromises = projectDirs
       .filter(dir => !dir.startsWith('.'))
@@ -3134,10 +3266,9 @@ app.get('/claude-projects-quick', async (req, res) => {
           const sessionFiles = await readdir(projectPath);
           const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
           
-          // On Windows WSL mode, if sessionCount is 0, sessions might be in WSL
+          // On Windows, if sessionCount is 0, don't report it as 0 - sessions might be in WSL
           // Return null to indicate unknown count rather than wrong count
-          // In native-windows mode, trust the local count
-          const effectiveSessionCount = (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows' && sessionCount === 0) ? null : sessionCount;
+          const effectiveSessionCount = (isWindows && sessionCount === 0) ? null : sessionCount;
           
           // Just return name, path, and count for quick loading
           return {
@@ -3169,23 +3300,13 @@ app.get('/claude-projects-quick', async (req, res) => {
 // Get recent conversations across all projects for resume modal
 app.get('/claude-recent-conversations', async (req, res) => {
   try {
-    // Get optional project filter from query param
+    // Check for project filter (current directory)
     const filterProject = req.query.project;
-    let filterProjectDir = null;
+    const limit = filterProject ? 9 : 9;
 
-    if (filterProject) {
-      // Encode the project path to match Claude's directory naming
-      // Windows: C:\Users\foo\bar -> -C-Users-foo-bar
-      // Unix: /Users/foo/bar -> -Users-foo-bar
-      filterProjectDir = '-' + filterProject
-        .replace(/\\/g, '-')  // Windows backslashes
-        .replace(/\//g, '-')  // Unix forward slashes
-        .replace(/:/g, '');   // Remove Windows drive colon
-      console.log('📂 Loading conversations for project:', filterProject);
-      console.log('📂 Looking for directory:', filterProjectDir);
-    } else {
-      console.log('📂 Loading recent conversations across all projects');
-    }
+    console.log(filterProject
+      ? `📂 Loading recent conversations for project: ${filterProject}`
+      : '📂 Loading recent conversations across all projects');
 
     const projectsDir = join(homedir(), '.claude', 'projects');
 
@@ -3197,8 +3318,19 @@ app.get('/claude-recent-conversations', async (req, res) => {
     const conversations = [];
     const { readdir, stat, readFile } = fs.promises;
 
-    // Get all project directories
-    const projectDirs = await readdir(projectsDir);
+    // Get all project directories (or just the filtered one)
+    let projectDirs = await readdir(projectsDir);
+
+    // If filtering by project, only process that project
+    if (filterProject) {
+      // Convert working directory path to Claude's escaped format
+      const escapedPath = filterProject.replace(/\//g, '-');
+      projectDirs = projectDirs.filter(dir => dir === escapedPath);
+      if (projectDirs.length === 0) {
+        console.log('Project not found:', filterProject, 'escaped:', escapedPath);
+        return res.json({ conversations: [] });
+      }
+    }
 
     for (const projectDir of projectDirs) {
       // Skip temp/system directories
@@ -3210,27 +3342,24 @@ app.get('/claude-recent-conversations', async (req, res) => {
         continue;
       }
 
-      // Filter by project if specified
-      if (filterProjectDir && projectDir !== filterProjectDir) {
-        continue;
-      }
-
       const projectPath = join(projectsDir, projectDir);
 
       try {
         const projectStat = await stat(projectPath);
         if (!projectStat.isDirectory()) continue;
 
-        // Get session files in this project
+        // Get session files in this project (exclude agent subagent files)
         const files = await readdir(projectPath);
-        const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
+        const sessionFiles = files.filter(f => f.endsWith('.jsonl') && !f.startsWith('agent-'));
 
-        // Get file stats and sort by modification time
+        // Get file stats and sort by modification time (skip empty files)
         const fileStats = await Promise.all(
           sessionFiles.map(async (f) => {
             try {
               const filePath = join(projectPath, f);
               const fileStat = await stat(filePath);
+              // Skip empty files
+              if (fileStat.size === 0) return null;
               return {
                 filename: f,
                 path: filePath,
@@ -3242,11 +3371,13 @@ app.get('/claude-recent-conversations', async (req, res) => {
           })
         );
 
-        // Sort by most recent and take top 3 from each project
+        // Sort by most recent - take more files initially since many may be empty
+        // We'll filter down to limit later after checking content
+        const maxPerProject = filterProject ? 50 : 10;
         const sortedFiles = fileStats
           .filter(Boolean)
           .sort((a, b) => b.mtime - a.mtime)
-          .slice(0, 3);
+          .slice(0, maxPerProject);
 
         // Parse each session file
         for (const fileInfo of sortedFiles) {
@@ -3260,6 +3391,7 @@ app.get('/claude-recent-conversations', async (req, res) => {
             let title = 'Untitled conversation';
             let summary = '';
             let messageCount = 0;
+            let totalContextTokens = 0; // Track context usage from last result message
 
             // Count messages and look for title
             for (const line of lines) {
@@ -3269,6 +3401,16 @@ app.get('/claude-recent-conversations', async (req, res) => {
                 // Skip meta messages (system tags like local-command-caveat)
                 if (data.isMeta === true) {
                   continue;
+                }
+
+                // Extract context tokens from result messages with usage
+                if (data.type === 'result' && data.usage) {
+                  const usage = data.usage;
+                  const input = usage.input_tokens || 0;
+                  const cacheRead = usage.cache_read_input_tokens || 0;
+                  const cacheCreation = usage.cache_creation_input_tokens || 0;
+                  // Context = input + cacheRead + cacheCreation (same formula as wrapperIntegration)
+                  totalContextTokens = input + cacheRead + cacheCreation;
                 }
 
                 // Check for title in various formats
@@ -3337,7 +3479,8 @@ app.get('/claude-recent-conversations', async (req, res) => {
               projectName: projectName,
               timestamp: fileInfo.mtime,
               messageCount: messageCount,
-              filePath: fileInfo.path
+              filePath: fileInfo.path,
+              totalContextTokens: totalContextTokens // Context usage from last result
             });
           } catch (err) {
             console.log(`Could not parse session ${fileInfo.filename}:`, err.message);
@@ -3349,11 +3492,138 @@ app.get('/claude-recent-conversations', async (req, res) => {
       }
     }
 
-    // Sort all conversations by timestamp (most recent first) and limit to 20
-    conversations.sort((a, b) => b.timestamp - a.timestamp);
-    const recentConversations = conversations.slice(0, 20);
+    // Helper function to scan yume-cli sessions (Gemini/OpenAI)
+    const scanYumeCliSessions = async (provider, filterProject) => {
+      const yumeSessionsDir = join(homedir(), '.yume', 'sessions', provider);
+      const foundSessions = [];
 
-    console.log(`Loaded ${recentConversations.length} recent conversations`);
+      // Check if directory exists
+      if (!existsSync(yumeSessionsDir)) {
+        console.log(`No ${provider} sessions directory found at ${yumeSessionsDir}`);
+        return foundSessions;
+      }
+
+      try {
+        const sessionFiles = await readdir(yumeSessionsDir);
+        const jsonFiles = sessionFiles.filter(f => f.endsWith('.json'));
+
+        for (const filename of jsonFiles) {
+          try {
+            const filePath = join(yumeSessionsDir, filename);
+            const fileStat = await stat(filePath);
+
+            // Skip empty files
+            if (fileStat.size === 0) continue;
+
+            const content = await readFile(filePath, 'utf8');
+            const session = JSON.parse(content);
+
+            // Filter by project if specified
+            if (filterProject && session.cwd !== filterProject) {
+              continue;
+            }
+
+            // Extract conversation metadata
+            const id = session.id || filename.replace('.json', '');
+            let title = session.metadata?.title || 'Untitled conversation';
+            let summary = '';
+            let messageCount = 0;
+            // Get context tokens from session usage (yume-cli stores cumulative usage)
+            let totalContextTokens = 0;
+            if (session.usage) {
+              const input = session.usage.input_tokens || 0;
+              const cacheRead = session.usage.cache_read_input_tokens || 0;
+              const cacheCreation = session.usage.cache_creation_input_tokens || 0;
+              totalContextTokens = input + cacheRead + cacheCreation;
+            }
+
+            // Count messages and extract first user message for summary
+            if (session.history && Array.isArray(session.history)) {
+              for (const msg of session.history) {
+                if (msg.role === 'user' || msg.role === 'assistant') {
+                  messageCount++;
+
+                  // Get first user message as summary
+                  if (!summary && msg.role === 'user') {
+                    const content = msg.content;
+                    if (typeof content === 'string') {
+                      summary = content.substring(0, 100);
+                    } else if (Array.isArray(content)) {
+                      const textBlock = content.find(c => c.type === 'text');
+                      if (textBlock?.text) {
+                        summary = textBlock.text.substring(0, 100);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Use summary as title if no title found
+            if (title === 'Untitled conversation' && summary) {
+              title = summary.substring(0, 60) + (summary.length > 60 ? '...' : '');
+            }
+
+            // Parse timestamp from updated field (ISO string to epoch)
+            let timestamp = fileStat.mtime.getTime();
+            if (session.updated) {
+              try {
+                timestamp = new Date(session.updated).getTime();
+              } catch {
+                // Fall back to file mtime
+              }
+            }
+
+            // Derive project path (same escaping as Claude)
+            const cwd = session.cwd || '';
+            const projectPath = cwd.replace(/\//g, '-');
+            const projectName = cwd.split('/').pop() || cwd;
+
+            foundSessions.push({
+              id: id,
+              title: title,
+              summary: summary,
+              projectPath: projectPath,
+              projectName: projectName,
+              timestamp: timestamp,
+              messageCount: messageCount,
+              filePath: filePath,
+              provider: provider,
+              totalContextTokens: totalContextTokens
+            });
+          } catch (err) {
+            console.log(`Could not parse ${provider} session ${filename}:`, err.message);
+          }
+        }
+
+        console.log(`Found ${foundSessions.length} ${provider} sessions`);
+      } catch (err) {
+        console.log(`Error scanning ${provider} sessions:`, err.message);
+      }
+
+      return foundSessions;
+    };
+
+    // Scan yume-cli sessions for Gemini
+    const geminiSessions = await scanYumeCliSessions('gemini', filterProject);
+    conversations.push(...geminiSessions);
+
+    // Scan yume-cli sessions for OpenAI
+    const openaiSessions = await scanYumeCliSessions('openai', filterProject);
+    conversations.push(...openaiSessions);
+
+    // Add provider field to Claude sessions
+    for (const conv of conversations) {
+      if (!conv.provider) {
+        conv.provider = 'claude';
+      }
+    }
+
+    // Sort all conversations by timestamp (most recent first) and limit
+    conversations.sort((a, b) => b.timestamp - a.timestamp);
+    const recentConversations = conversations.slice(0, limit);
+
+    console.log(`Loaded ${recentConversations.length} recent conversations${filterProject ? ` for ${filterProject}` : ''}`);
     res.json({ conversations: recentConversations });
   } catch (error) {
     console.error('Error loading recent conversations:', error);
@@ -3374,8 +3644,8 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
       'Connection': 'keep-alive'
     });
     
-    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
-      // Load from WSL where Claude stores projects (WSL mode)
+    if (isWindows) {
+      // Load from WSL where Claude stores projects
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -3388,7 +3658,6 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         console.warn('Could not detect WSL user, using default');
       }
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      console.log('🔍 WSL mode - loading sessions from:', projectPath);
       
       try {
         // Get file list from WSL
@@ -3545,84 +3814,145 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         res.end();
       }
     } else {
-      // macOS/Linux/native-Windows implementation - read from ~/.claude/projects
-      const projectPath = path.join(os.homedir(), '.claude', 'projects', projectName);
-      if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows') {
-        console.log('🪟 Native Windows mode - loading sessions from:', projectPath);
-      }
-      
+      // macOS/Linux implementation
+      const { readdir: readdirAsync, stat: statAsync, readFile: readFileAsync } = fs.promises;
+      const claudeDir = join(homedir(), '.claude', 'projects');
+      const projectPath = join(claudeDir, projectName);
+
       try {
-        // Check if project directory exists
-        if (!fs.existsSync(projectPath)) {
-          console.log('Project directory not found:', projectPath);
+        if (!existsSync(projectPath)) {
+          console.log('Project path not found:', projectPath);
           res.write('data: {"done": true, "sessions": []}\n\n');
           res.end();
           return;
         }
-        
+
         // Get all .jsonl files
-        const files = fs.readdirSync(projectPath)
-          .filter(f => f.endsWith('.jsonl'))
-          .map(f => {
-            const fullPath = path.join(projectPath, f);
-            const stats = fs.statSync(fullPath);
-            return {
-              filename: f,
-              fullPath: fullPath,
-              timestamp: stats.mtimeMs
-            };
+        const files = await readdirAsync(projectPath);
+        const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
+
+        // Get stats for each file and sort by modification time
+        const filesWithStats = await Promise.all(
+          sessionFiles.map(async (filename) => {
+            try {
+              const filePath = join(projectPath, filename);
+              const stats = await statAsync(filePath);
+              return {
+                filename,
+                timestamp: stats.mtimeMs
+              };
+            } catch (e) {
+              return null;
+            }
           })
-          .sort((a, b) => b.timestamp - a.timestamp);
-        
-        console.log(`Found ${files.length} sessions in project`);
-        
-        if (files.length === 0) {
+        );
+
+        const validFiles = filesWithStats
+          .filter(f => f !== null)
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 50);
+
+        if (validFiles.length === 0) {
+          console.log('No sessions found in:', projectPath);
           res.write('data: {"done": true, "sessions": []}\n\n');
           res.end();
           return;
         }
-        
-        // Process each file and stream it
-        for (let i = 0; i < Math.min(files.length, 50); i++) {
-          const { filename, fullPath, timestamp } = files[i];
+
+        // Process each file
+        for (let i = 0; i < validFiles.length; i++) {
+          const { filename, timestamp } = validFiles[i];
           try {
-            // Read first line of the file
-            const firstLine = fs.readFileSync(fullPath, 'utf8').split('\n')[0];
-            if (!firstLine) continue;
-            
-            const metadata = JSON.parse(firstLine);
-            const sessionId = metadata.uuid || filename.replace('.jsonl', '');
-            
+            const filePath = join(projectPath, filename);
+            const content = await readFileAsync(filePath, 'utf8');
+            const lines = content.trim().split('\n');
+
+            const sessionId = filename.replace('.jsonl', '');
+            let title = 'Untitled conversation';
+            let summary = '';
+            let messageCount = 0;
+
+            // Scan all lines for title (same logic as /claude-recent-conversations)
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+
+                // Skip meta messages (system tags like local-command-caveat)
+                if (data.isMeta === true) {
+                  continue;
+                }
+
+                // Check for title in various formats
+                if (data.type === 'title' && data.title) {
+                  title = data.title;
+                } else if (data.type === 'summary' && data.summary) {
+                  title = data.summary;
+                  summary = data.summary;
+                } else if (data.title && !data.role) {
+                  title = data.title;
+                }
+
+                // Count actual messages (skip meta messages for counting too)
+                if (data.role === 'user' || data.role === 'assistant' ||
+                    data.type === 'user' || data.type === 'assistant') {
+
+                  // Get content string for filtering
+                  const msgContent = data.content || data.message?.content;
+                  let contentStr = '';
+                  if (typeof msgContent === 'string') {
+                    contentStr = msgContent;
+                  } else if (Array.isArray(msgContent)) {
+                    const textBlock = msgContent.find(c => c.type === 'text');
+                    if (textBlock?.text) {
+                      contentStr = textBlock.text;
+                    }
+                  }
+
+                  // Skip messages that start with XML-like tags (system/meta messages)
+                  if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+                    continue;
+                  }
+
+                  messageCount++;
+
+                  // Get first user message as summary if no title
+                  if (!summary && (data.role === 'user' || data.type === 'user')) {
+                    if (contentStr) {
+                      summary = contentStr.substring(0, 100);
+                    }
+                  }
+                }
+              } catch {
+                // Skip unparseable lines
+              }
+            }
+
+            // Use summary as title if no title found
+            if (title === 'Untitled conversation' && summary) {
+              title = summary.substring(0, 60) + (summary.length > 60 ? '...' : '');
+            }
+
             const session = {
               id: sessionId,
-              name: metadata.project_path || 'Untitled',
-              createdAt: new Date(timestamp).toISOString(),
-              messageCount: 0,
-              projectName: projectName
+              summary: summary || title,
+              title: title,
+              timestamp: timestamp,
+              path: filename,
+              messageCount: messageCount
             };
-            
-            // Try to count messages (lines in file)
-            try {
-              const content = fs.readFileSync(fullPath, 'utf8');
-              session.messageCount = content.split('\n').filter(line => line.trim()).length;
-            } catch (e) {
-              // Ignore errors counting messages
-            }
-            
-            // Stream this session
-            res.write(`data: ${JSON.stringify({ session, index: i, total: files.length })}\n\n`);
-            console.log(`  📄 Sent session ${i + 1}/${files.length}: ${sessionId}`);
-            
+
+            res.write(`data: ${JSON.stringify({ session, index: i, total: validFiles.length })}\n\n`);
+            console.log(`  📄 Sent session ${i + 1}/${validFiles.length}: ${sessionId}`);
+
           } catch (e) {
             console.log(`Error processing ${filename}:`, e.message);
           }
         }
-        
-        // Send completion event
+
         res.write('data: {"done": true}\n\n');
         console.log(`✅ Streamed all sessions`);
         res.end();
-        
+
       } catch (e) {
         console.error('Error loading sessions:', e.message);
         res.write('data: {"error": true, "message": "' + e.message + '"}\n\n');
@@ -3631,8 +3961,13 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
     }
   } catch (error) {
     console.error('Error loading project sessions:', error);
-    res.write('data: {"error": true, "message": "Failed to load sessions"}\n\n');
-    res.end();
+    // Headers already sent, so just end the stream
+    try {
+      res.write(`data: {"error": true, "message": "${error.message}"}\n\n`);
+      res.end();
+    } catch (e) {
+      // Response already ended
+    }
   }
 });
 
@@ -3641,9 +3976,9 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
   try {
     const projectName = decodeURIComponent(req.params.projectName);
     console.log(`📅 Getting date for project: ${projectName}`);
-
-    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
-      // Get WSL user (WSL mode)
+    
+    if (isWindows) {
+      // Get WSL user
       let wslUser = 'yuru';
       try {
         const { execSync } = require('child_process');
@@ -3676,20 +4011,8 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
       
       res.json({ projectName, lastModified });
     } else {
-      // macOS/Linux implementation
-      const projectPath = path.join(os.homedir(), '.claude', 'projects', projectName);
-      let lastModified = Date.now();
-      
-      try {
-        if (fs.existsSync(projectPath)) {
-          const stats = fs.statSync(projectPath);
-          lastModified = stats.mtimeMs;
-        }
-      } catch (e) {
-        console.log(`  ⚠️ ${projectName}: Error getting date, using current time`);
-      }
-      
-      res.json({ projectName, lastModified });
+      // Non-Windows implementation
+      res.json({ projectName, lastModified: Date.now() });
     }
   } catch (error) {
     console.error('Error getting project date:', error);
@@ -3701,9 +4024,9 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
 app.get('/claude-project-session-count/:projectName', async (req, res) => {
   try {
     const projectName = decodeURIComponent(req.params.projectName);
-
-    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
-      // Load from WSL (WSL mode)
+    
+    if (isWindows) {
+      // Load from WSL
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -3733,22 +4056,8 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
         res.json({ projectName, sessionCount: 0 });
       }
     } else {
-      // Non-Windows (macOS/Linux) implementation
-      const projectsDir = path.join(os.homedir(), '.claude', 'projects');
-      const projectPath = path.join(projectsDir, projectName);
-      
-      try {
-        // Count .jsonl files in the project directory
-        const files = await fs.promises.readdir(projectPath);
-        const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
-        const sessionCount = sessionFiles.length;
-        
-        console.log(`[Session Count] Project: ${projectName}, Count: ${sessionCount}`);
-        res.json({ projectName, sessionCount });
-      } catch (error) {
-        console.error(`[Session Count] Error counting sessions for ${projectName}:`, error);
-        res.json({ projectName, sessionCount: 0 });
-      }
+      // Non-Windows implementation
+      res.json({ projectName, sessionCount: 0 });
     }
   } catch (error) {
     res.status(500).json({ error: 'Failed to get session count' });
@@ -3758,9 +4067,9 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
 // Projects endpoint - loads claude projects asynchronously with enhanced error handling
 app.get('/claude-projects', async (req, res) => {
   try {
-    // On Windows, check execution mode - only load from WSL if NOT in native-windows mode
-    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
-      console.log('🚨 WINDOWS DETECTED (WSL mode) - LOADING FROM WSL ONLY!');
+    // On Windows, ALWAYS load from WSL, NEVER from Windows filesystem
+    if (isWindows) {
+      console.log('🚨 WINDOWS DETECTED - LOADING FROM WSL ONLY!');
       try {
         // Get WSL user using PowerShell
         let wslUser = 'yuru'; // default
@@ -3925,12 +4234,8 @@ app.get('/claude-projects', async (req, res) => {
     }
     
     const claudeDir = join(homedir(), '.claude', 'projects');
-
-    if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows') {
-      console.log('🪟 Native Windows mode - loading projects from:', claudeDir);
-    } else {
-      console.log('Loading projects from:', claudeDir);
-    }
+    
+    console.log('Loading projects from:', claudeDir);
     console.log('Platform:', platform());
     
     // Check if projects directory exists
@@ -3941,7 +4246,7 @@ app.get('/claude-projects', async (req, res) => {
     
     // Load projects asynchronously using promises
     const { readdir, stat, readFile } = fs.promises;
-
+    
     const projectDirs = await readdir(claudeDir);
     console.log(`Found ${projectDirs.length} project directories`);
     
@@ -4062,7 +4367,19 @@ function writePidFile() {
     console.log(`📝 Server PID ${process.pid} written to ${pidFilePath}`);
   } catch (err) {
     console.log(`⚠️ Could not write PID file (running from read-only location?):`, err.message);
-    // Don't fail if we can't write PID file in production
+  }
+  
+  // CRITICAL: Write port to user-writable location for client discovery
+  try {
+    const userPortDir = join(homedir(), '.yume');
+    if (!existsSync(userPortDir)) {
+      mkdirSync(userPortDir, { recursive: true });
+    }
+    const portFile = join(userPortDir, 'current-port.txt');
+    writeFileSync(portFile, String(PORT));
+    console.log(`📝 Server PORT ${PORT} written to ${portFile}`);
+  } catch (err) {
+    console.log(`⚠️ Could not write port file:`, err.message);
   }
 }
 
@@ -4080,11 +4397,14 @@ function removePidFile() {
 // Track all spawned child process PIDs for cleanup
 const allChildPids = new Set();
 
+// Track active working directories for git lock cleanup on shutdown
+const activeWorkingDirectories = new Set();
+
 // Helper function to forcefully kill all child processes
 function forceKillAllChildren() {
   console.log('🔪 Force killing all child processes...');
 
-  // First, kill tracked PIDs
+  // First, kill tracked PIDs with SIGKILL
   for (const pid of allChildPids) {
     try {
       process.kill(pid, 'SIGKILL');
@@ -4096,8 +4416,29 @@ function forceKillAllChildren() {
   allChildPids.clear();
 
   // Note: We only kill processes we spawned (tracked PIDs above)
-  // We do NOT use taskkill /IM claude.exe as that would kill Claude processes
+  // We do NOT use pkill -f "claude" as that would kill Claude processes
   // not associated with Yume
+}
+
+// Helper function to clean up git lock files in tracked working directories
+function cleanupGitLocks() {
+  if (activeWorkingDirectories.size === 0) return;
+
+  console.log(`🔓 Cleaning up git locks in ${activeWorkingDirectories.size} tracked directories...`);
+
+  for (const dir of activeWorkingDirectories) {
+    try {
+      const lockPath = join(dir, '.git', 'index.lock');
+      if (existsSync(lockPath)) {
+        unlinkSync(lockPath);
+        console.log(`   Removed git lock: ${lockPath}`);
+      }
+    } catch (e) {
+      // Ignore errors - lock may not exist or we may not have permissions
+    }
+  }
+
+  activeWorkingDirectories.clear();
 }
 
 // Graceful shutdown function
@@ -4108,17 +4449,33 @@ function gracefulShutdown(signal) {
 
   console.log(`\n🛑 ${signal} received - graceful shutdown starting...`);
 
-  // 1. First, send SIGTERM to all active Claude processes
+  // 0. Clean up git lock files first (before killing processes that might be using git)
+  cleanupGitLocks();
+
+  // 1. First, send SIGTERM/SIGINT to all active Claude processes (and their process groups on Unix)
   const activeCount = activeProcesses.size;
   const pidsToKill = [];
+  const isUnix = process.platform === 'darwin' || process.platform === 'linux';
   if (activeCount > 0) {
     console.log(`🔪 Sending SIGTERM to ${activeCount} active Claude process(es)...`);
     for (const [sessionId, proc] of activeProcesses.entries()) {
       try {
         if (proc.pid) {
           pidsToKill.push(proc.pid);
-          proc.kill('SIGTERM');
-          console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+          // On Unix with detached processes, kill the process group
+          if (isUnix) {
+            try {
+              process.kill(-proc.pid, 'SIGTERM'); // Negative PID kills process group
+              console.log(`   SIGTERM sent to process group for session ${sessionId} (PGID: ${proc.pid})`);
+            } catch (e) {
+              // Fallback to direct kill if process group kill fails
+              proc.kill('SIGTERM');
+              console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+            }
+          } else {
+            proc.kill('SIGTERM');
+            console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+          }
         }
       } catch (e) {
         // Process may already be dead
@@ -4126,19 +4483,7 @@ function gracefulShutdown(signal) {
     }
   }
 
-  // 2. Kill active bash processes
-  const bashCount = activeBashProcesses.size;
-  if (bashCount > 0) {
-    console.log(`🔪 Killing ${bashCount} active bash process(es)...`);
-    for (const [sessionId, proc] of activeBashProcesses.entries()) {
-      try {
-        proc.kill('SIGTERM');
-      } catch (e) {}
-    }
-    activeBashProcesses.clear();
-  }
-
-  // 3. Clear all health check intervals and timeouts
+  // 2. Clear all health check intervals and timeouts
   for (const [sessionId, interval] of streamHealthChecks.entries()) {
     clearInterval(interval);
   }
@@ -4149,11 +4494,17 @@ function gracefulShutdown(signal) {
   }
   streamTimeouts.clear();
 
-  // 4. Clear pending streaming false timers
+  // 3. Clear pending streaming false timers
   for (const [sessionId, timerData] of pendingStreamingFalseTimers.entries()) {
     if (timerData.timer) clearTimeout(timerData.timer);
   }
   pendingStreamingFalseTimers.clear();
+
+  // 4. Clear message batch timers
+  for (const [sessionId, batch] of messageBatches.entries()) {
+    if (batch.timer) clearTimeout(batch.timer);
+  }
+  messageBatches.clear();
 
   // 5. Disconnect all Socket.IO clients
   io.disconnectSockets(true);
@@ -4170,7 +4521,6 @@ function gracefulShutdown(signal) {
   sessions.clear();
   lastAssistantMessageIds.clear();
   allAssistantMessageIds.clear();
-  stoppedSessions.clear();
   activeProcesses.clear();
   activeProcessStartTimes.clear();
 
@@ -4179,15 +4529,30 @@ function gracefulShutdown(signal) {
     console.log('🔪 Sending SIGKILL to any surviving processes...');
     for (const pid of pidsToKill) {
       try {
-        process.kill(pid, 'SIGKILL');
-        console.log(`   SIGKILL sent to PID ${pid}`);
+        // On Unix, kill the process group with SIGKILL
+        if (isUnix) {
+          try {
+            process.kill(-pid, 'SIGKILL'); // Negative PID kills process group
+            console.log(`   SIGKILL sent to process group (PGID: ${pid})`);
+          } catch (e) {
+            // Fallback to direct kill
+            process.kill(pid, 'SIGKILL');
+            console.log(`   SIGKILL sent to PID ${pid}`);
+          }
+        } else {
+          process.kill(pid, 'SIGKILL');
+          console.log(`   SIGKILL sent to PID ${pid}`);
+        }
       } catch (e) {
-        // Process already dead
+        // Process already dead, good
       }
     }
 
     // Force kill any remaining child processes
     forceKillAllChildren();
+
+    // Final git lock cleanup in case any were created during shutdown
+    cleanupGitLocks();
 
     console.log('✅ Graceful shutdown complete');
 
@@ -4219,23 +4584,51 @@ process.on('unhandledRejection', (reason, promise) => {
 // Socket.IO connection handling - EXACTLY LIKE WINDOWS
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
-  
-  // Track first bash command to restore focus on Windows
+
+  // Track first bash command to restore focus on macOS
   let isFirstBashCommand = true;
   const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
 
-  // Handle Claude settings updates from frontend
-  socket.on('claude-settings-update', (data) => {
-    console.log('🔄 Received Claude settings update:', data.settings?.executionMode);
-    if (data.settings) {
-      CLAUDE_EXECUTION_MODE = data.settings.executionMode || 'auto';
-      if (data.detection?.nativeWindows?.path) {
-        NATIVE_WINDOWS_CLAUDE_PATH = data.detection.nativeWindows.path;
-      }
-      if (data.detection?.wsl?.path) {
-        WSL_CLAUDE_PATH = data.detection.wsl.path;
-      }
-      console.log('✅ Claude settings updated successfully');
+  // Check if this is a vscode client (passed in query params)
+  const isVscodeClient = socket.handshake.query?.client === 'vscode';
+  if (isVscodeClient) {
+    console.log('🆚 VSCode extension connected:', socket.id);
+  }
+
+  // VSCode extension connection handlers
+  socket.on('vscode:connected', () => {
+    vscodeConnections.add(socket.id);
+    vscodeConnected = vscodeConnections.size > 0;
+    console.log(`🆚 VSCode client registered: ${socket.id} (total: ${vscodeConnections.size})`);
+    // Broadcast to all clients
+    io.emit('vscode:status', { connected: vscodeConnected, count: vscodeConnections.size });
+    // Send current settings to the vscode client
+    if (cachedSettings) {
+      socket.emit('settings:sync', cachedSettings);
+    }
+  });
+
+  // Settings sync - main app sends settings, server broadcasts to vscode clients
+  socket.on('settings:update', (settings) => {
+    console.log('📦 Settings updated from main app');
+    cachedSettings = settings;
+    // Broadcast to all vscode clients
+    vscodeConnections.forEach(id => {
+      io.to(id).emit('settings:sync', settings);
+    });
+  });
+
+  socket.on('vscode:disconnected', () => {
+    vscodeConnections.delete(socket.id);
+    vscodeConnected = vscodeConnections.size > 0;
+    console.log(`🆚 VSCode client unregistered: ${socket.id} (total: ${vscodeConnections.size})`);
+    io.emit('vscode:status', { connected: vscodeConnected, count: vscodeConnections.size });
+  });
+
+  // Request current vscode status (for clients that join late)
+  socket.on('vscode:getStatus', (callback) => {
+    if (typeof callback === 'function') {
+      callback({ connected: vscodeConnected, count: vscodeConnections.size });
     }
   });
 
@@ -4264,6 +4657,12 @@ io.on('connection', (socket) => {
         
         existingMessages = data.messages || [];
         console.log(`📝 Loaded ${existingMessages.length} existing messages`);
+
+        // Calculate accumulated tokens from existing messages for wrapper state
+        const accumulatedTokens = calculateAccumulatedTokensFromMessages(existingMessages);
+        if (accumulatedTokens > 0) {
+          initWrapperSessionWithTokens(sessionId, accumulatedTokens);
+        }
       } else {
         // Creating a brand new session
         sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -4272,15 +4671,6 @@ io.on('connection', (socket) => {
       
       // Validate working directory - NEVER use temp directories
       let workingDirectory = data.workingDirectory;
-      
-      // Convert WSL paths to Windows paths when using native Windows mode
-      if (workingDirectory && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
-        const originalPath = workingDirectory;
-        workingDirectory = wslToWindowsPath(workingDirectory);
-        if (originalPath !== workingDirectory) {
-          console.log(`🔄 [Session Creation] Converted WSL path to Windows path: ${originalPath} → ${workingDirectory}`);
-        }
-      }
       
       // Check if this is a temp directory
       if (workingDirectory) {
@@ -4309,8 +4699,8 @@ io.on('connection', (socket) => {
         workingDirectory: workingDirectory,
         messages: existingMessages,  // Use loaded messages if available
         createdAt: Date.now(),
+        lastActivity: Date.now(),  // Track last activity for TTL cleanup
         claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
-        interruptedSessionId: null,  // Store interrupted session ID separately
         hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
         wasInterrupted: false,  // Track if last conversation was interrupted vs completed
         wasCompacted: existingSession?.wasCompacted || false,  // Preserve compacted state
@@ -4318,15 +4708,27 @@ io.on('connection', (socket) => {
       };
       
       sessions.set(sessionId, sessionData);
-      
+
       console.log(`✅ Session ready: ${sessionId}`);
       console.log(`📁 Working directory: ${workingDirectory}`);
-      
+
+      // Get accumulated token context from wrapper (calculated above from existing messages)
+      const wrapperSession = getWrapperSession(sessionId);
+      const contextTokens = wrapperSession?.totalTokens || 0;
+
       if (callback) {
         callback({
           success: true,
           sessionId: sessionId,
-          workingDirectory: workingDirectory
+          workingDirectory: workingDirectory,
+          // Return context usage for resumed sessions
+          usage: existingMessages.length > 0 ? {
+            totalContextTokens: contextTokens,
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: contextTokens,
+            cacheCreationTokens: 0
+          } : null
         });
       }
     } catch (error) {
@@ -4341,9 +4743,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendMessage', async (data, callback) => {
-    console.log('📨 [sendMessage] Processing message in EMBEDDED SERVER');
-    const { sessionId, content: message, autoGenerateTitle, systemPromptSettings } = data;
-    let { model } = data; // Use let for model so we can reassign it for /compact
+    console.log('🚨🚨🚨 RUNNING FROM: server-claude-macos.cjs FILE');
+    console.log('Data received:', { ...data, content: data.content ? '(content present)' : '(no content)' });
+    const { sessionId, content: message, model, autoGenerateTitle } = data;
     const session = sessions.get(sessionId);
     
     if (!session) {
@@ -4351,62 +4753,19 @@ io.on('connection', (socket) => {
       if (callback) callback({ success: false, error: 'Session not found' });
       return;
     }
-    
-    // Check if this is the /test command
-    if (message && message.trim() === '/test') {
-      console.log(`🧪 [TEST] Test command received`);
-      
-      // Emit user message
-      socket.emit(`message:${sessionId}`, {
-        type: 'user',
-        message: { content: message },
-        timestamp: Date.now()
-      });
-      
-      // Send test response
-      const testMessageId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      socket.emit(`message:${sessionId}`, {
-        id: testMessageId,
-        type: 'assistant',
-        message: {
-          content: [
-            { type: 'text', text: '✅ test command works!\n\nyume is running properly.' }
-          ]
-        },
-        streaming: false,
-        timestamp: Date.now()
-      });
-      
-      // Also emit to Claude session if different
-      if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
-        socket.emit(`message:${session.claudeSessionId}`, {
-          id: testMessageId,
-          type: 'assistant',
-          message: {
-            content: [
-              { type: 'text', text: '✅ test command works!\n\nyume is running properly.' }
-            ]
-          },
-          streaming: false,
-          timestamp: Date.now()
-        });
-      }
-      
-      if (callback) callback({ success: true });
-      return;
-    }
-    
+
+    // Update last activity timestamp for TTL tracking
+    session.lastActivity = Date.now();
+
     // Check if this is a bash command (starts with $)
     if (message && message.startsWith('$')) {
-      console.log(`🐚 [BASH] Detected bash command: ${message}`);
-      let bashCommand = message.substring(1).trim(); // Remove the $ prefix
-      console.log(`🐚 [BASH] Extracted command: ${bashCommand}`);
+      console.log(`🐚 Executing bash command: ${message}`);
+      const bashCommand = message.substring(1).trim(); // Remove the $ prefix
       
-      // Use spawn with proper configuration to hide windows
-      const { spawn } = require('child_process');
-      
-      // Generate message ID outside try block so it's accessible to event handlers
-      const bashMessageId = `bash-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Execute the bash command directly
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
       
       try {
         // Emit user message first
@@ -4416,304 +4775,83 @@ io.on('connection', (socket) => {
           timestamp: Date.now()
         });
         
-        // NOTE: Removed empty placeholder message - it was causing display issues
-        // The actual result message will be sent when the command completes
-
-        console.log(`🐚 [BASH] Started streaming with message ID: ${bashMessageId}`);
-        
         // Execute the command
         const workingDir = session.workingDirectory || require('os').homedir();
-        console.log(`🐚 [BASH] Working directory: ${workingDir}`);
+        console.log(`🐚 Executing in directory: ${workingDir}`);
         
-        // Check if we're on Windows
+        let execResult;
+        
+        // Check if we're on Windows and need to use WSL
         if (process.platform === 'win32') {
-          let bashProcess;
-
-          // Store bash process for interrupt handling
-          activeBashProcesses.set(sessionId, null);
-
-          // Always use PowerShell on Windows (not cmd.exe)
-          const useCmdExe = false;
-
-          if (useCmdExe) {
-            // Use cmd.exe for Windows native commands
-            console.log(`🐚 [CMD] Running Windows command: ${bashCommand}`);
-            console.log(`🐚 [CMD] Working directory: ${workingDir}`);
-
-            // Use /C with the command directly - no extra quotes needed for simple commands
-            // Node.js spawn handles argument passing correctly
-            bashProcess = spawn('cmd.exe', ['/C', bashCommand], {
-              cwd: workingDir,        // Use Windows path directly
-              windowsHide: true,      // Hide console window
-              detached: false,        // Stay attached to parent
-              shell: false,           // Don't use another shell
-              stdio: ['ignore', 'pipe', 'pipe']  // Capture output
-            });
-            
-            console.log(`🐚 [CMD] Process spawned`);
-            activeBashProcesses.set(sessionId, bashProcess);
-          } else {
-            // Use PowerShell for normal commands (single ! prefix)
-            console.log(`🐚 [POWERSHELL] Running command: ${bashCommand}`);
-            console.log(`🐚 [POWERSHELL] Working directory: ${workingDir}`);
-
-            // Use PowerShell with -Command flag
-            bashProcess = spawn('powershell.exe', [
-              '-NoProfile',
-              '-NonInteractive',
-              '-Command',
-              bashCommand
-            ], {
-              cwd: workingDir,        // Use Windows path directly
-              windowsHide: true,      // Hide console window
-              detached: false,        // Stay attached to parent
-              shell: false,           // Don't use another shell
-              stdio: ['ignore', 'pipe', 'pipe']  // Capture output
-            });
-
-            console.log(`🐚 [POWERSHELL] Process spawned`);
-            activeBashProcesses.set(sessionId, bashProcess);
-          }
+          // Execute in WSL
+          const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+          const wslCommand = `cd "${workingDir}" && ${bashCommand}`;
+          console.log(`🐚 Using WSL to execute: ${wslCommand}`);
           
-          let output = '';
-          let errorOutput = '';
-          
-          // Capture output
-          bashProcess.stdout.on('data', (data) => {
-            const chunk = data.toString();
-            output += chunk;
-            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
-            console.log(`🐚 ${isCmd} stdout chunk (${chunk.length} bytes)`);
-          });
-          
-          bashProcess.stderr.on('data', (data) => {
-            const chunk = data.toString();
-            errorOutput += chunk;
-            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
-            console.log(`🐚 ${isCmd} stderr chunk (${chunk.length} bytes)`);
-          });
-          
-          // Handle completion
-          bashProcess.on('close', (code) => {
-            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
-            console.log(`🐚 ${isCmd} Process exited with code ${code}`);
-            console.log(`🐚 ${isCmd} Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
-            console.log(`🐚 ${isCmd} Sending streaming: false to clear thinking state`);
-            
-            // Clean up bash process tracking
-            activeBashProcesses.delete(sessionId);
-            
-            // Determine final output and format based on exit code
-            let finalOutput = '';
-            if (code !== 0) {
-              // Command failed - show error clearly
-              if (errorOutput) {
-                finalOutput = `❌ Command failed with exit code ${code}\n\nError output:\n${errorOutput}`;
-                if (output) {
-                  finalOutput += `\n\nStandard output:\n${output}`;
-                }
-              } else if (output) {
-                finalOutput = `❌ Command failed with exit code ${code}\n\n${output}`;
-              } else {
-                finalOutput = `❌ Command failed with exit code ${code} (no output)`;
-              }
-            } else {
-              // Command succeeded - show normal output
-              finalOutput = output || errorOutput || '(no output)';
-            }
-            
-            // Send result to UI with ANSI color support
-            // Using ansi-block to preserve colors in the output
-            const resultMessage = {
-              id: bashMessageId,  // Use same ID to update the streaming message
-              type: 'assistant',
-              message: {
-                content: [
-                  { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
-                ]
-              },
-              streaming: false,  // Bash commands never stream
-              timestamp: Date.now()
-            };
-            
-            // Need to check what sessionId we're using
-            console.log(`🐚 ${isCmd} SessionId:`, sessionId);
-            console.log(`🐚 ${isCmd} Emitting result on channel: message:${sessionId}`);
-            console.log(`🐚 ${isCmd} Result message:`, JSON.stringify(resultMessage).substring(0, 500));
-            // Emit to BOTH the regular session AND the Claude session if different
-            socket.emit(`message:${sessionId}`, resultMessage);
-            
-            // If there's a separate claudeSessionId, emit there too
-            if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
-              console.log(`🐚 ${isCmd} Also emitting to Claude session: message:${session.claudeSessionId}`);
-              socket.emit(`message:${session.claudeSessionId}`, resultMessage);
-            }
-            
-            // Also try emitting a separate streaming end signal
-            setTimeout(() => {
-              console.log(`🐚 ${isCmd} Sending explicit stream end signal`);
-              socket.emit(`message:${sessionId}`, {
-                type: 'system',
-                subtype: 'stream_end',
-                streaming: false,
-                timestamp: Date.now()
-              });
-              
-              if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
-                socket.emit(`message:${session.claudeSessionId}`, {
-                  type: 'system',
-                  subtype: 'stream_end',
-                  streaming: false,
-                  timestamp: Date.now()
-                });
-              }
-            }, 100);
-            
-            // Always report success for bash commands - the output is sent as a message
-            // Don't treat non-zero exit codes as errors in the callback
-            if (callback) callback({ success: true });
-          });
-          
-          // Also handle 'exit' event for better reliability
-          bashProcess.on('exit', (code, signal) => {
-            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
-            console.log(`🐚 ${isCmd} Process EXIT event: code=${code}, signal=${signal}`);
-          });
-          
-          
-          bashProcess.on('error', (error) => {
-            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
-            console.error(`🐚 ${isCmd} Process error: ${error.message}`);
-            console.log(`🐚 ${isCmd} Sending streaming: false due to error`);
-            
-            socket.emit(`message:${sessionId}`, {
-              type: 'assistant',
-              message: {
-                content: [
-                  { type: 'text', text: `\`\`\`\nError: ${error.message}\n\`\`\`` }
-                ]
-              },
-              streaming: false,  // Clear streaming state on error
-              timestamp: Date.now()
-            });
-            
-            if (callback) callback({ success: false, error: error.message });
+          execResult = await execAsync(`"${wslPath}" -e bash -c "${wslCommand.replace(/"/g, '\\"')}"`, {
+            timeout: 30000, // 30 second timeout
+            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
           });
         } else {
-          // macOS/Linux - use spawn for consistency
-          console.log(`🐚 [BASH] Unix command: ${bashCommand}`);
-          console.log(`🐚 [BASH] Using bashMessageId: ${bashMessageId}`);
-          
-          const bashProcess = spawn('bash', ['-c', bashCommand], {
+          // Execute directly on macOS/Linux
+          execResult = await execAsync(bashCommand, {
             cwd: workingDir,
-            stdio: ['ignore', 'pipe', 'pipe']
+            timeout: 30000, // 30 second timeout
+            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
           });
-          
-          // Store bash process for interrupt handling
-          activeBashProcesses.set(sessionId, bashProcess);
-          
-          let output = '';
-          let errorOutput = '';
-          let processCompleted = false;
-          
-          
-          bashProcess.stdout.on('data', (data) => {
-            output += data.toString();
-            console.log(`🐚 [BASH] stdout received: ${data.toString().length} bytes`);
-          });
-          
-          bashProcess.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-            console.log(`🐚 [BASH] stderr received: ${data.toString().length} bytes`);
-          });
-          
-          bashProcess.on('close', (code) => {
-            if (processCompleted) {
-              console.log(`🐚 [BASH] Ignoring duplicate close event`);
-              return;
-            }
-            processCompleted = true;
-            
-            // Clean up bash process tracking
-            activeBashProcesses.delete(sessionId);
-            
-            console.log(`🐚 [BASH] Unix process exited with code ${code}`);
-            console.log(`🐚 [BASH] Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
-            console.log(`🐚 [BASH] Sending result with bashMessageId: ${bashMessageId}`);
-            
-            // Determine final output and format based on exit code
-            let finalOutput = '';
-            if (code !== 0) {
-              // Command failed - show error clearly
-              if (errorOutput) {
-                finalOutput = `❌ Command failed with exit code ${code}\n\nError output:\n${errorOutput}`;
-                if (output) {
-                  finalOutput += `\n\nStandard output:\n${output}`;
-                }
-              } else if (output) {
-                finalOutput = `❌ Command failed with exit code ${code}\n\n${output}`;
-              } else {
-                finalOutput = `❌ Command failed with exit code ${code} (no output)`;
-              }
-            } else {
-              // Command succeeded - show normal output
-              finalOutput = output || errorOutput || '(no output)';
-            }
-            
-            const resultMessage = {
-              id: bashMessageId,  // Use same ID to update the streaming message
-              type: 'assistant',
-              message: {
-                content: [
-                  { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
-                ]
-              },
-              streaming: false,  // Bash commands never stream
-              timestamp: Date.now()
-            };
-            
-            socket.emit(`message:${sessionId}`, resultMessage);
-            
-            // Always report success for bash commands - the output is sent as a message
-            // Don't treat non-zero exit codes as errors in the callback
-            if (callback) callback({ success: true });
-          });
-          
-          bashProcess.on('error', (error) => {
-            if (processCompleted) return;
-            processCompleted = true;
-            
-            console.error(`🐚 [BASH] Unix process error: ${error.message}`);
-            socket.emit(`message:${sessionId}`, {
-              id: bashMessageId,
-              type: 'assistant',
-              message: {
-                content: [
-                  { type: 'text', text: `\`\`\`\nError: ${error.message}\n\`\`\`` }
-                ]
-              },
-              streaming: false,  // Clear streaming state on error
-              timestamp: Date.now()
-            });
-            
-            if (callback) callback({ success: false, error: error.message });
-          });
-          
         }
-      } catch (error) {
-        console.error(`🐚 [BASH] Failed to spawn: ${error.message}`);
+        
+        const { stdout, stderr } = execResult;
+        
+        // Send the result back
+        const output = stdout || stderr || '(no output)';
         socket.emit(`message:${sessionId}`, {
           type: 'assistant',
           message: {
             content: [
-              { type: 'text', text: `\`\`\`\nFailed to execute: ${error.message}\n\`\`\`` }
+              { type: 'text', text: `\`\`\`\n${output}\n\`\`\`` }
             ]
           },
-          streaming: false,  // Clear streaming state on failure
+          streaming: false,
           timestamp: Date.now()
         });
         
-        if (callback) callback({ success: false, error: error.message });
+        if (callback) callback({ success: true });
+      } catch (error) {
+        console.error('❌ Bash command failed:', error);
+        
+        // Extract actual output from the error
+        let output = '';
+        if (error.stdout) {
+          output += error.stdout;
+        }
+        if (error.stderr) {
+          if (output) output += '\n';
+          output += error.stderr;
+        }
+        
+        // If we have no output at all, use the error message
+        if (!output) {
+          output = error.message;
+        }
+        
+        // Format the error output properly
+        const exitCode = error.code || 'unknown';
+        const formattedOutput = `❌ Command failed with exit code ${exitCode}\n\n${output}`;
+        
+        socket.emit(`message:${sessionId}`, {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'text', text: `\`\`\`ansi\n${formattedOutput}\n\`\`\`` }
+            ]
+          },
+          streaming: false,
+          timestamp: Date.now()
+        });
+        
+        // Still report success since we sent the output as a message
+        if (callback) callback({ success: true });
       }
       
       return; // Don't process through Claude
@@ -4731,13 +4869,6 @@ io.on('connection', (socket) => {
           model,
           queueLength: processSpawnQueue.length
         });
-
-        // CRITICAL: Clear stopped flag when starting new message processing
-        // This allows new messages to be processed after a resume failure
-        if (stoppedSessions.get(sessionId)) {
-          console.log(`🔄 [${sessionId}] Clearing stopped flag for new message`);
-          stoppedSessions.delete(sessionId);
-        }
 
         // RACE CONDITION FIX: Check if a process is currently being spawned for this session
         // This prevents duplicate processes when multiple messages arrive in quick succession
@@ -4816,9 +4947,18 @@ io.on('connection', (socket) => {
           
           // Wait a bit for the process to fully terminate
           await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Emit a message to set streaming=true for the new request after interruption
+          // This ensures the UI shows the "thinking..." state when we interrupt and send a new message
+          console.log(`🔄 Emitting streaming=true after interruption for session ${sessionId}`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'streaming_resumed',
+            streaming: true,
+            timestamp: Date.now()
+          });
         }
 
-        // Don't modify streaming state here - let the UI continue showing streaming
         // The process exit handler will properly clean up when the old process dies
 
         // Validate session's working directory - NEVER use temp directories
@@ -4836,25 +4976,6 @@ io.on('connection', (socket) => {
             console.log(`🚫 Session has temp directory, using home instead: ${processWorkingDir}`);
             processWorkingDir = null;
           }
-        }
-        
-        // Convert WSL paths to Windows paths when using native Windows mode
-        console.log(`🔍 Path conversion check:
-          - processWorkingDir: ${processWorkingDir}
-          - isWindows: ${isWindows}
-          - CLAUDE_EXECUTION_MODE: ${CLAUDE_EXECUTION_MODE}
-          - NATIVE_WINDOWS_CLAUDE_PATH: ${NATIVE_WINDOWS_CLAUDE_PATH}`);
-        
-        if (processWorkingDir && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
-          const originalPath = processWorkingDir;
-          processWorkingDir = wslToWindowsPath(processWorkingDir);
-          if (originalPath !== processWorkingDir) {
-            console.log(`🔄 Converted WSL path to Windows path: ${originalPath} → ${processWorkingDir}`);
-          } else {
-            console.log(`ℹ️ Path unchanged (not WSL format): ${processWorkingDir}`);
-          }
-        } else {
-          console.log(`⏭️ Skipping path conversion (conditions not met)`);
         }
         
         // Use session's working directory, fallback to home directory (NOT temp directory)
@@ -4877,146 +4998,22 @@ io.on('connection', (socket) => {
         '--output-format', 'stream-json',
         '--verbose',
         '--dangerously-skip-permissions',
-        '--disallowed-tools', allDisallowed.join(',')
+        '--disallowed-tools', allDisallowed.join(','),
+        '--append-system-prompt', 'CRITICAL: you are in yume ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!FOR COMPLEX TASKS: YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
       ];
       
-      // Add system prompt if configured (passed from frontend or use default)
-      const promptSettings = systemPromptSettings || {};
-      const defaultPrompt = 'you are in yume ui. prefer lowercase, be extremely concise, never use formal language, no greetings or pleasantries, straight to the point. you must plan first - use think and todo as much as possible to break down everything, including planning into multiple steps and do edits in small chunks';
-      
-      if (promptSettings.enabled !== false) { // Default to enabled
-        let systemPrompt = '';
-        
-        if (promptSettings.mode === 'custom' && promptSettings.customPrompt) {
-          systemPrompt = promptSettings.customPrompt;
-        } else if (promptSettings.mode === 'preset' && promptSettings.selectedPreset) {
-          // Handle presets if needed
-          systemPrompt = defaultPrompt; // For now, use default
-        } else {
-          // Use default yume prompt
-          systemPrompt = defaultPrompt;
-        }
-        
-        if (systemPrompt) {
-          args.push('--append-system-prompt');
-          args.push(systemPrompt);
-          console.log(`🎯 [${sessionId}] Using system prompt mode: ${promptSettings.mode || 'default'} (${systemPrompt.length} chars)`);
-        }
-      } else {
-        console.log(`🎯 [${sessionId}] System prompt disabled`);
-      }
-      
-      // Auto-trigger compact if we're near the token limit (97% = 194k tokens)
-      const currentTokens = session.totalTokens || 0;
-      const tokenLimit = 200000;
-      const compactThreshold = 194000; // 97% of limit
-      
-      if (currentTokens >= compactThreshold && !session.isCompacting && message.trim() !== '/compact') {
-        console.log(`⚠️ Auto-compact triggered: ${currentTokens}/${tokenLimit} tokens (${Math.round(currentTokens/tokenLimit*100)}%)`);
-        
-        // Inform user that we're auto-compacting
-        socket.emit(`message:${sessionId}`, {
-          type: 'system',
-          subtype: 'info',
-          message: { content: `📊 Context nearly full (${Math.round(currentTokens/tokenLimit*100)}%). Auto-compacting conversation...` },
-          timestamp: Date.now()
-        });
-        
-        // Trigger compact
-        processedMessage = '/compact';
-      }
-      
-      // Check for custom /compact command - handle it ourselves instead of sending to Claude
-      // Support: /compact [optional instructions] - compresses conversation with custom focus
-      // Create a mutable copy of message for processing
-      let processedMessage = message;
-      
-      const compactMatch = processedMessage?.match(/^\/compact\s*(.*)?$/i);
-      if (compactMatch) {
-        const customInstructions = compactMatch[1]?.trim() || null;
-        console.log(`🗜️ Custom /compact triggered - will use Sonnet to self-summarize`);
-        if (customInstructions) {
-          console.log(`🗜️ Custom instructions: "${customInstructions}"`);
-        }
-        
-        // Force Sonnet 4.5 model for compact operations (faster and more efficient)
-        model = 'claude-sonnet-4-5-20250929';
-        console.log(`🗜️ Using Sonnet 4.5 for compact operation: ${model}`);
-        
-        // Check if we have an active session to compact
-        if (!session.claudeSessionId) {
-          console.log(`⚠️ No active session to compact`);
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'error',
-            message: { content: 'No active conversation to compact. Start a conversation first.' },
-            timestamp: Date.now()
-          });
-          
-          processSpawnQueue.shift();
-          isSpawningProcess = false;
-          if (processSpawnQueue.length > 0) {
-            processNextSpawnRequest();
-          }
-          return;
-        }
-        
-        // Step 1: Ask current Claude to summarize the conversation
-        // Use the CURRENT session to generate summary
-        let summaryPrompt = `Please provide a detailed summary of our entire conversation so far. Include:
-1. Key facts about me (name, project details, preferences)
-2. Main topics we've discussed
-3. Any code or solutions we've worked on
-4. Important decisions or conclusions
-5. Current task/problem we're addressing
-6. Any context needed to continue our work
-
-Format as a clear, structured summary that preserves all important context.`;
-        
-        // Add custom instructions if provided
-        if (customInstructions) {
-          summaryPrompt += `\n\nAdditional instructions for the summary:\n${customInstructions}`;
-        }
-        
-        console.log(`🗜️ Asking Claude to self-summarize with session ${session.claudeSessionId}`);
-        
-        // Replace the user's /compact message with our summary request
-        processedMessage = summaryPrompt;
-        
-        // Mark that we're in compact mode
-        session.isCompacting = true;
-        // Get token count from wrapper if available, otherwise use session count
-        const wrapperSession = typeof getWrapperSession !== 'undefined' ? getWrapperSession(sessionId) : null;
-        console.log(`🗜️ Wrapper session state:`, wrapperSession ? {
-          totalTokens: wrapperSession.totalTokens,
-          inputTokens: wrapperSession.inputTokens,
-          outputTokens: wrapperSession.outputTokens
-        } : 'not available');
-        console.log(`🗜️ Session token state: totalTokens=${session.totalTokens}`);
-        session.compactStartTokens = wrapperSession?.totalTokens || session.totalTokens || 0;
-        session.compactMessageCount = session.messages?.length || 0;
-        session.compactCustomInstructions = customInstructions;
-        console.log(`🗜️ Set compactStartTokens to ${session.compactStartTokens}`);
-        
-        // Continue with normal flow but with our summary prompt
-        // The result will be caught in the result handler
-      }
-      
       // Add model flag if specified
-      if (model) {
+      // Force sonnet for /compact command
+      if (message && message.trim() === '/compact') {
+        args.push('--model', 'claude-sonnet-4-5-20250929');
+        console.log(`🤖 Using model: claude-sonnet-4-5-20250929 (forced for /compact)`);
+      } else if (model) {
         args.push('--model', model);
         console.log(`🤖 Using model: ${model}`);
       }
       
       // Determine if we're resuming or recreating
       let isResuming = false;
-      
-      // Check for interrupted session to restore
-      if (!session.claudeSessionId && session.interruptedSessionId && session.wasInterrupted) {
-        console.log(`🔄 Restoring interrupted session: ${session.interruptedSessionId}`);
-        session.claudeSessionId = session.interruptedSessionId;
-        session.interruptedSessionId = null;
-      }
       
       // Use --resume if we have a claudeSessionId (even after interrupt)
       isResuming = session.claudeSessionId;
@@ -5028,20 +5025,6 @@ Format as a clear, structured summary that preserves all important context.`;
           console.log('📝 Resuming after interrupt');
           session.wasInterrupted = false;
         }
-      } else if (session.wasCompacted && session.compactSummary) {
-        console.log('📝 Starting fresh conversation after compaction');
-        console.log(`🗜️ Previous conversation was compacted, saved ${session.tokensSavedByCompact || 0} tokens`);
-        console.log(`🗜️ Injecting summary into new conversation`);
-        
-        // Prepend the summary to the user's message
-        const summaryContext = `[Previous conversation context - compacted from ${session.tokensSavedByCompact} tokens]:\n${session.compactSummary}\n\n[Continuing conversation]\nUser: ${processedMessage}`;
-        processedMessage = summaryContext;
-        
-        // Clear the compact flag after using the summary
-        session.wasCompacted = false;
-        session.compactSummary = null;
-        
-        console.log(`🗜️ Message with context: ${message.substring(0, 200)}...`);
       } else {
         console.log('📝 Starting fresh conversation (no previous session)');
       }
@@ -5051,47 +5034,23 @@ Format as a clear, structured summary that preserves all important context.`;
       // Spawn claude process with proper PATH for Node.js
       console.log(`🚀 Spawning claude with args:`, args);
       console.log(`🔍 Active processes count: ${activeProcesses.size}`);
-
-      // Ensure Node.js is in PATH for Claude CLI
+      
+      // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
       const enhancedEnv = { ...process.env };
-
-      // CRITICAL FIX: On Windows native mode, override SHELL to use PowerShell
-      // This prevents Claude CLI's Bash tool from using /usr/bin/bash (from Git Bash/WSL)
-      // which would fail trying to run cmd.exe commands through bash
-      if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
-        // Set SHELL to PowerShell for Windows native mode
-        enhancedEnv.SHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-        // Also set COMSPEC to ensure cmd.exe fallback works
-        enhancedEnv.COMSPEC = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
-        console.log(`🔧 Set SHELL to PowerShell for Windows native mode`);
-
-        // Add Node.js to PATH using Windows path separator (;)
-        const nodePaths = [
-          'C:\\Program Files\\nodejs',
-          'C:\\Program Files (x86)\\nodejs',
-          process.env.ProgramFiles && `${process.env.ProgramFiles}\\nodejs`,
-          process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Programs\\nodejs`,
-        ].filter(Boolean);
-
-        for (const nodePath of nodePaths) {
-          if (existsSync(nodePath) && !enhancedEnv.PATH?.includes(nodePath)) {
-            enhancedEnv.PATH = `${nodePath};${enhancedEnv.PATH || ''}`;
-            console.log(`🔧 Added Node.js to PATH: ${nodePath}`);
-            break;
-          }
-        }
-      } else if (!isWindows) {
-        // Unix systems - add homebrew path if needed
-        const nodeBinDir = '/opt/homebrew/bin';
-        if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-          enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
-          console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
-        }
+      const nodeBinDir = '/opt/homebrew/bin';
+      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
+        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+        console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
       }
-
+      
       // Add unique session identifier to environment to ensure isolation
       enhancedEnv.CLAUDE_SESSION_ID = sessionId;
       enhancedEnv.CLAUDE_INSTANCE = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Explicitly set PWD environment variable for Claude's bash commands
+      enhancedEnv.PWD = processWorkingDir;
+      enhancedEnv.HOME = homedir(); // Ensure HOME is set correctly
+      console.log(`🔧 Set PWD=${processWorkingDir} and HOME=${homedir()} in environment`);
       
       // Add small delay to prevent race conditions with multiple Claude instances
       if (isSpawningProcess) {
@@ -5105,34 +5064,24 @@ Format as a clear, structured summary that preserves all important context.`;
       spawningProcesses.set(sessionId, { startTime: Date.now(), aborted: false });
       console.log(`🔄 Session ${sessionId} marked as spawning`);
       
-      // Convert WSL paths to Windows paths when using native Windows mode (for validation)
-      if (processWorkingDir && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
-        const originalPath = processWorkingDir;
-        const convertedPath = wslToWindowsPath(processWorkingDir);
-        if (originalPath !== convertedPath) {
-          console.log(`🔄 Converting WSL path for validation: ${originalPath} → ${convertedPath}`);
-          processWorkingDir = convertedPath;
-        }
-      }
-      
-      // Explicitly set PWD environment variable for Claude's bash commands (AFTER conversion)
-      enhancedEnv.PWD = processWorkingDir;
-      enhancedEnv.HOME = homedir(); // Ensure HOME is set correctly
-      console.log(`🔧 Set PWD=${processWorkingDir} and HOME=${homedir()} in environment`);
-      
       // Ensure the directory exists before spawning
       if (!existsSync(processWorkingDir)) {
         console.warn(`⚠️ Working directory does not exist: ${processWorkingDir}, using home directory`);
         processWorkingDir = homedir();
       }
       
+      // Use detached: true on Unix (macOS/Linux) to enable process group killing
+      // This allows kill(-pid, signal) to kill the entire process tree
+      // On Windows, keep detached: false to avoid console windows
+      const isUnix = process.platform === 'darwin' || process.platform === 'linux';
+
       const spawnOptions = {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
         windowsHide: true,  // Always hide windows - prevents black console
         // IMPORTANT: Do NOT use windowsVerbatimArguments with WSL - it breaks argument passing!
-        detached: false,  // Don't detach on Windows to avoid console window
+        detached: isUnix,  // Enable process group on Unix for proper cleanup
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       };
       
@@ -5143,14 +5092,18 @@ Format as a clear, structured summary that preserves all important context.`;
       });
       
       let claudeProcess;
-      let windowsTempFileToCleanup = null; // Track temp file for cleanup
-      
-      if (isWindows) {
-        // Use the unified command builder that checks settings
-        let effectiveWorkingDir = processWorkingDir;
+      if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
+        // Convert Windows path to WSL path if needed
+        let wslWorkingDir = processWorkingDir;
+        if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
+          const driveLetter = processWorkingDir[0].toLowerCase();
+          const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
+          wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+          console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
+        }
         
         // Build the message with context if needed
-        let messageToSend = processedMessage;
+        let messageToSend = message;
         if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
           console.log(`🔄 Building context for WSL command`);
           let contextSummary = "Here's our previous conversation context:\\n\\n";
@@ -5179,57 +5132,32 @@ Format as a clear, structured summary that preserves all important context.`;
             }
           }
           
-          contextSummary += `---\\nNow, continuing our conversation: ${processedMessage}`;
+          contextSummary += `---\\nNow, continuing our conversation: ${message}`;
           messageToSend = contextSummary;
           session.pendingContextRestore = false;
         }
         
-        const [command, commandArgs, inputHandled, tempFile] = getClaudeCommand(args, effectiveWorkingDir, messageToSend);
-        windowsTempFileToCleanup = tempFile; // Store temp file path for cleanup
+        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
+        console.log(`🚀 Running WSL command: ${wslCommand}`);
+        console.log(`🚀 WSL args (first 500 chars):`, JSON.stringify(wslArgs).substring(0, 500));
+        console.log(`🚀 Input handled in script: ${inputHandled}`);
         
-        console.log(`🚀 Running command: ${command}`);
-        console.log(`🚀 Args (first 500 chars):`, JSON.stringify(commandArgs).substring(0, 500));
-        console.log(`🚀 Input handled: ${inputHandled}`);
-        
-        // Check if command exists before trying to spawn
-        if (command.includes('wsl.exe') && !existsSync(command)) {
-          console.error(`❌ WSL.exe not found at: ${command}`);
+        // Check if WSL.exe exists before trying to spawn
+        if (!existsSync(wslCommand)) {
+          console.error(`❌ WSL.exe not found at: ${wslCommand}`);
           console.error(`❌ Please ensure WSL is installed on Windows`);
           throw new Error('WSL.exe not found. Please install Windows Subsystem for Linux.');
         }
         
-        // For .cmd files on Windows, we need shell: true
-        // BUT not if we're running Node.js directly
-        if ((command.endsWith('.cmd') || command.endsWith('.bat')) && !command.endsWith('node.exe')) {
-          spawnOptions.shell = true;
-          
-          // Add Node.js to PATH for .cmd execution
-          const nodePaths = [
-            'C:\\Program Files\\nodejs',
-            'C:\\Program Files (x86)\\nodejs',
-            process.env.ProgramFiles + '\\nodejs',
-          ].filter(Boolean);
-          
-          for (const nodePath of nodePaths) {
-            if (existsSync(nodePath)) {
-              spawnOptions.env = { ...spawnOptions.env };
-              spawnOptions.env.PATH = nodePath + ';' + (spawnOptions.env.PATH || process.env.PATH);
-              console.log(`✅ Added Node.js to PATH for .cmd execution: ${nodePath}`);
-              break;
-            }
-          }
-        }
-        
-        claudeProcess = spawn(command, commandArgs, spawnOptions);
+        claudeProcess = spawn(wslCommand, wslArgs, spawnOptions);
         claudeProcess.inputHandled = inputHandled;
       } else {
         claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
       }
-      
-      // Mark spawning as complete after a short delay
-      setTimeout(() => {
-        isSpawningProcess = false;
-      }, 500);
+
+      // Clear spawning flag immediately after spawn() returns (process created)
+      // This is more accurate than using setTimeout, which could cause race conditions
+      isSpawningProcess = false;
 
       // Store process reference and start time
       activeProcesses.set(sessionId, claudeProcess);
@@ -5238,6 +5166,11 @@ Format as a clear, structured summary that preserves all important context.`;
       // Track PID for cleanup on shutdown
       if (claudeProcess.pid) {
         allChildPids.add(claudeProcess.pid);
+      }
+
+      // Track working directory for git lock cleanup on shutdown
+      if (processWorkingDir) {
+        activeWorkingDirectories.add(processWorkingDir);
       }
 
       // Cancel any pending streaming=false from previous process exit
@@ -5255,17 +5188,8 @@ Format as a clear, structured summary that preserves all important context.`;
         const pendingCallback = pendingInterrupts.get(sessionId);
         pendingInterrupts.delete(sessionId);
 
-        // Kill the process using the proper Windows method
-        const isWindows = process.platform === 'win32';
-        if (isWindows && claudeProcess.pid) {
-          try {
-            require('child_process').execSync(`taskkill /F /T /PID ${claudeProcess.pid}`, {
-              stdio: 'ignore',
-              timeout: 5000
-            });
-          } catch (e) {}
-          try { claudeProcess.kill(); } catch (e) {}
-        } else if (claudeProcess.pid) {
+        // Kill the process using process group
+        if (claudeProcess.pid) {
           try {
             process.kill(-claudeProcess.pid, 'SIGINT');
           } catch (e) {
@@ -5363,8 +5287,8 @@ Format as a clear, structured summary that preserves all important context.`;
       } else if (message && !claudeProcess.inputHandled) {
         // ALWAYS send the message, whether resuming or not
         // When resuming, --resume restores history but we still need to send the new message
-        const messageToSend = processedMessage + '\n';
-        console.log(`📝 Sending message to claude via stdin (${processedMessage.length} chars) - resuming=${isResuming}`);
+        const messageToSend = message + '\n';
+        console.log(`📝 Sending message to claude via stdin (${message.length} chars) - resuming=${isResuming}`);
         
         // Write immediately - Claude with --print needs input right away
         // Add timeout for stdin write to prevent hanging
@@ -5390,28 +5314,7 @@ Format as a clear, structured summary that preserves all important context.`;
           console.log(`📝 Closed stdin after sending message (--print mode requires this)`);
         });
       } else if (claudeProcess.inputHandled) {
-        console.log(`📝 Message already embedded in command (WSL or temp file)`);
-        // For native Windows with temp file, we need to pipe it to stdin
-        if (windowsTempFileToCleanup && CLAUDE_EXECUTION_MODE === 'native-windows') {
-          const fs = require('fs');
-          try {
-            const tempContent = fs.readFileSync(windowsTempFileToCleanup, 'utf8');
-            console.log(`📝 Piping temp file content to stdin (${tempContent.length} chars)`);
-            claudeProcess.stdin.write(tempContent);
-            claudeProcess.stdin.end();
-            // Clean up temp file after reading
-            setTimeout(() => {
-              try {
-                fs.unlinkSync(windowsTempFileToCleanup);
-                console.log(`🗑️ Cleaned up temp file: ${windowsTempFileToCleanup}`);
-              } catch (e) {
-                // Ignore cleanup errors
-              }
-            }, 1000);
-          } catch (e) {
-            console.error(`❌ Failed to read temp file: ${e.message}`);
-          }
-        }
+        console.log(`📝 Message already embedded in WSL script`);
       } else if (!message) {
         console.log(`📝 No message to send`);
       }
@@ -5454,7 +5357,6 @@ Format as a clear, structured summary that preserves all important context.`;
       let bytesReceived = 0;
       let lastDataTime = Date.now();
       let streamStartTime = Date.now();
-      let watchdogTimerRef = { timer: null }; // Store watchdog timer reference
       
       // Cleanup any existing health check for this session
       if (streamHealthChecks.has(sessionId)) {
@@ -5468,127 +5370,58 @@ Format as a clear, structured summary that preserves all important context.`;
       const streamHealthInterval = setInterval(() => {
         const timeSinceLastData = Date.now() - lastDataTime;
         const streamDuration = Date.now() - streamStartTime;
-        console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
+        debugLog(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
-        // Info at 1 minute - this is normal for complex tasks
-        if (timeSinceLastData > 60000 && timeSinceLastData < 65000) {
-          console.log(`⏳ No data for 1 min - Claude processing complex task...`);
-          socket.emit(`keepalive:${sessionId}`, { 
-            timestamp: Date.now(),
-            info: 'Processing complex task',
-            elapsed: timeSinceLastData 
-          });
+        if (timeSinceLastData > 30000) {
+          console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
+          // Send keepalive to prevent client timeout
+          socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
         }
         
-        // Warning at 5 minutes
-        if (timeSinceLastData > 300000 && timeSinceLastData < 305000) {
-          console.warn(`⚠️ No data for 5 min - task taking longer than usual`);
-          socket.emit(`keepalive:${sessionId}`, { 
-            timestamp: Date.now(),
-            warning: 'Long-running operation in progress',
-            elapsed: timeSinceLastData 
-          });
+        // If no data for 45 seconds, try to recover the stream
+        if (timeSinceLastData > 45000 && timeSinceLastData < 50000) {
+          console.warn(`⚠️ Stream stalled for ${timeSinceLastData}ms, attempting recovery...`);
+          // Send a newline to potentially unstick the process
+          if (activeProcesses.has(sessionId)) {
+            const proc = activeProcesses.get(sessionId);
+            if (proc.stdin && !proc.stdin.destroyed) {
+              try {
+                // Send a few newlines to make sure Claude gets input
+                proc.stdin.write('\n\n');
+                console.log(`📝 Sent newlines to potentially unstick process`);
+              } catch (e) {
+                console.error(`Failed to write to stdin: ${e.message}`);
+              }
+            }
+          }
         }
-        
-        // Serious warning at 8 minutes
-        if (timeSinceLastData > 480000 && timeSinceLastData < 485000) {
-          console.error(`🚨 No data for 8 min - may be frozen`);
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'warning',
-            content: '⚠️ Claude has been silent for 8 minutes. Will terminate at 10 minutes if no response.',
-            timestamp: Date.now()
-          });
-        }
-        
-        // Don't try to recover with newlines - it doesn't work and can break things
-        // Claude legitimately takes time to process complex tasks
         
         // NO TIME LIMIT - Claude can think as long as it needs
         // Extended thinking and complex tasks can take arbitrary time
-      }, 5000); // Check every 5 seconds - balance between monitoring and performance
+      }, 5000);
       
       // Store health check interval for cleanup
       streamHealthChecks.set(sessionId, streamHealthInterval);
       
-      // Function to reset watchdog timer
-      const resetWatchdog = () => {
-        if (watchdogTimerRef.timer) {
-          clearTimeout(watchdogTimerRef.timer);
-        }
-        watchdogTimerRef.timer = setTimeout(() => {
-          const finalTimeSinceData = Date.now() - lastDataTime;
-          console.error(`🐕 WATCHDOG: Killing frozen process after ${finalTimeSinceData}ms of no data`);
-          
-          // Force kill everything
-          if (activeBashProcesses.has(sessionId)) {
-            const bashProc = activeBashProcesses.get(sessionId);
-            if (bashProc) {
-              try { bashProc.kill('SIGKILL'); } catch(e) {}
-              activeBashProcesses.delete(sessionId);
-            }
-          }
-          
-          if (activeProcesses.has(sessionId)) {
-            const proc = activeProcesses.get(sessionId);
-            try { proc.kill('SIGKILL'); } catch(e) {}
-            activeProcesses.delete(sessionId);
-            activeProcessStartTimes.delete(sessionId);
-          }
-          
-          // Send error message
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'error',
-            content: '🔴 Watchdog timer: Claude was terminated due to unresponsiveness',
-            timestamp: Date.now()
-          });
-          
-          // Clean up all timers
-          if (streamHealthChecks.has(sessionId)) {
-            clearInterval(streamHealthChecks.get(sessionId));
-            streamHealthChecks.delete(sessionId);
-          }
-          if (streamTimeouts.has(sessionId)) {
-            clearTimeout(streamTimeouts.get(sessionId));
-            streamTimeouts.delete(sessionId);
-          }
-        }, 660000); // Kill after 11 minutes (gives 10 min warning + 1 min buffer)
-      };
-      
-      // Start the watchdog timer
-      resetWatchdog();
-      
-      // Set overall stream timeout (45 minutes max - even complex tasks shouldn't take longer)
+      // Set overall stream timeout (2 hours max per stream - for very long tasks)
       const streamTimeout = setTimeout(() => {
-        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 45 minutes`);
+        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 2 hours`);
         if (activeProcesses.has(sessionId)) {
           const proc = activeProcesses.get(sessionId);
           console.log(`⏰ Terminating long-running process for ${sessionId}`);
           proc.kill('SIGTERM');
         }
-      }, 2700000); // 45 minutes max
+      }, 7200000); // 2 hours
       streamTimeouts.set(sessionId, streamTimeout);
       
       const processStreamLine = (line) => {
         if (!line.trim()) {
+          debugLog(`🔸 [${sessionId}] Empty line received`);
           return;
         }
 
-        // CRITICAL: Check if this process was killed - if so, don't emit any more messages
-        // This prevents buffered stdout data from continuing to emit streaming=true after process kill
-        // Using PID check is more reliable than session-level flag because it survives new process spawns
-        if (claudeProcess && claudeProcess.pid && killedProcessPIDs.has(claudeProcess.pid)) {
-          console.log(`🛑 [${sessionId}] Process ${claudeProcess.pid} was killed - ignoring buffered line`);
-          return;
-        }
-
-        // Also check session-level stopped flag as a fallback
-        if (stoppedSessions.get(sessionId)) {
-          console.log(`🛑 [${sessionId}] Session stopped - ignoring buffered line`);
-          return;
-        }
-
+        debugLog(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
+        
         // WRAPPER: Process line for API capture and token tracking
         try {
           const augmentedLine = processWrapperLine(line, sessionId);
@@ -5601,72 +5434,47 @@ Format as a clear, structured summary that preserves all important context.`;
         
         // Update lastDataTime whenever we process a valid line (including thinking blocks)
         lastDataTime = Date.now();
-        resetWatchdog(); // Reset the watchdog timer on valid data
         
         // Check for "No conversation found" error message
         if (line.includes('No conversation found with session ID')) {
           console.log(`🔄 [${sessionId}] Resume failed - session not found in Claude storage`);
-          console.log(`🔄 [${sessionId}] KILLING process and clearing state`);
-
-          // CRITICAL: Mark session as stopped to prevent buffered data from emitting
-          stoppedSessions.set(sessionId, true);
-          console.log(`🛑 [${sessionId}] Marked session as stopped - buffered data will be ignored`);
-
-          // CRITICAL: Kill the process immediately to stop further streaming
-          try {
-            if (claudeProcess && !claudeProcess.killed) {
-              const pidToKill = claudeProcess.pid;
-              console.log(`🛑 [${sessionId}] Killing claude process PID: ${pidToKill}`);
-              // Track this PID so any buffered data from it is ignored
-              if (pidToKill) {
-                killedProcessPIDs.add(pidToKill);
-                console.log(`🛑 [${sessionId}] Added PID ${pidToKill} to killed set`);
-              }
-              claudeProcess.kill('SIGTERM');
-              activeProcesses.delete(sessionId);
-              activeProcessStartTimes.delete(sessionId);
-            }
-          } catch (killErr) {
-            console.error(`❌ [${sessionId}] Error killing process:`, killErr.message);
-          }
-
-          // Clear streaming state for any pending assistant messages
-          const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-          if (lastAssistantMessageId) {
-            console.log(`🔴 [${sessionId}] Clearing streaming for message ${lastAssistantMessageId}`);
-            socket.emit(`update:${sessionId}`, {
-              id: lastAssistantMessageId,
-              streaming: false
-            });
-            lastAssistantMessageIds.delete(sessionId);
-          }
-
-          // Send stream end to ensure UI stops showing spinner
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'stream_end',
-            streaming: false,
-            timestamp: Date.now()
-          });
-
+          console.log(`🔄 [${sessionId}] Will create new session with existing context on next message`);
+          
           // Clear the invalid session ID so next attempt doesn't use --resume
           const session = sessions.get(sessionId);
           if (session) {
             // Clear the invalid session ID
             session.claudeSessionId = null;
-
-            // Send info message to explain what happened (NOT an error result)
+            
+            // Send a result message with checkpoint restore flag
+            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+            const errorResultMessage = {
+              id: errorResultId,
+              type: 'result',
+              subtype: 'error',
+              is_error: true,
+              error: 'Session not found - restoring from checkpoint',
+              requiresCheckpointRestore: true, // Signal frontend to restore from checkpoint
+              streaming: false,
+              timestamp: Date.now()
+            };
+            const channel = `message:${sessionId}`;
+            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore flag`);
+            socket.emit(channel, errorResultMessage);
+            console.log(`📤 [${sessionId}] Sent checkpoint restore signal`);
+            
+            // Send info message to explain what happened
             const infoMessageId = `system-info-${Date.now()}-${Math.random()}`;
             socket.emit(`message:${sessionId}`, {
               id: infoMessageId,
               type: 'system',
               subtype: 'info',
-              message: { content: 'session expired - send message again to continue' },
+              message: { content: 'session history not found - send message again to continue' },
               timestamp: Date.now(),
               streaming: false
             });
-            console.log(`📤 [${sessionId}] Sent info message ${infoMessageId} about session expiry`);
-
+            console.log(`📤 [${sessionId}] Sent info message ${infoMessageId} about session not found`);
+            
             // Mark session as ready for new messages
             session.isReady = true;
             console.log(`✅ [${sessionId}] Session marked as ready after resume failure`);
@@ -5676,6 +5484,7 @@ Format as a clear, structured summary that preserves all important context.`;
         
         try {
           const jsonData = JSON.parse(line);
+          console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
           // BUT: Don't store session_id from compact results as they can't be resumed
@@ -5683,29 +5492,25 @@ Format as a clear, structured summary that preserves all important context.`;
           const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
           const isCompactResult = isCompactCommand && jsonData.type === 'result';
           
-          // Don't store ANY session IDs during a compact operation
-          if (jsonData.session_id && !isCompactCommand) {
+          if (jsonData.session_id && !isCompactResult) {
             // Check if this is a NEW Claude session (different session_id)
             const previousClaudeSessionId = session.claudeSessionId;
             const isNewClaudeSession = previousClaudeSessionId && previousClaudeSessionId !== jsonData.session_id;
 
             if (isNewClaudeSession) {
-              // New Claude session detected - reset wrapper token counters
-              // Each Claude session has its own 200k context window
+              // New Claude session detected - but DON'T reset tokens!
+              // When resume fails or session changes, the conversation history is still
+              // sent to claude (that's why cache_read is high). The context continues to accumulate.
+              // Only reset on explicit /compact command.
               const wrapperSession = getWrapperSession(sessionId);
-              const oldTokens = wrapperSession.totalTokens;
-              // Reset tokens
-              wrapperSession.totalTokens = 0;
-              wrapperSession.inputTokens = 0;
-              wrapperSession.outputTokens = 0;
-              console.log(`🔄 [${sessionId}] NEW Claude session detected (${previousClaudeSessionId} → ${jsonData.session_id})`);
-              console.log(`🔄 [${sessionId}] Reset wrapper tokens: ${oldTokens} → 0 (each session has independent 200k limit)`);
+              console.log(`🔄 [${sessionId}] Claude session ID changed (${previousClaudeSessionId} → ${jsonData.session_id})`);
+              console.log(`🔄 [${sessionId}] Preserving accumulated tokens: ${wrapperSession.totalTokens} (history still sent to claude)`);
             }
 
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
-          } else if (isCompactCommand && jsonData.session_id) {
-            console.log(`🗜️ [${sessionId}] Ignoring session ID during compact: ${jsonData.session_id} (not resumable)`);
+          } else if (isCompactResult && jsonData.session_id) {
+            console.log(`🗜️ [${sessionId}] Ignoring session ID from compact result: ${jsonData.session_id} (not resumable)`);
           }
           
           // Handle different message types - EXACTLY LIKE WINDOWS
@@ -5743,8 +5548,115 @@ Format as a clear, structured summary that preserves all important context.`;
                   // Capture file snapshot for rollback (before the edit is applied)
                   let fileSnapshot = null;
 
-                  // Capture snapshots for Edit/MultiEdit/Write tools
-                  if ((block.name === 'Edit' || block.name === 'MultiEdit' || block.name === 'Write') && block.input?.file_path) {
+                  // Calculate line numbers for Edit/MultiEdit tools
+                  let enhancedInput = block.input;
+                  if ((block.name === 'Edit' || block.name === 'MultiEdit') && block.input?.file_path) {
+                    try {
+                      const filePath = block.input.file_path;
+                      // Handle both absolute and relative paths
+                      const fullPath = isAbsolute(filePath) ? filePath : join(session.workingDirectory || process.cwd(), filePath);
+                      
+                      console.log(`📍 [${sessionId}] Calculating line numbers for ${block.name} on ${fullPath}`);
+                      
+                      if (existsSync(fullPath)) {
+                        const fileContent = readFileSync(fullPath, 'utf8');
+                        const fileLines = fileContent.split('\n');
+                        console.log(`📍 [${sessionId}] File has ${fileLines.length} lines`);
+
+                        // Capture snapshot for rollback (file content BEFORE edit)
+                        const fileStat = statSync(fullPath);
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: fileContent,
+                          timestamp: Date.now(),
+                          mtime: fileStat.mtimeMs, // For conflict detection
+                          sessionId: sessionId // For cross-session conflict detection
+                        };
+                        console.log(`📸 [${sessionId}] Captured file snapshot for rollback: ${fullPath} (${fileContent.length} bytes, mtime=${fileStat.mtimeMs})`);
+
+                        if (block.name === 'Edit' && block.input.old_string) {
+                          // Find line number for single edit
+                          const oldString = block.input.old_string;
+                          const oldLines = oldString.split('\n');
+                          console.log(`📍 [${sessionId}] Looking for ${oldLines.length} line(s) in file`);
+                          
+                          // Find where this text appears in the file
+                          let found = false;
+                          for (let i = 0; i <= fileLines.length - oldLines.length; i++) {
+                            let match = true;
+                            for (let j = 0; j < oldLines.length; j++) {
+                              if (fileLines[i + j] !== oldLines[j]) {
+                                match = false;
+                                break;
+                              }
+                            }
+                            if (match) {
+                              enhancedInput = { ...block.input, lineNumber: i + 1, endLineNumber: i + oldLines.length };
+                              console.log(`📍 [${sessionId}] Found edit at lines ${i + 1}-${i + oldLines.length}`);
+                              found = true;
+                              break;
+                            }
+                          }
+                          if (!found) {
+                            console.log(`📍 [${sessionId}] Could not find exact match for old_string in file`);
+                          }
+                        } else if (block.name === 'MultiEdit' && block.input.edits) {
+                          // Find line numbers for multiple edits
+                          let currentFileContent = fileContent;
+                          let currentFileLines = fileLines;
+                          
+                          const editsWithLineNumbers = block.input.edits.map((edit, editIdx) => {
+                            if (!edit.old_string) return edit;
+                            
+                            const oldLines = edit.old_string.split('\n');
+                            console.log(`📍 [${sessionId}] Edit ${editIdx + 1}: Looking for ${oldLines.length} line(s)`);
+                            
+                            // Find where this text appears in the current file state
+                            for (let i = 0; i <= currentFileLines.length - oldLines.length; i++) {
+                              let match = true;
+                              for (let j = 0; j < oldLines.length; j++) {
+                                if (currentFileLines[i + j] !== oldLines[j]) {
+                                  match = false;
+                                  break;
+                                }
+                              }
+                              if (match) {
+                                console.log(`📍 [${sessionId}] Edit ${editIdx + 1} found at lines ${i + 1}-${i + oldLines.length}`);
+                                
+                                // Apply this edit to our working copy for subsequent edits
+                                const newLines = edit.new_string.split('\n');
+                                currentFileLines.splice(i, oldLines.length, ...newLines);
+                                currentFileContent = currentFileLines.join('\n');
+                                
+                                return { ...edit, lineNumber: i + 1, endLineNumber: i + oldLines.length };
+                              }
+                            }
+                            console.log(`📍 [${sessionId}] Edit ${editIdx + 1} could not find match`);
+                            return edit;
+                          });
+                          
+                          enhancedInput = { ...block.input, edits: editsWithLineNumbers };
+                        }
+                      } else {
+                        console.log(`📍 [${sessionId}] File not found: ${fullPath}`);
+                        // New file - snapshot indicates it didn't exist
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: null, // null means file didn't exist
+                          isNewFile: true,
+                          timestamp: Date.now(),
+                          mtime: null, // No mtime for new files
+                          sessionId: sessionId
+                        };
+                        console.log(`📸 [${sessionId}] Captured snapshot for NEW file: ${fullPath}`);
+                      }
+                    } catch (err) {
+                      console.log(`📍 [${sessionId}] Error calculating line numbers for ${block.name}: ${err.message}`);
+                    }
+                  }
+
+                  // Handle Write tool - capture existing file content before overwrite
+                  if (block.name === 'Write' && block.input?.file_path && !fileSnapshot) {
                     try {
                       const filePath = block.input.file_path;
                       const fullPath = isAbsolute(filePath) ? filePath : join(session.workingDirectory || process.cwd(), filePath);
@@ -5756,12 +5668,12 @@ Format as a clear, structured summary that preserves all important context.`;
                           path: fullPath,
                           originalContent: fileContent,
                           timestamp: Date.now(),
-                          mtime: fileStat.mtimeMs, // For conflict detection
-                          sessionId: sessionId // For cross-session conflict detection
+                          mtime: fileStat.mtimeMs,
+                          sessionId: sessionId
                         };
-                        console.log(`📸 [${sessionId}] Captured snapshot for rollback: ${fullPath} (${fileContent.length} bytes, mtime=${fileStat.mtimeMs})`);
+                        console.log(`📸 [${sessionId}] Captured Write snapshot: ${fullPath} (${fileContent.length} bytes, mtime=${fileStat.mtimeMs})`);
                       } else {
-                        // New file - snapshot indicates it didn't exist
+                        // New file being created
                         fileSnapshot = {
                           path: fullPath,
                           originalContent: null,
@@ -5770,25 +5682,25 @@ Format as a clear, structured summary that preserves all important context.`;
                           mtime: null,
                           sessionId: sessionId
                         };
-                        console.log(`📸 [${sessionId}] Captured snapshot for NEW file: ${fullPath}`);
+                        console.log(`📸 [${sessionId}] Captured Write snapshot for NEW file: ${fullPath}`);
                       }
                     } catch (err) {
-                      console.log(`📸 [${sessionId}] Error capturing snapshot: ${err.message}`);
+                      console.log(`📸 [${sessionId}] Error capturing Write snapshot: ${err.message}`);
                     }
                   }
 
-                  // Track Bash tool uses for focus restoration on Windows
+                  // Track Bash tool use for focus restoration on macOS
                   if (block.name === 'Bash' && isFirstBashCommand) {
                     console.log(`🔧 [${sessionId}] Tracking first Bash tool use: ${block.id}`);
                     bashToolUseIds.set(block.id, { sessionId, timestamp: Date.now() });
                   }
 
-                  // Send tool use as separate message immediately (without line number enhancements)
+                  // Send tool use as separate message immediately
                   const toolUseMessage = {
                     type: 'tool_use',
                     message: {
                       name: block.name,
-                      input: block.input,  // Use original input without enhancements
+                      input: enhancedInput,
                       id: block.id
                     },
                     timestamp: Date.now(),
@@ -5801,9 +5713,9 @@ Format as a clear, structured summary that preserves all important context.`;
                   // Include parent_tool_use_id if this is a subagent message
                   if (jsonData.parent_tool_use_id) {
                     toolUseMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
-                    console.log(`🤖 [${sessionId}] Subagent tool_use (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...): ${block.name}`);
+                    debugLog(`🤖 [${sessionId}] Subagent tool_use (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...): ${block.name}`);
                   }
-                  socket.emit(`message:${sessionId}`, toolUseMessage);
+                  queueMessage(sessionId, toolUseMessage, socket, true); // immediate for tool_use
                 }
               }
               
@@ -5825,9 +5737,9 @@ Format as a clear, structured summary that preserves all important context.`;
                 // Include parent_tool_use_id if this is a subagent message
                 if (jsonData.parent_tool_use_id) {
                   assistantMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
-                  console.log(`🤖 [${sessionId}] Subagent assistant message (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+                  debugLog(`🤖 [${sessionId}] Subagent assistant message (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
                 }
-                socket.emit(`message:${sessionId}`, assistantMessage);
+                queueMessage(sessionId, assistantMessage, socket);
                 
                 // Save to session with memory management
                 session.messages.push({
@@ -5886,48 +5798,36 @@ Format as a clear, structured summary that preserves all important context.`;
             // Handle tool results from user messages
             for (const block of jsonData.message.content) {
               if (block.type === 'tool_result') {
-                // Check if this is a Bash tool result and trigger focus restoration on Windows
+                // Check if this is a Bash tool result and trigger focus restoration on macOS
                 if (bashToolUseIds.has(block.tool_use_id)) {
                   console.log(`🔧 [${sessionId}] Bash tool result received, triggering focus restoration`);
                   const bashInfo = bashToolUseIds.get(block.tool_use_id);
                   bashToolUseIds.delete(block.tool_use_id); // Clean up
-                  
+
                   // Set flag to false after first bash command
                   if (isFirstBashCommand) {
                     isFirstBashCommand = false;
                     console.log(`🔧 [${sessionId}] First bash command completed, focus restoration disabled for future commands`);
                   }
-                  
-                  // Emit event to trigger focus restoration on Windows
-                  if (process.platform === 'win32') {
-                    socket.emit(`trigger:focus:${bashInfo.sessionId}`, {
-                      timestamp: Date.now()
-                    });
-                  }
+
+                  // NOTE: Focus restoration disabled on macOS server-side
+                  // The frontend ClaudeChat.tsx has periodic focus guards that handle this more reliably
+                  // Server-triggered focus restoration was causing race conditions with the guard
+                  // and disrupting WKWebView's internal focus state
                 }
-                
+
                 // Check if this is an Edit/MultiEdit tool result and enhance with context lines
                 let enhancedContent = block.content;
                 
-                // More permissive check for Edit tool results
                 if (typeof block.content === 'string' && 
-                    (block.content.includes('has been updated') || 
-                     block.content.includes('updated.') || 
-                     (block.content.includes('Applied') && block.content.includes('edit')) ||
-                     block.content.includes('The file') ||
-                     block.content.includes('snippet of the edited file'))) {
+                    (block.content.includes('has been updated') || (block.content.includes('Applied') && block.content.includes('edits to')))) {
                   
-                  // Extract file path from the content - try multiple patterns
+                  // Extract file path from the content
                   const filePathMatch = block.content.match(/The file (.+?) has been updated/) || 
-                                        block.content.match(/Applied \d+ edits? to (.+?):/) ||
-                                        block.content.match(/file[:\s]+(.+?)(?:\s+has been|\s+updated|:|\n)/) ||
-                                        block.content.match(/\/[^\s]+\.(?:tsx?|jsx?|py|rs|md|css|json|yml|yaml|toml|html|vue|svelte)/g);
+                                        block.content.match(/Applied \d+ edits? to (.+?):/);
                   
                   if (filePathMatch) {
-                    // Handle different match formats
-                    const filePath = Array.isArray(filePathMatch) && !filePathMatch[1] 
-                                    ? filePathMatch[0] 
-                                    : (filePathMatch[1] || filePathMatch[0]);
+                    const filePath = filePathMatch[1];
                     const fullPath = join(session.workingDirectory || process.cwd(), filePath);
                     console.log(`📝 [${sessionId}] Attempting to enhance diff for: ${filePath}`);
                     
@@ -5939,18 +5839,13 @@ Format as a clear, structured summary that preserves all important context.`;
                         
                         // Parse the diff lines to find changed line numbers
                         const diffLines = block.content.split('\n');
-                        // Match various line number formats: "42→", "  42→", "42:", line 42, etc
-                        const lineNumberRegex = /(?:^\s*(\d+)[→:])|(?:line[s]?\s+(\d+))/i;
+                        const lineNumberRegex = /^\s*(\d+)→/;
                         const changedLineNumbers = new Set();
                         
                         diffLines.forEach(line => {
                           const match = line.match(lineNumberRegex);
                           if (match) {
-                            // Get the first captured group that has a value
-                            const lineNum = match[1] || match[2];
-                            if (lineNum) {
-                              changedLineNumbers.add(parseInt(lineNum));
-                            }
+                            changedLineNumbers.add(parseInt(match[1]));
                           }
                         });
                         
@@ -6017,6 +5912,9 @@ Format as a clear, structured summary that preserves all important context.`;
                           });
                           
                           enhancedContent = enhancedDiffLines.join('\n');
+                          console.log(`📝 [${sessionId}] Enhanced diff created with ${enhancedDiffLines.length} lines`);
+                        } else {
+                          console.log(`📝 [${sessionId}] No line numbers found in diff, keeping original content`);
                         }
                       }
                     } catch (err) {
@@ -6033,7 +5931,6 @@ Format as a clear, structured summary that preserves all important context.`;
                     content: enhancedContent,
                     is_error: block.is_error
                   },
-                  streaming: true,  // Keep streaming true during tool execution
                   timestamp: Date.now(),
                   id: `toolresult-${sessionId}-${Date.now()}`
                 };
@@ -6043,6 +5940,9 @@ Format as a clear, structured summary that preserves all important context.`;
                   console.log(`🤖 [${sessionId}] Subagent tool_result (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
                 }
                 socket.emit(`message:${sessionId}`, toolResultMessage);
+
+                // NOTE: Removed focus trigger - it was STEALING focus, not restoring it
+                // Modern macOS doesn't lose focus when spawning child processes
               }
             }
             
@@ -6115,15 +6015,14 @@ Format as a clear, structured summary that preserves all important context.`;
             }
             
           } else if (jsonData.type === 'result') {
-            console.log(`📦 [${sessionId}] RESULT: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            console.log(`📦 [${sessionId}] RESULT MESSAGE RECEIVED!`);
+            console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            console.log(`   📊 Full result data:`, JSON.stringify(jsonData, null, 2));
             
             // Check if this is a compact result - look for the last user message being /compact
             const session = sessions.get(sessionId);
             const lastUserMessage = session?.messages?.filter(m => m.role === 'user').pop();
             const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
-            
-            // Check if we're in custom compacting mode (Claude is generating summary)
-            const isCustomCompacting = session?.isCompacting === true;
             
             // Compact results have specific patterns in the result text
             const isCompactResult = isCompactCommand && 
@@ -6133,123 +6032,7 @@ Format as a clear, structured summary that preserves all important context.`;
                                     jsonData.result === '' ||
                                     jsonData.result === null);
             
-            // Handle custom compacting - when Claude returns the summary
-            if (isCustomCompacting) {
-              console.log(`🗜️ [${sessionId}] Received compact summary from Claude`);
-              
-              // Check if result is empty or generic - if so, use last assistant message
-              let actualSummary = jsonData.result;
-              if (!actualSummary || 
-                  actualSummary.trim() === '' || 
-                  actualSummary.includes('ready to continue') ||
-                  actualSummary.includes('continue normally') ||
-                  actualSummary.length < 50) {
-                
-                console.log(`🗜️ Result is empty/generic, looking for last assistant message`);
-                
-                // Find the last assistant message with text content
-                const assistantMessages = session?.messages?.filter(m => m.type === 'assistant' && m.message?.content) || [];
-                for (let i = assistantMessages.length - 1; i >= 0; i--) {
-                  const msg = assistantMessages[i];
-                  const content = msg.message?.content;
-                  
-                  // Extract text from content blocks
-                  let textContent = '';
-                  if (typeof content === 'string') {
-                    textContent = content;
-                  } else if (Array.isArray(content)) {
-                    const textBlocks = content.filter(block => block.type === 'text' && block.text);
-                    textContent = textBlocks.map(block => block.text).join('\n').trim();
-                  }
-                  
-                  // Use this as summary if it's substantial (for compact, any substantial message is the summary)
-                  if (textContent && textContent.length > 100) {
-                    actualSummary = textContent;
-                    console.log(`🗜️ Using assistant message as summary (${textContent.length} chars)`);
-                    break;
-                  }
-                }
-                
-                // If still no good summary, use a fallback
-                if (!actualSummary || actualSummary.length < 50) {
-                  actualSummary = `Conversation compacted successfully. Previous context preserved.`;
-                  console.log(`🗜️ Using fallback summary`);
-                }
-              }
-              
-              console.log(`🗜️ Summary length: ${actualSummary.length} chars`);
-              console.log(`🗜️ Previous token count: ${session.compactStartTokens}`);
-              
-              // Store the summary
-              session.compactSummary = actualSummary;
-              // Fix the token tracking - get from wrapper if available
-              const wrapperSession = typeof getWrapperSession !== 'undefined' ? getWrapperSession(sessionId) : null;
-              session.tokensSavedByCompact = session.compactStartTokens || wrapperSession?.totalTokens || 0;
-              
-              // Clear the current session ID - we'll start fresh
-              const oldSessionId = session.claudeSessionId;
-              session.claudeSessionId = null;
-              session.wasCompacted = true;
-              session.isCompacting = false;
-              
-              console.log(`🗜️ Saved summary and cleared session ${oldSessionId}`);
-              console.log(`🗜️ Next message will start fresh with summary as context`);
-              
-              // Send success message to user with the actual summary
-              let resultText = `✅ Conversation compacted successfully!\n\n📊 Compaction Summary:\n• Tokens saved: ${session.tokensSavedByCompact.toLocaleString()}\n• Previous messages: ${session.compactMessageCount || session.messages.length}\n• Summary preserved: Yes`;
-              
-              if (session.compactCustomInstructions) {
-                resultText += `\n• Custom focus: ${session.compactCustomInstructions}`;
-              }
-              
-              // Include the actual summary from Claude
-              resultText += `\n\n📝 Summary:\n${actualSummary}\n\n✨ Context has been compressed. You can continue normally.`;
-              
-              // Calculate the duration from when the process started (or use jsonData.duration_ms)
-              const processStartTime = activeProcessStartTimes.get(sessionId);
-              // Use Claude's reported duration if available, otherwise calculate from start time
-              const duration = jsonData.duration_ms || (processStartTime ? (Date.now() - processStartTime) : 0);
-              console.log(`🗜️ Duration: jsonData.duration_ms=${jsonData.duration_ms}, calculated=${processStartTime ? Date.now() - processStartTime : 'N/A'}, using=${duration}ms`);
-              
-              const compactMessage = {
-                type: 'result',
-                subtype: 'success',
-                is_error: false,
-                result: resultText,
-                session_id: null, // No session ID since we're starting fresh
-                duration_ms: jsonData.duration_ms || duration, // Use Claude's duration or our calculated one
-                usage: {
-                  input_tokens: 0,
-                  output_tokens: 0,
-                  cache_creation_input_tokens: 0,
-                  cache_read_input_tokens: 0
-                },
-                wrapperTokens: {
-                  input: 0,
-                  output: 0,
-                  total: 0,
-                  cache_read: 0,
-                  cache_creation: 0
-                },
-                streaming: false,
-                id: `result-${sessionId}-${Date.now()}-${Math.random()}`,
-                model: jsonData.model || model || 'claude-sonnet-4-5-20250929',
-                timestamp: Date.now()
-              };
-              
-              socket.emit(`message:${sessionId}`, compactMessage);
-              console.log(`📤 [${sessionId}] Sent compact success message`);
-              
-              // Clear message history but keep the summary
-              session.messages = [];
-              session.compactCount = (session.compactCount || 0) + 1;
-              
-              // Don't process the normal result - we handled it
-              return;
-            }
-            
-            // Handle old-style compact (shouldn't happen with our custom handling)
-            if (isCompactResult && !isCustomCompacting) {
+            if (isCompactResult) {
               console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
               console.log(`🗜️ [${sessionId}] Result text: "${jsonData.result}"`);
               console.log(`🗜️ [${sessionId}] Session ID in result: ${jsonData.session_id}`);
@@ -6263,54 +6046,33 @@ Format as a clear, structured summary that preserves all important context.`;
                 session.claudeSessionId = null;
                 // Mark that this session has been compacted so we don't try to restore old IDs
                 session.wasCompacted = true;
-                // Store the compact summary and token info for the next session
-                session.compactSummary = jsonData.result || 'conversation summarized';
-                session.compactedTokenCount = compactedTokens?.total || 0;
-                session.tokensSavedByCompact = (session.totalTokens || 0);
                 console.log(`🗜️ Cleared session ID (was ${oldSessionId}) - next message will start fresh after compact`);
                 console.log(`🗜️ Marked session as compacted to prevent old ID restoration`);
-                console.log(`🗜️ Stored compact summary for next session: ${session.compactSummary.substring(0, 100)}...`);
                 console.log(`🗜️ The compact command has summarized the conversation - continuing with reduced context`);
               }
               
-              // After compact, we don't know the exact new token count until the next message
-              // The /compact command itself returns usage: 0 which is not the compressed context size
-              // Reset tokens to 0 and let the next message establish the new baseline
-              console.log(`🗜️ [${sessionId}] Compact complete - tokens will reset on next message`);
-
-              // Reset session token tracking
-              if (session) {
-                const savedTokens = session.totalTokens || 0;
-                session.totalTokens = 0;
-                session.inputTokens = 0;
-                session.outputTokens = 0;
-                console.log(`🗜️ [${sessionId}] Reset session tokens from ${savedTokens} to 0`);
-              }
-
-              // Also reset wrapper session tokens
-              const wrapperSession = getWrapperSession(sessionId);
-              const savedWrapperTokens = wrapperSession.totalTokens;
-              wrapperSession.inputTokens = 0;
-              wrapperSession.outputTokens = 0;
-              wrapperSession.totalTokens = 0;
-              console.log(`🗜️ [${sessionId}] Reset wrapper tokens from ${savedWrapperTokens} to 0`);
+              // Extract the new token count from the compact result
+              // The compact command returns the new compressed token count
+              const compactedTokens = jsonData.usage ? {
+                input: jsonData.usage.input_tokens || 0,
+                output: jsonData.usage.output_tokens || 0,
+                cache_creation: jsonData.usage.cache_creation_input_tokens || 0,
+                cache_read: jsonData.usage.cache_read_input_tokens || 0,
+                total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)
+              } : null;
               
-              // Send compact notification with reset instruction
+              if (compactedTokens) {
+                console.log(`🗜️ [${sessionId}] Compacted token count: ${compactedTokens.total} (input: ${compactedTokens.input}, output: ${compactedTokens.output})`);
+              }
+              
+              // Send compact notification with token info
               socket.emit(`message:${sessionId}`, {
                 type: 'system',
                 subtype: 'compact',
                 session_id: null, // Clear session ID after compact
                 message: { 
-                  content: 'context compacted - tokens reset',
-                  compactedTokens: {
-                    input: 0,
-                    output: 0,
-                    total: 0,
-                    cache_read: 0,
-                    cache_creation: 0,
-                    reset: true  // Flag to indicate full reset
-                  },
-                  tokensSaved: session?.tokensSavedByCompact || 0,
+                  content: 'context compacted - starting fresh with reduced tokens',
+                  compactedTokens: compactedTokens,
                   compactSummary: jsonData.result || 'conversation summarized'
                 },
                 timestamp: Date.now()
@@ -6323,11 +6085,12 @@ Format as a clear, structured summary that preserves all important context.`;
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              const thisRequest = input + output;
 
-              // Get context values from wrapper session
-              const wrapperSession = getWrapperSession(sessionId);
-              const contextTotal = wrapperSession.totalTokens;
+              // Get tracked total from wrapper - this persists across cache expiry
+              const wrapperSessionForLog = getWrapperSession(sessionId);
+              const trackedTotal = wrapperSessionForLog.totalTokens;
+              // Also calculate API-reported total for comparison
+              const apiReportedTotal = cacheRead + cacheCreation + input + output;
 
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
@@ -6336,12 +6099,12 @@ Format as a clear, structured summary that preserves all important context.`;
               console.log(`   │ User Message    │ ${String(input).padEnd(8)} │              │            │`);
               console.log(`   │ Assistant Reply │ ${String(output).padEnd(8)} │              │            │`);
               console.log(`   │ Context History │          │ ${String(cacheRead).padEnd(12)} │            │`);
-              console.log(`   │ Cache Created   │          │              │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   │ New Cache       │          │              │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
-              console.log(`   │ New Tokens      │ ${String(thisRequest).padEnd(8)} │ (billing)    │ (billing)  │`);
+              console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
-              console.log(`   CONTEXT WINDOW: ${contextTotal} / 200000 (${(contextTotal/2000).toFixed(1)}%)`);
-              console.log(`   Note: Uses Math.max to prevent counter regression when cache expires.`);
+              console.log(`   API REPORTED: ${apiReportedTotal} | TRACKED TOTAL: ${trackedTotal} / 200000 (${(trackedTotal/2000).toFixed(1)}%)`);
+              console.log(`   Note: Tracked total persists even when Anthropic's cache expires`);
             }
             
             // NOTE: Do NOT mark streaming=false here on result message!
@@ -6361,7 +6124,7 @@ Format as a clear, structured summary that preserves all important context.`;
             console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
             
             // Don't include session_id in result if this was a compact command
-            // NOTE: Do NOT include streaming: false here!
+            // NOTE: Do NOT include streaming: false here! (see comment at line 4332)
             // In agentic mode, result messages are intermediate - streaming state
             // is controlled by the process exit handler with debounce.
             const resultMessage = {
@@ -6378,17 +6141,19 @@ Format as a clear, structured summary that preserves all important context.`;
               // Include usage directly for Windows compatibility
               resultMessage.usage = jsonData.usage;
 
-              // Get context values from wrapper session
+              // Get wrapper session to get the accurate accumulated token count
               const wrapperSession = getWrapperSession(sessionId);
 
               // Also add wrapper tokens for enhanced analytics
+              // Use the tracked totalTokens which persists even when Anthropic cache expires
               resultMessage.wrapper = {
                 tokens: {
+                  input: jsonData.usage.input_tokens || 0,
+                  output: jsonData.usage.output_tokens || 0,
+                  // Use accumulated total from wrapper state - this persists across cache expiry
                   total: wrapperSession.totalTokens,
-                  input: wrapperSession.inputTokens,
-                  output: wrapperSession.outputTokens,
-                  cache_read: wrapperSession.cacheReadTokens || 0,
-                  cache_creation: wrapperSession.cacheCreationTokens || 0
+                  cache_read: jsonData.usage.cache_read_input_tokens || 0,
+                  cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }
               };
               console.log(`📊 [WRAPPER-TOKENS] Added both usage and wrapper tokens to result message:`, {
@@ -6406,19 +6171,17 @@ Format as a clear, structured summary that preserves all important context.`;
             
             console.log(`   - Model in result message: ${resultMessage.model}`);
             console.log(`   - Session ID in result message: ${resultMessage.session_id || '(cleared after compact)'}`);
-            if (resultMessage.usage && resultMessage.wrapper?.tokens) {
-              const accTotal = resultMessage.wrapper.tokens.total;
-              const lastReq = resultMessage.wrapper.tokens.lastRequest;
-              console.log(`   - Usage breakdown (this request):`);
-              console.log(`     • input_tokens: ${lastReq?.input || 0}`);
-              console.log(`     • output_tokens: ${lastReq?.output || 0}`);
-              console.log(`     • cache_creation: ${lastReq?.cache_creation || 0} (billing only)`);
-              console.log(`     • cache_read: ${lastReq?.cache_read || 0} (billing only)`);
-              console.log(`     • ACCUMULATED CONTEXT: ${accTotal} / 200000 (${(accTotal/2000).toFixed(1)}%)`);
+            if (resultMessage.usage) {
+              console.log(`   - Usage breakdown (CUMULATIVE for session - NOT current context size):`);
+              console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0} (cumulative)`);
+              console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0} (cumulative)`);
+              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0} (cumulative)`);
+              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (cumulative sum across turns)`);
+              console.log(`     • ACTUAL CURRENT CONTEXT: ${resultMessage.wrapper?.tokens?.total || 0} (from last assistant message)`);
             }
             
             // Debug log the full resultMessage before emitting
-            console.log(`📤 [EMIT-DEBUG] About to emit result message with wrapper field:`, {
+            debugLog(`📤 [EMIT-DEBUG] About to emit result message with wrapper field:`, {
               hasWrapper: !!resultMessage.wrapper,
               wrapperTokens: resultMessage.wrapper?.tokens,
               messageKeys: Object.keys(resultMessage),
@@ -6431,8 +6194,8 @@ Format as a clear, structured summary that preserves all important context.`;
           
         } catch (e) {
           // Not JSON, treat as plain text
-          console.log(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
-          console.log(`⚠️ [${sessionId}] Line was: ${line}`);
+          debugLog(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
+          debugLog(`⚠️ [${sessionId}] Line was: ${line}`);
         }
       };
 
@@ -6465,12 +6228,9 @@ Format as a clear, structured summary that preserves all important context.`;
         const str = data.toString();
         bytesReceived += data.length;
         lastDataTime = Date.now();
-        resetWatchdog(); // Reset watchdog on any data reception
         
-        // Only log STDOUT summary for large outputs to reduce log spam
-        if (str.length > 1000) {
-          console.log(`📥 [${sessionId}] STDOUT: ${str.length} bytes (total: ${bytesReceived})`);
-        }
+        console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
+        console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200)}...`);
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
@@ -6493,11 +6253,13 @@ Format as a clear, structured summary that preserves all important context.`;
         }
         
         lineBuffer += str;
-        
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || '';
         
+        debugLog(`📋 [${sessionId}] Split into ${lines.length} lines, buffer remaining: ${lineBuffer.length} chars`);
+
         for (let i = 0; i < lines.length; i++) {
+          debugLog(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
           processStreamLine(lines[i]);
         }
       });
@@ -6524,15 +6286,34 @@ Format as a clear, structured summary that preserves all important context.`;
         }
 
         // Check if this is a "No conversation found" error
-        // NOTE: This is already handled in stdout handler, just log here
         if (error.includes('No conversation found with session ID')) {
-          console.log(`🔄 [${sessionId}] Resume failed (stderr) - already handled in stdout`);
+          console.log(`🔄 Resume failed - session not found in Claude storage`);
+          console.log(`🔄 Clearing invalid session ID - will use fresh conversation on next message`);
           if (session?.wasCompacted) {
             console.log(`🔄 This was expected - session was compacted and old ID is no longer valid`);
           }
-          // Don't retry or emit errors - stdout handler already killed process and sent info
-          return;
-        } else if (error.includes('Error:') || error.includes('error:')) {
+          
+          // Clear the invalid session ID
+          session.claudeSessionId = null;
+          session.wasInterrupted = false;
+          
+          // Send result message with checkpoint restore flag
+          const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+          const errorResultMessage = {
+            id: errorResultId,
+            type: 'result',
+            subtype: 'error',
+            is_error: true,
+            error: 'Session not found - restoring from checkpoint',
+            requiresCheckpointRestore: true,
+            streaming: false,
+            timestamp: Date.now()
+          };
+          const channel = `message:${sessionId}`;
+          console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (stderr)`);
+          socket.emit(channel, errorResultMessage);
+          console.log(`📤 [${sessionId}] Sent checkpoint restore signal (stderr)`);
+        } else {
           // Emit other errors to client
           socket.emit(`message:${sessionId}`, { 
             type: 'error',
@@ -6559,27 +6340,7 @@ Format as a clear, structured summary that preserves all important context.`;
             // Ignore errors on cleanup
           }
         }
-        
-        // Clean up watchdog timer
-        if (watchdogTimerRef.timer) {
-          clearTimeout(watchdogTimerRef.timer);
-          watchdogTimerRef.timer = null;
-          console.log(`🐕 Watchdog timer cleared on process exit`);
-        }
-        
-        // Clean up Windows temp file if it exists
-        if (windowsTempFileToCleanup) {
-          try {
-            const fs = require('fs');
-            if (fs.existsSync(windowsTempFileToCleanup)) {
-              fs.unlinkSync(windowsTempFileToCleanup);
-              console.log(`🧹 Cleaned up Windows temp file: ${windowsTempFileToCleanup}`);
-            }
-          } catch (e) {
-            console.warn(`⚠️ Failed to clean up temp file: ${e.message}`);
-          }
-        }
-        
+
         // Clean up all tracking for this session
         if (streamHealthChecks.has(sessionId)) {
           clearInterval(streamHealthChecks.get(sessionId));
@@ -6611,32 +6372,57 @@ Format as a clear, structured summary that preserves all important context.`;
         }
         activeProcesses.delete(sessionId);
         activeProcessStartTimes.delete(sessionId);
-
-        // Clean up killed PID tracking now that process has fully exited
-        if (claudeProcess && claudeProcess.pid) {
-          killedProcessPIDs.delete(claudeProcess.pid);
-        }
-
+        
         // Mark session as completed (not interrupted) when process exits normally
         if (code === 0) {
           const session = sessions.get(sessionId);
           if (session) {
             session.wasInterrupted = false;
             console.log(`✅ Marked session ${sessionId} as completed normally`);
-            
           }
         } else if (code === 1) {
           // Exit code 1 might mean --resume failed OR other errors
           const session = sessions.get(sessionId);
-
-          // Check if stderr contains "No conversation found" - this was already handled in stdout
-          // Just log it and clean up if somehow it wasn't caught earlier
+          
+          // Check if stderr contains "No conversation found" - mark for recreation
           if (session && session.claudeSessionId && stderrBuffer.includes('No conversation found')) {
-            console.log(`⚠️ [${sessionId}] Resume failed detected on exit (exit code 1)`);
-            // Clear the invalid session ID if not already cleared
+            console.log(`⚠️ Resume failed - session not found in Claude storage`);
+            console.log(`🔄 Will recreate session with existing context on next attempt`);
+            // Clear the invalid session ID
             session.claudeSessionId = null;
-            session.isReady = true;
-            // Don't send error result - already handled or just send simple info
+            
+            // Send result message with checkpoint restore flag
+            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+            const errorResultMessage = {
+              id: errorResultId,
+              type: 'result',
+              subtype: 'error',
+              is_error: true,
+              error: 'Session not found - restoring from checkpoint',
+              requiresCheckpointRestore: true,
+              streaming: false,
+              timestamp: Date.now()
+            };
+            const channel = `message:${sessionId}`;
+            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (exit code 1)`);
+            socket.emit(channel, errorResultMessage);
+            console.log(`📤 [${sessionId}] Sent checkpoint restore signal (exit code 1)`);
+            
+            // Clear the assistant message ID tracking
+            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantMessageId) {
+              console.log(`🔴 Clearing assistant message ID ${lastAssistantMessageId} after resume failure`);
+              lastAssistantMessageIds.delete(sessionId);
+            }
+            
+            // Send a subtle notification that we'll continue without resume
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'info',
+              message: { content: 'continuing conversation (session history not found in claude)' },
+              timestamp: Date.now(),
+              streaming: false
+            });
           }
         }
         
@@ -6703,6 +6489,9 @@ Format as a clear, structured summary that preserves all important context.`;
               timestamp: Date.now()
             });
 
+            // NOTE: Removed focus trigger - it was STEALING focus, not restoring it
+            // Modern macOS doesn't lose focus when spawning child processes
+
             pendingStreamingFalseTimers.delete(sessionId);
           }, STREAMING_FALSE_DEBOUNCE_MS);
 
@@ -6737,19 +6526,6 @@ Format as a clear, structured summary that preserves all important context.`;
 
       // Handle process errors
       claudeProcess.on('error', (err) => {
-        // Clean up Windows temp file on error
-        if (windowsTempFileToCleanup) {
-          try {
-            const fs = require('fs');
-            if (fs.existsSync(windowsTempFileToCleanup)) {
-              fs.unlinkSync(windowsTempFileToCleanup);
-              console.log(`🧹 Cleaned up Windows temp file on error: ${windowsTempFileToCleanup}`);
-            }
-          } catch (e) {
-            console.warn(`⚠️ Failed to clean up temp file: ${e.message}`);
-          }
-        }
-        
         // Clean up all tracking for this session
         if (streamHealthChecks.has(sessionId)) {
           clearInterval(streamHealthChecks.get(sessionId));
@@ -6807,11 +6583,24 @@ Format as a clear, structured summary that preserves all important context.`;
 
       } catch (error) {
         console.error('❌ Error in spawnRequest:', error);
-        socket.emit(`message:${sessionId}`, { 
+
+        // Clean up spawning state on error
+        isSpawningProcess = false;
+        spawningProcesses.delete(sessionId);
+
+        // Handle any pending interrupt callback that was waiting for spawn to complete
+        const pendingInterruptCallback = pendingInterrupts.get(sessionId);
+        if (pendingInterruptCallback) {
+          console.log(`📝 Calling pending interrupt callback for session ${sessionId} due to spawn error`);
+          pendingInterrupts.delete(sessionId);
+          pendingInterruptCallback({ success: false, error: error.message, spawnFailed: true });
+        }
+
+        socket.emit(`message:${sessionId}`, {
           type: 'error',
-          error: error.message, 
+          error: error.message,
           claudeSessionId: session.claudeSessionId,
-          streaming: false 
+          streaming: false
         });
         if (callback) callback({ success: false, error: error.message });
       } finally {
@@ -6841,26 +6630,9 @@ Format as a clear, structured summary that preserves all important context.`;
 
   socket.on('interrupt', ({ sessionId }, callback) => {
     const claudeProcess = activeProcesses.get(sessionId);
-    const bashProcess = activeBashProcesses.get(sessionId);
     const session = sessions.get(sessionId);
-    const isWindows = process.platform === 'win32';
 
     console.log(`⛔ Interrupt requested for session ${sessionId}`);
-
-    // Helper function to force kill a process on Windows using taskkill
-    const forceKillWindows = (pid) => {
-      if (!pid) return;
-      try {
-        // Use taskkill with /F (force) and /T (tree - kill child processes too)
-        require('child_process').execSync(`taskkill /F /T /PID ${pid}`, {
-          stdio: 'ignore',
-          timeout: 5000
-        });
-        console.log(`🛑 Force killed process tree for PID ${pid} using taskkill`);
-      } catch (e) {
-        console.log(`⚠️ taskkill failed for PID ${pid}: ${e.message}`);
-      }
-    };
 
     // Clear the spawn queue on interrupt to prevent stale messages from being sent
     // This is important when user interrupts and immediately sends a new message
@@ -6894,60 +6666,13 @@ Format as a clear, structured summary that preserves all important context.`;
       return; // Will be handled when spawn completes
     }
 
-    // Check for bash process first
-    if (bashProcess) {
-      console.log(`🛑 Killing bash process for session ${sessionId} (PID: ${bashProcess.pid})`);
-
-      try {
-        // Kill the bash process
-        if (isWindows) {
-          // On Windows, use taskkill to force kill the entire process tree
-          forceKillWindows(bashProcess.pid);
-          // Also try regular kill as backup
-          try { bashProcess.kill(); } catch (e) {}
-        } else if (bashProcess.pid) {
-          try {
-            process.kill(-bashProcess.pid, 'SIGTERM'); // Negative PID kills process group on Unix
-          } catch (e) {
-            // Fallback to regular kill
-            bashProcess.kill('SIGTERM');
-          }
-        } else {
-          bashProcess.kill('SIGTERM');
-        }
-
-        activeBashProcesses.delete(sessionId);
-
-        // Send interrupted message
-        socket.emit(`message:${sessionId}`, {
-          type: 'system',
-          subtype: 'interrupted',
-          message: 'bash command interrupted by user',
-          timestamp: Date.now()
-        });
-
-        // Send callback response so client knows interrupt completed
-        if (callback) {
-          callback({ success: true });
-        }
-      } catch (error) {
-        console.error(`❌ Error killing bash process: ${error.message}`);
-        if (callback) {
-          callback({ success: false, error: error.message });
-        }
-      }
-    } else if (claudeProcess) {
+    if (claudeProcess) {
       console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${claudeProcess.pid})`);
 
-      // Kill the process
-      if (isWindows) {
-        // On Windows, use taskkill to force kill the entire process tree
-        forceKillWindows(claudeProcess.pid);
-        // Also try regular kill as backup
-        try { claudeProcess.kill(); } catch (e) {}
-      } else if (claudeProcess.pid) {
+      // Kill the entire process group on Unix/macOS
+      if (claudeProcess.pid) {
         try {
-          process.kill(-claudeProcess.pid, 'SIGINT'); // Negative PID kills process group on Unix
+          process.kill(-claudeProcess.pid, 'SIGINT'); // Negative PID kills process group
         } catch (e) {
           // Fallback to regular kill
           claudeProcess.kill('SIGINT');
@@ -6958,15 +6683,11 @@ Format as a clear, structured summary that preserves all important context.`;
 
       activeProcesses.delete(sessionId);
       activeProcessStartTimes.delete(sessionId);
-      stoppedSessions.set(sessionId, true);  // Prevent buffered data from emitting
-
-      // When user explicitly stops, prevent auto-resume by clearing session state
-      // This ensures any new message starts a fresh Claude session, not a resume
+      
+      // Mark session as interrupted for proper resume handling
       if (session) {
-        session.wasInterrupted = false;  // Don't allow auto-resume
-        session.claudeSessionId = null;  // Clear so next message starts fresh
-        session.interruptedSessionId = null;  // Clear interrupted session too
-        console.log(`🛑 Session ${sessionId} stopped by user - cleared session state to prevent auto-resume`);
+        session.wasInterrupted = true;
+        console.log(`🔄 Session ${sessionId} interrupted - marked wasInterrupted=true for followup`);
       }
       
       // If we have a last assistant message, mark it as done streaming
@@ -6998,7 +6719,7 @@ Format as a clear, structured summary that preserves all important context.`;
           }
         }
       });
-
+      
       // Send callback response so client knows interrupt completed
       if (callback) {
         callback({ success: true });
@@ -7024,7 +6745,7 @@ Format as a clear, structured summary that preserves all important context.`;
       }
     }
   });
-  
+
   socket.on('clearSession', ({ sessionId }) => {
     const session = sessions.get(sessionId);
     if (!session) {
@@ -7036,19 +6757,7 @@ Format as a clear, structured summary that preserves all important context.`;
     const claudeProcess = activeProcesses.get(sessionId);
     if (claudeProcess) {
       console.log(`🛑 Killing process for cleared session ${sessionId} (PID: ${claudeProcess.pid})`);
-      const isWindows = process.platform === 'win32';
-      if (isWindows && claudeProcess.pid) {
-        // On Windows, use taskkill to force kill the entire process tree
-        try {
-          require('child_process').execSync(`taskkill /F /T /PID ${claudeProcess.pid}`, {
-            stdio: 'ignore',
-            timeout: 5000
-          });
-        } catch (e) {
-          console.log(`⚠️ taskkill failed: ${e.message}`);
-        }
-        try { claudeProcess.kill(); } catch (e) {}
-      } else if (claudeProcess.pid) {
+      if (claudeProcess.pid) {
         try {
           process.kill(-claudeProcess.pid, 'SIGINT');
         } catch (e) {
@@ -7067,11 +6776,20 @@ Format as a clear, structured summary that preserves all important context.`;
     session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
     session.wasInterrupted = false;  // Reset interrupted flag
     session.wasCompacted = false;  // Reset compacted flag
+    session.lastActivity = Date.now();  // Update last activity on clear
+
+    // Clean up associated state Maps (but session stays alive)
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
-    stoppedSessions.delete(sessionId);  // Clear stopped flag so new messages can be processed
+    allAssistantMessageIds.delete(sessionId);  // Clear all assistant message IDs
+    wrapperState.sessions.delete(sessionId);  // Clear wrapper state (will be recreated on next message)
+    messageBatches.delete(sessionId);  // Clear message batches
+    pendingInterrupts.delete(sessionId);  // Clear pending interrupts
+    spawningProcesses.delete(sessionId);  // Clear spawning state
+    cancelPendingStreamingFalse(sessionId);  // Clear pending streaming timers
+    cleanupBatch(sessionId);  // Ensure batch cleanup
 
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
-    
+
     // Send clear confirmation
     socket.emit(`message:${sessionId}`, {
       type: 'system',
@@ -7079,400 +6797,43 @@ Format as a clear, structured summary that preserves all important context.`;
       message: 'session cleared',
       timestamp: Date.now()
     });
-    
-    // Emit title reset
-    const eventName = `title:${sessionId}`;
-    console.log(`🏷️ Emitting title reset for cleared session: ${eventName}`);
-    socket.emit(eventName, { title: 'new session' });
+
+    // Note: Don't emit title reset - frontend handles tab numbering in clearContext
   });
   
   socket.on('deleteSession', async (data, callback) => {
     const { sessionId } = data;
+    console.log(`🗑️ Deleting session ${sessionId} and cleaning up all associated state`);
+
+    // Clean up all Maps associated with this session
     sessions.delete(sessionId);
+    wrapperState.sessions.delete(sessionId);  // Clean up wrapper state
+    messageBatches.delete(sessionId);  // Clean up message batches
     lastAssistantMessageIds.delete(sessionId);  // Clean up tracking
-    stoppedSessions.delete(sessionId);  // Clean up stopped flag
+    allAssistantMessageIds.delete(sessionId);  // Clean up all assistant message IDs
+    activeProcesses.delete(sessionId);  // Clean up any orphaned process references
+    activeProcessStartTimes.delete(sessionId);  // Clean up process start times
+    streamHealthChecks.delete(sessionId);  // Clean up stream health checks
+    streamTimeouts.delete(sessionId);  // Clean up stream timeouts
     cancelPendingStreamingFalse(sessionId);  // Clean up pending streaming timers
     spawningProcesses.delete(sessionId);  // Clean up spawning state
+    pendingInterrupts.delete(sessionId);  // Clean up pending interrupts
+    cleanupBatch(sessionId);  // Ensure batch cleanup
+
     callback({ success: true });
-  });
-
-  // Checkpoint system implementation
-  const checkpoints = new Map(); // Map of sessionId -> array of checkpoints
-  const timelines = new Map();   // Map of sessionId -> timeline
-  
-  // Create checkpoint handler
-  socket.on('create-checkpoint', async (data) => {
-    const { sessionId, description, trigger = 'manual' } = data;
-    console.log(`📸 Creating checkpoint for session ${sessionId}`);
-    
-    try {
-      const session = sessions.get(sessionId);
-      if (!session) {
-        socket.emit('checkpoint-error', { 
-          sessionId, 
-          error: 'Session not found' 
-        });
-        return;
-      }
-      
-      // Create checkpoint ID
-      const checkpointId = `chk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Capture current state
-      const checkpoint = {
-        id: checkpointId,
-        sessionId: sessionId,
-        projectPath: session.projectPath || process.cwd(),
-        parentId: timelines.get(sessionId)?.currentCheckpoint,
-        createdAt: new Date().toISOString(),
-        messageCount: session.messages ? session.messages.length : 0,
-        metadata: {
-          description: description,
-          trigger: trigger,
-          tokensUsed: session.tokenCount || 0,
-          model: session.model || 'opus',
-          messageIds: session.messages ? session.messages.map(m => m.id) : [],
-        },
-        fileSnapshots: [], // TODO: Implement file tracking
-      };
-      
-      // Store checkpoint
-      if (!checkpoints.has(sessionId)) {
-        checkpoints.set(sessionId, []);
-      }
-      checkpoints.get(sessionId).push(checkpoint);
-      
-      // Update timeline
-      if (!timelines.has(sessionId)) {
-        timelines.set(sessionId, {
-          sessionId: sessionId,
-          rootCheckpoint: checkpointId,
-          currentCheckpoint: checkpointId,
-          checkpoints: new Map(),
-          branches: [],
-        });
-      } else {
-        const timeline = timelines.get(sessionId);
-        timeline.currentCheckpoint = checkpointId;
-        timeline.checkpoints.set(checkpointId, checkpoint);
-      }
-      
-      // Save to disk (optional) - handle platform-specific paths
-      const homeDir = process.platform === 'win32' 
-        ? process.env.USERPROFILE || process.env.HOMEDRIVE + process.env.HOMEPATH
-        : process.env.HOME || homedir();
-      const checkpointDir = path.join(homeDir, '.yume', 'checkpoints', sessionId);
-      if (!fs.existsSync(checkpointDir)) {
-        fs.mkdirSync(checkpointDir, { recursive: true });
-      }
-      
-      const checkpointFile = path.join(checkpointDir, `${checkpointId}.json`);
-      fs.writeFileSync(checkpointFile, JSON.stringify(checkpoint, null, 2));
-      
-      console.log(`✅ Checkpoint created: ${checkpointId}`);
-      socket.emit('checkpoint-created', { 
-        sessionId, 
-        checkpoint 
-      });
-      
-    } catch (error) {
-      console.error('❌ Checkpoint creation failed:', error);
-      socket.emit('checkpoint-error', { 
-        sessionId, 
-        error: error.message 
-      });
-    }
-  });
-
-  // Restore checkpoint handler
-  socket.on('restore-checkpoint', async (data) => {
-    const { sessionId, checkpointId } = data;
-    console.log(`⏮️ Restoring checkpoint ${checkpointId} for session ${sessionId}`);
-    
-    try {
-      const sessionCheckpoints = checkpoints.get(sessionId);
-      if (!sessionCheckpoints) {
-        throw new Error('No checkpoints found for session');
-      }
-      
-      const checkpoint = sessionCheckpoints.find(c => c.id === checkpointId);
-      if (!checkpoint) {
-        throw new Error('Checkpoint not found');
-      }
-      
-      const session = sessions.get(sessionId);
-      if (!session) {
-        throw new Error('Session not found');
-      }
-      
-      // Restore messages up to checkpoint
-      const restoredMessages = session.messages.filter(m => 
-        checkpoint.metadata.messageIds.includes(m.id)
-      );
-      
-      // Update session state
-      session.messages = restoredMessages;
-      session.tokenCount = checkpoint.metadata.tokensUsed;
-      
-      // Update timeline
-      const timeline = timelines.get(sessionId);
-      if (timeline) {
-        timeline.currentCheckpoint = checkpointId;
-      }
-      
-      console.log(`✅ Checkpoint restored: ${checkpointId}`);
-      socket.emit('checkpoint-restored', { 
-        sessionId, 
-        checkpointId,
-        messages: restoredMessages 
-      });
-      
-    } catch (error) {
-      console.error('❌ Checkpoint restoration failed:', error);
-      socket.emit('checkpoint-error', { 
-        sessionId, 
-        error: error.message 
-      });
-    }
-  });
-
-  // Get timeline handler
-  socket.on('get-timeline', async (data) => {
-    const { sessionId } = data;
-    
-    const timeline = timelines.get(sessionId);
-    const sessionCheckpoints = checkpoints.get(sessionId) || [];
-    
-    socket.emit('timeline-data', {
-      sessionId,
-      timeline: timeline || null,
-      checkpoints: sessionCheckpoints,
-    });
-  });
-
-  // Agent execution system implementation
-  const agentRuns = new Map(); // Map of runId -> agent run data
-  const activeAgents = new Map(); // Map of runId -> active process
-  
-  // Execute agent handler
-  socket.on('execute-agent', async (data) => {
-    const { 
-      sessionId, 
-      agentConfig,
-      projectPath = process.cwd()
-    } = data;
-    
-    console.log(`🤖 Executing agent for session ${sessionId}`);
-    
-    const runId = `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    try {
-      // Create agent run record
-      const agentRun = {
-        id: runId,
-        sessionId: sessionId,
-        status: 'starting',
-        config: agentConfig,
-        projectPath: projectPath,
-        startTime: new Date().toISOString(),
-        endTime: null,
-        output: [],
-        metrics: {
-          messagesProcessed: 0,
-          tokensUsed: 0,
-          toolsExecuted: 0,
-          errors: 0,
-        },
-      };
-      
-      agentRuns.set(runId, agentRun);
-      
-      // Build Claude command with agent configuration
-      const args = [
-        '--output-format', 'stream-json',
-        '--verbose',
-        '--print',
-      ];
-      
-      // Add model if specified
-      if (agentConfig.model) {
-        args.push('--model', agentConfig.model);
-      }
-      
-      // Add system prompt if provided
-      let systemPrompt = agentConfig.systemPrompt || '';
-      if (agentConfig.task) {
-        systemPrompt = `${systemPrompt}\n\nTask: ${agentConfig.task}`;
-      }
-      
-      // Spawn Claude process for agent - handle platform differences
-      const spawnArgs = [...args];
-      console.log(`🚀 Spawning agent process: claude ${spawnArgs.join(' ')}`);
-      
-      // Determine Claude path based on platform
-      const isWindows = process.platform === 'win32';
-      const isWSL = process.platform === 'linux' && fs.existsSync('/mnt/c');
-      const actualClaudePath = isWindows ? 
-        (claudePath.endsWith('.cmd') ? claudePath : `${claudePath}.cmd`) :
-        claudePath;
-      
-      const agentProcess = spawn(actualClaudePath, spawnArgs, {
-        cwd: projectPath,
-        env: { ...process.env },
-        shell: isWindows, // Use shell on Windows for .cmd files
-      });
-      
-      activeAgents.set(runId, agentProcess);
-      agentRun.status = 'running';
-      
-      // Send initial message with system prompt
-      if (systemPrompt) {
-        agentProcess.stdin.write(systemPrompt + '\n');
-      }
-      
-      // Handle agent output
-      let outputBuffer = '';
-      agentProcess.stdout.on('data', (chunk) => {
-        outputBuffer += chunk.toString();
-        const lines = outputBuffer.split('\n');
-        outputBuffer = lines.pop() || '';
-        
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const parsed = JSON.parse(line);
-              
-              // Update metrics
-              agentRun.metrics.messagesProcessed++;
-              
-              // Track tool usage
-              if (parsed.type === 'tool_use') {
-                agentRun.metrics.toolsExecuted++;
-              }
-              
-              // Track token usage
-              if (parsed.type === 'result' && parsed.usage) {
-                agentRun.metrics.tokensUsed += (parsed.usage.output_tokens || 0);
-              }
-              
-              // Store output
-              agentRun.output.push({
-                timestamp: new Date().toISOString(),
-                data: parsed,
-              });
-              
-              // Emit progress update
-              socket.emit('agent-progress', {
-                runId,
-                sessionId,
-                data: parsed,
-                metrics: agentRun.metrics,
-              });
-              
-            } catch (e) {
-              console.error('Failed to parse agent output:', e);
-              agentRun.metrics.errors++;
-            }
-          }
-        }
-      });
-      
-      // Handle agent errors
-      agentProcess.stderr.on('data', (chunk) => {
-        const error = chunk.toString();
-        console.error(`❌ Agent error: ${error}`);
-        agentRun.metrics.errors++;
-        
-        socket.emit('agent-error', {
-          runId,
-          sessionId,
-          error: error,
-        });
-      });
-      
-      // Handle agent completion
-      agentProcess.on('close', (code) => {
-        console.log(`✅ Agent completed with code ${code}`);
-        
-        agentRun.status = code === 0 ? 'completed' : 'failed';
-        agentRun.endTime = new Date().toISOString();
-        
-        activeAgents.delete(runId);
-        
-        socket.emit('agent-completed', {
-          runId,
-          sessionId,
-          status: agentRun.status,
-          metrics: agentRun.metrics,
-        });
-        
-        // Auto-create checkpoint after agent run if configured
-        if (agentConfig.createCheckpoint) {
-          const checkpointData = {
-            sessionId: sessionId,
-            description: `Agent run: ${agentConfig.name || runId}`,
-            trigger: 'auto',
-          };
-          socket.emit('create-checkpoint', checkpointData);
-        }
-      });
-      
-      socket.emit('agent-started', {
-        runId,
-        sessionId,
-        config: agentConfig,
-      });
-      
-    } catch (error) {
-      console.error('❌ Agent execution failed:', error);
-      socket.emit('agent-error', {
-        runId,
-        sessionId,
-        error: error.message,
-      });
-    }
-  });
-  
-  // Stop agent handler
-  socket.on('stop-agent', async (data) => {
-    const { runId } = data;
-    console.log(`⏹️ Stopping agent ${runId}`);
-    
-    const agentProcess = activeAgents.get(runId);
-    if (agentProcess) {
-      agentProcess.kill('SIGINT');
-      activeAgents.delete(runId);
-      
-      const agentRun = agentRuns.get(runId);
-      if (agentRun) {
-        agentRun.status = 'stopped';
-        agentRun.endTime = new Date().toISOString();
-      }
-      
-      socket.emit('agent-stopped', { runId });
-    } else {
-      socket.emit('agent-error', {
-        runId,
-        error: 'Agent not found or already stopped',
-      });
-    }
-  });
-  
-  // Get agent runs handler
-  socket.on('get-agent-runs', async (data) => {
-    const { sessionId } = data;
-    
-    const sessionRuns = Array.from(agentRuns.values())
-      .filter(run => run.sessionId === sessionId);
-    
-    socket.emit('agent-runs-data', {
-      sessionId,
-      runs: sessionRuns,
-    });
   });
 
   socket.on('disconnect', () => {
     console.log('🔌 Client disconnected:', socket.id);
+
+    // Clean up vscode connection if this was a vscode client
+    if (vscodeConnections.has(socket.id)) {
+      vscodeConnections.delete(socket.id);
+      vscodeConnected = vscodeConnections.size > 0;
+      console.log(`🆚 VSCode client disconnected: ${socket.id} (total: ${vscodeConnections.size})`);
+      io.emit('vscode:status', { connected: vscodeConnected, count: vscodeConnections.size });
+    }
+
     // Clean up any processes and intervals associated with this socket
     for (const [sessionId, session] of sessions.entries()) {
       if (session.socketId === socket.id) {
@@ -7489,16 +6850,7 @@ Format as a clear, structured summary that preserves all important context.`;
         const claudeProcess = activeProcesses.get(sessionId);
         if (claudeProcess) {
           console.log(`🧹 Cleaning up process for session ${sessionId} (PID: ${claudeProcess.pid})`);
-          const isWindows = process.platform === 'win32';
-          if (isWindows && claudeProcess.pid) {
-            try {
-              require('child_process').execSync(`taskkill /F /T /PID ${claudeProcess.pid}`, {
-                stdio: 'ignore',
-                timeout: 5000
-              });
-            } catch (e) {}
-            try { claudeProcess.kill(); } catch (e) {}
-          } else if (claudeProcess.pid) {
+          if (claudeProcess.pid) {
             try {
               process.kill(-claudeProcess.pid, 'SIGINT');
             } catch (e) {
@@ -7511,8 +6863,13 @@ Format as a clear, structured summary that preserves all important context.`;
           activeProcessStartTimes.delete(sessionId);
         }
         lastAssistantMessageIds.delete(sessionId);
+        allAssistantMessageIds.delete(sessionId);  // Clean up all assistant message IDs
+        wrapperState.sessions.delete(sessionId);  // Clean up wrapper state
+        messageBatches.delete(sessionId);  // Clean up message batches
+        pendingInterrupts.delete(sessionId);  // Clean up pending interrupts
         cancelPendingStreamingFalse(sessionId);  // Clean up pending streaming timers
         spawningProcesses.delete(sessionId);  // Clean up spawning state
+        cleanupBatch(sessionId);  // Ensure batch cleanup
       }
     }
   });
@@ -7598,17 +6955,36 @@ cleanupOldPidFiles();
 // PARENT PID WATCHDOG - BULLETPROOF ZOMBIE PREVENTION
 // ============================================
 // The server will self-terminate when its parent (Tauri) dies.
-// On Windows, we check if the parent process still exists.
+// This is the ONLY reliable way to prevent zombie processes when:
+// - User presses Cmd+Q on macOS
+// - Tauri crashes
+// - System kills the app
+// - Force quit
+// Without this, the server becomes orphaned (PPID=1) and runs forever.
 
 const PARENT_PID_AT_STARTUP = process.ppid;
 console.log(`👁️ Parent PID watchdog initialized: parent=${PARENT_PID_AT_STARTUP}, self=${process.pid}`);
 
 function isParentAlive() {
   try {
-    // Try to signal parent - if it fails with ESRCH, parent is dead
+    // Check if parent process still exists
+    // On macOS/Linux, process.ppid returns current parent
+    // If parent dies, ppid becomes 1 (launchd/init)
+    const currentPpid = process.ppid;
+
+    // If PPID changed to 1, parent died
+    if (currentPpid === 1 && PARENT_PID_AT_STARTUP !== 1) {
+      console.log(`💀 Parent died! PPID changed from ${PARENT_PID_AT_STARTUP} to 1 (launchd/init)`);
+      return false;
+    }
+
+    // Double-check: try to signal the original parent
+    // kill(pid, 0) checks if process exists without sending a signal
     process.kill(PARENT_PID_AT_STARTUP, 0);
     return true;
   } catch (err) {
+    // ESRCH = No such process (parent died)
+    // EPERM = Permission denied (parent exists but we can't signal it - still alive)
     if (err.code === 'ESRCH') {
       console.log(`💀 Parent process ${PARENT_PID_AT_STARTUP} no longer exists (ESRCH)`);
       return false;
@@ -7621,25 +6997,40 @@ function isParentAlive() {
 let watchdogInterval = null;
 
 function startParentWatchdog() {
+  // Check parent every 500ms - fast enough to catch quick exits
   watchdogInterval = setInterval(() => {
     if (!isParentAlive()) {
       console.log('🛑 Parent process died - server self-terminating to prevent zombie...');
+
+      // Clean shutdown
       cleanupGitLocks();
       forceKillAllChildren();
       removePidFile();
-      if (watchdogInterval) clearInterval(watchdogInterval);
+
+      // Stop the watchdog
+      if (watchdogInterval) {
+        clearInterval(watchdogInterval);
+      }
+
+      // Exit immediately
       console.log('✅ Self-termination complete - goodbye!');
       process.exit(0);
     }
   }, 500);
+
+  // Ensure watchdog doesn't prevent process exit
   watchdogInterval.unref();
+
   console.log('👁️ Parent watchdog started - server will self-terminate if parent dies');
 }
 
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
+
+  // Start the parent watchdog AFTER server is running
   startParentWatchdog();
+
   console.log(`🚀 yume server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
@@ -7672,30 +7063,16 @@ httpServer.listen(PORT, () => {
   }
   
   console.log(`✅ Server configured for ${platform() === 'win32' ? 'Windows' : platform()}`);
-  
-  // Skip bash warmup - not needed with exec()
-  console.log('✅ Server ready for bash commands');
 });
 
 // Handle port already in use error
 httpServer.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use`);
-    console.log('Attempting to kill existing process and retry...');
-    
-    // Try to kill any existing Node.js servers on this port
-    const { exec } = require('child_process');
-    exec(`lsof -ti :${PORT} | xargs kill -9`, (err) => {
-      if (!err) {
-        console.log('Killed existing process, retrying in 1 second...');
-        setTimeout(() => {
-          httpServer.listen(PORT);
-        }, 1000);
-      } else {
-        console.error('Failed to kill existing process. Please restart the app.');
-        process.exit(1);
-      }
-    });
+    console.error(`❌ Port ${PORT} is already in use (likely another yume instance)`);
+    console.error('Exiting - Tauri will retry with a different port');
+    // Exit with code 48 (EADDRINUSE) to signal port conflict to Tauri
+    // Do NOT kill other processes - allow multiple yume instances to coexist
+    process.exit(48);
   } else {
     console.error('Server error:', error);
     process.exit(1);

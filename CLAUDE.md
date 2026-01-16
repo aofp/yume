@@ -98,10 +98,11 @@ npm run ensure:server          # Check if server binary exists, build if missing
 ```
 
 ### Build System Notes
-- **46 npm scripts** total (see package.json)
-- **28 utility scripts** in `scripts/` directory
+- **45 npm scripts** total (see package.json)
+- **29 utility scripts** in `scripts/` directory
 - Server compilation: esbuild bundle → bytenode V8 bytecode → pkg binary
 - V8 bytecode protection prevents source inspection
+- **Unified binary architecture**: Server + yume-cli combined into single `yume-bin-*` binary
 
 ## Architecture
 
@@ -120,8 +121,8 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files (32 files, 16,853 lines, 146 Tauri commands)
-- `lib.rs` - Main entry, Tauri setup, all 146 commands registered
+### Critical Rust Files (45 files, ~24,000 lines, 156 Tauri commands)
+- `lib.rs` - Main entry, Tauri setup, all 156 commands registered
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
 - `stream_parser.rs` - Claude output stream parsing
@@ -142,7 +143,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `compaction/mod.rs` - CompactionManager implementation
 - `hooks/mod.rs` - Hook system implementation (9 event types)
 - `mcp/mod.rs` - MCP server management
-- `commands/mod.rs` - Main IPC commands (65 commands, 2,795 lines)
+- `commands/mod.rs` - Main IPC commands (68 commands, 2,811 lines)
 - `commands/hooks.rs` - Hooks system (4 commands)
 - `commands/mcp.rs` - MCP integration (6 commands)
 - `commands/compaction.rs` - Context compaction (9 commands)
@@ -155,17 +156,17 @@ npm run ensure:server          # Check if server binary exists, build if missing
 
 ### Critical Frontend Files
 **Stores (1 Zustand store):**
-- `stores/claudeCodeStore.ts` - Main Zustand store (5,754 lines, 258KB, 80+ actions)
+- `stores/claudeCodeStore.ts` - Main Zustand store (5,967 lines, ~285KB, 80+ actions)
 
 **Services (24 files):**
-- `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,157 lines)
+- `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,259 lines)
 - `services/claudeCodeClient.ts` - Socket.IO client for server communication (1,064 lines)
 - `services/compactionService.ts` - Context compaction logic (588 lines)
 - `services/licenseManager.ts` - License validation Zustand store (305 lines)
 - `services/conversationStore.ts` - UCF conversation persistence (NOT Zustand, service class)
 - `services/conversationTranslator.ts` - Multi-provider format translation (1,003 lines)
 - `services/hooksConfigService.ts` - Hooks configuration
-- `services/hooksService.ts` - Hook execution (8 events in TS vs 9 in Rust)
+- `services/hooksService.ts` - Hook execution (9 events, snake_case naming)
 - `services/databaseService.ts` - Frontend database integration
 - `services/mcpService.ts` - MCP server management
 - `services/pluginService.ts` - Plugin management (install, enable, sync)
@@ -179,49 +180,62 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `services/modalService.ts` - Global alert/confirm dialogs
 - `services/providersService.ts` - Multi-provider state management
 - `services/providerPromptService.ts` - Provider-aware system prompt formatting
+- `services/systemPromptService.ts` - System prompt generation
+- `services/platformUtils.ts` - Platform detection utilities
+- `services/tauriApi.ts` - TypeScript types for Tauri commands
 
 **Components (no /Modals/ directory - modals scattered in subdirs):**
 - `App.minimal.tsx` - Main app component
 - `ClaudeMdEditor/ClaudeMdEditorModal.tsx` - CLAUDE.md editor
 - `Upgrade/UpgradeModal.tsx` - License upgrade prompts
 - `Analytics/AnalyticsModal.tsx` - Analytics dashboard
-- `Settings/SettingsModalTabbed.tsx` - Current settings (8 tabs)
+- `Settings/SettingsModalTabbed.tsx` - Current settings (6 tabs: General, Hooks, MCP, Plugins, Skills, Providers)
 - `Settings/PluginsTab.tsx` - Plugin management UI
 - `Settings/SkillsTab.tsx` - Skills management UI (LIMITED: no trigger config UI)
+- `Settings/ProvidersTab.tsx` - Multi-provider configuration (Claude, Gemini, OpenAI)
+- `Settings/HooksTab.tsx` - Hook event configuration
+- `Settings/MCPTab.tsx` - MCP server management
 - `Timeline/TimelineNavigator.tsx` - Timeline & checkpoints UI
-- `Chat/ClaudeChat.tsx` - Main chat orchestrator (64k+ tokens, needs refactoring)
-- `Chat/MessageRenderer.tsx` - Message rendering (40k+ tokens, needs refactoring)
+- `Chat/ClaudeChat.tsx` - Main chat orchestrator (5,537 lines)
+- `Chat/MessageRenderer.tsx` - Message rendering (3,761 lines)
 - `Chat/ContextBar.tsx` - Context usage visualization
 - `Chat/DiffViewer.tsx` - Code diff rendering
 - `Chat/VirtualizedMessageList.tsx` - Message virtualization with scroll anchoring
 
 ### Server Binaries (in resources/)
-- `yume-server-macos-arm64` / `yume-server-macos-x64` - macOS binaries
-- `yume-server-windows-x64.exe` - Windows binary
-- `yume-server-linux-x64` - Linux binary
+Uses unified binary architecture - server and CLI combined into single binary:
+- `yume-bin-macos-arm64` / `yume-bin-macos-x64` - macOS unified binaries
+- `yume-cli-macos-arm64` / `yume-cli-macos-x64` - Shell wrappers that invoke `yume-bin-* cli`
+- Windows/Linux binaries: Not currently bundled (build scripts exist)
 
 ### yume-cli (Multi-Provider Shim)
 **Location**: `src-yume-cli/`
-**Status**: COMPLETE - bundled binaries for macOS (arm64/x64), Windows (x64), Linux (x64)
+**Status**: COMPLETE - embedded in unified binary for macOS (arm64/x64)
 
-TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format. Build with esbuild for bundling, pkg for standalone binaries.
+TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format. **Architecture**: yume-cli is embedded inside `yume-bin-*` unified binary and invoked via `yume-bin-* cli` subcommand. Shell wrapper scripts (`yume-cli-*`) provide the CLI interface.
 
-**Key Files** (2,600+ lines total):
-- `src/index.ts` (242 lines) - CLI entry point, argument parsing
-- `src/types.ts` (268 lines) - Type definitions (includes toolCallDelta.name)
-- `src/core/agent-loop.ts` (353 lines) - Main Think→Act→Observe loop with tool delta assembly
-- `src/core/plugins.ts` (362 lines) - Plugin loader (agents, skills from `~/.yume/plugins/`)
-- `src/core/emit.ts` (324 lines) - Stream-json message emitters
-- `src/core/session.ts` (229 lines) - Session persistence to `~/.yume/sessions/{provider}/`
-- `src/core/pathSecurity.ts` (182 lines) - Path validation, traversal prevention
-- `src/providers/gemini.ts` (365 lines) - Gemini CLI spawner with tool translation
-- `src/providers/openai.ts` (460 lines) - Codex CLI spawner with tool detection
-- `src/tools/` (7 tools) - bash, read, write, edit, glob, grep, ls
+**Key Files** (4,509 lines total):
+- `src/index.ts` (246 lines) - CLI entry point, argument parsing
+- `src/types.ts` (267 lines) - Type definitions (includes toolCallDelta.name)
+- `src/core/agent-loop.ts` (352 lines) - Main Think→Act→Observe loop with tool delta assembly
+- `src/core/plugins.ts` (361 lines) - Plugin loader (agents, skills from `~/.yume/plugins/`)
+- `src/core/emit.ts` (323 lines) - Stream-json message emitters
+- `src/core/session.ts` (228 lines) - Session persistence to `~/.yume/sessions/{provider}/`
+- `src/core/pathSecurity.ts` (181 lines) - Path validation, traversal prevention
+- `src/providers/gemini.ts` (364 lines) - Gemini CLI spawner with tool translation
+- `src/providers/openai.ts` (459 lines) - Codex CLI spawner with tool detection
+- `src/providers/base.ts` (110 lines) - Base provider class
+- `src/tools/` (8 tools) - bash, read, write, edit, glob, grep, ls, file
 
 **Safety Limits**:
 - MAX_TURNS: 50, MAX_DURATION_MS: 10 min, MAX_HISTORY_MESSAGES: 100
 - Tool execution timeout: 2 min (bash), 5 min (provider process)
 - Bash command whitelist (~50 commands) and blacklist (dangerous patterns)
+
+**Provider Naming**:
+- yume-cli uses `'anthropic'` internally (matching official CLI naming)
+- Frontend uses `'claude'` as the provider type
+- Both refer to the same provider, normalized at integration boundaries
 
 **Tool Translation** (codex → claude format):
 - `command_execution` → Detected from command pattern:
@@ -328,28 +342,28 @@ When building on Windows for Windows, ensure:
 - `yume-specialist` - Domain-specific tasks
 
 Sync commands: `sync_yume_agents(enabled, model)`, `are_yume_agents_synced`, `cleanup_yume_agents_on_exit`
-PID tracking in `.yume-pids/` prevents multi-instance conflicts.
+PID tracking in `~/.yume/pids/` prevents multi-instance conflicts.
 
 ### License Management System
-**Trial vs Pro**: Trial users limited to 2 tabs and 1 window. Pro license ($21) unlocks 99 tabs and 99 windows.
+**Demo vs Pro**: Demo users limited to 2 tabs and 1 window. Pro license ($21) unlocks 99 tabs and 99 windows.
 
 **Implementation**:
 - Location: `src/renderer/services/licenseManager.ts` (Zustand store in services dir)
 - Server-side validation with 5-minute cache: `https://yuru.be/api/license/validate.php`
 - Encrypted storage using XOR cipher with base64 encoding in localStorage
 - Auto-revalidation every 30 minutes
-- Storage key: `yume-license-v3`
+- Storage key: `yume-license-v3` (derived from APP_ID via `appStorageKey()`)
 
-**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters, uppercase alphanumeric)
+**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters, Base32-like charset: `23456789ABCDEFGHJKLMNPQRSTUVWXYZ` - excludes 0, 1, I, O for readability)
 
 **Commands**:
 - `validateLicense(key)` - Server-side validation
 - `activateLicense(key)` - Activate license and update feature limits
-- `deactivateLicense()` - Deactivate and return to trial
-- `getFeatures()` - Get current feature limits (maxTabs, maxWindows, isTrial, isLicensed)
+- `deactivateLicense()` - Deactivate and return to demo
+- `getFeatures()` - Get current feature limits (maxTabs, maxWindows)
 - `refreshLicenseStatus()` - Manual revalidation
 
-**UI**: `UpgradeModal.tsx` - Shows upgrade prompts with reasons (tabLimit, feature, trial)
+**UI**: `UpgradeModal.tsx` - Shows upgrade prompts with reasons (tabLimit, feature, demo)
 
 ### Plugin System
 **Complete extensibility framework** for adding custom functionality without modifying code.
@@ -370,12 +384,13 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 **Plugin Structure**:
 ```
 ~/.yume/plugins/{plugin-id}/
-  plugin.json         # Metadata (id, name, version, author, components)
-  commands/           # Custom commands
-  agents/             # Custom agents
-  hooks/              # Custom hooks
-  skills/             # Custom skills
-  mcp/                # MCP server configs
+  .claude-plugin/
+    plugin.json       # Metadata (id, name, version, author, components)
+  commands/           # Custom commands (.md files)
+  agents/             # Custom agents (.md files with YAML frontmatter)
+  hooks/              # Custom hooks (.md files)
+  skills/             # Custom skills (.md files, optional)
+  .mcp.json           # MCP server config (optional, at plugin root)
 ```
 
 **Frontend Service**:
@@ -399,23 +414,26 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 - UI only supports name/description editing
 - Trigger configuration NOT implemented in UI
 - Content editing NOT implemented in UI
-- yume-cli expects JSON skills, Rust plugin system expects MD skills (format mismatch)
-- Missing Rust commands: `write_skill_file`, `remove_skill_file` (called but not implemented)
+- Rust commands `write_skill_file`, `remove_skill_file` exist (implemented in commands/mod.rs)
+- All systems use `.md` files with YAML frontmatter (no format mismatch)
 
 **Skill Types**:
 - **Custom Skills**: User-created, stored in localStorage (`yume_custom_skills`)
 - **Plugin Skills**: Sourced from enabled plugins (read from `.md` files in `skills/`)
 
-**yume-cli Skill Structure** (in `~/.yume/plugins/{id}/skills/*.json`):
-```json
-{
-  "id": "skill-id",
-  "name": "Skill Name",
-  "description": "What this skill does",
-  "triggers": ["*.py", "python", "/^def /"],
-  "content": "Context to inject when triggered",
-  "enabled": true
-}
+**Skill File Structure** (in `~/.yume/plugins/{id}/skills/*.md`):
+```markdown
+---
+id: skill-id
+name: Skill Name
+description: What this skill does
+triggers:
+  - "*.py"
+  - "python"
+  - "/^def /"
+enabled: true
+---
+Context to inject when triggered
 ```
 
 **Current Features**:
@@ -562,26 +580,34 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 **Performance Config** (`config/performance.ts`):
 - Message virtualization threshold (50 messages)
 - Virtual overscan (25 items)
-- Debounce/throttle delays (search, typing, resize, scroll)
-- Memory management (max messages, cache size, cleanup interval)
-- Auto-save intervals
-- Socket and request timeouts
-- UI animation durations
+- Debounce/throttle delays (search 250ms, typing 50ms, resize 150ms, scroll 32ms)
+- Memory management (max 2000 messages, 100MB cache, 1 min cleanup interval)
+- Auto-save interval (30 seconds)
+- Socket reconnect (1s delay, 5 max attempts), request timeout (30s)
+- UI animations (100ms transitions)
 
 **Feature Flags** (`config/features.ts`):
-- `USE_VIRTUALIZATION` - Message virtualization
-- `ENABLE_CHECKPOINTS` - Checkpoint system
-- `SHOW_TIMELINE` - Timeline UI visibility
-- `ENABLE_AGENT_EXECUTION` - Agent execution feature
+- `USE_VIRTUALIZATION` - Message virtualization (enabled)
+- `ENABLE_CHECKPOINTS` - Checkpoint system (enabled)
+- `SHOW_TIMELINE` - Timeline UI visibility (enabled)
+- `ENABLE_AGENT_EXECUTION` - Agent execution feature (enabled)
 - `USE_NATIVE_RUST` - Experimental native Rust execution (disabled)
+- `PROVIDER_GEMINI_AVAILABLE` - Enable Gemini provider (disabled by default)
+- `PROVIDER_OPENAI_AVAILABLE` - Enable OpenAI/Codex provider (disabled by default)
 
 **Provider Configuration** (`config/models.ts`):
 - `ProviderType`: `'claude' | 'gemini' | 'openai'`
 - `PROVIDERS[]` - Provider definitions with CLI commands and auth info
-- `ALL_MODELS[]` - All models across providers
+- `ALL_MODELS[]` - All models across providers (order: claude, openai, gemini)
 - `getProviderForModel(modelId)` - Get provider for a model ID
 - `getModelsForProvider(provider)` - Get models for a provider
 - Sessions lock to their initial provider - switching providers forks the session
+
+**Model Properties**:
+- `contextWindow`: 200k tokens (Claude/OpenAI), 1M tokens (Gemini)
+- `maxOutput`: 8192 (Claude/Gemini), 100k (OpenAI)
+- `supportsThinking`: Opus, Sonnet, Gemini Pro, Codex 5.2
+- `reasoningEffort`: OpenAI only ('low' for mini, 'xhigh' for 5.2)
 
 ### File Operations
 **Safe file management** with conflict detection.
@@ -610,7 +636,7 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 ### Using Plugins
 
 **Installing a Plugin**:
-1. Obtain plugin source (directory with `plugin.json`)
+1. Obtain plugin source (directory with `.claude-plugin/plugin.json`)
 2. Open Settings → Plugins tab
 3. Click "Install from Folder"
 4. Select plugin directory
@@ -619,20 +645,20 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 **Creating a Custom Plugin**:
 ```
 my-plugin/
-  plugin.json          # {"id": "my-plugin", "name": "My Plugin", "version": "1.0.0"}
+  .claude-plugin/
+    plugin.json        # Plugin metadata
   commands/
     mycommand.md       # Custom slash command
   agents/
     myagent.md         # Custom agent with YAML frontmatter
   hooks/
-    prehook.js         # JavaScript hook
+    prehook.md         # Hook definition (.md file)
   skills/
-    myskill.json       # Skill definition
-  mcp/
-    server.json        # MCP server config
+    myskill.md         # Skill definition (.md with YAML frontmatter)
+  .mcp.json            # MCP server config (optional, at root)
 ```
 
-**Example plugin.json**:
+**Example .claude-plugin/plugin.json**:
 ```json
 {
   "id": "my-plugin",
@@ -887,8 +913,9 @@ After running build commands:
 ## Known Issues & Incomplete Features
 
 ### Multi-Provider Integration (Gemini/Codex)
-**Status**: COMPLETE - Production-ready
-- **yume-cli bundled**: Binaries included in release for macOS (arm64/x64), Windows (x64), Linux (x64)
+**Status**: COMPLETE - Code ready, disabled in production via feature flags
+- **yume-cli bundled**: Shell wrappers + unified binaries for macOS (arm64/x64)
+- **Feature flags**: `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` set to `false` by default
 - **Tool call delta assembly**: Implemented in `agent-loop.ts:252-275`
 - **Provider lock-in**: Sessions lock to initial provider, switching forks session (by design)
 - **History format mismatch**: yume-cli uses JSON in `~/.yume/sessions/`, Claude uses JSONL in `~/.claude/projects/`
@@ -896,31 +923,54 @@ After running build commands:
 
 ### Skills System
 **Status**: PARTIALLY IMPLEMENTED
-- **Missing Rust commands**: `write_skill_file`, `remove_skill_file` (called but undefined)
-- **No trigger config UI**: Skills only support name/description editing
-- **Format mismatch**: yume-cli expects JSON, Rust plugin system expects MD
+- **No trigger config UI**: Skills only support name/description editing in UI
+- **No content editing UI**: Must edit .md files directly
+- Rust commands `write_skill_file`, `remove_skill_file` ARE implemented
 
 ### Checkpoint System
-**Status**: DISABLED
+**Status**: ENABLED (feature flag true, but socket listeners disabled)
 - `checkpointService.ts` has socket listeners disabled (line 54-118)
-- Feature flag `ENABLE_CHECKPOINTS` exists but socket events not handled
+- Feature flag `ENABLE_CHECKPOINTS` is true but socket events not handled
+- UI visible but functionality limited
 
 ### Component Architecture Issues
-- **ClaudeChat.tsx**: 64k+ tokens - needs decomposition
-- **MessageRenderer.tsx**: 40k+ tokens - needs decomposition
-- **claudeCodeStore.ts**: 258KB monolith - consider splitting
-- **Duplicate server binaries**: Both `server-*` and `yume-server-*` in resources
+- **ClaudeChat.tsx**: 5,537 lines - large but manageable
+- **MessageRenderer.tsx**: 3,761 lines - large but manageable
+- **claudeCodeStore.ts**: ~285KB monolith (5,967 lines) - consider splitting
+- **Unified binary only on macOS**: Windows/Linux `yume-bin-*` binaries not yet built
 
-### Hook Event Mismatch
-- Rust defines 9 events: UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
-- TypeScript defines 8 events: missing CompactionTrigger
-- Event naming differs (camelCase vs snake_case)
+### Hook Event Naming
+- Rust defines 9 events (PascalCase): UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
+- TypeScript defines 9 events (snake_case): user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, compaction_trigger, error
+- Event count matches, only naming convention differs
 
 ### Build System
 - **dist-server cleanup needed**: 965MB with test/intermediate builds
-- **yume-cli not in bundle**: Must be added to tauri.conf.json resources
-- **Old naming convention**: Some binaries still use `server-*` prefix
+- **Windows/Linux binaries**: Build scripts exist but binaries not yet compiled
+- Binary naming convention migrated to `yume-bin-*` (unified) and `yume-cli-*` (wrapper)
 
 ## Version History
 
-**Last comprehensive audit**: 2026-01-15 (8-agent swarm review)
+**Last comprehensive audit**: 2026-01-16 (10-agent swarm review)
+- Updated Rust file count: 32 → 45 files
+- Updated total lines: 16,853 → ~24,000 lines
+- Updated Tauri commands: 146 → 156 commands
+- Updated npm scripts: 46 → 45 scripts
+- Updated yume-cli lines: 2,600 → 4,509 lines
+- Corrected component line counts (ClaudeChat, MessageRenderer)
+- Added new feature flags (PROVIDER_GEMINI_AVAILABLE, PROVIDER_OPENAI_AVAILABLE)
+- Updated checkpoint system status
+- Fixed license format docs (Base32-like charset, not full alphanumeric)
+- Standardized terminology: "trial" → "demo"
+- Corrected getFeatures() return type (removed isTrial/isLicensed)
+- Fixed server binary naming: `yume-server-*` → `yume-bin-*` (unified binary)
+- Documented unified binary architecture (server + CLI in single binary)
+- Corrected npm scripts: 46 → 45, utility scripts: 28 → 29
+- Fixed yume-cli status (embedded in unified binary, not standalone)
+- Fixed plugin structure: plugin.json in `.claude-plugin/` subdir, not root
+- Fixed MCP config: `.mcp.json` file at root, not `mcp/` directory
+- Corrected skills system: Rust commands exist, all use .md format (no mismatch)
+- Fixed hook events: both Rust and TS have 9 events (naming differs)
+- Clarified multi-provider: code complete but feature flags disabled by default
+- Added yume-cli provider naming note ('anthropic' vs 'claude')
+- Added model properties docs (contextWindow, maxOutput, supportsThinking, reasoningEffort)
