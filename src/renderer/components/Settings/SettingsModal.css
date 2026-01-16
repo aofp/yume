@@ -478,6 +478,7 @@
   display: inline-flex;
   gap: 1px;
   margin-left: 4px;
+  vertical-align: middle;
 }
 
 .theme-color-circles span {
@@ -485,6 +486,13 @@
   height: 4px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.theme-color-circles span:nth-child(2) {
+  margin-top: 0px;
+  width: 6px;
+  height: 6px;
 }
 
 .color-preview .color-square {
