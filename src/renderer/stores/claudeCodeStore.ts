@@ -2624,16 +2624,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // Play completion sound if enabled
                       get().playCompletionSound();
 
-                      // Restore focus on macOS after streaming ends (fallback if trigger:focus wasn't received)
-                      const isMac = navigator.platform.includes('Mac');
-                      if (isMac && window.__TAURI__) {
-                        console.log(`🎯 [FOCUS] Streaming ended - restoring window focus on macOS`);
-                        import('@tauri-apps/api/core').then(({ invoke }) => {
-                          invoke('restore_window_focus').catch(err => {
-                            console.warn('[FOCUS] Failed to restore window focus:', err);
-                          });
-                        });
-                      }
+                      // NOTE: Focus restoration removed here - now handled by ClaudeChat.tsx focus guards
+                      // Calling restore_window_focus here caused race conditions with the periodic
+                      // focus guard and was disrupting WKWebView's internal focus state
 
                       // Actually clear streaming state
                       set(state => ({
@@ -2761,16 +2754,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // Play completion sound if enabled
                       get().playCompletionSound();
 
-                      // Restore focus on macOS after result (fallback if trigger:focus wasn't received)
-                      const isMac = navigator.platform.includes('Mac');
-                      if (isMac && window.__TAURI__) {
-                        console.log(`🎯 [FOCUS] Result received - restoring window focus on macOS`);
-                        import('@tauri-apps/api/core').then(({ invoke }) => {
-                          invoke('restore_window_focus').catch(err => {
-                            console.warn('[FOCUS] Failed to restore window focus:', err);
-                          });
-                        });
-                      }
+                      // NOTE: Focus restoration removed here - now handled by ClaudeChat.tsx focus guards
+                      // Calling restore_window_focus here caused race conditions with the periodic
+                      // focus guard and was disrupting WKWebView's internal focus state
 
                       sessions = sessions.map(s => {
                         if (s.id === sessionId) {
@@ -3176,27 +3162,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
 
               // Set up focus trigger listener (restores focus after bash commands)
-              // Enabled on all platforms - macOS uses NSApp activation (not window.focus)
-              // CRITICAL: window.focus() on macOS disrupts webview's internal focus state
-              // so we only call window.focus() on Windows, but use Tauri command on all platforms
+              // NOTE: macOS server no longer emits trigger:focus - frontend guards handle it
+              // This listener is now primarily for Windows
               const isMac = navigator.platform.includes('Mac');
               console.log(`[Store] Setting up focus trigger listener (platform: ${navigator.platform})`);
               focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
+                // On macOS, the frontend focus guards in ClaudeChat.tsx handle focus restoration
+                // Calling restore_window_focus here would cause race conditions with the guards
+                if (isMac) {
+                  console.log('[Store] Focus trigger received on macOS - skipping (guards handle it)');
+                  return;
+                }
+
                 console.log('[Store] 🎯 Focus trigger received, restoring window focus');
-                // Use Tauri command to restore focus (uses NSApp activation on macOS)
+                // Use Tauri command to restore focus (Windows only now)
                 if (window.__TAURI__) {
                   import('@tauri-apps/api/core').then(({ invoke }) => {
                     invoke('restore_window_focus').catch(console.warn);
                   });
                 }
-                // window.focus() and direct input focus ONLY on Windows
-                // On macOS, these disrupt webview's internal focus state
-                if (!isMac) {
-                  window.focus();
-                  const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-                  if (inputElement) {
-                    inputElement.focus();
-                  }
+                // window.focus() and direct input focus for Windows
+                window.focus();
+                const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+                if (inputElement) {
+                  inputElement.focus();
                 }
               });
             } else {
@@ -3734,27 +3723,30 @@ ${content}`;
         });
 
         // Set up focus trigger listener (restores focus after bash commands)
-        // Enabled on all platforms - macOS uses NSApp activation (not window.focus)
-        // CRITICAL: window.focus() on macOS disrupts webview's internal focus state
-        // so we only call window.focus() on Windows, but use Tauri command on all platforms
+        // NOTE: macOS server no longer emits trigger:focus - frontend guards handle it
+        // This listener is now primarily for Windows
         const isMac = navigator.platform.includes('Mac');
         console.log(`[Store] Setting up focus trigger listener, reconnect (platform: ${navigator.platform})`);
         focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
+          // On macOS, the frontend focus guards in ClaudeChat.tsx handle focus restoration
+          // Calling restore_window_focus here would cause race conditions with the guards
+          if (isMac) {
+            console.log('[Store] Focus trigger received on macOS - skipping (guards handle it)');
+            return;
+          }
+
           console.log('[Store] 🎯 Focus trigger received, restoring window focus');
-          // Use Tauri command to restore focus (uses NSApp activation on macOS)
+          // Use Tauri command to restore focus (Windows only now)
           if (window.__TAURI__) {
             import('@tauri-apps/api/core').then(({ invoke }) => {
               invoke('restore_window_focus').catch(console.warn);
             });
           }
-          // window.focus() and direct input focus ONLY on Windows
-          // On macOS, these disrupt webview's internal focus state
-          if (!isMac) {
-            window.focus();
-            const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-            if (inputElement) {
-              inputElement.focus();
-            }
+          // window.focus() and direct input focus for Windows
+          window.focus();
+          const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+          if (inputElement) {
+            inputElement.focus();
           }
         });
 

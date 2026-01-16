@@ -5788,10 +5788,10 @@ io.on('connection', (socket) => {
                     console.log(`🔧 [${sessionId}] First bash command completed, focus restoration disabled for future commands`);
                   }
 
-                  // Emit event to trigger focus restoration on macOS
-                  socket.emit(`trigger:focus:${bashInfo.sessionId}`, {
-                    timestamp: Date.now()
-                  });
+                  // NOTE: Focus restoration disabled on macOS server-side
+                  // The frontend ClaudeChat.tsx has periodic focus guards that handle this more reliably
+                  // Server-triggered focus restoration was causing race conditions with the guard
+                  // and disrupting WKWebView's internal focus state
                 }
 
                 // Check if this is an Edit/MultiEdit tool result and enhance with context lines

@@ -2708,6 +2708,10 @@ export const ClaudeChat: React.FC = () => {
       // Skip special keys
       if (e.key.length !== 1 && !['Backspace', 'Delete'].includes(e.key)) return;
 
+      // Skip keys that have special functions (handled elsewhere)
+      // ? = help modal, / = command mode trigger (let it be handled normally)
+      if (e.key === '?') return;
+
       // Skip if any modal is open
       if (showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
 

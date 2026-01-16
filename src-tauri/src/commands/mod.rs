@@ -2299,10 +2299,10 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
 
     #[cfg(target_os = "macos")]
     {
-        // This command is ONLY called when we explicitly want focus back (after bash/tool completion)
-        // So we SHOULD use activateIgnoringOtherApps here - this is intentional focus recovery
-        // The previous code was wrong: it checked isActive first which made this command useless
-        // when focus was actually lost (the exact situation we need to handle)
+        // CRITICAL FIX: Only activate if app is NOT already active
+        // Calling activateIgnoringOtherApps when already active disrupts WKWebView's
+        // internal focus tracking, causing the textarea to lose focus even though
+        // the app window remains "active" at the NSApp level
         use cocoa::base::{id, YES};
         use objc::{class, msg_send, sel, sel_impl};
 
@@ -2311,11 +2311,26 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
             let ns_window = ns_window as id;
             let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
 
-            // Activate the app first (this brings our app to front, even if another app has focus)
-            let _: () = msg_send![ns_app, activateIgnoringOtherApps: YES];
+            // Check if app is already active - if so, do nothing
+            // This prevents the focus-stealing behavior that was disrupting textarea focus
+            let is_active: bool = msg_send![ns_app, isActive];
+            let is_key: bool = msg_send![ns_window, isKeyWindow];
 
-            // Then make our window key and order it to front
-            let _: () = msg_send![ns_window, makeKeyAndOrderFront: cocoa::base::nil];
+            if is_active && is_key {
+                // App is already active and our window is key - no action needed
+                // Calling activate here would disrupt WKWebView focus
+                return Ok(());
+            }
+
+            // Only activate if we're actually not in front
+            if !is_active {
+                let _: () = msg_send![ns_app, activateIgnoringOtherApps: YES];
+            }
+
+            // Make our window key and order it to front if not already
+            if !is_key {
+                let _: () = msg_send![ns_window, makeKeyAndOrderFront: cocoa::base::nil];
+            }
         }
     }
 
