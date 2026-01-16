@@ -259,7 +259,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const buildHeatmapGrid = (byDate: Record<string, DateStats>) => {
     const dateKeys = Object.keys(byDate);
     if (dateKeys.length === 0) {
-      return { mode: 'daily' as const, items: [] as HeatmapCell[], cells: [] as Array<HeatmapCell | null>, label: null };
+      return { mode: 'daily' as const, items: [] as HeatmapCell[], weeks: [] as Array<Array<HeatmapCell | null>>, label: null };
     }
 
     const today = new Date();
@@ -286,20 +286,39 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
       });
     }
 
-    const pad = items.length > 0 ? items[0].date.getDay() : 0;
-    const cells: Array<HeatmapCell | null> = [...Array(pad).fill(null), ...items];
+    // Group into weeks (Sun-Sat rows)
+    const weeks: Array<Array<HeatmapCell | null>> = [];
+    let currentWeek: Array<HeatmapCell | null> = [];
 
-    return { mode: 'daily' as const, items, cells, label: null };
+    // Pad first week with nulls if start date isn't Sunday
+    const firstDayOfWeek = items.length > 0 ? items[0].date.getDay() : 0;
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      currentWeek.push(null);
+    }
+
+    for (const day of items) {
+      currentWeek.push(day);
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+    }
+
+    // Pad last week with nulls if incomplete
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push(null);
+      }
+      weeks.push(currentWeek);
+    }
+
+    return { mode: 'daily' as const, items, weeks, label: null };
   };
 
-  const getHeatmapLevel = (tokens: number, maxTokens: number): number => {
+  const getHeatmapIntensity = (tokens: number, maxTokens: number): number => {
     if (tokens <= 0 || maxTokens <= 0) return 0;
-    const ratio = tokens / maxTokens;
-    if (ratio >= 0.75) return 4;
-    if (ratio >= 0.5) return 3;
-    if (ratio >= 0.25) return 2;
-    if (ratio >= 0.01) return 1;
-    return 0;
+    // Use sqrt for better distribution of low values
+    return Math.sqrt(tokens / maxTokens);
   };
 
   // Filter analytics by time range, provider filter, and project
@@ -477,19 +496,13 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const heatmapGrid = filteredAnalytics ? buildHeatmapGrid(filteredAnalytics.byDate) : {
     mode: 'daily' as const,
     items: [] as HeatmapCell[],
-    cells: [] as Array<HeatmapCell | null>,
+    weeks: [] as Array<Array<HeatmapCell | null>>,
     label: null as string | null
   };
   const heatmapItems = heatmapGrid.items;
-  const heatmapCells = heatmapGrid.cells;
+  const heatmapWeeks = heatmapGrid.weeks;
   const heatmapTitle = 'daily usage';
   const heatmapMaxTokens = Math.max(...heatmapItems.map((day) => day.tokens), 1);
-  const heatmapActiveCount = heatmapItems.filter((day) => day.tokens > 0).length;
-  const heatmapTotalTokens = heatmapItems.reduce((sum, day) => sum + day.tokens, 0);
-  const heatmapAverageTokens = heatmapItems.length > 0 ? heatmapTotalTokens / heatmapItems.length : 0;
-  const heatmapPeakCell = heatmapItems.length > 0
-    ? heatmapItems.reduce((max, day) => (day.tokens > max.tokens ? day : max))
-    : null;
 
   return (
     <div className="analytics-modal-overlay" onClick={onClose}>
@@ -554,62 +567,61 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
               {/* OVERVIEW TAB */}
               {activeTab === 'overview' && (
                 <>
-                  {/* Two-column layout: heatmap left, stats right */}
+                  {/* Full-width horizontal heatmap with inline stats */}
                   <div className="overview-main-layout">
-                    {/* Daily Usage Heatmap - left side */}
                     <div className="analytics-section heatmap-section">
                       <div className="usage-heatmap-container">
                         {heatmapItems.length > 0 ? (
                           <>
                             <div className="heatmap-header">
                               <span className="heatmap-title">{heatmapTitle}</span>
-                              <span className="heatmap-summary">
-                                {heatmapActiveCount} active days
-                              </span>
+                              <div className="overview-stats-row">
+                                <div className="overview-stat-card">
+                                  <span className="overview-stat-value">{formatNumber(filteredAnalytics.totalMessages)}</span>
+                                  <span className="overview-stat-label">msgs</span>
+                                </div>
+                                <div className="overview-stat-card">
+                                  <span className="overview-stat-value">{formatNumber(filteredAnalytics.totalTokens)}</span>
+                                  <span className="overview-stat-label">tokens</span>
+                                </div>
+                                <div className="overview-stat-card">
+                                  <span className="overview-stat-value">{formatCost(filteredAnalytics.totalCost)}</span>
+                                  <span className="overview-stat-label">cost</span>
+                                </div>
+                                <div className="overview-stat-card">
+                                  <span className="overview-stat-value">{filteredAnalytics.totalSessions}</span>
+                                  <span className="overview-stat-label">sessions</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="usage-heatmap daily">
-                              {heatmapCells.map((day, index) => {
-                                if (!day) {
-                                  return <div key={`empty-${index}`} className="heatmap-cell empty" />;
-                                }
-                                const level = getHeatmapLevel(day.tokens, heatmapMaxTokens);
-                                return (
-                                  <div
-                                    key={day.key}
-                                    className={`heatmap-cell level-${level}`}
-                                    data-date={day.date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                    data-tokens={day.tokens.toLocaleString()}
-                                    data-sessions={day.sessions}
-                                    data-messages={day.messages}
-                                    data-cost={day.cost > 0 ? formatCost(day.cost) : '$0.00'}
-                                  />
-                                );
-                              })}
+                            <div className="usage-heatmap daily" data-range={timeRange}>
+                              {heatmapWeeks.map((week, weekIndex) => (
+                                <div key={weekIndex} className="heatmap-week">
+                                  {week.map((day, dayIndex) => {
+                                    if (!day) {
+                                      return <div key={`empty-${weekIndex}-${dayIndex}`} className="heatmap-cell empty" />;
+                                    }
+                                    const intensity = getHeatmapIntensity(day.tokens, heatmapMaxTokens);
+                                    return (
+                                      <div
+                                        key={day.key}
+                                        className="heatmap-cell"
+                                        style={{ '--intensity': intensity } as React.CSSProperties}
+                                        data-date={day.date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        data-tokens={day.tokens.toLocaleString()}
+                                        data-sessions={day.sessions}
+                                        data-messages={day.messages}
+                                        data-cost={day.cost > 0 ? formatCost(day.cost) : '$0.00'}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ))}
                             </div>
                           </>
                         ) : (
                           <div className="usage-heatmap-empty">no data for selected period</div>
                         )}
-                      </div>
-                    </div>
-
-                    {/* Stats Cards - right side */}
-                    <div className="overview-stats-column">
-                      <div className="overview-stat-card">
-                        <span className="overview-stat-label">messages</span>
-                        <span className="overview-stat-value">{formatNumber(filteredAnalytics.totalMessages)}</span>
-                      </div>
-                      <div className="overview-stat-card">
-                        <span className="overview-stat-label">tokens</span>
-                        <span className="overview-stat-value">{formatNumber(filteredAnalytics.totalTokens)}</span>
-                      </div>
-                      <div className="overview-stat-card">
-                        <span className="overview-stat-label">cost</span>
-                        <span className="overview-stat-value">{formatCost(filteredAnalytics.totalCost)}</span>
-                      </div>
-                      <div className="overview-stat-card">
-                        <span className="overview-stat-label">sessions</span>
-                        <span className="overview-stat-value">{filteredAnalytics.totalSessions}</span>
                       </div>
                     </div>
                   </div>

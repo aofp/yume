@@ -2096,15 +2096,28 @@ const MessageRendererBase: React.FC<{
 
           {/* Render text content in message bubble if there is any */}
           {hasTextContent && (
-            <div className="message assistant">
-              <div className="message-content">
-                <div className={`message-bubble${followsBashCommand ? ' bash-response' : ''}`}>
-                  {followsBashCommand ? (
-                    <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
-                  ) : (
-                    renderContent(textContent, message, searchQuery, isCurrentMatch)
-                  )}
+            <>
+              <div className="message assistant">
+                <div className="message-content">
+                  <div className={`message-bubble${followsBashCommand ? ' bash-response' : ''}`}>
+                    {followsBashCommand ? (
+                      <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
+                    ) : (
+                      renderContent(textContent, message, searchQuery, isCurrentMatch)
+                    )}
+                  </div>
                 </div>
+                {showButtons && (
+                  <div className="message-actions">
+                    <button
+                      onClick={() => handleCopy(getMessageText(message.message?.content))}
+                      className="action-btn"
+                      title="copy"
+                    >
+                      <IconCopy size={12} stroke={1.5} />
+                    </button>
+                  </div>
+                )}
               </div>
               {followsBashCommand && (message as any).bashElapsedMs !== undefined && (
                 <div className="elapsed-time">
@@ -2113,18 +2126,7 @@ const MessageRendererBase: React.FC<{
                     : `${((message as any).bashElapsedMs / 1000).toFixed(2)}s`}
                 </div>
               )}
-              {showButtons && (
-                <div className="message-actions">
-                  <button
-                    onClick={() => handleCopy(getMessageText(message.message?.content))}
-                    className="action-btn"
-                    title="copy"
-                  >
-                    <IconCopy size={12} stroke={1.5} />
-                  </button>
-                </div>
-              )}
-            </div>
+            </>
           )}
           
           {/* Render tool uses separately outside the message bubble */}
