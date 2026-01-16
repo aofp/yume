@@ -251,6 +251,7 @@
   box-sizing: border-box;
   user-select: text;
   -webkit-user-select: text;
+  cursor: text;
   display: flex;
   flex-direction: column;
   /* isolate from external layout changes */
@@ -551,7 +552,7 @@
 .thinking-indicator-bottom {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 1px;
   padding: 0;
   color: var(--fg-80);
   font-size: var(--text-sm);
@@ -562,7 +563,7 @@
 .thinking-indicator-bottom .thinking-text-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
 }
 
 .thinking-indicator-bottom .thinking-text {
@@ -1005,6 +1006,8 @@ textarea.context-full {
 
 .stop-streaming-btn {
   position: absolute;
+  height: 44px;
+  width: 44px;
   right: 0px;
   bottom: 0px;
   background: rgba(var(--negative-rgb), 0.17);
@@ -1474,6 +1477,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 3px 7px;
+  min-height: 20px;
 }
 
 
@@ -2682,6 +2686,7 @@ textarea.context-full {
   /* CRITICAL: Ensure text selection is always allowed */
   user-select: text;
   -webkit-user-select: text;
+  cursor: text;
 }
 
 /* Ensure message content is selectable during streaming */
@@ -2689,6 +2694,7 @@ textarea.context-full {
 .messages-virtualized .message-content * {
   user-select: text;
   -webkit-user-select: text;
+  cursor: text;
 }
 
 .messages-virtualized::-webkit-scrollbar {
@@ -2872,7 +2878,7 @@ textarea.context-full {
 
 .git-changes-badge {
   font-size: var(--text-xs);
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--bg-overlay), 0.1);
   color: var(--accent-color);
   padding: 0 4px;
   border-radius: 8px;

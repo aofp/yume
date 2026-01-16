@@ -734,7 +734,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
             </>
           ) : (
             <div className="analytics-no-data">
-              <IconChartBar size={32} stroke={1} style={{ opacity: 0.3 }} />
+              <span className="icon-opacity-30"><IconChartBar size={32} stroke={1} /></span>
               <div>no analytics data yet</div>
               <div style={{ fontSize: '11px' }}>start using claude to see usage statistics</div>
             </div>

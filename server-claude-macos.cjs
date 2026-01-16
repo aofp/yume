@@ -5994,11 +5994,8 @@ io.on('connection', (socket) => {
                 }
                 socket.emit(`message:${sessionId}`, toolResultMessage);
 
-                // CRITICAL: Emit focus trigger on macOS to restore app focus after tool execution
-                // Process spawning can steal focus, this brings it back
-                if (process.platform === 'darwin') {
-                  socket.emit(`trigger:focus:${sessionId}`, { timestamp: Date.now() });
-                }
+                // NOTE: Removed focus trigger - it was STEALING focus, not restoring it
+                // Modern macOS doesn't lose focus when spawning child processes
               }
             }
             
@@ -6545,11 +6542,8 @@ io.on('connection', (socket) => {
               timestamp: Date.now()
             });
 
-            // CRITICAL: Emit focus trigger on macOS to restore app focus after response completes
-            // Process spawning can steal focus, this brings it back once we're done
-            if (process.platform === 'darwin') {
-              socket.emit(`trigger:focus:${sessionId}`, { timestamp: Date.now() });
-            }
+            // NOTE: Removed focus trigger - it was STEALING focus, not restoring it
+            // Modern macOS doesn't lose focus when spawning child processes
 
             pendingStreamingFalseTimers.delete(sessionId);
           }, STREAMING_FALSE_DEBOUNCE_MS);

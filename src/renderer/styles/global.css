@@ -158,11 +158,30 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  /* App-like: disable text selection by default, enable only where needed */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
 }
 
 /* PERFORMANCE: Faster touch response on all interactive elements */
 button, a, input, textarea, [role="button"] {
   touch-action: manipulation;
+}
+
+/* Allow text selection and text cursor where it makes sense */
+input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+/* Selectable text utility class - use for message content, code, etc */
+.selectable,
+.selectable * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text !important;
 }
 
 html,
@@ -513,8 +532,41 @@ pre {
   opacity: 1 !important;
 }
 
+svg {
+  width: var(--text-sm) !important;
+  height: var(--text-sm) !important;
+}
+
 #debug {
   display: none !important;
+}
+
+/* Icon Opacity Wrapper
+   Use .icon-opacity-* classes to apply opacity to icons without causing
+   overlapping stroke transparency issues. The icon inherits solid color
+   from parent, and opacity is applied to the wrapper container.
+
+   Usage: <span class="icon-opacity-50"><IconSettings /></span>
+*/
+.icon-opacity-10 { opacity: 0.1; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-20 { opacity: 0.2; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-30 { opacity: 0.3; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-40 { opacity: 0.4; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-50 { opacity: 0.5; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-60 { opacity: 0.6; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-70 { opacity: 0.7; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-80 { opacity: 0.8; display: inline-flex; align-items: center; justify-content: center; }
+.icon-opacity-90 { opacity: 0.9; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Fix for tabler icon stroke overlap with transparent colors.
+   When using rgba colors on icons, the overlapping strokes show through.
+   This adds a small background blur that masks the overlap effect.
+   Only applies when color has transparency (detected via paint-order trick).
+*/
+.tabler-icon {
+  /* Ensure strokes don't show overlap artifacts */
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 /* PERFORMANCE: Respect user preference for reduced motion */

@@ -55,7 +55,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/yume-server-*",
+      "resources/yume-bin-*",
       "resources/yume-cli-*",
       "resources/yume-plugin",
       "resources/yume-vscode"

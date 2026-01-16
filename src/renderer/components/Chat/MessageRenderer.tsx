@@ -578,10 +578,11 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
 
     setIsCollapsed(prev => {
       const newState = !prev;
+      const isExpanding = !newState;
 
-      // When expanding, need to wait longer for virtualizer to remeasure
-      // When collapsing, can scroll immediately
-      const scrollDelay = newState ? 0 : 150; // expanding (newState=false) needs more time
+      // When expanding, wait for content to render then check if header went out of view
+      // When collapsing, scroll immediately to keep header visible
+      const scrollDelay = isExpanding ? 150 : 0;
 
       setTimeout(() => {
         if (headerRef.current) {
@@ -591,16 +592,19 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
             const headerRect = headerRef.current.getBoundingClientRect();
             const containerRect = scrollContainer.getBoundingClientRect();
 
-            // Calculate where header should be positioned
-            // Always ensure the header is visible near the top of the viewport
-            const headerTop = headerRect.top - containerRect.top;
-            const targetScrollTop = scrollContainer.scrollTop + headerTop - 20; // 20px padding from top
+            // Only scroll if the header is out of view (above the container top)
+            const headerIsAboveView = headerRect.top < containerRect.top;
 
-            // Instant scroll to position header at top with padding
-            scrollContainer.scrollTo({
-              top: Math.max(0, targetScrollTop),
-              behavior: 'auto'
-            });
+            if (headerIsAboveView) {
+              // Scroll to position header at top with padding
+              const headerTop = headerRect.top - containerRect.top;
+              const targetScrollTop = scrollContainer.scrollTop + headerTop - 20; // 20px padding from top
+
+              scrollContainer.scrollTo({
+                top: Math.max(0, targetScrollTop),
+                behavior: 'auto'
+              });
+            }
           }
         }
 

@@ -102,6 +102,10 @@
   flex: 1;
   white-space: pre;
   font-family: inherit;
+  /* Allow selecting code content */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .diff-add .line-content {

@@ -262,30 +262,38 @@ pub fn get_windows_paths() -> Result<serde_json::Value, String> {
 
 /// Check if a CLI tool is installed by running --version
 /// Searches common installation paths since bundled apps have minimal PATH
+/// Now async to avoid blocking the main thread
 #[tauri::command]
-pub fn check_cli_installed(cli_name: String) -> Result<serde_json::Value, String> {
+pub async fn check_cli_installed(cli_name: String) -> Result<serde_json::Value, String> {
     use tracing::info;
 
-    info!("Checking if CLI '{}' is installed", cli_name);
+    // Run the blocking work on a separate thread to avoid blocking the main thread
+    let result = tokio::task::spawn_blocking(move || {
+        info!("Checking if CLI '{}' is installed", cli_name);
 
-    // Try to find the CLI binary in common paths
-    if let Some((path, version)) = find_cli_binary(&cli_name) {
-        info!(
-            "CLI '{}' found at: {}, version: {:?}",
-            cli_name, path, version
-        );
-        return Ok(serde_json::json!({
-            "installed": true,
-            "version": version,
-            "path": path
-        }));
-    }
+        // Try to find the CLI binary in common paths
+        if let Some((path, version)) = find_cli_binary(&cli_name) {
+            info!(
+                "CLI '{}' found at: {}, version: {:?}",
+                cli_name, path, version
+            );
+            return serde_json::json!({
+                "installed": true,
+                "version": version,
+                "path": path
+            });
+        }
 
-    info!("CLI '{}' not found in any location", cli_name);
-    Ok(serde_json::json!({
-        "installed": false,
-        "version": null
-    }))
+        info!("CLI '{}' not found in any location", cli_name);
+        serde_json::json!({
+            "installed": false,
+            "version": null
+        })
+    })
+    .await
+    .map_err(|e| format!("Failed to check CLI: {}", e))?;
+
+    Ok(result)
 }
 
 /// Find a CLI binary by searching common installation paths

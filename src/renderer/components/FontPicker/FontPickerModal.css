@@ -144,6 +144,10 @@
   text-transform: none;
 }
 
+.font-option:hover .font-preview {
+  color: var(--accent-color);
+}
+
 .font-option.selected .font-preview {
   color: var(--accent-color);
   opacity: 0.8;

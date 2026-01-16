@@ -288,17 +288,39 @@ export class TauriClaudeClient {
         }
       } else {
         // Normal message send for already-spawned sessions
-        // Pass claude_session_id, project_path, and model to fix multi-tab and post-interrupt issues
-        const request = {
-          session_id: sessionId,
-          message: content,
-          claude_session_id: effectiveClaudeSessionId || null,
-          project_path: effectiveWorkingDirectory || null,
-          model: effectiveModel || null
-        };
+        // Route by provider - gemini/openai need to spawn new yume-cli process for each message
+        const provider = effectiveModel ? getProviderForModel(effectiveModel) : 'claude';
+        const useYumeCli = isYumeCliProvider(provider);
 
-        if (isDev) console.log('[TauriClient] Sending message with claude_session_id:', effectiveClaudeSessionId);
-        await invoke('send_claude_message', { request });
+        if (useYumeCli) {
+          // Gemini/OpenAI: spawn new yume-cli process with --resume
+          const modelDef = effectiveModel ? getModelById(effectiveModel) : null;
+          const spawnRequest = {
+            provider: provider,
+            project_path: effectiveWorkingDirectory || '.',
+            model: effectiveModel || '',
+            prompt: content,
+            resume_session_id: effectiveClaudeSessionId || null,
+            reasoning_effort: modelDef?.reasoningEffort || null,
+            history_file_path: null,
+            frontend_session_id: sessionId
+          };
+
+          if (isDev) console.log('[TauriClient] Spawning yume-cli for followup message:', spawnRequest);
+          await invoke('spawn_yume_cli_session', { request: spawnRequest });
+        } else {
+          // Claude: use send_claude_message (resumes existing session)
+          const request = {
+            session_id: sessionId,
+            message: content,
+            claude_session_id: effectiveClaudeSessionId || null,
+            project_path: effectiveWorkingDirectory || null,
+            model: effectiveModel || null
+          };
+
+          if (isDev) console.log('[TauriClient] Sending message with claude_session_id:', effectiveClaudeSessionId);
+          await invoke('send_claude_message', { request });
+        }
       }
     } catch (error) {
       throw error;

@@ -811,17 +811,6 @@ export const SessionTabs: React.FC = () => {
                   // For visual bar, cap at 100%
                   const barPercentage = Math.min(rawPercentage, 100);
 
-                  // Debug logging for token tracking (can be disabled by setting window.debugTokens = false)
-                  if ((window as any).debugTokens !== false) {
-                    console.log(`[TAB-TOKENS] Session ${session.id} token display:`, {
-                      sessionId: session.id,
-                      totalTokens,
-                      percentage: rawPercentage.toFixed(2) + '%',
-                      hasAnalytics: !!(session as any).analytics,
-                      analyticsTokens: (session as any).analytics?.tokens,
-                      fullAnalytics: (session as any).analytics
-                    });
-                  }
 
                   // Check if pending auto-compact (will compact on next message)
                   const isPendingCompact = (session as any).compactionState?.pendingAutoCompact;

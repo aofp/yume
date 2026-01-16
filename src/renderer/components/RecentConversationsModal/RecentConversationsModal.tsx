@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { IconMessages, IconX, IconRefresh } from '@tabler/icons-react';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
+import { useEnabledProviders } from '../../hooks/useEnabledProviders';
 
 interface RecentConversation {
   id: string;
@@ -37,6 +38,15 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
   const [inputMode, setInputMode] = useState<'keyboard' | 'mouse'>('keyboard');
   const lastMousePos = useRef<{ x: number; y: number } | null>(null);
   const isOpenRef = useRef(isOpen);
+  const enabledProviders = useEnabledProviders();
+
+  // Filter conversations to only show enabled providers
+  const filteredConversations = useMemo(() => {
+    return conversations.filter((conv) => {
+      const provider = conv.provider || 'claude';
+      return enabledProviders[provider];
+    });
+  }, [conversations, enabledProviders]);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -142,7 +152,7 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setInputMode('keyboard');
-        setFocusedIndex(prev => Math.min(prev + 1, conversations.length - 1));
+        setFocusedIndex(prev => Math.min(prev + 1, filteredConversations.length - 1));
         return;
       }
 
@@ -156,8 +166,8 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
       // enter to select currently focused item
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < conversations.length) {
-          selectConversation(conversations[focusedIndex]);
+        if (focusedIndex >= 0 && focusedIndex < filteredConversations.length) {
+          selectConversation(filteredConversations[focusedIndex]);
         }
         return;
       }
@@ -169,15 +179,15 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
         e.preventDefault();
         e.stopPropagation();
         const index = e.key === '0' ? 9 : parseInt(e.key) - 1;
-        if (index < conversations.length) {
-          selectConversation(conversations[index]);
+        if (index < filteredConversations.length) {
+          selectConversation(filteredConversations[index]);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, isSelecting, selectConversation, conversations, focusedIndex]);
+  }, [isOpen, onClose, isSelecting, selectConversation, filteredConversations, focusedIndex]);
 
   if (!isOpen) return null;
 
@@ -224,10 +234,10 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
         <div className="modal-content">
           {loading && <div className="no-recent">loading...</div>}
           {error && <div className="no-recent" style={{ color: 'var(--negative-color)' }}>{error}</div>}
-          {!loading && !error && conversations.length === 0 && (
+          {!loading && !error && filteredConversations.length === 0 && (
             <div className="no-recent">no recent conversations</div>
           )}
-          {!loading && !error && conversations.slice(0, 9).map((conv, idx) => (
+          {!loading && !error && filteredConversations.slice(0, 9).map((conv, idx) => (
             <div
               key={conv.id}
               className={`recent-item-container ${focusedIndex === idx ? 'focused' : ''}`}

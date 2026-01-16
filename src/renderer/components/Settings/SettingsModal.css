@@ -321,6 +321,7 @@
   width: 10px;
   height: 10px;
   background: var(--foreground-color);
+  opacity: .6;
   border-radius: 2px;
   cursor: default;
 }
@@ -333,6 +334,7 @@
 .opacity-slider:active::-webkit-slider-thumb,
 .opacity-slider:focus::-webkit-slider-thumb {
   background: var(--accent-color);
+  opacity: 1;
 }
 
 /* Color Picker Container */
@@ -1113,6 +1115,7 @@
 
 .font-input:hover {
   border-color: var(--accent-color);
+  color: var(--accent-color);
   background: var(--fg-05);
 }
 

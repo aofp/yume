@@ -8,7 +8,6 @@ import {
   ToolDefinition
 } from '../../config/tools';
 import { useEnabledProviders } from '../../hooks/useEnabledProviders';
-import { setEnabledProviders, getEnabledProviderCount } from '../../services/providersService';
 import './ModelToolsModal.css';
 
 interface ModelToolsModalProps {
@@ -41,6 +40,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   const [focusedToolId, setFocusedToolId] = useState<string | null>(null);
   const [isKeyboardNav, setIsKeyboardNav] = useState(true);
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [collapsedProviders, setCollapsedProviders] = useState<Set<ProviderType>>(new Set());
   const enabledProviders = useEnabledProviders();
 
   // Check if ALL tools in category are enabled
@@ -48,20 +48,6 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     const categoryTools = toolsByCategory[categoryKey as keyof typeof toolsByCategory] || [];
     return categoryTools.length > 0 && categoryTools.every(t => enabledTools.includes(t.id));
   }, [toolsByCategory, enabledTools]);
-
-  // Toggle provider enabled state
-  const toggleProvider = useCallback((providerId: ProviderType) => {
-    const currentCount = getEnabledProviderCount();
-    const isCurrentlyEnabled = enabledProviders[providerId];
-
-    // prevent disabling the last provider
-    if (isCurrentlyEnabled && currentCount <= 1) {
-      return;
-    }
-
-    const newProviders = { ...enabledProviders, [providerId]: !isCurrentlyEnabled };
-    setEnabledProviders(newProviders);
-  }, [enabledProviders]);
 
   // All models displayed at once (filtered by lockedProvider if set, or by enabled providers)
   // Also include the currently selected model even if its provider is disabled
@@ -346,6 +332,18 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     saveEnabledTools(newTools);
   }, [enabledTools, onToolsChange]);
 
+  const toggleProviderCollapse = useCallback((providerId: ProviderType) => {
+    setCollapsedProviders(prev => {
+      const next = new Set(prev);
+      if (next.has(providerId)) {
+        next.delete(providerId);
+      } else {
+        next.add(providerId);
+      }
+      return next;
+    });
+  }, []);
+
   const toggleCategory = useCallback((categoryKey: string) => {
     const categoryTools = toolsByCategory[categoryKey as keyof typeof toolsByCategory] || [];
     const categoryIds = categoryTools.map(t => t.id);
@@ -384,22 +382,32 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         </div>
 
         <div className="mt-content">
-          {/* Providers - text click toggles, models shown when active */}
+          {/* Providers - show enabled ones, but always show at least 1 and always show selected model's provider */}
           {!lockedProvider && (
             <>
-              {PROVIDERS.map((provider) => {
+              {PROVIDERS.filter(p => {
+                // Always show the selected model's provider
+                const selectedModelProvider = ALL_MODELS.find(m => m.id === selectedModel)?.provider;
+                if (p.id === selectedModelProvider) return true;
+                // Show if enabled
+                if (enabledProviders[p.id]) return true;
+                // If no providers enabled, fallback to claude
+                const anyEnabled = Object.values(enabledProviders).some(v => v);
+                if (!anyEnabled && p.id === 'claude') return true;
+                return false;
+              }).map((provider) => {
                 const providerModels = ALL_MODELS.filter(m => m.provider === provider.id);
-                const isActive = enabledProviders[provider.id];
+                const isCollapsed = collapsedProviders.has(provider.id);
+                const isDisabled = !enabledProviders[provider.id];
                 return (
-                  <div key={provider.id} className="mt-provider-block">
+                  <div key={provider.id} className={`mt-provider-block ${isDisabled ? 'disabled' : ''}`}>
                     <span
-                      className={`mt-provider-text ${isActive ? 'active' : ''}`}
-                      onClick={() => toggleProvider(provider.id)}
-                      title={isActive && getEnabledProviderCount() <= 1 ? 'at least one provider must be active' : ''}
+                      className={`mt-provider-text ${isCollapsed ? '' : 'active'}`}
+                      onClick={() => !isDisabled && toggleProviderCollapse(provider.id)}
                     >
                       {provider.name}
                     </span>
-                    {isActive && (
+                    {!isCollapsed && (
                       <div className="mt-provider-models">
                         {providerModels.map((model) => (
                           <button

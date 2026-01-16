@@ -1590,7 +1590,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   onClick={() => setActiveTab('appearance')}
                 />
                 <TabButton
-                  label="providers"
+                  label="cli"
                   active={activeTab === 'providers'}
                   onClick={() => setActiveTab('providers')}
                 />

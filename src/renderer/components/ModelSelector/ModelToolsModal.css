@@ -85,6 +85,11 @@
   opacity: 1;
 }
 
+.mt-provider-block.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
 .mt-provider-models {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -212,7 +217,7 @@
 
 .mt-section {
   margin-bottom: 0;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .mt-divider {
@@ -246,20 +251,15 @@
 
 .mt-toggle-all {
   background: transparent;
-  border: 1px solid var(--fg-20);
   color: var(--fg-50);
   font-size: var(--text-xs);
-  padding: 2px 6px;
-  border-radius: 3px;
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
 }
 
 .mt-toggle-all:hover {
-  border-color: var(--accent-color);
   color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .mt-category {

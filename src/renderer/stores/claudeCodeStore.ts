@@ -845,11 +845,33 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       availableSessions: [],
 
       setSelectedModel: (modelId: string) => {
+        const state = get();
+        const currentSession = state.sessions.find(s => s.id === state.currentSessionId);
+
+        // Update global selected model
         set({ selectedModel: modelId });
+
+        // Also update current session's model if same provider (allows opus <-> sonnet switching)
+        if (currentSession?.model) {
+          const oldProvider = getProviderForModel(currentSession.model);
+          const newProvider = getProviderForModel(modelId);
+          if (oldProvider === newProvider) {
+            set({
+              sessions: state.sessions.map(s =>
+                s.id === state.currentSessionId ? { ...s, model: modelId } : s
+              )
+            });
+            console.log(`Model changed to: ${modelId} (session updated)`);
+          } else {
+            console.log(`Model changed to: ${modelId} (session not updated - different provider)`);
+          }
+        } else {
+          console.log('Model changed to:', modelId);
+        }
+
         // Sync yume agents with new model
         const modelName = modelId.includes('opus') ? 'opus' : 'sonnet';
         systemPromptService.syncAgentsToFilesystem(modelName);
-        console.log('Model changed to:', modelId);
       },
 
       setEnabledTools: (tools: string[]) => {
@@ -1191,14 +1213,36 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               isReconnecting: !!existingSession
             });
             set(state => {
+              // CRITICAL: Preserve messages that were added by early listener before session activated
+              // The temp session may have received messages while createSession was awaiting
+              const tempSession = state.sessions.find(s => s.id === tempSessionId);
+              const earlyMessages = tempSession?.messages || [];
+
+              // Merge early messages with existingMessages from result (avoid duplicates by ID)
+              const existingIds = new Set(existingMessages.map((m: any) => m.id).filter(Boolean));
+              const uniqueEarlyMessages = earlyMessages.filter(m => !m.id || !existingIds.has(m.id));
+              const mergedMessages = [...existingMessages, ...uniqueEarlyMessages];
+
+              console.log('[Store] Merging messages on session activate:', {
+                existingMessages: existingMessages.length,
+                earlyMessages: earlyMessages.length,
+                merged: mergedMessages.length
+              });
+
+              // Update activeSession with merged messages
+              const activeSessionWithMessages = {
+                ...activeSession,
+                messages: mergedMessages
+              };
+
               const newSessions = existingSession ?
                 // If reconnecting, update the existing session
                 state.sessions.map(s =>
-                  s.id === existingSessionId ? activeSession : s
+                  s.id === existingSessionId ? activeSessionWithMessages : s
                 ) :
                 // If new session, replace the temp session
                 state.sessions.map(s =>
-                  s.id === tempSessionId ? activeSession : s
+                  s.id === tempSessionId ? activeSessionWithMessages : s
                 );
               persistSessions(newSessions); // Persist after update
               localStorage.setItem(CURRENT_SESSION_KEY, sessionId);
@@ -3439,7 +3483,26 @@ ${content}`;
                 sessionForSend?.workingDirectory
               );
             } else {
-              // Use Socket.IO for Claude (existing behavior)
+              // Use Socket.IO for Claude - ensure session exists first
+              // This is needed when switching from Gemini/OpenAI to Claude, where no socket session was created
+              if (!sessionForSend?.claudeSessionId) {
+                console.log('[Store] Creating socket session for Claude (no claudeSessionId)');
+                try {
+                  await claudeClient.createSession(
+                    sessionForSend?.name || 'new session',
+                    sessionForSend?.workingDirectory || '/',
+                    {
+                      sessionId: sessionToUse,
+                      messages: sessionForSend?.messages || [],
+                      hasGeneratedTitle: !!sessionForSend?.claudeTitle
+                    }
+                  );
+                  console.log('[Store] Socket session created successfully');
+                } catch (createError) {
+                  console.error('[Store] Failed to create socket session:', createError);
+                  throw createError;
+                }
+              }
               await claudeClient.sendMessage(
                 sessionToUse,
                 content,

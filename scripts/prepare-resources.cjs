@@ -50,21 +50,21 @@ if (!targetPlatform) {
 
 console.log(`\n🧹 Preparing resources for ${targetPlatform} build...\n`);
 
-// Define what files to KEEP for each platform
+// Define what files to KEEP for each platform (unified binary + CLI wrapper)
 const platformFiles = {
   macos: [
-    'yume-server-macos-arm64',
-    'yume-server-macos-x64',
-    'yume-cli-macos-arm64',
-    'yume-cli-macos-x64',
+    'yume-bin-macos-arm64',
+    'yume-bin-macos-x64',
+    'yume-cli-macos-arm64',  // Shell wrapper script
+    'yume-cli-macos-x64',    // Shell wrapper script
   ],
   windows: [
-    'yume-server-windows-x64.exe',
-    'yume-cli-windows-x64.exe',
+    'yume-bin-windows-x64.exe',
+    'yume-cli-windows-x64.cmd',  // Batch wrapper script
   ],
   linux: [
-    'yume-server-linux-x64',
-    'yume-cli-linux-x64',
+    'yume-bin-linux-x64',
+    'yume-cli-linux-x64',  // Shell wrapper script
   ],
 };
 
@@ -131,16 +131,22 @@ function cleanVscodeExtension() {
 // Get list of files to keep for this platform
 const filesToKeep = platformFiles[targetPlatform] || [];
 
-// Also remove OTHER platform binaries
+// Also remove OTHER platform binaries (unified binary + CLI wrappers)
 const allPlatformBinaries = [
+  'yume-bin-macos-arm64',
+  'yume-bin-macos-x64',
+  'yume-bin-windows-x64.exe',
+  'yume-bin-linux-x64',
+  'yume-cli-macos-arm64',
+  'yume-cli-macos-x64',
+  'yume-cli-windows-x64.cmd',
+  'yume-cli-linux-x64',
+  // Legacy names (can be removed from old builds)
   'yume-server-macos-arm64',
   'yume-server-macos-x64',
   'yume-server-windows-x64.exe',
   'yume-server-linux-x64',
-  'yume-cli-macos-arm64',
-  'yume-cli-macos-x64',
-  'yume-cli-windows-x64.exe',
-  'yume-cli-linux-x64',
+  'yume-cli-windows-x64.exe',  // Old naming
 ];
 
 const otherPlatformBinaries = allPlatformBinaries.filter(

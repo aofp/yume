@@ -841,6 +841,9 @@ line-height: var(--leading-normal);
 
 .tool-use.standalone {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  line-height: var(--leading-relaxed);
   width: 100%;
   background: transparent !important;
   border: none;
@@ -848,13 +851,13 @@ line-height: var(--leading-normal);
   padding-bottom: 0 !important;
   margin-bottom: 0 !important;
   margin-top: 0 !important;
-  line-height: 1;
 }
 
 .tool-use.subagent-tool {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 4px;
 }
 
 .subagent-indicator {
@@ -999,14 +1002,18 @@ line-height: var(--leading-normal);
 /* Edit tool use diff display */
 .tool-use-edit {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
   margin: 0;
   padding: 0;
 }
 
 .tool-use-edit.standalone {
   display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
   width: 100%;
 }
 
@@ -1233,6 +1240,7 @@ pre.edit-diff {
   align-items: center;
   margin-right: 0px;
   color: var(--accent-color);
+  flex-shrink: 0;
   /* animation removed - transform conflicts with virtualizer */
 }
 
@@ -1278,8 +1286,9 @@ body.platform-win32 .tool-detail {
 /* Tool Results */
 .tool-result {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
   padding: 0;
   border-radius: 0;
   font-size: var(--text-xs);
@@ -1479,13 +1488,14 @@ pre.bash-content,
   user-select: none;
   cursor: default;
   font-size: var(--text-xs) !important;
+  line-height: var(--leading-relaxed);
 }
 
 .tool-result.collapsible .collapsible-header {
   color: rgba(var(--positive-rgb), .8);
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 0 4px;
   cursor: default;
   user-select: none;
   opacity: 1;
@@ -1502,8 +1512,6 @@ pre.bash-content,
 
 .tool-result.collapsible .collapse-chevron {
   display: flex;
-  align-items: center;
-  justify-content: center;
   color: rgba(var(--positive-rgb), 0.5);
   flex-shrink: 0;
 }
@@ -1532,6 +1540,24 @@ pre.bash-content,
 
 .tool-result.collapsible.expanded .collapsible-content {
   margin-top: 4px;
+}
+
+/* Allow text selection within collapsible content */
+.collapsible-content,
+.collapsible-content pre,
+.collapsible-content code,
+.collapsible-content .read-content,
+.collapsible-content .search-content,
+.collapsible-content .file-list-content,
+.collapsible-content .dir-content,
+.collapsible-content .result-content,
+.collapsible-content .bash-content,
+.collapsible-content .task-content,
+.collapsible-content .web-search-content,
+.collapsible-content .web-fetch-content {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 hr {
@@ -1623,7 +1649,9 @@ hr {
 /* Bash Output */
 .tool-result.bash-output .bash-command {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 4px;
   padding: 4px 8px;
   background: rgba(var(--foreground-rgb), 0.03);
   border-top-left-radius: 2px;
@@ -1652,8 +1680,9 @@ hr {
 /* Search Output (Grep) */
 .tool-result.search-output .search-header {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
   margin-bottom: 4px;
   color: rgba(var(--foreground-rgb), 0.5);
 }
@@ -2212,6 +2241,7 @@ hr {
 
 .todo-list {
   display: flex;
+  margin-top: 4px;
   flex-direction: column;
   gap: 2px;
 }

@@ -678,10 +678,9 @@ pub fn run() {
                         }
                     }
 
-                    // CRITICAL: Activate the app to ensure it has focus
-                    // This prevents random focus loss when processes spawn
-                    let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
-                    let _: () = msg_send![ns_app, activateIgnoringOtherApps: YES];
+                    // NOTE: Removed activateIgnoringOtherApps - it was causing focus STEALING
+                    // Modern macOS (10.14+) doesn't lose focus when spawning child processes
+                    // The previous code was actively disrupting user workflow by yanking focus back
                 }
             }
             

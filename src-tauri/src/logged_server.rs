@@ -978,9 +978,11 @@ fn start_macos_server(port: u16) {
             c.arg(&server_file);
             c
         } else {
-            // Direct binary execution
-            write_log("Spawning compiled binary directly");
-            Command::new(&server_file)
+            // Direct binary execution (unified yume-bin)
+            write_log("Spawning unified binary with 'serve' subcommand");
+            let mut c = Command::new(&server_file);
+            c.arg("serve"); // Unified binary requires subcommand
+            c
         };
 
         cmd.env_clear()
@@ -1153,9 +1155,11 @@ fn start_windows_server(port: u16) {
         let is_binary = server_file.extension().map_or(false, |e| e == "exe");
 
         let mut cmd = if is_binary {
-            // Direct binary execution
-            write_log("Spawning compiled binary directly");
-            Command::new(&server_file)
+            // Direct binary execution (unified yume-bin)
+            write_log("Spawning unified binary with 'serve' subcommand");
+            let mut c = Command::new(&server_file);
+            c.arg("serve"); // Unified binary requires subcommand
+            c
         } else {
             // Fallback: run with node
             write_log("Fallback: spawning with node");
@@ -1358,9 +1362,11 @@ fn start_linux_server(port: u16) {
             .map_or(false, |e| e == "cjs" || e == "js");
 
         let mut cmd = if is_binary {
-            // Direct binary execution
-            write_log("Spawning compiled binary directly");
-            Command::new(&server_file)
+            // Direct binary execution (unified yume-bin)
+            write_log("Spawning unified binary with 'serve' subcommand");
+            let mut c = Command::new(&server_file);
+            c.arg("serve"); // Unified binary requires subcommand
+            c
         } else {
             // Fallback: run with node
             write_log("Fallback: spawning with node");

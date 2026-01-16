@@ -31,12 +31,9 @@ export const ProvidersTab: React.FC = () => {
   });
 
   useEffect(() => {
-    checkAllCli();
+    // Check each CLI independently without blocking - don't await
+    PROVIDERS.forEach((provider) => checkCli(provider.id));
   }, []);
-
-  const checkAllCli = async () => {
-    await Promise.all(PROVIDERS.map((provider) => checkCli(provider.id)));
-  };
 
   const checkCli = async (providerId: ProviderType) => {
     setCliStatuses((prev) => ({
@@ -110,7 +107,7 @@ export const ProvidersTab: React.FC = () => {
       <div className="settings-columns">
         {/* Left column: Providers */}
         <div className="settings-column">
-          <h4>providers</h4>
+          <h4>cli providers</h4>
 
           <div className="providers-grid">
             {PROVIDERS.map((provider) => {

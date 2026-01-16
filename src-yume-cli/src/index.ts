@@ -178,9 +178,9 @@ async function readStdin(): Promise<string> {
 }
 
 /**
- * Main entry point
+ * Main entry point - exported for unified binary
  */
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   try {
     const args = parseArgs();
 
@@ -239,4 +239,8 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+// Run if invoked directly (not imported as unified binary module)
+// Check global flag set by unified entry
+if (!(globalThis as any).__YUME_UNIFIED_ENTRY__) {
+  main();
+}

@@ -154,6 +154,7 @@ pub async fn send_claude_message(
 
     // Use claude_session_id from request if provided (preferred - fixes multi-tab and interrupt issues)
     // Otherwise fallback to session_manager lookup (legacy behavior)
+    // IMPORTANT: Always prefer request.model over session_manager model to fix provider switching
     let (claude_session_id, project_path, model) =
         if let Some(ref csid) = request.claude_session_id {
             info!("Using claude_session_id from request: {}", csid);
@@ -167,6 +168,18 @@ pub async fn send_claude_message(
                     .model
                     .clone()
                     .unwrap_or_else(|| "claude-sonnet-4-20250514".to_string()),
+            )
+        } else if let Some(ref req_model) = request.model {
+            // No claude_session_id but model provided - use request values (new session case)
+            // This fixes provider switching where session_manager might have stale data
+            info!("No claude_session_id but model provided: {}", req_model);
+            (
+                request.session_id.clone(), // Use frontend session ID as resume target
+                request
+                    .project_path
+                    .clone()
+                    .unwrap_or_else(|| ".".to_string()),
+                req_model.clone(),
             )
         } else {
             // Fallback: Get from session_manager (legacy behavior, less reliable)

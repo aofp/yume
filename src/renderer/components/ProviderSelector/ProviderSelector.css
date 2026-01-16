@@ -19,7 +19,6 @@
   color: var(--text-secondary, rgba(255, 255, 255, 0.7));
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
 .provider-selector-trigger:hover {
@@ -69,8 +68,6 @@
   background: transparent;
   border: none;
   color: var(--text-primary, #fff);
-  cursor: pointer;
-  transition: background 0.1s ease;
   text-align: left;
 }
 
