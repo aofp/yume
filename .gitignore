@@ -25,6 +25,9 @@ src-tauri/resources/yume-server-*
 # yume-cli binaries (built per-platform, not tracked)
 src-tauri/resources/yume-cli-*
 
+# yume-bin binaries (built per-platform, not tracked)
+src-tauri/resources/yume-bin-*
+
 # Logs
 *.log
 logs/
