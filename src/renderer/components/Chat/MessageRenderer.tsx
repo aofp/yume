@@ -2099,7 +2099,11 @@ const MessageRendererBase: React.FC<{
             <div className="message assistant">
               <div className="message-content">
                 <div className={`message-bubble${followsBashCommand ? ' bash-response' : ''}`}>
-                  {renderContent(textContent, message, searchQuery, isCurrentMatch)}
+                  {followsBashCommand ? (
+                    <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
+                  ) : (
+                    renderContent(textContent, message, searchQuery, isCurrentMatch)
+                  )}
                 </div>
               </div>
               {showButtons && (

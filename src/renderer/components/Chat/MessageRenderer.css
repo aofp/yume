@@ -259,9 +259,19 @@
 .message.assistant .message-bubble.bash-response .content-text code,
 .message.assistant .message-bubble.bash-response .markdown-content,
 .message.assistant .message-bubble.bash-response .markdown-content pre,
-.message.assistant .message-bubble.bash-response .markdown-content code {
+.message.assistant .message-bubble.bash-response .markdown-content code,
+.message.assistant .message-bubble.bash-response .bash-output-content {
   color: color-mix(in srgb, var(--foreground-color) 80%, var(--negative-color) 20%);
   font-family: var(--font-mono);
+}
+
+/* Bash output pre styling */
+.message.assistant .message-bubble.bash-response .bash-output-content {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: transparent;
 }
 
 .message.user .message-content {
