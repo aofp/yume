@@ -13,7 +13,7 @@ interface ColorPickerProps {
 // Background presets (from themes + similar subtle dark colors)
 const BG_PRESETS = [
   // Row 1: Theme backgrounds (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
-  ['#0f0f0f', '#0a0a0a', '#0a0a0d', '#050505', '#0d0c0e', '#100f0f', '#0a0808', '#080a0a', '#060810', '#0a0908'],
+  ['#0f0f0f', '#0a0a0a', '#0a0a0d', '#050505', '#0d0c0e', '#100f0f', '#0a0808', '#080a0a', '#080A0f', '#0a0908'],
   // Row 2: More theme backgrounds + subtle variations (void, grove, warm tints, cool tints)
   ['#000000', '#0a0a08', '#0c0a0a', '#0a0c0c', '#0a0a0c', '#080808', '#0c0c0c', '#0e0e0e', '#101010', '#121212']
 ];

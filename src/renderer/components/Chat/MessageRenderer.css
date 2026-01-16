@@ -274,6 +274,14 @@
   background: transparent;
 }
 
+/* Bash elapsed time indicator */
+.bash-elapsed-time {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+
 .message.user .message-content {
   max-width: 80%;
   width: auto;

@@ -3232,18 +3232,21 @@ export const ClaudeChat: React.FC = () => {
           // Execute bash command directly via Tauri - NOT through AI
           console.log('[ClaudeChat] Executing bash command directly:', bashCommand);
 
+          const startTime = Date.now();
           const result = await invoke('execute_bash', {
             command: bashCommand,
             workingDir: currentSession?.workingDirectory
           }) as string;
+          const elapsedMs = Date.now() - startTime;
 
-          // Add result as assistant message
+          // Add result as assistant message with elapsed time
           const resultMessage = {
             id: `bash-${Date.now()}`,
             type: 'assistant' as const,
             message: { content: result || '(no output)' },
             timestamp: Date.now(),
-            streaming: false
+            streaming: false,
+            bashElapsedMs: elapsedMs
           };
 
           if (currentSessionId) {
@@ -4702,9 +4705,9 @@ export const ClaudeChat: React.FC = () => {
                             });
                             setShowRollbackConfirm(true);
                           }}
-                          title={isStreaming ? 'cannot rollback while streaming' : `edit #${userIdx + 1}`}
+                          title={isStreaming ? 'cannot rollback while streaming' : `edit #${userMessages.length - userIdx}`}
                         >
-                          <span className="rollback-item-number">#{userIdx + 1}</span>
+                          <span className="rollback-item-number">#{userMessages.length - userIdx}</span>
                           <span className="rollback-item-text">{displayText || '(empty)'}</span>
                         </div>
                       );

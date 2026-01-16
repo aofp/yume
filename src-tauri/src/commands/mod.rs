@@ -2299,10 +2299,11 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
 
     #[cfg(target_os = "macos")]
     {
-        // NOTE: On macOS we do NOT use activateIgnoringOtherApps as it STEALS focus
-        // from other apps. Modern macOS doesn't lose focus when spawning processes.
-        // Only make window key IF the app is already active (user hasn't switched away).
-        use cocoa::base::{id, BOOL, NO};
+        // This command is ONLY called when we explicitly want focus back (after bash/tool completion)
+        // So we SHOULD use activateIgnoringOtherApps here - this is intentional focus recovery
+        // The previous code was wrong: it checked isActive first which made this command useless
+        // when focus was actually lost (the exact situation we need to handle)
+        use cocoa::base::{id, YES};
         use objc::{class, msg_send, sel, sel_impl};
 
         let ns_window = window.ns_window().map_err(|e| format!("Failed to get NSWindow: {}", e))?;
@@ -2310,11 +2311,11 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
             let ns_window = ns_window as id;
             let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
 
-            // Only restore focus if app is ALREADY active (user hasn't switched to another app)
-            let is_active: BOOL = msg_send![ns_app, isActive];
-            if is_active != NO {
-                let _: () = msg_send![ns_window, makeKeyAndOrderFront: cocoa::base::nil];
-            }
+            // Activate the app first (this brings our app to front, even if another app has focus)
+            let _: () = msg_send![ns_app, activateIgnoringOtherApps: YES];
+
+            // Then make our window key and order it to front
+            let _: () = msg_send![ns_window, makeKeyAndOrderFront: cocoa::base::nil];
         }
     }
 

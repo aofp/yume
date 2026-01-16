@@ -48,7 +48,7 @@ export const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'cobalt',
     name: 'cobalt',
-    backgroundColor: '#060810',
+    backgroundColor: '#080A0f',
     foregroundColor: '#d6deeb',
     accentColor: '#82aaff',
     positiveColor: '#addb67',
@@ -83,10 +83,10 @@ export const BUILT_IN_THEMES: Theme[] = [
     isBuiltIn: true
   },
 
-  // pulse - Synthwave inspired (cyan ~185°)
+  // synth - Synthwave inspired (cyan ~185°)
   {
-    id: 'pulse',
-    name: 'pulse',
+    id: 'synth',
+    name: 'synth',
     backgroundColor: '#050505',
     foregroundColor: '#f0f0f0',
     accentColor: '#36d7e6',
@@ -96,10 +96,10 @@ export const BUILT_IN_THEMES: Theme[] = [
     isBuiltIn: true
   },
 
-  // iota - mint accent (~145°)
+  // mint - mint accent (~145°)
   {
-    id: 'iota',
-    name: 'iota',
+    id: 'mint',
+    name: 'mint',
     backgroundColor: '#0d0c0e',
     foregroundColor: '#ffffff',
     accentColor: '#9df5bd',

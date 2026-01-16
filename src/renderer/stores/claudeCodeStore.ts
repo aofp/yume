@@ -1113,12 +1113,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     )
                   }));
                 }
-                // Clear streaming on result
-                if (message.type === 'result') {
+                // Clear streaming on result, streaming_end, or error
+                if (message.type === 'result' || message.type === 'streaming_end' || message.type === 'error') {
                   set(state => ({
                     sessions: state.sessions.map(s =>
                       s.id === preSpawnSessionId
-                        ? { ...s, streaming: false }
+                        ? { ...s, streaming: false, thinkingStartTime: undefined }
                         : s
                     )
                   }));
@@ -1770,6 +1770,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         hasUsage: !!message.usage,
                         usage: message.usage
                       });
+
+                      // CRITICAL: Always attach duration_ms to result message for elapsed time display
+                      // Use server-provided value first, then calculate from thinkingStartTime
+                      if (!message.duration_ms && s.thinkingStartTime) {
+                        const calculatedDuration = Date.now() - s.thinkingStartTime;
+                        (message as any).duration_ms = calculatedDuration;
+                        console.log(`⏱️ [ELAPSED-TIME] Calculated duration_ms from thinkingStartTime: ${calculatedDuration}ms`);
+                      } else if (!message.duration_ms) {
+                        // Fallback: set to 0 if no thinkingStartTime - should never happen but prevents NaN
+                        console.warn(`⏱️ [ELAPSED-TIME] No duration_ms and no thinkingStartTime for session ${s.id}`);
+                        (message as any).duration_ms = 0;
+                      }
                     }
 
                     // Sync wrapper tokens to analytics if available
@@ -2612,6 +2624,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // Play completion sound if enabled
                       get().playCompletionSound();
 
+                      // Restore focus on macOS after streaming ends (fallback if trigger:focus wasn't received)
+                      const isMac = navigator.platform.includes('Mac');
+                      if (isMac && window.__TAURI__) {
+                        console.log(`🎯 [FOCUS] Streaming ended - restoring window focus on macOS`);
+                        import('@tauri-apps/api/core').then(({ invoke }) => {
+                          invoke('restore_window_focus').catch(err => {
+                            console.warn('[FOCUS] Failed to restore window focus:', err);
+                          });
+                        });
+                      }
+
                       // Actually clear streaming state
                       set(state => ({
                         sessions: state.sessions.map(s => {
@@ -2737,6 +2760,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
                       // Play completion sound if enabled
                       get().playCompletionSound();
+
+                      // Restore focus on macOS after result (fallback if trigger:focus wasn't received)
+                      const isMac = navigator.platform.includes('Mac');
+                      if (isMac && window.__TAURI__) {
+                        console.log(`🎯 [FOCUS] Result received - restoring window focus on macOS`);
+                        import('@tauri-apps/api/core').then(({ invoke }) => {
+                          invoke('restore_window_focus').catch(err => {
+                            console.warn('[FOCUS] Failed to restore window focus:', err);
+                          });
+                        });
+                      }
 
                       sessions = sessions.map(s => {
                         if (s.id === sessionId) {

@@ -3438,11 +3438,7 @@ textarea.context-full {
   background: transparent;
 }
 
-.rollback-item.selected:not(.disabled) {
-  background: rgba(var(--accent-rgb), 0.1);
-  outline: 1px solid rgba(var(--accent-rgb), 0.4);
-}
-
+.rollback-item.selected:not(.disabled),
 .rollback-item.hovered:not(.disabled) {
   background: rgba(var(--accent-rgb), 0.1);
   outline: 1px solid rgba(var(--accent-rgb), 1);

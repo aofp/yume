@@ -2100,7 +2100,16 @@ const MessageRendererBase: React.FC<{
               <div className="message-content">
                 <div className={`message-bubble${followsBashCommand ? ' bash-response' : ''}`}>
                   {followsBashCommand ? (
-                    <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
+                    <>
+                      <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
+                      {(message as any).bashElapsedMs !== undefined && (
+                        <div className="bash-elapsed-time">
+                          {(message as any).bashElapsedMs < 1000
+                            ? `${(message as any).bashElapsedMs}ms`
+                            : `${((message as any).bashElapsedMs / 1000).toFixed(2)}s`}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     renderContent(textContent, message, searchQuery, isCurrentMatch)
                   )}
@@ -3285,16 +3294,19 @@ const MessageRendererBase: React.FC<{
         });
         
         // Show elapsed time for successful completion
-        // CRITICAL: Calculate from frontend timing if server didn't provide duration_ms
+        // CRITICAL: duration_ms should now always be set by the store from thinkingStartTime
         let elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
+
+        console.log(`⏱️ [ELAPSED-DEBUG] Result message - duration_ms: ${message.duration_ms}, elapsedMs: ${elapsedMs}`);
 
         // Count tool uses in the current conversation turn only
         // Look back through messages to count tool_use messages since the last user message
         // Or use tool_count from message if provided (for synthetic result messages from resumed sessions)
         const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
 
-        // If no server-provided duration, calculate from message timestamps
+        // Fallback: If still no duration, calculate from message timestamps (legacy support)
         if (elapsedMs === 0 && currentIndex > 0) {
+          console.warn(`⏱️ [ELAPSED-DEBUG] Fallback triggered - no duration_ms, trying timestamp calculation`);
           for (let i = currentIndex - 1; i >= 0; i--) {
             const msg = sessionMessages[i];
             if (msg.type === 'user') {

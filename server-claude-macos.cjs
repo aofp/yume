@@ -4666,6 +4666,10 @@ process.on('unhandledRejection', (reason, promise) => {
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
 
+  // Track first bash command to restore focus on macOS
+  let isFirstBashCommand = true;
+  const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
+
   // Check if this is a vscode client (passed in query params)
   const isVscodeClient = socket.handshake.query?.client === 'vscode';
   if (isVscodeClient) {
@@ -5766,6 +5770,12 @@ io.on('connection', (socket) => {
                     }
                   }
 
+                  // Track Bash tool use for focus restoration on macOS
+                  if (block.name === 'Bash' && isFirstBashCommand) {
+                    console.log(`🔧 [${sessionId}] Tracking first Bash tool use: ${block.id}`);
+                    bashToolUseIds.set(block.id, { sessionId, timestamp: Date.now() });
+                  }
+
                   // Send tool use as separate message immediately
                   const toolUseMessage = {
                     type: 'tool_use',
@@ -5869,6 +5879,24 @@ io.on('connection', (socket) => {
             // Handle tool results from user messages
             for (const block of jsonData.message.content) {
               if (block.type === 'tool_result') {
+                // Check if this is a Bash tool result and trigger focus restoration on macOS
+                if (bashToolUseIds.has(block.tool_use_id)) {
+                  console.log(`🔧 [${sessionId}] Bash tool result received, triggering focus restoration`);
+                  const bashInfo = bashToolUseIds.get(block.tool_use_id);
+                  bashToolUseIds.delete(block.tool_use_id); // Clean up
+
+                  // Set flag to false after first bash command
+                  if (isFirstBashCommand) {
+                    isFirstBashCommand = false;
+                    console.log(`🔧 [${sessionId}] First bash command completed, focus restoration disabled for future commands`);
+                  }
+
+                  // Emit event to trigger focus restoration on macOS
+                  socket.emit(`trigger:focus:${bashInfo.sessionId}`, {
+                    timestamp: Date.now()
+                  });
+                }
+
                 // Check if this is an Edit/MultiEdit tool result and enhance with context lines
                 let enhancedContent = block.content;
                 

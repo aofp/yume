@@ -517,10 +517,15 @@ export class TauriClaudeClient {
           streaming: false  // Codex sends complete messages, not streaming chunks
         };
       } else if (message.type === 'error') {
-        // Codex error
+        // Error message - emit streaming_end to clear UI state
+        currentStreamingMessage.delete(sessionId);
+        streamingAssistantMessages.delete(sessionId);
+        queueMicrotask(() => {
+          handler({ type: 'streaming_end', sessionId });
+        });
         transformedMessage = {
           type: 'error',
-          message: message.message || 'Unknown error'
+          message: message.message || message.error?.message || 'Unknown error'
         };
       }
       // === END CODEX EVENT HANDLERS ===
@@ -799,14 +804,27 @@ export class TauriClaudeClient {
           }
         };
       } else if (message.type === 'system') {
-        // System messages
-        transformedMessage = {
-          type: 'system',
-          subtype: message.subtype,
-          session_id: message.session_id,
-          message: message.message,
-          streaming: message.streaming // Pass through streaming state for system messages
-        };
+        // System messages - check for error subtype
+        if (message.subtype === 'error') {
+          // System error - emit streaming_end to clear UI state
+          currentStreamingMessage.delete(sessionId);
+          streamingAssistantMessages.delete(sessionId);
+          queueMicrotask(() => {
+            handler({ type: 'streaming_end', sessionId });
+          });
+          transformedMessage = {
+            type: 'error',
+            message: message.message || 'System error'
+          };
+        } else {
+          transformedMessage = {
+            type: 'system',
+            subtype: message.subtype,
+            session_id: message.session_id,
+            message: message.message,
+            streaming: message.streaming // Pass through streaming state for system messages
+          };
+        }
       } else if (message.type === 'interrupt') {
         // Interrupt signal
         transformedMessage = {
@@ -837,6 +855,25 @@ export class TauriClaudeClient {
       } else {
         currentUnlisten = unlisten;
         activeListeners.set(channel, unlisten);
+      }
+    });
+
+    // CRITICAL: Listen for claude-complete events (process exit)
+    // This handles cases where yume-cli crashes or exits without sending result message
+    const completeChannel = `claude-complete:${sessionId}`;
+    listen(completeChannel, () => {
+      console.log('[TauriClient] claude-complete received for session:', sessionId);
+      streamingAssistantMessages.delete(sessionId);
+      // Emit streaming_end to clear UI streaming state
+      handler({
+        type: 'streaming_end',
+        sessionId: sessionId
+      });
+    }).then(unlisten => {
+      if (cleanupRequested) {
+        unlisten();
+      } else {
+        activeListeners.set(completeChannel, unlisten);
       }
     });
 
@@ -892,7 +929,7 @@ export class TauriClaudeClient {
       cleanupRequested = true;
 
       // Clean up all listeners for this session (original + additional channels)
-      [channel, updateChannel, ...additionalChannels].forEach(ch => {
+      [channel, updateChannel, completeChannel, ...additionalChannels].forEach(ch => {
         const unlisten = activeListeners.get(ch);
         if (unlisten) {
           unlisten();
@@ -1041,6 +1078,35 @@ export class TauriClaudeClient {
             is_error: message.is_error || message.status === 'error'
           }
         };
+      } else if (message.type === 'error') {
+        // Error message - emit streaming_end to clear UI state
+        streamingAssistantMessages.delete(sessionId);
+        queueMicrotask(() => {
+          handler({ type: 'streaming_end', sessionId });
+        });
+        transformedMessage = {
+          type: 'error',
+          message: message.message || message.error?.message || 'Unknown error'
+        };
+      } else if (message.type === 'system' && message.subtype === 'error') {
+        // System error - emit streaming_end to clear UI state
+        streamingAssistantMessages.delete(sessionId);
+        queueMicrotask(() => {
+          handler({ type: 'streaming_end', sessionId });
+        });
+        transformedMessage = {
+          type: 'error',
+          message: message.message || 'System error'
+        };
+      } else if (message.type === 'system') {
+        // Other system messages (init, etc.)
+        transformedMessage = {
+          type: 'system',
+          subtype: message.subtype,
+          session_id: message.session_id,
+          message: message.message,
+          streaming: message.streaming
+        };
       }
 
       if (transformedMessage) {
@@ -1053,6 +1119,20 @@ export class TauriClaudeClient {
     // Await listener setup - this is the key difference from onMessage
     const unlisten = await listen(channel, messageHandler);
     activeListeners.set(channel, unlisten);
+
+    // CRITICAL: Listen for claude-complete events (process exit)
+    // This handles cases where yume-cli crashes or exits without sending result message
+    const completeChannel = `claude-complete:${sessionId}`;
+    const completeUnlisten = await listen(completeChannel, () => {
+      console.log('[TauriClient Async] claude-complete received for session:', sessionId);
+      streamingAssistantMessages.delete(sessionId);
+      // Emit streaming_end to clear UI streaming state
+      handler({
+        type: 'streaming_end',
+        sessionId: sessionId
+      });
+    });
+    activeListeners.set(completeChannel, completeUnlisten);
 
     // Track additional channels for cleanup
     const originalChannel = channel;
@@ -1092,7 +1172,7 @@ export class TauriClaudeClient {
 
     // Return cleanup function
     return () => {
-      [channel, updateChannel, ...additionalChannels].forEach(ch => {
+      [channel, updateChannel, completeChannel, ...additionalChannels].forEach(ch => {
         const unlistenFn = activeListeners.get(ch);
         if (unlistenFn) {
           unlistenFn();
