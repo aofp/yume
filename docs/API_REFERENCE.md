@@ -1,7 +1,8 @@
 # Yume API Reference
 
 **Version:** 0.1.0
-**Last Updated:** January 15, 2026
+**Last Updated:** January 17, 2026
+**Tauri Commands:** 152
 
 ## Table of Contents
 

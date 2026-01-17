@@ -121,8 +121,8 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files (32 files, ~17,000 lines, 148 Tauri commands)
-- `lib.rs` - Main entry, Tauri setup, all 148 commands registered
+### Critical Rust Files (32 files, ~17,000 lines, 152 Tauri commands)
+- `lib.rs` - Main entry, Tauri setup, all 152 commands registered
 - `app.rs` - Application constants (APP_NAME, APP_VERSION, APP_ID, etc.)
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
@@ -157,7 +157,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 
 ### Critical Frontend Files
 **Stores (1 Zustand store):**
-- `stores/claudeCodeStore.ts` - Main Zustand store (6,015 lines, ~287KB, 170+ actions)
+- `stores/claudeCodeStore.ts` - Main Zustand store (6,044 lines, ~290KB, 170+ actions)
 
 **Services (24 files):**
 - `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,259 lines)
@@ -197,14 +197,15 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `Settings/HooksTab.tsx` - Hook event configuration
 - `Settings/MCPTab.tsx` - MCP server management
 - `Timeline/TimelineNavigator.tsx` - Timeline & checkpoints UI
-- `Chat/ClaudeChat.tsx` - Main chat orchestrator (5,537 lines)
+- `Chat/ClaudeChat.tsx` - Main chat orchestrator (5,617 lines)
 - `Chat/MessageRenderer.tsx` - Message rendering (3,761 lines)
 - `Chat/ContextBar.tsx` - Context usage visualization
 - `Chat/DiffViewer.tsx` - Code diff rendering
 - `Chat/VirtualizedMessageList.tsx` - Message virtualization with scroll anchoring
 - `Chat/StreamIndicator.tsx` - Real-time activity indicator (thinking/bash/compacting)
 - `Chat/InputArea.tsx` - Separated input with ultrathink highlighting
-- `CommandPalette/CommandPalette.tsx` - VS Code-style command palette (1,267 lines, 75+ commands)
+- `CommandPalette/CommandPalette.tsx` - VS Code-style command palette (1,266 lines, 56 commands)
+- `CommandAutocomplete/CommandAutocomplete.tsx` - Slash command autocomplete (281 lines)
 - `MentionAutocomplete/MentionAutocomplete.tsx` - File picker with @ trigger (664 lines)
 - `ModelSelector/ModelToolsModal.tsx` - Model & tools selector (633 lines)
 - `ProviderSelector/ProviderSelector.tsx` - Provider dropdown (151 lines)
@@ -212,6 +213,11 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `Welcome/WelcomeScreen.tsx` - Landing screen with recent projects (623 lines)
 - `About/AboutModal.tsx` - About dialog with license status (116 lines)
 - `SystemModal/SystemModal.tsx` - Global alert/confirm dialogs (68 lines)
+- `ProjectsModal/ProjectsModal.tsx` - Projects and sessions browser (1,045 lines)
+- `ConfirmModal/ConfirmModal.tsx` - Reusable confirmation dialogs (93 lines)
+
+### Type Definitions
+- `types/ucf.ts` - Unified Conversation Format types (459 lines)
 
 ### Server Binaries (in resources/)
 Uses unified binary architecture - server and CLI combined into single binary:
@@ -528,13 +534,14 @@ Context to inject when triggered
 **Keyboard Shortcut**: `Cmd+P` / `Ctrl+P`
 
 **Features**:
-- 75+ commands across 10 categories (tabs, panels, session, model, input, zoom, appearance, settings, menu, settings tabs)
+- 56 commands across 10 categories (tabs, panels, session, model, input, zoom, appearance, settings, menu, settings tabs)
 - Fuzzy search with scoring (exact > starts with > contains > category > fuzzy)
 - Submenu navigation for themes, font size, line height, opacity, plugins
 - Live theme preview (can cancel with Esc to restore)
 - Toggle commands with on/off state display
 - Keyboard navigation (Arrow keys, Enter, Tab, Escape)
 - Direct navigation to specific settings tabs
+- Mouse-move detection to prevent accidental hover selection
 
 **Key Commands**:
 - `new tab` (Cmd+T) - Open new session with folder picker
@@ -546,6 +553,32 @@ Context to inject when triggered
 - `session stats` (Cmd+.) - View session statistics
 - `model & tools` (Cmd+O) - Open model/tools selector
 - `toggle model` (Cmd+Shift+O) - Switch between opus/sonnet
+
+### Command Autocomplete
+**Intelligent slash command autocomplete** triggered by `/` in the input field.
+
+**Location**: `src/renderer/components/CommandAutocomplete/CommandAutocomplete.tsx`
+**Trigger**: Type `/` at the start of input
+
+**Features**:
+- 3 command sources: built-in, custom (user-defined), plugin commands
+- Fuzzy filtering with starts-with matching
+- Plugin badges showing command origin
+- Full plugin prefix preservation (e.g., `yume--commit`)
+- Invalid command blocking (won't submit unmatched commands)
+
+**Built-in Commands**:
+- `/clear` - Clear context (local action)
+- `/model` - Select model & tools (local action)
+- `/title` - Set tab title (local action)
+- `/init` - Create/update CLAUDE.md (sends to Claude)
+- `/compact` - Compress context (sends to Claude)
+
+**Navigation**:
+- Arrow up/down to select
+- Tab to fill command
+- Enter to send command
+- Escape to close
 
 ### File Mention Autocomplete
 **Intelligent file picker** with fuzzy search and folder navigation.
@@ -588,6 +621,7 @@ Context to inject when triggered
 - Diff viewer for git changes
 - Auto-refresh every 30s when panel is open
 - Only shows when working directory is a git repo
+- **Git count badge** on tab button showing total changed files (modified + added + deleted)
 
 **Rollback Panel**:
 - History navigation view
@@ -685,6 +719,46 @@ Context to inject when triggered
 **app.ts** (app-level constants):
 - `APP_NAME`, `APP_VERSION`, `APP_ID`, `AGENT_PREFIX`, `PLUGIN_ID`
 - Helper functions: `appStorageKey()`, `appEventName()`
+
+### Projects Modal
+**Comprehensive project and session browser** with advanced navigation features.
+
+**Location**: `src/renderer/components/ProjectsModal/ProjectsModal.tsx`
+
+**Features**:
+- **Infinite scroll pagination**: 20 projects / 10 sessions per page
+- **Server-side streaming (SSE)**: Progressive session loading with real-time updates
+- **Dual-view navigation**: Projects list → Sessions view with back navigation
+- **Context menu**: Right-click for actions (new session, browse, delete, fork)
+- **Search**: Ctrl/Cmd+F for filtering projects and sessions
+- **Session count badges**: Pre-calculated server-side for fast display
+- **Git changes count**: Shows modified file count per project
+- **Session title persistence**: Custom titles stored in localStorage
+- **Time-based sorting**: Most recent first
+
+**Server Endpoints**:
+- `/claude-projects-quick` - Initial project list with pagination
+- `/claude-project-sessions/{path}` - SSE stream for session loading
+
+**Keyboard Navigation**:
+- Arrow up/down to navigate list
+- Enter to select project/session
+- Backspace to go back to projects
+- Home/End for first/last item
+- Delete to remove session
+- Escape to close
+
+### Confirm Modal
+**Reusable confirmation dialog** for destructive actions.
+
+**Location**: `src/renderer/components/ConfirmModal/ConfirmModal.tsx`
+
+**Features**:
+- Keyboard shortcuts: Enter to confirm, Escape to cancel
+- Danger mode with red styling for destructive actions
+- Customizable title, message, and button labels
+- 100ms debounce to prevent accidental double-clicks
+- Event capture phase to prevent streaming interruption
 
 ### Additional UI Features
 
@@ -1101,9 +1175,9 @@ After running build commands:
 - UI visible but functionality limited
 
 ### Component Architecture Issues
-- **ClaudeChat.tsx**: 5,537 lines - large but manageable
+- **ClaudeChat.tsx**: 5,617 lines - large but manageable
 - **MessageRenderer.tsx**: 3,761 lines - large but manageable
-- **claudeCodeStore.ts**: ~287KB monolith (6,015 lines, 170+ actions) - consider splitting
+- **claudeCodeStore.ts**: ~290KB monolith (6,044 lines, 170+ actions) - consider splitting
 - **Unified binary only on macOS**: Windows/Linux `yume-bin-*` binaries not yet built
 
 ### Hook Event Naming
@@ -1116,9 +1190,58 @@ After running build commands:
 - **Windows/Linux binaries**: Build scripts exist but binaries not yet compiled
 - Binary naming convention migrated to `yume-bin-*` (unified) and `yume-cli-*` (wrapper)
 
+### Unified Conversation Format (UCF)
+**Provider-agnostic type system** for multi-provider conversation portability.
+
+**Location**: `src/renderer/types/ucf.ts` (459 lines)
+
+**Key Interfaces**:
+- `UnifiedConversation` - Provider-agnostic session format
+- `ConversationTranslator` - Import/export between providers
+- `SwitchAnalysis` - Pre-flight checks before provider switch
+- `PreparedConversation` - Ready-to-send provider-specific format
+
+**Content Types** (7 types):
+- text, thinking, code, image, artifact, error, file
+
+**Features**:
+- Tool translation with status tracking and results
+- Provider switching analysis with warnings
+- History translation: Claude JSONL ↔ Gemini ↔ OpenAI formats
+- Per-provider token/cost usage breakdowns
+- Core tools (15 tools) and Claude-only tools (LSP, Task) constants
+
+### Line Changes Tracking
+**Session-level tracking** of code changes with line-by-line statistics.
+
+**Storage**: `currentSession?.lineChanges` in claudeCodeStore
+
+**Tracked Operations**:
+- Edit operations: Captures old_string → new_string, calculates removed vs added lines
+- Write operations: Tracks new content line counts
+
+**Usage**: Displayed in ContextBar to show code impact per session
+
 ## Version History
 
-**Last comprehensive audit**: 2026-01-17
+**Current audit**: 2026-01-17 (post-feature review)
+- **Rust files**: 32 files, ~17,000 lines, 152 Tauri commands (was 148)
+- **Store**: claudeCodeStore.ts now 6,044 lines (was 6,015)
+- **ClaudeChat.tsx**: 5,617 lines (was 5,537)
+- **Command Palette**: 56 commands (was 75+), 1,266 lines
+- **New components documented**:
+  - ProjectsModal (1,045 lines) - Infinite scroll, SSE streaming, context menus
+  - ConfirmModal (93 lines) - Reusable confirmation dialogs
+  - CommandAutocomplete (281 lines) - Slash command autocomplete
+  - UCF types (459 lines) - Unified Conversation Format
+- **New features**:
+  - Git count badge on context bar
+  - Line changes tracking per session
+  - Session title persistence
+  - yume-cli Windows wrapper (auto-generated)
+- **Default settings changed**: `showAnalyticsMenu` and `showPluginsSettings` now true by default
+
+**Previous audit**: 2026-01-17
 - **Rust files**: 32 files, ~17,000 lines, 148 Tauri commands (corrected from overstated 45/24k/156)
 - **Store**: claudeCodeStore.ts now 6,015 lines with 170+ actions (was 5,967/80+)
 - **yume-cli**: ~4,000 lines total (was overstated as 4,509)
