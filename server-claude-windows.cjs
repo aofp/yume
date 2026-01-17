@@ -276,7 +276,8 @@ console.log('══════════════════════�
 const { execSync, spawn } = require("child_process");
 const fs = require("fs");
 const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync, statSync } = fs;
-const { dirname, join, isAbsolute } = require("path");
+const path = require("path");
+const { dirname, join, isAbsolute } = path;
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { homedir, platform } = require("os");
@@ -286,6 +287,10 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
+
+// Flag to track if we're using native Windows Claude (not WSL)
+// When true, NEVER use WSL for anything - all paths are native Windows paths
+let USE_NATIVE_WINDOWS_CLAUDE = false;
 
 // Helper function to create WSL command for claude
 function createWslClaudeCommand(args, workingDir, message) {
@@ -502,10 +507,62 @@ function createWslClaudeCommand(args, workingDir, message) {
 }
 
 if (isWindows) {
-  // On Windows, Claude only runs in WSL, so we'll use our comprehensive command builder
-  console.log('🔍 Windows detected, Claude will be invoked through WSL with comprehensive path detection...');
-  CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
-  
+  // On Windows, first check for native Windows Claude installation
+  // Claude CLI can now be installed natively via npm on Windows
+  console.log('🔍 Windows detected, checking for native Claude installation...');
+
+  const windowsClaudePaths = [
+    join(process.env.APPDATA || '', 'npm', 'claude.cmd'),
+    join(process.env.APPDATA || '', 'npm', 'claude'),
+    join(homedir(), 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+    join(homedir(), 'AppData', 'Roaming', 'npm', 'claude'),
+    join(homedir(), 'scoop', 'shims', 'claude.cmd'),
+    join(homedir(), 'scoop', 'shims', 'claude.exe'),
+    process.env.CLAUDE_PATH,
+  ].filter(Boolean);
+
+  let foundNativeWindows = false;
+  for (const claudePath of windowsClaudePaths) {
+    try {
+      if (existsSync(claudePath)) {
+        CLAUDE_PATH = claudePath;
+        console.log(`✅ Found native Windows Claude CLI at: ${CLAUDE_PATH}`);
+        foundNativeWindows = true;
+        USE_NATIVE_WINDOWS_CLAUDE = true; // CRITICAL: Set flag to prevent any WSL usage
+        break;
+      }
+    } catch (e) {
+      // Continue searching
+    }
+  }
+
+  // If not found in common paths, try 'where' command
+  if (!foundNativeWindows) {
+    try {
+      const whereResult = execSync('where claude', { encoding: 'utf8', windowsHide: true }).trim();
+      if (whereResult) {
+        // 'where' can return multiple paths, take the first one
+        CLAUDE_PATH = whereResult.split('\n')[0].trim();
+        console.log(`✅ Found native Windows Claude CLI via where: ${CLAUDE_PATH}`);
+        foundNativeWindows = true;
+        USE_NATIVE_WINDOWS_CLAUDE = true; // CRITICAL: Set flag to prevent any WSL usage
+      }
+    } catch (e) {
+      // Not in PATH
+    }
+  }
+
+  // Only fall back to WSL if no native Windows installation found
+  if (!foundNativeWindows) {
+    console.log('🔍 No native Windows Claude found, falling back to WSL...');
+    CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
+    USE_NATIVE_WINDOWS_CLAUDE = false; // Explicitly set to false for WSL mode
+  }
+
+  // Log the final decision for debugging
+  console.warn(`🔧 Windows mode: ${USE_NATIVE_WINDOWS_CLAUDE ? 'NATIVE WINDOWS' : 'WSL'} (CLAUDE_PATH: ${CLAUDE_PATH})`);
+
+
 } else {
   // macOS/Linux paths
   const possibleClaudePaths = [
@@ -852,11 +909,30 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
     
-    // Ensure Node.js is in PATH for Claude CLI
+    // Ensure Node.js is in PATH for Claude CLI (.cmd file needs to find node.exe)
     const enhancedEnv = { ...process.env };
-    const nodeBinDir = '/opt/homebrew/bin';
-    if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-      enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+
+    // Find node.exe - same logic as main session
+    const { dirname } = require('path');
+    const { execSync } = require('child_process');
+    let nodeBinDir = null;
+    try {
+      const whereOutput = execSync('where node', { encoding: 'utf8', windowsHide: true }).trim();
+      nodeBinDir = dirname(whereOutput.split('\n')[0].trim());
+      console.log(`🔍 [TITLE] Found node.exe, bin dir: ${nodeBinDir}`);
+    } catch (e) {
+      const commonPaths = ['C:\\Program Files\\nodejs', 'C:\\Program Files (x86)\\nodejs'];
+      for (const path of commonPaths) {
+        if (existsSync(join(path, 'node.exe'))) {
+          nodeBinDir = path;
+          break;
+        }
+      }
+    }
+
+    if (nodeBinDir && !enhancedEnv.PATH?.includes(nodeBinDir)) {
+      enhancedEnv.PATH = `${nodeBinDir};${enhancedEnv.PATH || ''}`;
+      console.log(`🔧 [TITLE] Added ${nodeBinDir} to PATH`);
     }
     
     // Use a dedicated yume-title-gen directory for title generation
@@ -908,13 +984,18 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
           detached: false
         });
       })() :
-      spawn(CLAUDE_PATH, titleArgs, {
-      cwd: titleGenDir,
-      env: enhancedEnv,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,  // Always hide windows
-      detached: false
-    });
+      (() => {
+        // On Windows, .cmd files need shell: true to execute properly
+        const needsShell = isWindows && (CLAUDE_PATH.toLowerCase().endsWith('.cmd') || CLAUDE_PATH.toLowerCase().endsWith('.bat'));
+        return spawn(CLAUDE_PATH, titleArgs, {
+          cwd: titleGenDir,
+          env: enhancedEnv,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,  // Always hide windows
+          detached: false,
+          shell: needsShell
+        });
+      })();
     
     let output = '';
     let errorOutput = '';
@@ -1408,8 +1489,8 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
     console.log('  - SessionId:', sessionId);
     console.log('  - Platform:', platform());
     
-    if (isWindows) {
-      // Load from WSL
+    if (isWindows && !USE_NATIVE_WINDOWS_CLAUDE) {
+      // Load from WSL - ONLY when using WSL Claude, never for native Windows Claude
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -1423,11 +1504,11 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       }
       const sessionPath = `/home/${wslUser}/.claude/projects/${projectPath}/${sessionId}.jsonl`;
       console.log('  - WSL path:', sessionPath);
-      
+
       // Read the file from WSL
       try {
         const { execSync } = require('child_process');
-        
+
         const readCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cat \\"${sessionPath}\\" 2>/dev/null'}"`;
         const content = execSync(readCmd, {
           encoding: 'utf8',
@@ -2282,7 +2363,8 @@ app.get('/claude-analytics', async (req, res) => {
 
             // Update byProject using session.cwd
             if (session.cwd) {
-              const projectName = session.cwd.split('/').pop() || session.cwd;
+              // Handle both Windows (backslash) and Unix (forward slash) paths
+              const projectName = session.cwd.split(/[/\\]/).pop() || session.cwd;
               if (!analytics.byProject[projectName]) {
                 analytics.byProject[projectName] = {
                   sessions: 0,
@@ -2308,7 +2390,8 @@ app.get('/claude-analytics', async (req, res) => {
             ).length;
             analytics.totalMessages += messageCount;
             if (session.cwd) {
-              const projectName = session.cwd.split('/').pop() || session.cwd;
+              // Handle both Windows (backslash) and Unix (forward slash) paths
+              const projectName = session.cwd.split(/[/\\]/).pop() || session.cwd;
               if (analytics.byProject[projectName]) {
                 analytics.byProject[projectName].messages += messageCount;
               }
@@ -2482,10 +2565,163 @@ app.get('/claude-analytics', async (req, res) => {
       }
     };
     
+    // Helper to decode Claude's escaped directory names
+    // Windows: C--Users-name → C:\Users\name
+    // Unix: -Users-name → /Users/name
+    const decodeClaudeProjectName = (escapedName) => {
+      if (!escapedName) return escapedName;
+
+      // Windows path format: C--Users-name
+      if (escapedName.match(/^[A-Z]--/)) {
+        let decoded = escapedName.replace(/^([A-Z])--/, '$1:\\');
+        decoded = decoded.replace(/-/g, '\\');
+        return decoded;
+      }
+
+      // Unix path format: -Users-name or Users-name
+      let decoded = escapedName.replace(/^-/, '');
+      decoded = '/' + decoded.replace(/-/g, '/');
+      return decoded;
+    };
+
     // Determine the Claude projects directory based on platform
     // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
     let projectsDir;
-    if (isWindows) {
+    if (isWindows && USE_NATIVE_WINDOWS_CLAUDE) {
+      // NATIVE WINDOWS MODE - use Windows paths directly, NEVER use WSL
+      const windowsProjectsPath = path.win32.join(homedir(), '.claude', 'projects');
+
+      try {
+        const projectDirs = fs.readdirSync(windowsProjectsPath);
+        projectsDir = windowsProjectsPath;
+
+        // Process limited number of projects
+        const maxProjects = 10;
+        for (const projectName of projectDirs.slice(0, maxProjects)) {
+          const projectPath = path.win32.join(windowsProjectsPath, projectName);
+          try {
+            const stats = fs.statSync(projectPath);
+            if (!stats.isDirectory()) {
+              continue;
+            }
+
+            // Get session files
+            const sessionFiles = fs.readdirSync(projectPath);
+            const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+
+            // Process limited number of sessions
+            const maxSessions = 20;
+            for (const sessionFile of jsonlFiles.slice(0, maxSessions)) {
+              const sessionPath = path.win32.join(projectPath, sessionFile);
+              try {
+                const content = fs.readFileSync(sessionPath, 'utf-8');
+                const lines = content.split(/\n|\$/).filter(line => line.trim());
+                let sessionLastUsed = Date.now();
+                let messageCount = 0;
+                let sessionHasData = false;
+                const cleanProjectName = decodeClaudeProjectName(projectName);
+
+                for (const line of lines) {
+                  try {
+                    const msg = JSON.parse(line);
+                    messageCount++;
+                    sessionHasData = true;
+                    if (msg.timestamp) {
+                      sessionLastUsed = Math.max(sessionLastUsed, new Date(msg.timestamp).getTime() || 0);
+                    }
+
+                    // Extract usage and model info
+                    const usage = msg.usage || msg.message?.usage;
+                    const model = msg.model || msg.message?.model || 'unknown';
+                    const messageDate = formatDateKey(msg.timestamp ? new Date(msg.timestamp) : new Date());
+
+                    if (usage) {
+                      const inputTokens = usage.input_tokens || 0;
+                      const outputTokens = usage.output_tokens || 0;
+                      const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                      const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                      const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+
+                      // Get pricing for this model (normalize model name first)
+                      const modelKey = normalizeModelName(model);
+                      const rates = pricing[modelKey] || pricing['sonnet'] || pricing.default;
+                      const cost = (inputTokens * rates.input) +
+                                   (outputTokens * rates.output) +
+                                   (cacheCreationTokens * rates.cacheCreation) +
+                                   (cacheReadTokens * rates.cacheRead);
+
+                      const msgBreakdown = { input: inputTokens, output: outputTokens, cacheCreation: cacheCreationTokens, cacheRead: cacheReadTokens };
+
+                      analytics.totalTokens += totalTokens;
+                      analytics.totalCost += cost;
+                      addTokenBreakdown(analytics.tokenBreakdown, msgBreakdown);
+
+                      const modelStats = ensureModelStats(analytics, model);
+                      modelStats.tokens += totalTokens;
+                      modelStats.cost += cost;
+                      addTokenBreakdown(modelStats.tokenBreakdown, msgBreakdown);
+
+                      const providerStats = analytics.byProvider.claude;
+                      providerStats.tokens += totalTokens;
+                      providerStats.cost += cost;
+                      addTokenBreakdown(providerStats.tokenBreakdown, msgBreakdown);
+
+                      const dateStats = ensureDateStats(messageDate);
+                      dateStats.tokens += totalTokens;
+                      dateStats.cost += cost;
+                      addTokenBreakdown(dateStats.tokenBreakdown, msgBreakdown);
+                      const dateModelStats = ensureDateModelStats(dateStats, model);
+                      dateModelStats.tokens += totalTokens;
+                      dateModelStats.cost += cost;
+
+                      const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                      projectStats.tokens += totalTokens;
+                      projectStats.cost += cost;
+                      const projectDateStats = ensureProjectDateStats(projectStats, messageDate);
+                      projectDateStats.tokens += totalTokens;
+                      projectDateStats.cost += cost;
+                      addTokenBreakdown(projectDateStats.tokenBreakdown, msgBreakdown);
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON
+                  }
+                }
+
+                if (sessionHasData) {
+                  const sessionKey = `${projectName}/${sessionFile}`;
+                  if (!countedSessions.has(sessionKey)) {
+                    countedSessions.add(sessionKey);
+                    analytics.totalSessions++;
+                    analytics.totalMessages += messageCount;
+                    analytics.byProvider.claude.sessions++;
+
+                    const sessionDate = formatDateKey(new Date(sessionLastUsed));
+                    const dateStats = ensureDateStats(sessionDate);
+                    dateStats.sessions++;
+                    dateStats.messages += messageCount;
+
+                    const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                    projectStats.sessions++;
+                    projectStats.messages += messageCount;
+
+                    const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                    projectDateStats.sessions++;
+                    projectDateStats.messages += messageCount;
+                  }
+                }
+              } catch (e) {
+                console.error(`  Error processing session ${sessionFile}:`, e.message);
+              }
+            }
+          } catch (e) {
+            console.error(`Error processing project ${projectName}:`, e.message);
+          }
+        }
+      } catch (e) {
+        console.error('Error reading Windows projects directory:', e.message);
+      }
+    } else if (isWindows) {
+      // WSL MODE - access WSL filesystem through Windows mount
       // Directly access WSL filesystem through Windows mount - no wsl.exe commands
 
       // Try different WSL mount paths and users
@@ -2576,7 +2812,7 @@ app.get('/claude-analytics', async (req, res) => {
                   // Parse JSONL file - ccusage compatible per-message processing
                   const allLines = content.split('\n');
                   const sessionLastUsed = fileStats.mtime.getTime();
-                  const cleanProjectName = projectName.replace(/-/g, '/');
+                  const cleanProjectName = decodeClaudeProjectName(projectName);
                   let sessionHasData = false;
                   let messageCount = 0;
                   const countedMessageRequestIds = new Set();
@@ -3110,10 +3346,16 @@ app.get('/claude-projects-quick', async (req, res) => {
     // Get pagination params from query string
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    // On Windows, load from WSL where Claude actually stores projects
-    if (isWindows) {
-      console.log('🔍 Windows detected - loading projects from WSL');
-      
+    // On Windows with native Claude, use Windows paths directly
+    // On Windows with WSL Claude, use WSL paths
+    if (isWindows && USE_NATIVE_WINDOWS_CLAUDE) {
+      // NATIVE WINDOWS MODE - skip to non-Windows code path (uses homedir())
+      console.log('🔍 Windows native mode - loading projects from Windows paths');
+      // Fall through to the standard path handling below
+    } else if (isWindows) {
+      // WSL MODE - load from WSL where Claude stores projects
+      console.log('🔍 Windows WSL mode - loading projects from WSL');
+
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -3644,8 +3886,12 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
       'Connection': 'keep-alive'
     });
     
-    if (isWindows) {
-      // Load from WSL where Claude stores projects
+    if (isWindows && USE_NATIVE_WINDOWS_CLAUDE) {
+      // NATIVE WINDOWS MODE - fall through to standard path handling
+      console.log('🔍 Windows native mode - loading sessions from Windows paths');
+      // Continue to the non-Windows code path below
+    } else if (isWindows) {
+      // WSL MODE - Load from WSL where Claude stores projects
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -3658,7 +3904,7 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         console.warn('Could not detect WSL user, using default');
       }
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      
+
       try {
         // Get file list from WSL
         console.log('🚀 Getting session list from WSL:', projectPath);
@@ -3977,8 +4223,34 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
     const projectName = decodeURIComponent(req.params.projectName);
     console.log(`📅 Getting date for project: ${projectName}`);
     
-    if (isWindows) {
-      // Get WSL user
+    if (isWindows && USE_NATIVE_WINDOWS_CLAUDE) {
+      // NATIVE WINDOWS MODE - use Windows paths
+      const projectPath = join(homedir(), '.claude', 'projects', projectName);
+      try {
+        const files = readdirSync(projectPath);
+        const jsonlFiles = files.filter(f => f.endsWith('.jsonl'));
+        let lastModified = Date.now();
+
+        for (const file of jsonlFiles) {
+          try {
+            const filePath = join(projectPath, file);
+            const stats = statSync(filePath);
+            if (stats.mtime.getTime() > lastModified || lastModified === Date.now()) {
+              lastModified = stats.mtime.getTime();
+            }
+          } catch (e) {
+            // Skip files we can't stat
+          }
+        }
+
+        console.log(`  ✅ ${projectName}: ${new Date(lastModified).toLocaleString()}`);
+        res.json({ projectName, lastModified });
+      } catch (e) {
+        console.log(`  ⚠️ ${projectName}: Error reading, using current time`);
+        res.json({ projectName, lastModified: Date.now() });
+      }
+    } else if (isWindows) {
+      // WSL MODE - Get WSL user
       let wslUser = 'yuru';
       try {
         const { execSync } = require('child_process');
@@ -3989,9 +4261,9 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
       } catch (e) {
         // Use default
       }
-      
+
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      
+
       // Get the modification time of the MOST RECENT session file
       const recentCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && ls -t *.jsonl 2>/dev/null | head -1 | xargs -r stat -c %Y 2>/dev/null'}"`;
       const { execSync } = require('child_process');
@@ -3999,7 +4271,7 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
         encoding: 'utf8',
         windowsHide: true
       }).trim();
-      
+
       let lastModified = Date.now();
       if (recentTime && !isNaN(recentTime)) {
         lastModified = parseInt(recentTime) * 1000;
@@ -4008,7 +4280,7 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
       } else {
         console.log(`  ⚠️ ${projectName}: No sessions found, using current time`);
       }
-      
+
       res.json({ projectName, lastModified });
     } else {
       // Non-Windows implementation
@@ -4025,8 +4297,18 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
   try {
     const projectName = decodeURIComponent(req.params.projectName);
     
-    if (isWindows) {
-      // Load from WSL
+    if (isWindows && USE_NATIVE_WINDOWS_CLAUDE) {
+      // NATIVE WINDOWS MODE - count sessions from Windows paths
+      const projectPath = join(homedir(), '.claude', 'projects', projectName);
+      try {
+        const files = readdirSync(projectPath);
+        const sessionCount = files.filter(f => f.endsWith('.jsonl')).length;
+        res.json({ projectName, sessionCount });
+      } catch (e) {
+        res.json({ projectName, sessionCount: 0 });
+      }
+    } else if (isWindows) {
+      // WSL MODE - Load from WSL
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -4039,17 +4321,17 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
         console.warn('Could not detect WSL user, using default');
       }
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      
+
       try {
         const { execSync } = require('child_process');
-        
+
         // Count sessions in WSL
         const countCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'ls -1 ${projectPath}/*.jsonl 2>/dev/null | wc -l'}"`;
         const count = execSync(countCmd, {
           encoding: 'utf8',
           windowsHide: true
         }).trim();
-        
+
         const sessionCount = parseInt(count) || 0;
         res.json({ projectName, sessionCount });
       } catch (e) {
@@ -4067,9 +4349,13 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
 // Projects endpoint - loads claude projects asynchronously with enhanced error handling
 app.get('/claude-projects', async (req, res) => {
   try {
-    // On Windows, ALWAYS load from WSL, NEVER from Windows filesystem
-    if (isWindows) {
-      console.log('🚨 WINDOWS DETECTED - LOADING FROM WSL ONLY!');
+    // On native Windows Claude, use Windows filesystem
+    // On WSL Claude, use WSL filesystem
+    if (isWindows && USE_NATIVE_WINDOWS_CLAUDE) {
+      console.log('🔍 Windows native mode - loading projects from Windows paths');
+      // Fall through to non-Windows code path (uses homedir())
+    } else if (isWindows) {
+      console.log('🚨 WINDOWS WSL MODE - LOADING FROM WSL!');
       try {
         // Get WSL user using PowerShell
         let wslUser = 'yuru'; // default
@@ -5035,12 +5321,48 @@ io.on('connection', (socket) => {
       console.log(`🚀 Spawning claude with args:`, args);
       console.log(`🔍 Active processes count: ${activeProcesses.size}`);
       
-      // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
+      // Ensure Node.js is in PATH for Claude CLI (.cmd file needs to find node.exe)
       const enhancedEnv = { ...process.env };
-      const nodeBinDir = '/opt/homebrew/bin';
-      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+
+      // Find node.exe location - pkg binaries have process.execPath pointing to the .exe, not node
+      // So we need to find the actual node.exe on the system
+      const { dirname } = require('path');
+      const { execSync } = require('child_process');
+
+      let nodeBinDir = null;
+      try {
+        // Use 'where node' to find node.exe location
+        const whereOutput = execSync('where node', { encoding: 'utf8', windowsHide: true }).trim();
+        const nodePath = whereOutput.split('\n')[0].trim(); // Take first result
+        nodeBinDir = dirname(nodePath);
+        console.log(`🔍 Found node.exe at: ${nodePath}`);
+        console.log(`🔍 Node.js bin dir: ${nodeBinDir}`);
+      } catch (e) {
+        console.warn(`⚠️ Could not find node.exe via 'where node': ${e.message}`);
+        // Fallback: check common Node.js installation paths
+        const commonPaths = [
+          'C:\\Program Files\\nodejs',
+          'C:\\Program Files (x86)\\nodejs',
+          join(process.env.APPDATA || '', '..', 'Local', 'Programs', 'nodejs'),
+        ];
+        for (const path of commonPaths) {
+          const nodePath = join(path, 'node.exe');
+          if (existsSync(nodePath)) {
+            nodeBinDir = path;
+            console.log(`🔍 Found node.exe at fallback location: ${nodePath}`);
+            break;
+          }
+        }
+      }
+
+      if (nodeBinDir && !enhancedEnv.PATH?.includes(nodeBinDir)) {
+        // Use semicolon (;) as path separator on Windows
+        enhancedEnv.PATH = `${nodeBinDir};${enhancedEnv.PATH || ''}`;
         console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
+      } else if (nodeBinDir) {
+        console.log(`✅ Node.js bin dir already in PATH`);
+      } else {
+        console.error(`❌ Could not find node.exe! Claude CLI may fail to start.`);
       }
       
       // Add unique session identifier to environment to ensure isolation
@@ -5152,6 +5474,12 @@ io.on('connection', (socket) => {
         claudeProcess = spawn(wslCommand, wslArgs, spawnOptions);
         claudeProcess.inputHandled = inputHandled;
       } else {
+        // On Windows, .cmd files need shell: true to execute properly
+        const needsShell = isWindows && (CLAUDE_PATH.toLowerCase().endsWith('.cmd') || CLAUDE_PATH.toLowerCase().endsWith('.bat'));
+        if (needsShell) {
+          console.log(`🪟 Spawning Windows .cmd file with shell: true`);
+          spawnOptions.shell = true;
+        }
         claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
       }
 

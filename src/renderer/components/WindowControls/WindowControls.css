@@ -148,6 +148,20 @@
   opacity: 1;
 }
 
+.icon-opacity-70 {
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-opacity-50 {
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .window-control {
   width: 46px;
   height: 28px;

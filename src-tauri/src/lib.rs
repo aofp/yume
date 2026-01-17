@@ -159,8 +159,11 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build()) // Persistent storage for settings/state
         .plugin(tauri_plugin_clipboard_manager::init()); // Clipboard operations for copy/paste
 
-    // Only enforce single-instance for demo users
+    // Only enforce single-instance for demo users in RELEASE builds
+    // Debug builds skip single-instance to avoid mutex issues during development
+    #[cfg(not(debug_assertions))]
     if !is_licensed {
+        info!("Enabling single-instance enforcement for demo mode (release build)");
         builder = builder.plugin(tauri_plugin_single_instance::init(
             move |app, _argv, _cwd| {
                 // This callback is called on the FIRST instance when a second instance tries to launch
@@ -180,6 +183,11 @@ pub fn run() {
                 }
             },
         ));
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        info!("Single-instance enforcement DISABLED (debug build)");
     }
 
     builder

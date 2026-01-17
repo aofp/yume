@@ -627,15 +627,28 @@ fn compare_versions(a: &str, b: &str) -> Ordering {
 /// Helper function to create a Command with proper environment variables
 /// This ensures commands like Claude can find Node.js and other dependencies
 pub fn create_command_with_env(program: &str) -> Command {
-    let mut cmd = Command::new(program);
-
-    // On Windows, hide the console window to prevent flashing
+    // On Windows, .cmd and .bat files need to be executed through cmd.exe
     #[cfg(target_os = "windows")]
-    {
+    let mut cmd = {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
+
+        let program_lower = program.to_lowercase();
+        if program_lower.ends_with(".cmd") || program_lower.ends_with(".bat") {
+            info!("Windows: Executing batch file through cmd.exe: {}", program);
+            let mut c = Command::new("cmd.exe");
+            c.arg("/c").arg(program);
+            c.creation_flags(CREATE_NO_WINDOW);
+            c
+        } else {
+            let mut c = Command::new(program);
+            c.creation_flags(CREATE_NO_WINDOW);
+            c
+        }
+    };
+
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = Command::new(program);
 
     info!("Creating command for: {}", program);
 

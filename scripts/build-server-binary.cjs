@@ -304,7 +304,7 @@ async function build() {
 
     // Step 4: Compile with pkg
     const isWindows = target.platform === 'windows';
-    const outputName = `${APP_ID}-server-${target.platform}-${target.arch}${isWindows ? '.exe' : ''}`;
+    const outputName = `${APP_ID}-bin-${target.platform}-${target.arch}${isWindows ? '.exe' : ''}`;
     const outputPath = join(DIST, outputName);
     console.log(`   4/4 Packaging binary with pkg...`);
 
