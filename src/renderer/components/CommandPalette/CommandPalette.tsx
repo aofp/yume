@@ -585,6 +585,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       return;
     }
 
+    // Close on backspace when input is empty
+    if (e.key === 'Backspace' && query === '') {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       // Skip disabled items
@@ -619,7 +626,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       }
       return;
     }
-  }, [filteredCommands, selectedIndex, executeCommand, onClose]);
+  }, [filteredCommands, selectedIndex, executeCommand, onClose, query]);
 
   // Global keyboard handler for Escape
   useEffect(() => {

@@ -3272,6 +3272,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           return;
         }
 
+        // Cancel any pending streaming_end timer when user sends a message
+        // This prevents race condition where old timer fires after new message is sent
+        cancelStreamingEndTimer(currentSessionId);
+
+        // Set streaming=true immediately when user sends a message
+        // This ensures streaming indicator shows before first response arrives
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === currentSessionId
+              ? { ...s, streaming: true, thinkingStartTime: Date.now() }
+              : s
+          )
+        }));
+
         // Detect manual /compact command and set compacting state for UI indicator
         if (content.trim() === '/compact') {
           console.log('[Store] 🗜️ Manual /compact command detected - setting compacting state');

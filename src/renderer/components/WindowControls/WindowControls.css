@@ -133,19 +133,16 @@
 
 /* Toggle button styling */
 .window-control-toggle {
-  width: 24px;
-  height: 21px;
+  height: 16px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--foreground-color);
   padding: 0;
-  border-radius: 4px;
   font-size: var(--text-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: default;
-  margin-right: 1px;
   pointer-events: none;
 }
 

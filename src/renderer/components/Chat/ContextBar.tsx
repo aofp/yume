@@ -5,6 +5,7 @@ import {
   IconHistory,
   IconMicrophone,
   IconMicrophoneOff,
+  IconCommand,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
@@ -80,6 +81,9 @@ interface ContextBarProps {
 
   // Files panel sub-tab
   filesSubTab: 'files' | 'git';
+
+  // Command palette
+  onOpenCommandPalette: () => void;
 }
 
 export const ContextBar: React.FC<ContextBarProps> = ({
@@ -118,6 +122,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   showHistory,
   gitChangesCount,
   filesSubTab,
+  onOpenCommandPalette,
 }) => {
   // Get context window from selected model
   const currentModel = getModelById(selectedModel);
@@ -159,28 +164,58 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         onOpenModal={onOpenModelModal}
       />
 
-      {/* Center - tools group */}
+      {/* Files/Git button - opens files panel (with files/git tabs inside) - hidden in vscode mode */}
+      {!isVSCode() && (
+        <button
+          className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
+          onClick={() => {
+            setShowFilesPanel(!showFilesPanel);
+            setSelectedFile(null);
+            setFileContent('');
+            setSelectedGitFile(null);
+            setGitDiff(null);
+            setFocusedFileIndex(-1);
+            setFocusedGitIndex(-1);
+          }}
+          disabled={!workingDirectory}
+          title={filesSubTab === 'git' ? `git (${modKey}+g)` : `files (${modKey}+e)`}
+          style={{ marginLeft: '2px' }}
+        >
+          <span className="btn-icon-wrapper">
+            {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
+          </span>
+          {gitChangesCount > 0 && <span className="btn-git-text">{gitChangesCount}</span>}
+        </button>
+      )}
+
+      {/* Center - command palette + dictation */}
       <div className="context-center">
-        {/* Files/Git button - opens files panel (with files/git tabs inside) - hidden in vscode mode */}
-        {!isVSCode() && (
+        {/* Command palette button */}
+        <button
+          className="btn-context-icon"
+          onClick={onOpenCommandPalette}
+          title={`command palette (${modKey}+p)`}
+        >
+          <span className="btn-icon-wrapper">
+            <IconCommand size={12} stroke={1.5} />
+          </span>
+        </button>
+
+        {/* Dictation button - hidden in vscode mode or when disabled in settings */}
+        {!isVSCode() && showDictation && (
           <button
-            className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
-            onClick={() => {
-              setShowFilesPanel(!showFilesPanel);
-              setSelectedFile(null);
-              setFileContent('');
-              setSelectedGitFile(null);
-              setGitDiff(null);
-              setFocusedFileIndex(-1);
-              setFocusedGitIndex(-1);
-            }}
-            disabled={!workingDirectory}
-            title={filesSubTab === 'git' ? `git (${modKey}+g)` : `files (${modKey}+e)`}
+            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
+            onClick={onToggleDictation}
+            disabled={isReadOnly}
+            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
           >
             <span className="btn-icon-wrapper">
-              {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
+              {isDictating ? (
+                <IconMicrophone size={12} stroke={1.5} />
+              ) : (
+                <IconMicrophoneOff size={12} stroke={1.5} />
+              )}
             </span>
-            {gitChangesCount > 0 && <span className="btn-git-text">{gitChangesCount}</span>}
           </button>
         )}
 
@@ -206,25 +241,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       </div>
 
-      {/* Right - dictation + history + stats */}
+      {/* Right - history + stats */}
       <div className="context-info">
-        {/* Dictation button - hidden in vscode mode or when disabled in settings */}
-        {!isVSCode() && showDictation && (
-          <button
-            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
-            onClick={onToggleDictation}
-            disabled={isReadOnly}
-            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
-          >
-            <span className="btn-icon-wrapper">
-              {isDictating ? (
-                <IconMicrophone size={12} stroke={1.5} />
-              ) : (
-                <IconMicrophoneOff size={12} stroke={1.5} />
-              )}
-            </span>
-          </button>
-        )}
         {/* History button - hidden in vscode mode or when disabled in settings */}
         {!isVSCode() && showHistory && (
           <button

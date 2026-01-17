@@ -1432,9 +1432,10 @@ textarea.context-full {
 
 .context-center {
   display: flex;
+  flex: 1;
   gap: 2px;
   align-items: center;
-  margin-left: 2px;
+  justify-content: center;
 }
 
 .context-git-stats {

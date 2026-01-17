@@ -5210,6 +5210,7 @@ export const ClaudeChat: React.FC = () => {
               showHistory={showHistory}
               gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
               filesSubTab={filesSubTab}
+              onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
             />
           </InputArea>
         );

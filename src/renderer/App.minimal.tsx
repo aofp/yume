@@ -272,6 +272,13 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('showAboutModal', handleShowAbout);
   }, []);
 
+  // Listen for command palette events (from ContextBar button)
+  useEffect(() => {
+    const handleOpenCommandPalette = () => setShowCommandPalette(true);
+    window.addEventListener('open-command-palette', handleOpenCommandPalette);
+    return () => window.removeEventListener('open-command-palette', handleOpenCommandPalette);
+  }, []);
+
   // Listen for demo instance blocked event from Rust backend
   useEffect(() => {
     if (!window.__TAURI__) return;
@@ -701,10 +708,10 @@ export const App: React.FC = () => {
         setShowProjectsModal(true);
       }
 
-      // Ctrl+P for command palette
+      // Ctrl+P for command palette (toggle)
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
-        setShowCommandPalette(true);
+        setShowCommandPalette(prev => !prev);
       }
       
       // Ctrl+N for agents modal
