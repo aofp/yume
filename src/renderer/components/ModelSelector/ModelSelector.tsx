@@ -61,7 +61,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         onContextMenu={handleContextMenu}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        title={`${modKey}+o cycle model • click to select`}
+        title={`${modKey}+shift+o cycle model • click to select`}
       >
         <span className="model-selector-text">{selectedModel?.shortDisplayName || 'select model'}</span>
         {toolCount !== undefined && <span className="model-selector-tools">{toolCount}</span>}

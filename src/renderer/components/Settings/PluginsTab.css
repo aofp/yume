@@ -4,7 +4,6 @@
 .plugins-tab {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   position: relative;
 }
 
@@ -70,7 +69,7 @@
 
 .plugins-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .plugins-action-btn {

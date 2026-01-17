@@ -1,0 +1,206 @@
+/* Command Palette - Compact minimal OLED theme */
+
+.cp-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--background-color) 50%, black);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  z-index: 10001;
+  cursor: default;
+  animation: cpFadeIn 0.15s ease;
+}
+
+@keyframes cpFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cp-modal {
+  background: var(--background-color);
+  border: 1px solid var(--fg-10);
+  border-radius: 6px;
+  width: 90%;
+  max-width: 380px;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: cpModalIn 0.2s ease;
+}
+
+@keyframes cpModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cp-search {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--fg-05);
+  gap: 6px;
+}
+
+.cp-search-icon {
+  color: var(--fg-30);
+  flex-shrink: 0;
+}
+
+.cp-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--foreground-color);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.cp-input::placeholder {
+  color: var(--fg-25);
+  font-style: italic;
+}
+
+.cp-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.cp-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--fg-30);
+  font-size: var(--text-xs);
+}
+
+.cp-category {
+  padding: 0 2px;
+}
+
+.cp-category-label {
+  padding: 4px 6px 2px;
+  font-size: 9px;
+  color: var(--fg-25);
+  text-transform: lowercase;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.cp-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  margin: 0 2px;
+  border-radius: 3px;
+  cursor: default;
+  gap: 6px;
+}
+
+.cp-item:hover {
+  background: var(--fg-05);
+}
+
+.cp-item.selected {
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.cp-label {
+  flex: 1;
+  color: var(--fg-60);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cp-item:hover .cp-label {
+  color: var(--fg-80);
+}
+
+.cp-item.selected .cp-label {
+  color: var(--accent-color);
+}
+
+.cp-item.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.cp-item.disabled .cp-label {
+  color: var(--fg-30);
+}
+
+.cp-toggle {
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: lowercase;
+  font-weight: 500;
+}
+
+.cp-toggle.on {
+  background: rgba(var(--positive-rgb), 0.15);
+  color: var(--positive-color);
+}
+
+.cp-toggle.off {
+  background: var(--fg-05);
+  color: var(--fg-30);
+}
+
+.cp-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.cp-key {
+  display: inline-block;
+  background: var(--fg-05);
+  color: var(--fg-40);
+  padding: 0px 3px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.cp-key-plus {
+  color: var(--fg-20);
+  font-size: 8px;
+  padding: 0 1px;
+}
+
+/* Scrollbar styling */
+.cp-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cp-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cp-list::-webkit-scrollbar-thumb {
+  background: var(--fg-10);
+  border-radius: 2px;
+}
+
+.cp-list::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-20);
+}

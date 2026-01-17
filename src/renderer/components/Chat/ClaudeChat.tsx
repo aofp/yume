@@ -2147,11 +2147,15 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle stats modal
         setShowStatsModal(prev => !prev);
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         // Open model & tools modal via keyboard
         setModelToolsOpenedViaKeyboard(true);
         setShowModelToolsModal(prev => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        // Toggle model between opus/sonnet
+        toggleModel();
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
         e.preventDefault();
         // Open CLAUDE.md editor
@@ -2168,10 +2172,6 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle dictation (only if enabled in settings)
         toggleDictation();
-      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
-        e.preventDefault();
-        // Toggle model between opus/sonnet
-        toggleModel();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
         // Toggle files panel on files sub-tab
@@ -4403,9 +4403,13 @@ export const ClaudeChat: React.FC = () => {
                     <IconGitBranch size={12} stroke={1.5} />
                     <span>git</span>
                     {gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 && (
-                      <span className="git-changes-badge">{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
+                      <span className="git-tab-stats">
+                        <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
+                        {gitAhead > 0 && <span>↑{gitAhead}</span>}
+                        <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
+                        <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
+                      </span>
                     )}
-                    {gitAhead > 0 && <span className="git-ahead-badge">↑{gitAhead}</span>}
                   </button>
                 </div>
               </>
@@ -5358,8 +5362,7 @@ export const ClaudeChat: React.FC = () => {
               modKey={modKey}
               showDictation={showDictation}
               showHistory={showHistory}
-              gitLineStats={gitLineStats}
-              gitAhead={gitAhead}
+              gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
               filesSubTab={filesSubTab}
             />
           </InputArea>

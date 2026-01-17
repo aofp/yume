@@ -76,8 +76,7 @@ interface ContextBarProps {
   showHistory: boolean;
 
   // Git stats
-  gitLineStats: { [file: string]: { added: number; deleted: number } };
-  gitAhead: number;
+  gitChangesCount: number;
 
   // Files panel sub-tab
   filesSubTab: 'files' | 'git';
@@ -117,8 +116,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   modKey,
   showDictation,
   showHistory,
-  gitLineStats,
-  gitAhead,
+  gitChangesCount,
   filesSubTab,
 }) => {
   // Get context window from selected model
@@ -182,15 +180,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <span className="btn-icon-wrapper">
               {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
             </span>
-            {gitAhead > 0 && <span className="btn-git-ahead">↑{gitAhead}</span>}
+            {gitChangesCount > 0 && <span className="btn-git-text">{gitChangesCount}</span>}
           </button>
-        )}
-        {/* Git line stats - always visible when there are changes, dimmed unless files panel open */}
-        {Object.keys(gitLineStats).length > 0 && (
-          <span className="context-git-stats" style={{ opacity: showFilesPanel ? 1 : 0.5 }}>
-            <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
-            <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
-          </span>
         )}
 
         {/* History button - shown in center for vscode mode (replaces files/git) */}
