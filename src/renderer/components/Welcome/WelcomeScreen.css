@@ -588,7 +588,7 @@
 /* Model Selector - exact same positioning as chat */
 .model-selector-container {
   position: fixed;
-  bottom: 5px;
+  bottom: 2px;
   left: 3px;
   z-index: 100;
 }
