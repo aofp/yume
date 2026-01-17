@@ -986,7 +986,7 @@
   background: transparent;
   border: 1px solid var(--fg-20);
   border-radius: 4px;
-  color: var(--fg-30);
+  color: var(--foreground-color);
   font-size: var(--text-sm);
   font-family: var(--font-mono);
   text-transform: lowercase;
@@ -2026,7 +2026,7 @@ textarea.context-full {
 
 .stats-modal {
   background: var(--background-color, #0f0f0f);
-  border: 1px solid var(--fg-15);
+  border: 1px solid var(--fg-10);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -2040,7 +2040,7 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--fg-15);
+  border-bottom: 1px solid var(--fg-10);
   margin-bottom: 0;
   cursor: default;
 }
@@ -2072,23 +2072,33 @@ textarea.context-full {
   align-items: center;
   gap: 4px;
   background: transparent;
-  border: 1px solid var(--fg-20);
+  border: 1px solid var(--fg-40);
   border-radius: 4px;
-  color: var(--fg-60);
+  color: var(--foreground-color);
   cursor: default !important;
-  padding: 3px 8px;
+  padding: 3px 6px 2px 6px;
+  opacity: .5;
   font-size: var(--text-xs);
   font-family: var(--font-mono);
   text-transform: lowercase;
 }
 
+.stats-action-btn svg {
+  margin-top: -.5px;
+}
+
+.stats-action-btn:hover {
+  opacity: 1;
+}
+
 .stats-action-btn:hover:not(:disabled) {
-  color: var(--foreground);
-  border-color: var(--fg-40);
+  background: var(--fg-05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 .stats-action-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.25;
   cursor: not-allowed;
 }
 

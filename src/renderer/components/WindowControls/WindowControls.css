@@ -136,8 +136,6 @@
   width: 24px;
   height: 21px;
   background: transparent;
-  position:relative;
-  top: -1px;
   border: 1px solid transparent;
   color: var(--foreground-color);
   padding: 0;

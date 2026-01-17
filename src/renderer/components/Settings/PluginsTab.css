@@ -142,17 +142,12 @@
 
 /* Plugin Item */
 .plugin-item {
-  background: var(--fg-05);
   border: 1px solid var(--fg-15);
   border-radius: 4px;
 }
 
-.plugin-item:hover {
-  border-color: var(--fg-25);
-}
-
 .plugin-item.enabled {
-  border-color: rgba(var(--accent-rgb), 0.3);
+  border-color: rgba(var(--accent-rgb), 0.5);
 }
 
 /* Plugin Header Row */

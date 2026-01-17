@@ -1542,15 +1542,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       });
                     });
 
-                    // Reset token analytics after compact - estimate ~10% for summary
+                    // Reset token analytics after compact - set to 0 with compactPending flag
                     // Actual tokens will be updated on next message result
-                    const estimatedPostCompactTokens = 20000; // ~10% typical summary size
                     const resetAnalytics = {
                       ...s.analytics,
                       tokens: {
-                        input: estimatedPostCompactTokens,
+                        input: 0,
                         output: 0,
-                        total: estimatedPostCompactTokens,
+                        total: 0,
                         cacheRead: 0,
                         cacheCreation: 0,
                         byModel: s.analytics?.tokens?.byModel || {
@@ -1559,11 +1558,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         }
                       },
                       contextWindow: {
-                        used: estimatedPostCompactTokens,
+                        used: 0,
                         limit: 200000,
-                        percentage: 10,
-                        remaining: 180000
-                      }
+                        percentage: 0,
+                        remaining: 200000
+                      },
+                      compactPending: true // Next message will establish new baseline
                     };
 
                     return {
