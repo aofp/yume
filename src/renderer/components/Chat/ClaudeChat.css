@@ -1825,7 +1825,7 @@ textarea.context-full {
 
 .btn-stats-text {
   position: relative;
-  top: 2px;
+  top: 1px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -3664,8 +3664,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   font-size: var(--text-xs);
-  padding: 4px 6px;
-  padding-top: 3px;
+  padding: 3.5px 6px;
   background: transparent;
   border: 1px solid var(--fg-20);
   border-radius: 4px;

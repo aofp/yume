@@ -330,16 +330,9 @@ export const SessionTabs: React.FC = () => {
   // Handle close tab event from Electron menu (Cmd+W on macOS)
   useEffect(() => {
     const handleCloseTab = () => {
-      // Don't close if the current tab is streaming
-      const currentSession = sessions.find(s => s.id === currentSessionId);
-      if (currentSession?.streaming) {
-        console.log('Cannot close tab while Claude is streaming');
-        return;
-      }
-      
-      // Close the current active tab
+      // Request close through the confirmation system
       if (currentSessionId) {
-        deleteSession(currentSessionId);
+        requestCloseTabs([currentSessionId], 'single');
       }
     };
 
@@ -355,7 +348,7 @@ export const SessionTabs: React.FC = () => {
         }
       };
     }
-  }, [currentSessionId, deleteSession, sessions]);
+  }, [currentSessionId]);
 
   // Note: Ctrl+W is handled via IPC from electron menu in the effect above
   // We don't add a duplicate keyboard handler here to avoid closing tabs twice
@@ -432,6 +425,14 @@ export const SessionTabs: React.FC = () => {
     }, 0);
   };
 
+
+  // Helper to request tab close with confirmation dialog if needed
+  const requestCloseTabs = (sessionIds: string[], action: 'single' | 'others' | 'all' | 'left' | 'right') => {
+    const event = new CustomEvent('request-close-tabs', {
+      detail: { sessionIds, action }
+    });
+    window.dispatchEvent(event);
+  };
 
   const getDisplayPath = (path?: string) => {
     if (!path) return '';
@@ -889,13 +890,9 @@ export const SessionTabs: React.FC = () => {
                 <button
                   className="tab-close"
                   tabIndex={-1}
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    // If streaming, interrupt first then close
-                    if (session.streaming) {
-                      await interruptSession(session.id);  // Pass explicit session ID
-                    }
-                    deleteSession(session.id);
+                    requestCloseTabs([session.id], 'single');
                   }}
                   onMouseDown={(e) => {
                     e.stopPropagation(); // Prevent tab drag when clicking close
@@ -1288,70 +1285,46 @@ export const SessionTabs: React.FC = () => {
           
           <div className="separator" />
           
-          <button onClick={async () => {
-            const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
-            if (targetSession?.streaming) {
-              await interruptSession(contextMenu.sessionId);  // Pass explicit session ID
-            }
-            deleteSession(contextMenu.sessionId);
+          <button onClick={() => {
+            requestCloseTabs([contextMenu.sessionId], 'single');
             setContextMenu(null);
           }}>close ({modKey}+w)</button>
 
-          <button onClick={async () => {
+          <button onClick={() => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession) {
               // First switch to the target session
               resumeSession(targetSession.id);
-              // Then delete all others (interrupt streaming ones first)
-              for (const s of sessions) {
-                if (s.id !== targetSession.id) {
-                  if (s.streaming) {
-                    // No need to switch - pass explicit session ID
-                    await interruptSession(s.id);
-                  }
-                  deleteSession(s.id);
-                }
+              // Then request close all others
+              const otherIds = sessions.filter(s => s.id !== targetSession.id).map(s => s.id);
+              if (otherIds.length > 0) {
+                requestCloseTabs(otherIds, 'others');
               }
             }
             setContextMenu(null);
           }}>close others</button>
 
-          <button onClick={async () => {
+          <button onClick={() => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
-            for (let idx = 0; idx < sessions.length; idx++) {
-              if (idx > sessionIndex) {
-                const s = sessions[idx];
-                if (s.streaming) {
-                  await interruptSession(s.id);  // Pass explicit session ID
-                }
-                deleteSession(s.id);
-              }
+            const idsToClose = sessions.filter((_, idx) => idx > sessionIndex).map(s => s.id);
+            if (idsToClose.length > 0) {
+              requestCloseTabs(idsToClose, 'right');
             }
             setContextMenu(null);
           }}>close all to right</button>
 
-          <button onClick={async () => {
+          <button onClick={() => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
-            for (let idx = 0; idx < sessions.length; idx++) {
-              if (idx < sessionIndex) {
-                const s = sessions[idx];
-                if (s.streaming) {
-                  await interruptSession(s.id);  // Pass explicit session ID
-                }
-                deleteSession(s.id);
-              }
+            const idsToClose = sessions.filter((_, idx) => idx < sessionIndex).map(s => s.id);
+            if (idsToClose.length > 0) {
+              requestCloseTabs(idsToClose, 'left');
             }
             setContextMenu(null);
           }}>close all to left</button>
 
-          <button onClick={async () => {
-            // Interrupt any streaming sessions first
-            for (const s of sessions) {
-              if (s.streaming) {
-                await interruptSession(s.id);  // Pass explicit session ID
-              }
-            }
-            deleteAllSessions();
+          <button onClick={() => {
+            const allIds = sessions.map(s => s.id);
+            requestCloseTabs(allIds, 'all');
             setContextMenu(null);
           }}>close all</button>
           

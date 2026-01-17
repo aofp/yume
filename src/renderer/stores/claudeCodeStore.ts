@@ -20,6 +20,7 @@ const WORD_WRAP_KEY = appStorageKey('word-wrap');
 const WORD_WRAP_CODE_KEY = appStorageKey('word-wrap-code');
 const SOUND_ON_COMPLETE_KEY = appStorageKey('sound-on-complete');
 const SHOW_RESULT_STATS_KEY = appStorageKey('show-result-stats');
+const SHOW_CONFIRM_DIALOGS_KEY = appStorageKey('show-confirm-dialogs');
 const AUTO_COMPACT_ENABLED_KEY = appStorageKey('auto-compact-enabled');
 const MONO_FONT_KEY = appStorageKey('mono-font');
 const SANS_FONT_KEY = appStorageKey('sans-font');
@@ -446,6 +447,9 @@ interface ClaudeCodeStore {
   // Result stats visibility
   showResultStats: boolean; // Whether to show result stats (tokens, cost, duration) after responses
 
+  // Confirm dialogs
+  showConfirmDialogs: boolean; // Whether to show confirm dialogs when closing tabs with active streams
+
   // Auto-compact
   autoCompactEnabled: boolean; // Whether to auto-compact at 60% threshold
 
@@ -576,6 +580,9 @@ interface ClaudeCodeStore {
 
   // Result stats visibility
   setShowResultStats: (show: boolean) => void;
+
+  // Confirm dialogs
+  setShowConfirmDialogs: (show: boolean) => void;
 
   // Auto-compact
   setAutoCompactEnabled: (enabled: boolean) => void;
@@ -847,6 +854,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       })(), // Load from localStorage or default to true
       showResultStats: (() => {
         const stored = localStorage.getItem(SHOW_RESULT_STATS_KEY);
+        return stored ? JSON.parse(stored) : true;
+      })(), // Load from localStorage or default to true
+      showConfirmDialogs: (() => {
+        const stored = localStorage.getItem(SHOW_CONFIRM_DIALOGS_KEY);
         return stored ? JSON.parse(stored) : true;
       })(), // Load from localStorage or default to true
       autoCompactEnabled: (() => {
@@ -5783,6 +5794,12 @@ ${content}`;
         console.log('[Store] Show result stats:', show);
       },
 
+      setShowConfirmDialogs: (show: boolean) => {
+        set({ showConfirmDialogs: show });
+        localStorage.setItem(SHOW_CONFIRM_DIALOGS_KEY, JSON.stringify(show));
+        console.log('[Store] Show confirm dialogs:', show);
+      },
+
       setAutoCompactEnabled: (enabled: boolean) => {
         set({ autoCompactEnabled: enabled });
         localStorage.setItem(AUTO_COMPACT_ENABLED_KEY, JSON.stringify(enabled));
@@ -6160,6 +6177,7 @@ ${content}`;
         wordWrap: state.wordWrap,
         soundOnComplete: state.soundOnComplete,
         showResultStats: state.showResultStats,
+        showConfirmDialogs: state.showConfirmDialogs,
         autoCompactEnabled: state.autoCompactEnabled,
         showProjectsMenu: state.showProjectsMenu,
         showAgentsMenu: state.showAgentsMenu,

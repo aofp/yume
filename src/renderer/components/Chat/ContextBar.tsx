@@ -307,17 +307,19 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : filesSubTab === 'sessions' ? <IconPencil size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
             </span>
 
-            {/* Stats badges */}
-            <span className="btn-files-stats">
-              {gitChangesCount > 0 && <span className="stat-badge git-badge">{gitChangesCount}</span>}
-              {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
-              {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
-                <span className="stat-badge lines-badge">
-                  <span className="line-added">+{lineChanges.added}</span>
-                  <span className="line-removed">-{lineChanges.removed}</span>
-                </span>
-              )}
-            </span>
+            {/* Stats badges - only render container if there are stats to show */}
+            {(gitChangesCount > 0 || backgroundAgentCount > 0 || (lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0))) && (
+              <span className="btn-files-stats">
+                {gitChangesCount > 0 && <span className="stat-badge git-badge">{gitChangesCount}</span>}
+                {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
+                {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
+                  <span className="stat-badge lines-badge">
+                    <span className="line-added">+{lineChanges.added}</span>
+                    <span className="line-removed">-{lineChanges.removed}</span>
+                  </span>
+                )}
+              </span>
+            )}
           </button>
         )}
 

@@ -339,6 +339,11 @@ export const ClaudeChat: React.FC = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showCompactConfirm, setShowCompactConfirm] = useState(false);
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+  const [showCloseTabConfirm, setShowCloseTabConfirm] = useState(false);
+  const [pendingCloseTabData, setPendingCloseTabData] = useState<{
+    sessionIds: string[];
+    action: 'single' | 'others' | 'all' | 'left' | 'right';
+  } | null>(null);
   const [pendingRollbackData, setPendingRollbackData] = useState<{
     messageIndex: number;
     messagesToRemove: number;
@@ -428,7 +433,8 @@ export const ClaudeChat: React.FC = () => {
     showDictation,
     showHistory,
     contextBarVisibility,
-    setContextBarVisibility
+    setContextBarVisibility,
+    showConfirmDialogs
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -456,7 +462,8 @@ export const ClaudeChat: React.FC = () => {
     showDictation: state.showDictation,
     showHistory: state.showHistory,
     contextBarVisibility: state.contextBarVisibility,
-    setContextBarVisibility: state.setContextBarVisibility
+    setContextBarVisibility: state.setContextBarVisibility,
+    showConfirmDialogs: state.showConfirmDialogs
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -1551,6 +1558,66 @@ export const ClaudeChat: React.FC = () => {
     }
     setShowCompactConfirm(false);
   }, [currentSessionId, sendMessage]);
+
+  // Request to close tab(s) - shows confirm dialog if any session is streaming/running bash
+  const requestCloseTabs = useCallback((sessionIds: string[], action: 'single' | 'others' | 'all' | 'left' | 'right') => {
+    // Check if any of the sessions have active streams or bash
+    const hasActiveWork = sessionIds.some(id => {
+      const session = sessions.find(s => s.id === id);
+      return session?.streaming || session?.runningBash || session?.userBashRunning;
+    });
+
+    // If confirm dialogs disabled or no active work, close directly
+    if (!showConfirmDialogs || !hasActiveWork) {
+      // Interrupt and close all
+      sessionIds.forEach(async (id) => {
+        const session = sessions.find(s => s.id === id);
+        if (session?.streaming) {
+          await interruptSession(id);
+        }
+        deleteSession(id);
+      });
+      return;
+    }
+
+    // Show confirmation dialog
+    setPendingCloseTabData({ sessionIds, action });
+    setShowCloseTabConfirm(true);
+  }, [sessions, showConfirmDialogs, interruptSession, deleteSession]);
+
+  // Confirm close tab(s)
+  const confirmCloseTabs = useCallback(async () => {
+    if (!pendingCloseTabData) {
+      setShowCloseTabConfirm(false);
+      return;
+    }
+
+    const { sessionIds } = pendingCloseTabData;
+
+    // Interrupt and close all
+    for (const id of sessionIds) {
+      const session = sessions.find(s => s.id === id);
+      if (session?.streaming) {
+        await interruptSession(id);
+      }
+      deleteSession(id);
+    }
+
+    setShowCloseTabConfirm(false);
+    setPendingCloseTabData(null);
+  }, [pendingCloseTabData, sessions, interruptSession, deleteSession]);
+
+  // Listen for close tabs requests from SessionTabs
+  useEffect(() => {
+    const handleRequestCloseTabs = (e: CustomEvent<{ sessionIds: string[]; action: 'single' | 'others' | 'all' | 'left' | 'right' }>) => {
+      requestCloseTabs(e.detail.sessionIds, e.detail.action);
+    };
+
+    window.addEventListener('request-close-tabs', handleRequestCloseTabs as EventListener);
+    return () => {
+      window.removeEventListener('request-close-tabs', handleRequestCloseTabs as EventListener);
+    };
+  }, [requestCloseTabs]);
 
   const confirmRollback = useCallback(async () => {
     if (!currentSessionId || !pendingRollbackData) {
@@ -3533,21 +3600,13 @@ export const ClaudeChat: React.FC = () => {
     const textarea = e.currentTarget;
     const cursorPos = textarea.selectionStart;
     
-    // Handle Ctrl+W to close current tab (with interrupt if streaming)
+    // Handle Ctrl+W to close current tab (with confirmation if streaming)
     if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (currentSessionId) {
-        // If streaming, interrupt first then close
-        if (currentSession?.streaming) {
-          console.log('[ClaudeChat] Interrupting stream before closing tab');
-          interruptSession(currentSessionId).then(() => {  // Pass explicit session ID
-            deleteSession(currentSessionId);
-          });
-        } else {
-          deleteSession(currentSessionId);
-        }
+        requestCloseTabs([currentSessionId], 'single');
       }
       return;
     }
@@ -5850,6 +5909,29 @@ export const ClaudeChat: React.FC = () => {
         onCancel={() => {
           setShowRollbackConfirm(false);
           setPendingRollbackData(null);
+        }}
+      />
+
+      {/* Close tab confirmation dialog */}
+      <ConfirmModal
+        isOpen={showCloseTabConfirm}
+        title={pendingCloseTabData?.sessionIds.length === 1 ? "close tab" : `close ${pendingCloseTabData?.sessionIds.length || 0} tabs`}
+        message={(() => {
+          if (!pendingCloseTabData) return '';
+          const activeCount = pendingCloseTabData.sessionIds.filter(id => {
+            const session = sessions.find(s => s.id === id);
+            return session?.streaming || session?.runningBash || session?.userBashRunning;
+          }).length;
+          const tabWord = activeCount === 1 ? 'tab has' : 'tabs have';
+          return `${activeCount} ${tabWord} active work (streaming or running bash). closing will interrupt.`;
+        })()}
+        confirmText="close"
+        cancelText="cancel"
+        isDangerous={true}
+        onConfirm={confirmCloseTabs}
+        onCancel={() => {
+          setShowCloseTabConfirm(false);
+          setPendingCloseTabData(null);
         }}
       />
 

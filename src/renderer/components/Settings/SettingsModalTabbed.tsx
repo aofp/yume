@@ -92,6 +92,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
     wordWrap, setWordWrap,
     soundOnComplete, setSoundOnComplete, playCompletionSound,
     showResultStats, setShowResultStats,
+    showConfirmDialogs, setShowConfirmDialogs,
     showProjectsMenu, setShowProjectsMenu,
     showAgentsMenu, setShowAgentsMenu,
     showAnalyticsMenu, setShowAnalyticsMenu,
@@ -835,6 +836,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                           setTimeout(() => playCompletionSound(), 100);
                         }
                       }}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">confirm close tabs</span>
+                    <div
+                      className={`toggle-switch compact ${showConfirmDialogs ? 'active' : ''}`}
+                      onClick={() => setShowConfirmDialogs(!showConfirmDialogs)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
