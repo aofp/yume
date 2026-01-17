@@ -95,7 +95,7 @@
 }
 
 .cp-category-label {
-  padding: 4px 6px 2px;
+  padding: 4px 8px 2px;
   font-size: 9px;
   color: var(--fg-25);
   text-transform: lowercase;
@@ -106,7 +106,7 @@
 .cp-item {
   display: flex;
   align-items: center;
-  padding: 4px 6px;
+  padding: 4px 8px;
   cursor: default;
   gap: 6px;
 }
@@ -126,10 +126,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.cp-item.hover-enabled:hover .cp-label {
-  color: var(--fg-80);
 }
 
 .cp-item.selected .cp-label {
