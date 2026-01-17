@@ -21,6 +21,7 @@ src-tauri/target/
 # Server binaries (built per-platform, not tracked)
 src-tauri/resources/server-*
 src-tauri/resources/yume-server-*
+src-tauri/resources/yurucode-server-*
 
 # yume-cli binaries (built per-platform, not tracked)
 src-tauri/resources/yume-cli-*
