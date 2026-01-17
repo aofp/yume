@@ -1496,7 +1496,7 @@ pre.bash-content,
   user-select: none;
   cursor: default;
   font-size: var(--text-xs) !important;
-  line-height: var(--leading-relaxed);
+  line-height: var(--leading-normal) !important;
 }
 
 .tool-result.collapsible .collapsible-header {

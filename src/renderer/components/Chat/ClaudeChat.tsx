@@ -396,9 +396,6 @@ export const ClaudeChat: React.FC = () => {
   const SCROLL_COOLDOWN_MS = 5000; // 5 seconds cooldown after user scrolls up
   const pendingFollowupRef = useRef<{ sessionId: string; content: string; attachments: Attachment[]; timeoutId?: NodeJS.Timeout } | null>(null);
 
-  // macOS focus - only tracks window focus state now (aggressive auto-focus disabled)
-  const windowFocusedRef = useRef<boolean>(true);
-
   // Use shallow comparison to prevent re-renders when object references change
   // but values remain the same (e.g., when other parts of the store update)
   const {
@@ -1087,18 +1084,31 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // macOS focus sentinel: Gentle focus restoration for WKWebView bugs
-  // Only restore focus on specific events, not constantly polling
+  // macOS keyboard-triggered focus: When user types and focus isn't on an input,
+  // redirect to textarea. This handles WKWebView losing focus without being aggressive.
   useEffect(() => {
     if (!isMac) return;
 
-    const canRestoreFocus = () => {
-      if (!inputRef.current || !document.hasFocus()) return false;
-      if (document.activeElement === inputRef.current) return false;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if already focused on textarea
+      if (document.activeElement === inputRef.current) return;
 
-      // Skip if user is selecting text
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return false;
+      // Skip modifier-only keys
+      if (e.key === 'Meta' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Shift') return;
+
+      // Skip keyboard shortcuts (Cmd/Ctrl + key)
+      if (e.metaKey || e.ctrlKey) return;
+
+      // Skip function keys and special keys
+      if (e.key.startsWith('F') && e.key.length > 1) return;
+      if (['Escape', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+           'Home', 'End', 'PageUp', 'PageDown', 'Insert', 'Delete'].includes(e.key)) return;
+
+      // Skip if focus is on another input/editable element
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement ||
+          activeEl instanceof HTMLTextAreaElement ||
+          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return;
 
       // Skip if any modal is open
       if (document.querySelector('.modal-overlay') ||
@@ -1106,178 +1116,14 @@ export const ClaudeChat: React.FC = () => {
           document.querySelector('.projects-modal-overlay') ||
           document.querySelector('.settings-modal-overlay') ||
           document.querySelector('.mt-modal-overlay') ||
-          document.querySelector('[role="dialog"]')) return false;
+          document.querySelector('[role="dialog"]')) return;
 
-      // Skip if active element is another input/editable
-      const activeEl = document.activeElement;
-      if (activeEl instanceof HTMLInputElement ||
-          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
-          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
-
-      // Skip if focus is on a button or clickable element
-      if (activeEl instanceof HTMLButtonElement ||
-          activeEl instanceof HTMLAnchorElement ||
-          (activeEl instanceof HTMLElement && activeEl.getAttribute('role') === 'button')) return false;
-
-      return true;
+      // Focus textarea and let the keypress go through
+      inputRef.current?.focus();
     };
 
-    // Only restore focus when window regains focus (not on every visibility change)
-    let cleanupWindowFocus: (() => void) | null = null;
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      listen<boolean>('window-focus-change', (event) => {
-        windowFocusedRef.current = event.payload;
-        if (event.payload && canRestoreFocus()) {
-          // Delay to let WKWebView settle
-          setTimeout(() => {
-            if (canRestoreFocus()) {
-              inputRef.current?.focus();
-            }
-          }, 150);
-        }
-      }).then(unlisten => {
-        cleanupWindowFocus = unlisten;
-      });
-    }).catch(() => {
-      // Not in Tauri environment
-    });
-
-    return () => {
-      if (cleanupWindowFocus) cleanupWindowFocus();
-    };
-  }, [isMac]);
-
-  // macOS focus guardian: Detect and recover from unexpected focus loss
-  // This handles WKWebView bugs where DOM updates steal focus from textarea
-  useEffect(() => {
-    if (!isMac) return;
-
-    // Track if user intentionally moved focus away (clicking buttons, selecting text)
-    const intentionalFocusLossRef = { current: false };
-    let focusCheckTimeout: NodeJS.Timeout | null = null;
-
-    const shouldRestoreFocus = () => {
-      if (!inputRef.current || !document.hasFocus()) return false;
-      if (document.activeElement === inputRef.current) return false;
-      if (intentionalFocusLossRef.current) return false;
-
-      // Skip if user is selecting text
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return false;
-
-      // Skip if any modal is open
-      if (document.querySelector('.modal-overlay') ||
-          document.querySelector('.recent-modal-overlay') ||
-          document.querySelector('.projects-modal-overlay') ||
-          document.querySelector('.settings-modal-overlay') ||
-          document.querySelector('.mt-modal-overlay') ||
-          document.querySelector('[role="dialog"]')) return false;
-
-      // Skip if active element is another input/editable
-      const activeEl = document.activeElement;
-      if (activeEl instanceof HTMLInputElement ||
-          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
-          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
-
-      // Skip if focus is on a button, link, or clickable element
-      if (activeEl instanceof HTMLButtonElement ||
-          activeEl instanceof HTMLAnchorElement ||
-          (activeEl instanceof HTMLElement && activeEl.getAttribute('role') === 'button') ||
-          (activeEl instanceof HTMLElement && activeEl.getAttribute('tabindex') !== null)) return false;
-
-      // Skip if focus is in a scrollable area that user might be navigating
-      if (activeEl?.closest('.message-list') ||
-          activeEl?.closest('.tool-panel') ||
-          activeEl?.closest('.file-tree')) return false;
-
-      return true;
-    };
-
-    const scheduleFocusCheck = () => {
-      if (focusCheckTimeout) clearTimeout(focusCheckTimeout);
-      // Small delay to let intentional interactions complete
-      focusCheckTimeout = setTimeout(() => {
-        if (shouldRestoreFocus()) {
-          inputRef.current?.focus();
-        }
-        intentionalFocusLossRef.current = false;
-      }, 100);
-    };
-
-    // Mark focus loss as intentional when user clicks anywhere
-    const handleMouseDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      // If clicking on textarea, don't mark as intentional loss
-      if (target === inputRef.current) return;
-      // If clicking on a button or interactive element, mark as intentional
-      if (target.closest('button') ||
-          target.closest('a') ||
-          target.closest('[role="button"]') ||
-          target.closest('[tabindex]') ||
-          target.closest('input') ||
-          target.closest('textarea') ||
-          target.closest('.modal') ||
-          target.closest('[role="dialog"]')) {
-        intentionalFocusLossRef.current = true;
-      }
-    };
-
-    // Reset intentional flag after a short delay (user finished interaction)
-    const handleMouseUp = () => {
-      setTimeout(() => {
-        intentionalFocusLossRef.current = false;
-      }, 200);
-    };
-
-    // Detect when focus is unexpectedly lost (blur without mousedown)
-    const handleBlur = (e: FocusEvent) => {
-      if (e.target !== inputRef.current) return;
-      // Schedule a focus check to potentially restore focus
-      scheduleFocusCheck();
-    };
-
-    // Use MutationObserver to detect DOM changes that might steal focus
-    const observer = new MutationObserver((mutations) => {
-      // Only check if textarea was focused before mutations
-      if (document.activeElement !== inputRef.current &&
-          !intentionalFocusLossRef.current) {
-        // DOM changed and focus isn't on textarea - check if we should restore
-        scheduleFocusCheck();
-      }
-    });
-
-    // Observe the message list for changes (streaming messages)
-    const messageList = document.querySelector('.message-list');
-    if (messageList) {
-      observer.observe(messageList, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-    }
-
-    document.addEventListener('mousedown', handleMouseDown, true);
-    document.addEventListener('mouseup', handleMouseUp, true);
-    inputRef.current?.addEventListener('blur', handleBlur);
-
-    // Periodic fallback check every 2 seconds as safety net
-    // This catches edge cases where focus is lost without triggering blur/mutation
-    const periodicCheck = setInterval(() => {
-      // Only run if document is focused and no intentional focus loss
-      if (document.hasFocus() && !intentionalFocusLossRef.current && shouldRestoreFocus()) {
-        console.log('[Focus Guardian] Restoring focus via periodic check');
-        inputRef.current?.focus();
-      }
-    }, 2000);
-
-    return () => {
-      if (focusCheckTimeout) clearTimeout(focusCheckTimeout);
-      clearInterval(periodicCheck);
-      observer.disconnect();
-      document.removeEventListener('mousedown', handleMouseDown, true);
-      document.removeEventListener('mouseup', handleMouseUp, true);
-      inputRef.current?.removeEventListener('blur', handleBlur);
-    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isMac]);
 
   // Handle bash running timer and dots animation per session
