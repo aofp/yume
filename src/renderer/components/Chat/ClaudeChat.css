@@ -1429,6 +1429,7 @@ textarea.context-full {
 .context-center {
   display: flex;
   flex: 1;
+  margin-top: 1px;
   gap: 2px;
   align-items: center;
   justify-content: center;

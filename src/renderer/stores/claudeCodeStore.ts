@@ -5124,6 +5124,57 @@ ${content}`;
                 }
               }
 
+              // Handle tool_use messages with fileSnapshot for line change tracking
+              let lineChanges = { ...(s.lineChanges || { added: 0, removed: 0 }) };
+              let restorePoints = [...(s.restorePoints || [])];
+              let modifiedFiles = new Set(s.modifiedFiles || []);
+
+              if (message.type === 'tool_use' && (message as any).fileSnapshot) {
+                const snapshot = (message as any).fileSnapshot;
+                const toolName = (message as any).message?.name || 'unknown';
+                const msgInput = (message as any).message?.input;
+                const operation = toolName === 'Write' ? 'write' : toolName === 'MultiEdit' ? 'multiedit' : 'edit';
+
+                console.log('[Store] 📸 Processing fileSnapshot in addMessageToSession:', {
+                  toolName,
+                  operation,
+                  hasOriginalContent: !!snapshot.originalContent,
+                  isNewFile: snapshot.isNewFile,
+                  path: snapshot.path
+                });
+
+                // Calculate line changes
+                if (snapshot.isNewFile) {
+                  const newContent = msgInput?.content || msgInput?.new_string || '';
+                  const newLines = newContent ? newContent.split('\n').length : 0;
+                  lineChanges.added += newLines;
+                } else if (operation === 'edit') {
+                  const oldStr = msgInput?.old_string || '';
+                  const newStr = msgInput?.new_string || '';
+                  const removedLines = oldStr ? oldStr.split('\n').length : 0;
+                  const addedLines = newStr ? newStr.split('\n').length : 0;
+                  lineChanges.added += addedLines;
+                  lineChanges.removed += removedLines;
+                } else if (operation === 'write') {
+                  const newContent = msgInput?.content || '';
+                  const oldContent = snapshot.originalContent || '';
+                  const newLines = newContent ? newContent.split('\n').length : 0;
+                  const oldLines = oldContent ? oldContent.split('\n').length : 0;
+                  if (newLines > oldLines) {
+                    lineChanges.added += (newLines - oldLines);
+                  } else if (oldLines > newLines) {
+                    lineChanges.removed += (oldLines - newLines);
+                  }
+                }
+
+                console.log(`📸 [Store] Line changes updated: +${lineChanges.added} -${lineChanges.removed}`);
+
+                // Track modified file
+                if (snapshot.path) {
+                  modifiedFiles.add(snapshot.path);
+                }
+              }
+
               const newCounter = (s.messageUpdateCounter || 0) + 1;
               // DEBUG: Log bash message update
               if (message.id?.startsWith?.('bash-')) {
@@ -5134,6 +5185,9 @@ ${content}`;
                 messages: updatedMessages,
                 updatedAt: new Date(),
                 analytics,
+                lineChanges,
+                restorePoints,
+                modifiedFiles,
                 // Force React re-render by updating a counter (fixes bash output not showing)
                 messageUpdateCounter: newCounter,
                 // Clear thinkingStartTime after we've used it for result

@@ -680,6 +680,20 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [showStatsModal, fetchUsageLimits]);
 
+  // Close stats modal on escape
+  useEffect(() => {
+    if (!showStatsModal) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowStatsModal(false);
+        resetHoverStates();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showStatsModal]);
+
   // NO AUTO-CREATION and NO AUTO-RESUME
   // Sessions are ephemeral - they don't survive app restarts
   // User must manually create sessions with the + button

@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
+use std::fs;
+use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
@@ -11,6 +14,151 @@ use crate::claude_session::{generate_synthetic_session_id, SessionInfo, SessionM
 use crate::process::{ProcessRegistry, ProcessType};
 use crate::state::AppState;
 use crate::stream_parser::{ClaudeStreamMessage, StreamProcessor};
+
+/// Helper to create a file snapshot for a given path
+fn create_file_snapshot(
+    file_path: &str,
+    working_dir: &str,
+    session_id: &str,
+) -> Option<serde_json::Value> {
+    // Resolve the path relative to working directory
+    let full_path = if Path::new(file_path).is_absolute() {
+        file_path.to_string()
+    } else {
+        Path::new(working_dir).join(file_path).to_string_lossy().to_string()
+    };
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    if Path::new(&full_path).exists() {
+        match fs::read_to_string(&full_path) {
+            Ok(content) => {
+                let mtime = fs::metadata(&full_path)
+                    .and_then(|m| m.modified())
+                    .ok()
+                    .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                    .map(|d| d.as_millis() as f64);
+
+                info!(
+                    "📸 Captured file snapshot for {}: {} bytes, mtime={:?}",
+                    file_path,
+                    content.len(),
+                    mtime
+                );
+
+                Some(serde_json::json!({
+                    "path": full_path,
+                    "originalContent": content,
+                    "timestamp": now,
+                    "mtime": mtime,
+                    "sessionId": session_id,
+                    "isNewFile": false
+                }))
+            }
+            Err(e) => {
+                warn!("Failed to read file for snapshot {}: {}", file_path, e);
+                None
+            }
+        }
+    } else {
+        // New file being created
+        info!("📸 File snapshot for new file: {}", file_path);
+        Some(serde_json::json!({
+            "path": full_path,
+            "originalContent": serde_json::Value::Null,
+            "timestamp": now,
+            "mtime": serde_json::Value::Null,
+            "sessionId": session_id,
+            "isNewFile": true
+        }))
+    }
+}
+
+/// Captures file snapshot for Edit/Write tools and augments the JSON message
+/// Returns the augmented JSON string if a snapshot was captured, otherwise the original
+/// Handles two formats:
+/// 1. Standalone tool_use: {"type":"tool_use","name":"Edit","input":{...}}
+/// 2. Assistant with content blocks: {"type":"assistant","message":{"content":[{"type":"tool_use",...}]}}
+fn augment_with_file_snapshot(
+    line: &str,
+    working_dir: &str,
+    session_id: &str,
+) -> String {
+    // Try to parse as JSON
+    let Ok(mut json) = serde_json::from_str::<serde_json::Value>(line) else {
+        return line.to_string();
+    };
+
+    let msg_type = json.get("type").and_then(|v| v.as_str()).unwrap_or("");
+
+    // Handle standalone tool_use message: {"type":"tool_use","name":"Edit","input":{...}}
+    if msg_type == "tool_use" {
+        let tool_name = json.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        if !matches!(tool_name, "Edit" | "Write" | "MultiEdit") {
+            return line.to_string();
+        }
+
+        let Some(input) = json.get("input") else {
+            return line.to_string();
+        };
+
+        let Some(file_path) = input.get("file_path").and_then(|v| v.as_str()) else {
+            return line.to_string();
+        };
+
+        if let Some(snapshot) = create_file_snapshot(file_path, working_dir, session_id) {
+            if let Some(obj) = json.as_object_mut() {
+                obj.insert("fileSnapshot".to_string(), snapshot);
+            }
+        }
+
+        return serde_json::to_string(&json).unwrap_or_else(|_| line.to_string());
+    }
+
+    // Handle assistant message with tool_use content blocks
+    if msg_type == "assistant" {
+        let Some(content) = json.get_mut("message").and_then(|m| m.get_mut("content")) else {
+            return line.to_string();
+        };
+
+        let Some(content_array) = content.as_array_mut() else {
+            return line.to_string();
+        };
+
+        for block in content_array.iter_mut() {
+            if block.get("type").and_then(|v| v.as_str()) != Some("tool_use") {
+                continue;
+            }
+
+            let tool_name = block.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            if !matches!(tool_name, "Edit" | "Write" | "MultiEdit") {
+                continue;
+            }
+
+            let Some(input) = block.get("input") else {
+                continue;
+            };
+
+            let Some(file_path) = input.get("file_path").and_then(|v| v.as_str()) else {
+                continue;
+            };
+
+            if let Some(snapshot) = create_file_snapshot(file_path, working_dir, session_id) {
+                if let Some(obj) = block.as_object_mut() {
+                    obj.insert("fileSnapshot".to_string(), snapshot);
+                }
+            }
+        }
+
+        return serde_json::to_string(&json).unwrap_or_else(|_| line.to_string());
+    }
+
+    // Not a tool_use or assistant message, return unchanged
+    line.to_string()
+}
 
 /// Options for spawning a Claude process
 #[derive(Debug, Clone)]
@@ -158,8 +306,15 @@ impl ClaudeSpawner {
         self.session_manager.register_session(session_info).await?;
 
         // Start streaming handlers with the streams we already took
-        self.start_stream_handlers_with_streams(app, stdout, stderr, session_id.clone(), run_id)
-            .await?;
+        self.start_stream_handlers_with_streams(
+            app,
+            stdout,
+            stderr,
+            session_id.clone(),
+            run_id,
+            options.project_path.clone(),
+        )
+        .await?;
 
         // DO NOT send initial prompt via stdin - it's already passed with -p flag
         // The prompt is included in the command arguments when spawning
@@ -256,6 +411,7 @@ impl ClaudeSpawner {
         stderr: tokio::process::ChildStderr,
         session_id: String,
         run_id: i64,
+        working_dir: String,
     ) -> Result<()> {
         let registry = self.registry.clone();
         let session_manager = self.session_manager.clone();
@@ -265,6 +421,7 @@ impl ClaudeSpawner {
         let session_id_stdout = session_id.clone();
         let registry_stdout = registry.clone();
         let session_manager_stdout = session_manager.clone();
+        let working_dir_stdout = working_dir.clone();
 
         tokio::spawn(async move {
             info!("Starting stdout handler for session {}", session_id_stdout);
@@ -311,8 +468,15 @@ impl ClaudeSpawner {
                     }
                 }
 
-                // CRITICAL: Just emit the raw line to frontend for parsing
-                // This is how Claudia does it - the frontend parses the JSON
+                // Augment line with file snapshot for Edit/Write/MultiEdit tools
+                // This enables line change tracking in the frontend
+                let augmented_line = augment_with_file_snapshot(
+                    &line,
+                    &working_dir_stdout,
+                    &real_session_id,
+                );
+
+                // CRITICAL: Emit the (potentially augmented) line to frontend for parsing
                 // Use the real session ID if we have it, otherwise use the synthetic one
                 let emit_session_id = if session_id_extracted {
                     &real_session_id
@@ -321,7 +485,7 @@ impl ClaudeSpawner {
                 };
                 let channel = format!("claude-message:{}", emit_session_id);
                 info!("Emitting message on channel: {}", channel);
-                let emit_result = app_stdout.emit(&channel, &line);
+                let emit_result = app_stdout.emit(&channel, &augmented_line);
                 if let Err(e) = emit_result {
                     error!("Failed to emit message: {:?}", e);
                     // Emit error on generic channel so frontend knows
@@ -348,7 +512,7 @@ impl ClaudeSpawner {
                                 "Detected compact result - also emitting on original channel: {}",
                                 original_channel
                             );
-                            let _ = app_stdout.emit(&original_channel, &line);
+                            let _ = app_stdout.emit(&original_channel, &augmented_line);
                         }
                     }
                 }
@@ -361,7 +525,7 @@ impl ClaudeSpawner {
                         "Also emitting on original channel for session transition: {}",
                         original_channel
                     );
-                    let _ = app_stdout.emit(&original_channel, &line);
+                    let _ = app_stdout.emit(&original_channel, &augmented_line);
                 }
 
                 // Still process for session ID extraction and token tracking

@@ -724,7 +724,7 @@ export class TauriClaudeClient {
           
           // Send tool_use blocks as separate messages
           for (const toolUse of toolUseBlocks) {
-            const toolMessage = {
+            const toolMessage: any = {
               type: 'tool_use',
               id: toolUse.id || `tool-${Date.now()}-${Math.random()}`,
               message: {
@@ -734,6 +734,10 @@ export class TauriClaudeClient {
               },
               timestamp: Date.now()
             };
+            // Include file snapshot for line change tracking (added by rust backend)
+            if (toolUse.fileSnapshot) {
+              toolMessage.fileSnapshot = toolUse.fileSnapshot;
+            }
             // Emit tool_use message immediately
             handler(toolMessage);
           }

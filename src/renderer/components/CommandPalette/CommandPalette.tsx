@@ -749,6 +749,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       .map(s => s.cmd);
   }, [commands, query]);
 
+  const categoryOrder = ['session', 'tabs', 'panels', 'model', 'input', 'zoom', 'appearance', 'settings', 'menu', 'features', 'settings tabs'];
+
+  // Build visual order: group by category, sort categories, put disabled at end of each category
+  const visualOrderCommands = useMemo(() => {
+    const grouped = filteredCommands.reduce((acc, cmd) => {
+      if (!acc[cmd.category]) acc[cmd.category] = [];
+      acc[cmd.category].push(cmd);
+      return acc;
+    }, {} as Record<string, CommandItem[]>);
+
+    // Sort each category: enabled first, disabled last
+    Object.keys(grouped).forEach(cat => {
+      grouped[cat].sort((a, b) => (a.disabled ? 1 : 0) - (b.disabled ? 1 : 0));
+    });
+
+    const sortedCats = Object.keys(grouped).sort((a, b) => {
+      const aIdx = categoryOrder.indexOf(a);
+      const bIdx = categoryOrder.indexOf(b);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
+
+    // Flatten to single array in visual order
+    return sortedCats.flatMap(cat => grouped[cat]);
+  }, [filteredCommands]);
+
   // Load plugins when opening plugins submenu
   useEffect(() => {
     if (activeSubmenu === 'plugins') {
@@ -1064,12 +1089,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setIgnoreMouseUntilMove(true);
-      // Skip disabled items
+      // Skip disabled items - use visualOrderCommands for correct visual order
       let next = selectedIndex + 1;
-      while (next < filteredCommands.length && filteredCommands[next]?.disabled) {
+      while (next < visualOrderCommands.length && visualOrderCommands[next]?.disabled) {
         next++;
       }
-      if (next < filteredCommands.length) {
+      if (next < visualOrderCommands.length) {
         setSelectedIndex(next);
       }
       return;
@@ -1078,9 +1103,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       setIgnoreMouseUntilMove(true);
-      // Skip disabled items
+      // Skip disabled items - use visualOrderCommands for correct visual order
       let prev = selectedIndex - 1;
-      while (prev >= 0 && filteredCommands[prev]?.disabled) {
+      while (prev >= 0 && visualOrderCommands[prev]?.disabled) {
         prev--;
       }
       if (prev >= 0) {
@@ -1091,13 +1116,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      const cmd = filteredCommands[selectedIndex];
+      const cmd = visualOrderCommands[selectedIndex];
       if (cmd && !cmd.disabled) {
         executeCommand(cmd);
       }
       return;
     }
-  }, [activeSubmenu, filteredCommands, filteredSubmenuItems, selectedIndex, submenuIndex, executeCommand, exitSubmenu, handleSubmenuSelect, onClose, query]);
+  }, [activeSubmenu, visualOrderCommands, filteredSubmenuItems, selectedIndex, submenuIndex, executeCommand, exitSubmenu, handleSubmenuSelect, onClose, query]);
 
   // Global keyboard handler for Escape
   useEffect(() => {
@@ -1120,19 +1145,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   if (!isOpen) return null;
 
-  // Group commands by category, with disabled items at end of each category
-  const groupedCommands = filteredCommands.reduce((acc, cmd) => {
+  // Group for rendering
+  const groupedCommands = visualOrderCommands.reduce((acc, cmd) => {
     if (!acc[cmd.category]) acc[cmd.category] = [];
     acc[cmd.category].push(cmd);
     return acc;
   }, {} as Record<string, CommandItem[]>);
 
-  // Sort each category: enabled first, disabled last
-  Object.keys(groupedCommands).forEach(cat => {
-    groupedCommands[cat].sort((a, b) => (a.disabled ? 1 : 0) - (b.disabled ? 1 : 0));
-  });
-
-  const categoryOrder = ['session', 'tabs', 'panels', 'model', 'input', 'zoom', 'appearance', 'settings', 'menu', 'settings tabs'];
   const sortedCategories = Object.keys(groupedCommands).sort((a, b) => {
     const aIdx = categoryOrder.indexOf(a);
     const bIdx = categoryOrder.indexOf(b);
@@ -1227,14 +1246,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             )
           ) : (
             // Main menu view
-            filteredCommands.length === 0 ? (
+            visualOrderCommands.length === 0 ? (
               <div className="cp-empty">no commands found</div>
             ) : (
               sortedCategories.map(category => (
                 <div key={category} className="cp-category">
                   <div className="cp-category-label">{category}</div>
                   {groupedCommands[category].map(cmd => {
-                    const isSelected = filteredCommands.indexOf(cmd) === selectedIndex;
+                    const isSelected = visualOrderCommands.indexOf(cmd) === selectedIndex;
                     const toggleValue = cmd.isToggle && cmd.getValue ? cmd.getValue() : undefined;
 
                     return (
@@ -1242,7 +1261,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                         key={cmd.id}
                         className={`cp-item ${isSelected ? 'selected' : ''} ${cmd.disabled ? 'disabled' : ''} ${!ignoreMouseUntilMove ? 'hover-enabled' : ''}`}
                         onClick={() => !cmd.disabled && executeCommand(cmd)}
-                        onMouseEnter={() => !cmd.disabled && !ignoreMouseUntilMove && setSelectedIndex(filteredCommands.indexOf(cmd))}
+                        onMouseEnter={() => !cmd.disabled && !ignoreMouseUntilMove && setSelectedIndex(visualOrderCommands.indexOf(cmd))}
                       >
                         <span className="cp-label">{cmd.label}</span>
                         {cmd.isToggle && (
