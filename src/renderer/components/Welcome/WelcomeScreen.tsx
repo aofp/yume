@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin, IconCommand } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin, IconInputSearch } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
@@ -380,7 +380,7 @@ export const WelcomeScreen: React.FC = () => {
           style={{ marginRight: '2px' }}
         >
           <span className="btn-icon-wrapper">
-            <IconCommand size={12} stroke={1.5} />
+            <IconInputSearch size={12} stroke={1.5} />
           </span>
         </button>
         <div className="btn-stats-container">

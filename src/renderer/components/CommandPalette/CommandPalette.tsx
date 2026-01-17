@@ -124,6 +124,27 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
+  // Load custom themes from localStorage (needed for currentThemeName in commands)
+  const customThemes = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('customThemes');
+      return saved ? JSON.parse(saved) as Theme[] : [];
+    } catch {
+      return [];
+    }
+  }, [activeSubmenu]); // Re-read when submenu opens
+
+  // All themes for submenu
+  const allThemes = useMemo(() => [...BUILT_IN_THEMES, ...customThemes], [customThemes]);
+
+  // Get current theme name
+  const currentThemeName = useMemo(() => {
+    const themeId = localStorage.getItem('currentThemeId');
+    if (!themeId || themeId === 'custom') return 'custom';
+    const theme = allThemes.find(t => t.id === themeId);
+    return theme?.name || 'custom';
+  }, [allThemes]);
+
   // Check if there are recent projects (for resume when no session)
   const hasRecentProjects = useMemo(() => {
     try {
@@ -316,7 +337,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     });
     cmds.push({
       id: 'files-panel',
-      label: 'toggle files panel',
+      label: 'open files panel',
       category: 'panels',
       shortcut: [modKey, 'e'],
       action: () => {
@@ -326,7 +347,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     });
     cmds.push({
       id: 'git-panel',
-      label: 'toggle git panel',
+      label: 'open git panel',
       category: 'panels',
       shortcut: [modKey, 'g'],
       action: () => {
@@ -344,7 +365,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     });
     cmds.push({
       id: 'session-stats',
-      label: 'session stats',
+      label: 'context usage',
       category: 'panels',
       shortcut: [modKey, '.'],
       action: () => {
@@ -376,7 +397,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     // Model
     cmds.push({
       id: 'model-tools',
-      label: 'model & tools',
+      label: 'open model & tools',
       category: 'model',
       shortcut: [modKey, 'o'],
       action: () => {
@@ -385,7 +406,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     });
     cmds.push({
       id: 'toggle-model',
-      label: `toggle model (current: ${selectedModel?.includes('opus') ? 'opus' : 'sonnet'})`,
+      label: `toggle model`,
       category: 'model',
       shortcut: [modKey, 'shift', 'o'],
       action: toggleModel,
@@ -419,16 +440,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       shortcut: [modKey, 'f'],
       action: () => {
         window.dispatchEvent(new CustomEvent('toggle-search'));
-      },
-      disabled: !currentSession,
-    });
-    cmds.push({
-      id: 'insert-ultrathink',
-      label: 'insert ultrathink',
-      category: 'input',
-      shortcut: [modKey, 'k'],
-      action: () => {
-        window.dispatchEvent(new CustomEvent('insert-ultrathink'));
       },
       disabled: !currentSession,
     });
@@ -469,7 +480,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     // Appearance with submenus
     cmds.push({
       id: 'select-theme',
-      label: 'select theme',
+      label: `theme (${currentThemeName})`,
       category: 'appearance',
       action: () => {
         // Save current colors for restore on cancel
@@ -684,7 +695,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     showCommandsSettings, showMcpSettings, showHooksSettings,
     showPluginsSettings, showSkillsSettings, showDictation, showHistory,
     rememberTabs, autoGenerateTitle, fontSize, lineHeight, backgroundOpacity,
-    selectedIndex, // needed for setPreviousSelectedIndex in submenu actions
+    currentThemeName, selectedIndex, // needed for setPreviousSelectedIndex in submenu actions
     createSession, deleteSession, forkSession, clearContext, toggleModel,
     setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled,
     setShowProjectsMenu, setShowAgentsMenu, setShowAnalyticsMenu,
@@ -737,19 +748,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       .sort((a, b) => b.score - a.score)
       .map(s => s.cmd);
   }, [commands, query]);
-
-  // Load custom themes from localStorage
-  const customThemes = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('customThemes');
-      return saved ? JSON.parse(saved) as Theme[] : [];
-    } catch {
-      return [];
-    }
-  }, [activeSubmenu]); // Re-read when submenu opens
-
-  // All themes for submenu
-  const allThemes = useMemo(() => [...BUILT_IN_THEMES, ...customThemes], [customThemes]);
 
   // Load plugins when opening plugins submenu
   useEffect(() => {

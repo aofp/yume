@@ -840,6 +840,8 @@ export class TauriClaudeClient {
         if (message.wrapper_tokens) transformedMessage.wrapper_tokens = message.wrapper_tokens;
         if (message.wrapper_auto_compact) transformedMessage.wrapper_auto_compact = message.wrapper_auto_compact;
         if (message.wrapper_compact) transformedMessage.wrapper_compact = message.wrapper_compact;
+        // Preserve file snapshot for line change tracking
+        if (message.fileSnapshot) transformedMessage.fileSnapshot = message.fileSnapshot;
 
         handler(transformedMessage);
       }
@@ -1113,6 +1115,7 @@ export class TauriClaudeClient {
       if (transformedMessage) {
         if (message.wrapper) transformedMessage.wrapper = message.wrapper;
         if (message.wrapper_tokens) transformedMessage.wrapper_tokens = message.wrapper_tokens;
+        if (message.fileSnapshot) transformedMessage.fileSnapshot = message.fileSnapshot;
         handler(transformedMessage);
       }
     };
