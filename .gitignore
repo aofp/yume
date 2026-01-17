@@ -24,7 +24,11 @@ src-tauri/resources/yume-server-*
 src-tauri/resources/yurucode-server-*
 
 # yume-cli binaries (built per-platform, not tracked)
-src-tauri/resources/yume-cli-*
+src-tauri/resources/yume-cli-*.exe
+src-tauri/resources/yume-cli-macos-*
+src-tauri/resources/yume-cli-linux-*
+# But DO track the .cmd wrapper for Windows
+!src-tauri/resources/yume-cli-*.cmd
 
 # yume-bin binaries (built per-platform, not tracked)
 src-tauri/resources/yume-bin-*
