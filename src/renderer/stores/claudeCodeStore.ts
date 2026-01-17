@@ -825,11 +825,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       })(), // Load from localStorage or default to true
       showProjectsMenu: false, // Default to hidden
       showAgentsMenu: false, // Default to hidden
-      showAnalyticsMenu: false, // Default to hidden
+      showAnalyticsMenu: true, // Default to enabled
       showCommandsSettings: false, // Default to hidden
       showMcpSettings: false, // Default to hidden
       showHooksSettings: false, // Default to hidden
-      showPluginsSettings: false, // Default to hidden
+      showPluginsSettings: true, // Default to enabled
       showSkillsSettings: false, // Default to hidden
       vscodeExtensionEnabled: false, // Default to disabled
       vscodeConnected: false, // Not connected initially
