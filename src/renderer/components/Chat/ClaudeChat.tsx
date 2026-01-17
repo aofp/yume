@@ -1108,12 +1108,8 @@ export const ClaudeChat: React.FC = () => {
           document.querySelector('.mt-modal-overlay') ||
           document.querySelector('[role="dialog"]')) return false;
 
-      const activeEl = document.activeElement;
-
-      // WKWebView quirk: focus on body is almost always unintentional - always restore
-      if (activeEl === document.body) return true;
-
       // Skip if active element is another input/editable
+      const activeEl = document.activeElement;
       if (activeEl instanceof HTMLInputElement ||
           (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
           (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
@@ -1132,16 +1128,12 @@ export const ClaudeChat: React.FC = () => {
       listen<boolean>('window-focus-change', (event) => {
         windowFocusedRef.current = event.payload;
         if (event.payload && canRestoreFocus()) {
-          // Multiple attempts with increasing delays to handle WKWebView quirks
-          // WKWebView can be slow to accept focus after window activation
-          const attempts = [50, 150, 300];
-          attempts.forEach((delay, i) => {
-            setTimeout(() => {
-              if (canRestoreFocus()) {
-                inputRef.current?.focus();
-              }
-            }, delay);
-          });
+          // Delay to let WKWebView settle
+          setTimeout(() => {
+            if (canRestoreFocus()) {
+              inputRef.current?.focus();
+            }
+          }, 150);
         }
       }).then(unlisten => {
         cleanupWindowFocus = unlisten;
@@ -1181,13 +1173,8 @@ export const ClaudeChat: React.FC = () => {
           document.querySelector('.mt-modal-overlay') ||
           document.querySelector('[role="dialog"]')) return false;
 
-      const activeEl = document.activeElement;
-
-      // WKWebView quirk: when focus is mysteriously lost, it often goes to document.body
-      // This is almost always unintentional and should be recovered
-      if (activeEl === document.body) return true;
-
       // Skip if active element is another input/editable
+      const activeEl = document.activeElement;
       if (activeEl instanceof HTMLInputElement ||
           (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
           (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
@@ -1269,33 +1256,19 @@ export const ClaudeChat: React.FC = () => {
       });
     }
 
-    // Detect when focus goes to unexpected elements (especially document.body)
-    const handleFocusIn = (e: FocusEvent) => {
-      // If focus goes to body and we're not intentionally clicking elsewhere, restore
-      if (e.target === document.body && !intentionalFocusLossRef.current) {
-        scheduleFocusCheck();
-      }
-    };
-
     document.addEventListener('mousedown', handleMouseDown, true);
     document.addEventListener('mouseup', handleMouseUp, true);
-    document.addEventListener('focusin', handleFocusIn, true);
     inputRef.current?.addEventListener('blur', handleBlur);
 
-    // Periodic fallback check every 500ms as safety net
+    // Periodic fallback check every 2 seconds as safety net
     // This catches edge cases where focus is lost without triggering blur/mutation
-    // Reduced from 2s to 500ms for more responsive focus recovery
     const periodicCheck = setInterval(() => {
       // Only run if document is focused and no intentional focus loss
       if (document.hasFocus() && !intentionalFocusLossRef.current && shouldRestoreFocus()) {
-        // WKWebView quirk: focus often goes to document.body when lost unexpectedly
-        // Only log if focus is on body (the suspicious case)
-        if (document.activeElement === document.body) {
-          console.log('[Focus Guardian] Restoring focus from body');
-        }
+        console.log('[Focus Guardian] Restoring focus via periodic check');
         inputRef.current?.focus();
       }
-    }, 500);
+    }, 2000);
 
     return () => {
       if (focusCheckTimeout) clearTimeout(focusCheckTimeout);
@@ -1303,7 +1276,6 @@ export const ClaudeChat: React.FC = () => {
       observer.disconnect();
       document.removeEventListener('mousedown', handleMouseDown, true);
       document.removeEventListener('mouseup', handleMouseUp, true);
-      document.removeEventListener('focusin', handleFocusIn, true);
       inputRef.current?.removeEventListener('blur', handleBlur);
     };
   }, [isMac]);
@@ -2399,31 +2371,21 @@ export const ClaudeChat: React.FC = () => {
   const prevSessionIdRef = useRef<string | null>(null);
 
   // Check if current working directory is a git repo when session changes
-  // Also load git status immediately so count shows in context bar
   useEffect(() => {
     const checkGitRepo = async () => {
       if (!currentSession?.workingDirectory) {
         setIsGitRepo(false);
-        setGitStatus(null);
         return;
       }
       try {
-        const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
+        await invoke('get_git_status', { directory: currentSession.workingDirectory });
         setIsGitRepo(true);
-        // Set git status immediately so count shows in context bar without opening panel
-        setGitStatus({
-          modified: (status.modified || []).map((p: string) => p.replace(/\\/g, '/')),
-          added: (status.added || []).map((p: string) => p.replace(/\\/g, '/')),
-          deleted: (status.deleted || []).map((p: string) => p.replace(/\\/g, '/')),
-          untracked: []
-        });
       } catch (error) {
         // Only set isGitRepo to false if it's definitively not a git repo
         // Don't change state on transient errors like "Git is busy"
         const errorStr = String(error);
         if (errorStr.includes('Not a git repository') || errorStr.includes('Directory does not exist')) {
           setIsGitRepo(false);
-          setGitStatus(null);
         }
         // For other errors (like git lock), keep the previous state
       }
