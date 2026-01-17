@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin, IconCommand } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
@@ -372,6 +372,17 @@ export const WelcomeScreen: React.FC = () => {
           {APP_NAME} {APP_VERSION} {!isLicensed && <strong>demo</strong>}
         </span>
         <div className="welcome-toolbar-spacer" />
+        {/* Command palette button */}
+        <button
+          className="btn-context-icon"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+          title={`command palette (${modKey}+p)`}
+          style={{ marginRight: '2px' }}
+        >
+          <span className="btn-icon-wrapper">
+            <IconCommand size={12} stroke={1.5} />
+          </span>
+        </button>
         <div className="btn-stats-container">
           <button
             className="btn-stats minimal"

@@ -503,14 +503,6 @@ pre {
   to { transform: rotate(360deg); }
 }
 
-.animate-fadeIn {
-  animation: fadeIn var(--transition-base);
-}
-
-.animate-slideIn {
-  animation: slideIn var(--transition-base);
-}
-
 .animate-pulse {
   animation: pulse 2s infinite;
 }
@@ -530,6 +522,11 @@ pre {
 
 .tool-use svg {
   opacity: 1 !important;
+}
+
+.todo-item svg {
+  position: relative;
+  top: 1px;
 }
 
 svg {
@@ -568,6 +565,10 @@ svg {
   /* Ensure strokes don't show overlap artifacts */
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.ml2 {
+  margin-left: 2px;
 }
 
 /* PERFORMANCE: Respect user preference for reduced motion */

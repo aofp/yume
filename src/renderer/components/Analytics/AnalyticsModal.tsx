@@ -18,6 +18,7 @@ interface AnalyticsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialProject?: string; // Optional: open directly to a specific project
+  initialTab?: string; // Optional: open directly to a specific tab (overview, projects)
 }
 
 interface TokenBreakdown {
@@ -165,7 +166,7 @@ interface Analytics {
   };
 }
 
-export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose, initialProject }) => {
+export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose, initialProject, initialTab }) => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -177,8 +178,14 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   );
 
   // Tab state for Overview vs Projects
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects'>('overview');
-  const [projectsDataLoaded, setProjectsDataLoaded] = useState(false);
+  const validTabs = ['overview', 'projects'];
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects'>(() => {
+    if (initialTab && validTabs.includes(initialTab)) {
+      return initialTab as 'overview' | 'projects';
+    }
+    return 'overview';
+  });
+  const [projectsDataLoaded, setProjectsDataLoaded] = useState(initialTab === 'projects');
 
   // Provider toggle helpers
   const toggleProvider = (provider: ProviderType) => {

@@ -188,9 +188,50 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         </button>
       )}
 
-      {/* Center - command palette + dictation */}
+      {/* Dictation button - after files/git, hidden in vscode mode or when disabled in settings */}
+      {!isVSCode() && showDictation && (
+        <button
+          className={`btn-context-icon ml2 ${isDictating ? 'active dictating' : ''}`}
+          onClick={onToggleDictation}
+          disabled={isReadOnly}
+          title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
+        >
+          <span className="btn-icon-wrapper">
+            {isDictating ? (
+              <IconMicrophone size={12} stroke={1.5} />
+            ) : (
+              <IconMicrophoneOff size={12} stroke={1.5} />
+            )}
+          </span>
+        </button>
+      )}
+
+      {/* Center - empty spacer */}
       <div className="context-center">
-        {/* Command palette button */}
+      </div>
+
+      {/* Right - history + stats */}
+      <div className="context-info">
+        {/* History button - shown for both modes when enabled */}
+        {showHistory && (
+          <button
+            className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
+            onClick={() => {
+              setShowRollbackPanel(!showRollbackPanel);
+              setShowFilesPanel(false);
+              setSelectedFile(null);
+              setFileContent('');
+              setSelectedGitFile(null);
+              setGitDiff(null);
+            }}
+            disabled={historyCount === 0}
+            title={`history (${modKey}+h)`}
+          >
+            <IconHistory size={12} stroke={1.5} />
+            <span className="btn-rollback-count">{historyCount}</span>
+          </button>
+        )}
+        {/* Command palette button - before stats */}
         <button
           className="btn-context-icon"
           onClick={onOpenCommandPalette}
@@ -200,68 +241,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <IconCommand size={12} stroke={1.5} />
           </span>
         </button>
-
-        {/* Dictation button - hidden in vscode mode or when disabled in settings */}
-        {!isVSCode() && showDictation && (
-          <button
-            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
-            onClick={onToggleDictation}
-            disabled={isReadOnly}
-            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
-          >
-            <span className="btn-icon-wrapper">
-              {isDictating ? (
-                <IconMicrophone size={12} stroke={1.5} />
-              ) : (
-                <IconMicrophoneOff size={12} stroke={1.5} />
-              )}
-            </span>
-          </button>
-        )}
-
-        {/* History button - shown in center for vscode mode (replaces files/git) */}
-        {isVSCode() && (
-          <button
-            className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
-            onClick={() => {
-              setShowRollbackPanel(!showRollbackPanel);
-              setShowFilesPanel(false);
-              setSelectedFile(null);
-              setFileContent('');
-              setSelectedGitFile(null);
-              setGitDiff(null);
-            }}
-            disabled={historyCount === 0}
-            title={`history (${modKey}+h)`}
-          >
-            <IconHistory size={12} stroke={1.5} />
-            <span className="btn-rollback-count">{historyCount}</span>
-          </button>
-        )}
-
-      </div>
-
-      {/* Right - history + stats */}
-      <div className="context-info">
-        {/* History button - hidden in vscode mode or when disabled in settings */}
-        {!isVSCode() && showHistory && (
-          <button
-            className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
-            onClick={() => {
-              setShowRollbackPanel(!showRollbackPanel);
-              setShowFilesPanel(false);
-              setSelectedFile(null);
-              setFileContent('');
-              setSelectedGitFile(null);
-              setGitDiff(null);
-            }}
-            disabled={historyCount === 0}
-            title={`history (${modKey}+h)`}
-          >
-            <IconHistory size={12} stroke={1.5} />
-            <span className="btn-rollback-count">{historyCount}</span>
-          </button>
-        )}
         <div className="btn-stats-container">
           <button
             className={`btn-stats ${usageClass}`}

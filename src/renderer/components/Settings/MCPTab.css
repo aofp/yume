@@ -20,7 +20,6 @@
   align-items: center;
   gap: 6px;
   z-index: 100;
-  animation: slideIn 0.2s ease-out;
 }
 
 .mcp-notification.success {

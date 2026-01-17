@@ -31,6 +31,7 @@ import { appStorageKey } from '../../config/app';
 
 interface SettingsModalProps {
   onClose: () => void;
+  initialTab?: string;
 }
 
 // Tab type definition
@@ -41,11 +42,16 @@ import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_COLORS, type Theme } from '../.
 
 const SETTINGS_TAB_STORAGE_KEY = appStorageKey('settings_last_tab', '_');
 
-export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) => {
+export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, initialTab }) => {
   const { isLicensed } = useLicenseStore();
+  const validTabs = ['general', 'appearance', 'providers', 'hooks', 'commands', 'mcp', 'plugins', 'skills'];
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    // Use initialTab if provided and valid
+    if (initialTab && validTabs.includes(initialTab)) {
+      return initialTab as SettingsTab;
+    }
     const saved = localStorage.getItem(SETTINGS_TAB_STORAGE_KEY);
-    if (saved && ['general', 'appearance', 'providers', 'hooks', 'commands', 'mcp', 'plugins', 'skills'].includes(saved)) {
+    if (saved && validTabs.includes(saved)) {
       return saved as SettingsTab;
     }
     return 'general';
@@ -904,10 +910,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4>features</h4>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">dictation</span>
+                    <span className="checkbox-label">history</span>
                     <div
-                      className={`toggle-switch compact ${showDictation ? 'active' : ''}`}
-                      onClick={() => setShowDictation(!showDictation)}
+                      className={`toggle-switch compact ${showHistory ? 'active' : ''}`}
+                      onClick={() => setShowHistory(!showHistory)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -916,10 +922,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">history</span>
+                    <span className="checkbox-label">dictation</span>
                     <div
-                      className={`toggle-switch compact ${showHistory ? 'active' : ''}`}
-                      onClick={() => setShowHistory(!showHistory)}
+                      className={`toggle-switch compact ${showDictation ? 'active' : ''}`}
+                      onClick={() => setShowDictation(!showDictation)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>

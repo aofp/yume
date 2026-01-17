@@ -10,7 +10,6 @@
   justify-content: center;
   z-index: 10000;
   cursor: default;
-  animation: confirmFadeIn 0.15s ease;
 }
 
 @keyframes confirmFadeIn {
@@ -32,7 +31,6 @@
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  animation: confirmModalFadeIn 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
 }

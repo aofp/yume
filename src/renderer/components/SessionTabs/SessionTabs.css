@@ -179,7 +179,6 @@
   color: rgba(var(--accent-rgb), 0.5);
   text-transform: lowercase;
   pointer-events: none;
-  animation: fade-in 0.2s ease-in;
 }
 
 @keyframes fade-in {
@@ -309,7 +308,6 @@
 }
 
 .streaming-icon {
-  color: rgba(255, 230, 153, 0.7);
   animation: spin 1s linear infinite;
 }
 
@@ -498,7 +496,6 @@
 .tab-recent.drag-over-save {
   background: rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
-  animation: pulse 0.5s ease-in-out infinite;
 }
 
 @keyframes pulse {

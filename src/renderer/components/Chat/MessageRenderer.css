@@ -119,7 +119,6 @@
 }
 
 .init-icon {
-  color: rgba(255, 230, 153, 0.7);
   animation: pulse 1s ease;
   vertical-align: middle;
 }
@@ -520,7 +519,6 @@ ol {
   padding: 8px 12px;
   color: var(--accent-color);
   font-size: var(--text-base);
-  animation: fadeIn 0.3s ease;
   font-weight: bold;
 }
 

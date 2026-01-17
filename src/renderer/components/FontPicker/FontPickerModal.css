@@ -9,7 +9,6 @@
   align-items: flex-start;
   justify-content: center;
   z-index: 100002;
-  animation: fadeIn 0.2s ease;
   overflow-y: auto;
   padding: 40px 20px;
   box-sizing: border-box;

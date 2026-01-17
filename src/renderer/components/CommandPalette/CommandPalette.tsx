@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { IconSearch } from '@tabler/icons-react';
+import { IconSearch, IconChevronLeft, IconCheck } from '@tabler/icons-react';
 import { isMacOS } from '../../services/platformUtils';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { platformBridge } from '../../services/platformBridge';
+import { BUILT_IN_THEMES, type Theme } from '../../config/themes';
+import { pluginService } from '../../services/pluginService';
+import type { InstalledPlugin } from '../../types/plugin';
 import './CommandPalette.css';
+
+// Submenu types
+type SubmenuType = 'theme' | 'fontSize' | 'lineHeight' | 'opacity' | 'plugins' | null;
+
+interface SubmenuItem {
+  id: string;
+  label: string;
+  data?: any;
+  isSelected?: boolean;
+}
 
 export interface CommandItem {
   id: string;
@@ -14,6 +27,7 @@ export interface CommandItem {
   isToggle?: boolean;
   getValue?: () => boolean;
   disabled?: boolean;
+  hasSubmenu?: SubmenuType;
 }
 
 interface CommandPaletteProps {
@@ -41,8 +55,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [activeSubmenu, setActiveSubmenu] = useState<SubmenuType>(null);
+  const [submenuIndex, setSubmenuIndex] = useState(0);
+  const [originalColors, setOriginalColors] = useState<{bg: string, fg: string, accent: string, positive: string, negative: string} | null>(null);
+  const [originalFontSize, setOriginalFontSize] = useState<number | null>(null);
+  const [originalLineHeight, setOriginalLineHeight] = useState<number | null>(null);
+  const [originalOpacity, setOriginalOpacity] = useState<number | null>(null);
+  const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [ignoreMouseUntilMove, setIgnoreMouseUntilMove] = useState(false);
+  const lastMousePos = useRef<{ x: number; y: number } | null>(null);
   const isMac = isMacOS();
   const modKey = isMac ? 'cmd' : 'ctrl';
 
@@ -91,6 +114,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setRememberTabs,
     autoGenerateTitle,
     setAutoGenerateTitle,
+    fontSize,
+    setFontSize,
+    lineHeight,
+    setLineHeight,
+    backgroundOpacity,
+    setBackgroundOpacity,
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -166,12 +195,83 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       shortcut: [modKey, ','],
       action: onOpenSettings,
     });
+    // Settings tabs - direct navigation
+    cmds.push({
+      id: 'settings-general',
+      label: 'settings: general',
+      category: 'panels',
+      action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'general' } })),
+    });
+    cmds.push({
+      id: 'settings-appearance',
+      label: 'settings: appearance',
+      category: 'panels',
+      action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'appearance' } })),
+    });
+    cmds.push({
+      id: 'settings-cli',
+      label: 'settings: cli',
+      category: 'panels',
+      action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'providers' } })),
+    });
+    if (showPluginsSettings) {
+      cmds.push({
+        id: 'settings-plugins',
+        label: 'settings: plugins',
+        category: 'panels',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'plugins' } })),
+      });
+    }
+    if (showHooksSettings) {
+      cmds.push({
+        id: 'settings-hooks',
+        label: 'settings: hooks',
+        category: 'panels',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'hooks' } })),
+      });
+    }
+    if (showCommandsSettings) {
+      cmds.push({
+        id: 'settings-commands',
+        label: 'settings: commands',
+        category: 'panels',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'commands' } })),
+      });
+    }
+    if (showSkillsSettings) {
+      cmds.push({
+        id: 'settings-skills',
+        label: 'settings: skills',
+        category: 'panels',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'skills' } })),
+      });
+    }
+    if (showMcpSettings) {
+      cmds.push({
+        id: 'settings-mcp',
+        label: 'settings: mcp',
+        category: 'panels',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'mcp' } })),
+      });
+    }
     cmds.push({
       id: 'open-analytics',
       label: 'open analytics',
       category: 'panels',
       shortcut: [modKey, 'y'],
       action: onOpenAnalytics,
+    });
+    cmds.push({
+      id: 'analytics-overview',
+      label: 'analytics: overview',
+      category: 'panels',
+      action: () => window.dispatchEvent(new CustomEvent('open-analytics-tab', { detail: { tab: 'overview' } })),
+    });
+    cmds.push({
+      id: 'analytics-projects',
+      label: 'analytics: projects',
+      category: 'panels',
+      action: () => window.dispatchEvent(new CustomEvent('open-analytics-tab', { detail: { tab: 'projects' } })),
     });
     cmds.push({
       id: 'open-agents',
@@ -354,6 +454,75 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => platformBridge.zoom.reset(),
     });
 
+    // Appearance with submenus
+    cmds.push({
+      id: 'select-theme',
+      label: 'select theme',
+      category: 'appearance',
+      action: () => {
+        // Save current colors for restore on cancel
+        const root = document.documentElement;
+        setOriginalColors({
+          bg: getComputedStyle(root).getPropertyValue('--background-color').trim(),
+          fg: getComputedStyle(root).getPropertyValue('--foreground-color').trim(),
+          accent: getComputedStyle(root).getPropertyValue('--accent-color').trim(),
+          positive: getComputedStyle(root).getPropertyValue('--positive-color').trim(),
+          negative: getComputedStyle(root).getPropertyValue('--negative-color').trim(),
+        });
+        setActiveSubmenu('theme');
+        setSubmenuIndex(0);
+        setQuery('');
+      },
+      hasSubmenu: 'theme',
+    });
+    cmds.push({
+      id: 'select-font-size',
+      label: `font size (${fontSize}px)`,
+      category: 'appearance',
+      action: () => {
+        setOriginalFontSize(fontSize);
+        setActiveSubmenu('fontSize');
+        setSubmenuIndex(0);
+        setQuery('');
+      },
+      hasSubmenu: 'fontSize',
+    });
+    cmds.push({
+      id: 'select-line-height',
+      label: `line height (${lineHeight.toFixed(1)})`,
+      category: 'appearance',
+      action: () => {
+        setOriginalLineHeight(lineHeight);
+        setActiveSubmenu('lineHeight');
+        setSubmenuIndex(0);
+        setQuery('');
+      },
+      hasSubmenu: 'lineHeight',
+    });
+    cmds.push({
+      id: 'select-opacity',
+      label: `background opacity (${backgroundOpacity}%)`,
+      category: 'appearance',
+      action: () => {
+        setOriginalOpacity(backgroundOpacity);
+        setActiveSubmenu('opacity');
+        setSubmenuIndex(0);
+        setQuery('');
+      },
+      hasSubmenu: 'opacity',
+    });
+    cmds.push({
+      id: 'manage-plugins',
+      label: 'manage plugins',
+      category: 'appearance',
+      action: () => {
+        setActiveSubmenu('plugins');
+        setSubmenuIndex(0);
+        setQuery('');
+      },
+      hasSubmenu: 'plugins',
+    });
+
     // Toggles - UI
     cmds.push({
       id: 'toggle-word-wrap',
@@ -495,7 +664,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     showProjectsMenu, showAgentsMenu, showAnalyticsMenu,
     showCommandsSettings, showMcpSettings, showHooksSettings,
     showPluginsSettings, showSkillsSettings, showDictation, showHistory,
-    rememberTabs, autoGenerateTitle,
+    rememberTabs, autoGenerateTitle, fontSize, lineHeight, backgroundOpacity,
     createSession, deleteSession, forkSession, clearContext, interruptSession, toggleModel,
     setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled,
     setShowProjectsMenu, setShowAgentsMenu, setShowAnalyticsMenu,
@@ -549,10 +718,174 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       .map(s => s.cmd);
   }, [commands, query]);
 
+  // Load custom themes from localStorage
+  const customThemes = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('customThemes');
+      return saved ? JSON.parse(saved) as Theme[] : [];
+    } catch {
+      return [];
+    }
+  }, [activeSubmenu]); // Re-read when submenu opens
+
+  // All themes for submenu
+  const allThemes = useMemo(() => [...BUILT_IN_THEMES, ...customThemes], [customThemes]);
+
+  // Load plugins when opening plugins submenu
+  useEffect(() => {
+    if (activeSubmenu === 'plugins') {
+      pluginService.refresh().then(setPlugins).catch(console.error);
+    }
+  }, [activeSubmenu]);
+
+  // Font size options (8-24px)
+  const fontSizeOptions = useMemo(() =>
+    [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map(size => ({
+      id: `font-${size}`,
+      label: `${size}px`,
+      data: size,
+      isSelected: fontSize === size,
+    })),
+  [fontSize]);
+
+  // Line height options (1.0-2.0)
+  const lineHeightOptions = useMemo(() =>
+    [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0].map(h => ({
+      id: `lh-${h}`,
+      label: `${h.toFixed(1)}`,
+      data: h,
+      isSelected: lineHeight === h,
+    })),
+  [lineHeight]);
+
+  // Opacity options (50-100%)
+  const opacityOptions = useMemo(() =>
+    [50, 60, 70, 75, 80, 85, 90, 95, 100].map(o => ({
+      id: `opacity-${o}`,
+      label: `${o}%`,
+      data: o,
+      isSelected: backgroundOpacity === o,
+    })),
+  [backgroundOpacity]);
+
+  // Plugin items
+  const pluginItems = useMemo<SubmenuItem[]>(() =>
+    plugins.map(p => ({
+      id: p.id,
+      label: p.manifest.name,
+      data: p,
+      isSelected: p.enabled,
+    })),
+  [plugins]);
+
+  // Submenu items based on active submenu
+  const submenuItems = useMemo<SubmenuItem[]>(() => {
+    switch (activeSubmenu) {
+      case 'theme':
+        return allThemes.map(t => ({ id: t.id, label: t.name, data: t }));
+      case 'fontSize':
+        return fontSizeOptions;
+      case 'lineHeight':
+        return lineHeightOptions;
+      case 'opacity':
+        return opacityOptions;
+      case 'plugins':
+        return pluginItems;
+      default:
+        return [];
+    }
+  }, [activeSubmenu, allThemes, fontSizeOptions, lineHeightOptions, opacityOptions, pluginItems]);
+
+  // Filter submenu items by query
+  const filteredSubmenuItems = useMemo(() => {
+    if (!query.trim()) return submenuItems;
+    const q = query.toLowerCase();
+    return submenuItems.filter(item => item.label.toLowerCase().includes(q));
+  }, [submenuItems, query]);
+
+  // Preview theme colors
+  const previewTheme = useCallback((theme: Theme) => {
+    const root = document.documentElement;
+    root.style.setProperty('--background-color', theme.backgroundColor);
+    const bgHex = theme.backgroundColor.replace('#', '');
+    root.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
+    root.style.setProperty('--foreground-color', theme.foregroundColor);
+    const fgHex = theme.foregroundColor.replace('#', '');
+    root.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
+    root.style.setProperty('--accent-color', theme.accentColor);
+    const accentHex = theme.accentColor.replace('#', '');
+    root.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
+    root.style.setProperty('--positive-color', theme.positiveColor);
+    root.style.setProperty('--negative-color', theme.negativeColor);
+  }, []);
+
+  // Apply theme (save to localStorage)
+  const applyTheme = useCallback((theme: Theme) => {
+    previewTheme(theme);
+    localStorage.setItem('backgroundColor', theme.backgroundColor);
+    localStorage.setItem('foregroundColor', theme.foregroundColor);
+    localStorage.setItem('accentColor', theme.accentColor);
+    localStorage.setItem('positiveColor', theme.positiveColor);
+    localStorage.setItem('negativeColor', theme.negativeColor);
+    localStorage.setItem('currentThemeId', theme.id);
+  }, [previewTheme]);
+
+  // Restore original values (on cancel)
+  const restoreOriginals = useCallback(() => {
+    if (originalColors) {
+      const root = document.documentElement;
+      root.style.setProperty('--background-color', originalColors.bg);
+      const bgHex = originalColors.bg.replace('#', '');
+      root.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
+      root.style.setProperty('--foreground-color', originalColors.fg);
+      const fgHex = originalColors.fg.replace('#', '');
+      root.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
+      root.style.setProperty('--accent-color', originalColors.accent);
+      const accentHex = originalColors.accent.replace('#', '');
+      root.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
+      root.style.setProperty('--positive-color', originalColors.positive);
+      root.style.setProperty('--negative-color', originalColors.negative);
+    }
+    if (originalFontSize !== null) {
+      setFontSize(originalFontSize);
+    }
+    if (originalLineHeight !== null) {
+      setLineHeight(originalLineHeight);
+    }
+    if (originalOpacity !== null) {
+      setBackgroundOpacity(originalOpacity);
+    }
+  }, [originalColors, originalFontSize, originalLineHeight, originalOpacity, setFontSize, setLineHeight, setBackgroundOpacity]);
+
+  // Preview when submenu index changes
+  useEffect(() => {
+    if (!filteredSubmenuItems[submenuIndex]) return;
+    const item = filteredSubmenuItems[submenuIndex];
+
+    switch (activeSubmenu) {
+      case 'theme':
+        previewTheme(item.data as Theme);
+        break;
+      case 'fontSize':
+        setFontSize(item.data as number);
+        break;
+      case 'lineHeight':
+        setLineHeight(item.data as number);
+        break;
+      case 'opacity':
+        setBackgroundOpacity(item.data as number);
+        break;
+      // plugins don't need preview
+    }
+  }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight, setBackgroundOpacity]);
+
   // Reset selection when query changes
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query]);
+    if (activeSubmenu) {
+      setSubmenuIndex(0);
+    }
+  }, [query, activeSubmenu]);
 
   // Focus input when opening
   useEffect(() => {
@@ -560,6 +893,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       inputRef.current.focus();
       setQuery('');
       setSelectedIndex(0);
+      setIgnoreMouseUntilMove(true);
+      lastMousePos.current = null;
     }
   }, [isOpen]);
 
@@ -571,14 +906,129 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         selectedEl.scrollIntoView({ block: 'nearest' });
       }
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, submenuIndex]);
+
+  // Handle mouse movement to re-enable hover after keyboard navigation
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const pos = { x: e.clientX, y: e.clientY };
+
+    if (ignoreMouseUntilMove && lastMousePos.current) {
+      const dx = Math.abs(pos.x - lastMousePos.current.x);
+      const dy = Math.abs(pos.y - lastMousePos.current.y);
+      // Only re-enable if mouse actually moved (not just scroll-induced events)
+      if (dx > 3 || dy > 3) {
+        setIgnoreMouseUntilMove(false);
+      }
+    }
+    lastMousePos.current = pos;
+  }, [ignoreMouseUntilMove]);
 
   const executeCommand = useCallback((cmd: CommandItem) => {
-    cmd.action();
-    onClose();
+    // If command has submenu, don't close - action will open submenu
+    if (cmd.hasSubmenu) {
+      cmd.action();
+    } else {
+      cmd.action();
+      onClose();
+    }
   }, [onClose]);
 
+  // Exit submenu and restore original values
+  const exitSubmenu = useCallback(() => {
+    restoreOriginals();
+    setActiveSubmenu(null);
+    setSubmenuIndex(0);
+    setOriginalColors(null);
+    setOriginalFontSize(null);
+    setOriginalLineHeight(null);
+    setOriginalOpacity(null);
+    setQuery('');
+  }, [restoreOriginals]);
+
+  // Handle submenu item selection
+  const handleSubmenuSelect = useCallback(async (item: SubmenuItem) => {
+    switch (activeSubmenu) {
+      case 'theme':
+        applyTheme(item.data as Theme);
+        setActiveSubmenu(null);
+        setOriginalColors(null);
+        onClose();
+        break;
+      case 'fontSize':
+        // Already applied via preview, just clear originals and close
+        setActiveSubmenu(null);
+        setOriginalFontSize(null);
+        onClose();
+        break;
+      case 'lineHeight':
+        setActiveSubmenu(null);
+        setOriginalLineHeight(null);
+        onClose();
+        break;
+      case 'opacity':
+        setActiveSubmenu(null);
+        setOriginalOpacity(null);
+        onClose();
+        break;
+      case 'plugins':
+        // Toggle plugin enabled state
+        const plugin = item.data as InstalledPlugin;
+        try {
+          if (plugin.enabled) {
+            await pluginService.disablePlugin(plugin.id);
+          } else {
+            await pluginService.enablePlugin(plugin.id);
+          }
+          // Refresh plugins list
+          const refreshed = await pluginService.refresh();
+          setPlugins(refreshed);
+        } catch (err) {
+          console.error('Failed to toggle plugin:', err);
+        }
+        break;
+    }
+  }, [activeSubmenu, applyTheme, onClose]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Submenu mode
+    if (activeSubmenu) {
+      // Exit submenu on Escape, or Backspace when query empty or no results
+      if (e.key === 'Escape' || (e.key === 'Backspace' && (query === '' || filteredSubmenuItems.length === 0))) {
+        e.preventDefault();
+        exitSubmenu();
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setIgnoreMouseUntilMove(true);
+        if (submenuIndex < filteredSubmenuItems.length - 1) {
+          setSubmenuIndex(submenuIndex + 1);
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setIgnoreMouseUntilMove(true);
+        if (submenuIndex > 0) {
+          setSubmenuIndex(submenuIndex - 1);
+        }
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = filteredSubmenuItems[submenuIndex];
+        if (item) {
+          handleSubmenuSelect(item);
+        }
+        return;
+      }
+      return;
+    }
+
+    // Main menu mode
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
@@ -594,6 +1044,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      setIgnoreMouseUntilMove(true);
       // Skip disabled items
       let next = selectedIndex + 1;
       while (next < filteredCommands.length && filteredCommands[next]?.disabled) {
@@ -607,6 +1058,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     if (e.key === 'ArrowUp') {
       e.preventDefault();
+      setIgnoreMouseUntilMove(true);
       // Skip disabled items
       let prev = selectedIndex - 1;
       while (prev >= 0 && filteredCommands[prev]?.disabled) {
@@ -626,7 +1078,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       }
       return;
     }
-  }, [filteredCommands, selectedIndex, executeCommand, onClose, query]);
+  }, [activeSubmenu, filteredCommands, filteredSubmenuItems, selectedIndex, submenuIndex, executeCommand, exitSubmenu, handleSubmenuSelect, onClose, query]);
 
   // Global keyboard handler for Escape
   useEffect(() => {
@@ -635,13 +1087,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        if (activeSubmenu) {
+          exitSubmenu();
+        } else {
+          onClose();
+        }
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, activeSubmenu, exitSubmenu, onClose]);
 
   if (!isOpen) return null;
 
@@ -657,7 +1113,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     groupedCommands[cat].sort((a, b) => (a.disabled ? 1 : 0) - (b.disabled ? 1 : 0));
   });
 
-  const categoryOrder = ['tabs', 'panels', 'session', 'model', 'input', 'zoom', 'settings', 'menu', 'settings tabs'];
+  const categoryOrder = ['session', 'tabs', 'panels', 'model', 'input', 'zoom', 'appearance', 'settings', 'menu', 'settings tabs'];
   const sortedCategories = Object.keys(groupedCommands).sort((a, b) => {
     const aIdx = categoryOrder.indexOf(a);
     const bIdx = categoryOrder.indexOf(b);
@@ -677,53 +1133,112 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     );
   };
 
+  // Submenu title
+  const submenuTitles: Record<string, string> = {
+    theme: 'select theme',
+    fontSize: 'font size',
+    lineHeight: 'line height',
+    opacity: 'background opacity',
+    plugins: 'plugins',
+  };
+  const submenuTitle = activeSubmenu ? submenuTitles[activeSubmenu] || '' : '';
+
   return (
-    <div className="cp-overlay" onClick={onClose}>
-      <div className="cp-modal" onClick={e => e.stopPropagation()}>
+    <div className="cp-overlay" onClick={() => { if (activeSubmenu) { exitSubmenu(); } else { onClose(); } }}>
+      <div className="cp-modal" onClick={e => { e.stopPropagation(); inputRef.current?.focus(); }}>
         <div className="cp-search">
-          <IconSearch size={14} className="cp-search-icon" />
+          {activeSubmenu ? (
+            <button
+              className="cp-back-btn"
+              onClick={exitSubmenu}
+              title="back (esc)"
+            >
+              <IconChevronLeft size={14} />
+            </button>
+          ) : (
+            <IconSearch size={14} className="cp-search-icon" />
+          )}
           <input
             ref={inputRef}
             type="text"
             className="cp-input"
-            placeholder="search commands..."
+            placeholder={activeSubmenu ? `search ${submenuTitle}...` : "search commands..."}
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => { setQuery(e.target.value); setIgnoreMouseUntilMove(true); }}
             onKeyDown={handleKeyDown}
             spellCheck={false}
             autoComplete="off"
           />
         </div>
-        <div className="cp-list" ref={listRef}>
-          {filteredCommands.length === 0 ? (
-            <div className="cp-empty">no commands found</div>
-          ) : (
-            sortedCategories.map(category => (
-              <div key={category} className="cp-category">
-                <div className="cp-category-label">{category}</div>
-                {groupedCommands[category].map(cmd => {
-                  const isSelected = filteredCommands.indexOf(cmd) === selectedIndex;
-                  const toggleValue = cmd.isToggle && cmd.getValue ? cmd.getValue() : undefined;
-
+        <div className="cp-list" ref={listRef} onMouseMove={handleMouseMove}>
+          {activeSubmenu ? (
+            // Submenu view
+            filteredSubmenuItems.length === 0 ? (
+              <div className="cp-empty">no items found</div>
+            ) : (
+              <div className="cp-category">
+                <div className="cp-category-label">{submenuTitle}</div>
+                {filteredSubmenuItems.map((item, idx) => {
+                  const isSelected = idx === submenuIndex;
                   return (
                     <div
-                      key={cmd.id}
-                      className={`cp-item ${isSelected ? 'selected' : ''} ${cmd.disabled ? 'disabled' : ''}`}
-                      onClick={() => !cmd.disabled && executeCommand(cmd)}
-                      onMouseEnter={() => !cmd.disabled && setSelectedIndex(filteredCommands.indexOf(cmd))}
+                      key={item.id}
+                      className={`cp-item ${isSelected ? 'selected' : ''} ${!ignoreMouseUntilMove ? 'hover-enabled' : ''}`}
+                      onClick={() => handleSubmenuSelect(item)}
+                      onMouseEnter={() => !ignoreMouseUntilMove && setSubmenuIndex(idx)}
                     >
-                      <span className="cp-label">{cmd.label}</span>
-                      {cmd.isToggle && (
-                        <span className={`cp-toggle ${toggleValue ? 'on' : 'off'}`}>
-                          {toggleValue ? 'on' : 'off'}
+                      <span className="cp-label">{item.label}</span>
+                      {/* Theme color swatches */}
+                      {activeSubmenu === 'theme' && (
+                        <span className="cp-theme-colors">
+                          <span style={{ background: (item.data as Theme).foregroundColor }} />
+                          <span style={{ background: (item.data as Theme).accentColor }} />
+                          <span style={{ background: (item.data as Theme).positiveColor }} />
+                          <span style={{ background: (item.data as Theme).negativeColor }} />
                         </span>
                       )}
-                      {cmd.shortcut && renderShortcut(cmd.shortcut)}
+                      {/* Check mark for selected value or enabled plugin */}
+                      {item.isSelected && (
+                        <IconCheck size={14} className="cp-check" />
+                      )}
                     </div>
                   );
                 })}
               </div>
-            ))
+            )
+          ) : (
+            // Main menu view
+            filteredCommands.length === 0 ? (
+              <div className="cp-empty">no commands found</div>
+            ) : (
+              sortedCategories.map(category => (
+                <div key={category} className="cp-category">
+                  <div className="cp-category-label">{category}</div>
+                  {groupedCommands[category].map(cmd => {
+                    const isSelected = filteredCommands.indexOf(cmd) === selectedIndex;
+                    const toggleValue = cmd.isToggle && cmd.getValue ? cmd.getValue() : undefined;
+
+                    return (
+                      <div
+                        key={cmd.id}
+                        className={`cp-item ${isSelected ? 'selected' : ''} ${cmd.disabled ? 'disabled' : ''} ${!ignoreMouseUntilMove ? 'hover-enabled' : ''}`}
+                        onClick={() => !cmd.disabled && executeCommand(cmd)}
+                        onMouseEnter={() => !cmd.disabled && !ignoreMouseUntilMove && setSelectedIndex(filteredCommands.indexOf(cmd))}
+                      >
+                        <span className="cp-label">{cmd.label}</span>
+                        {cmd.isToggle && (
+                          <span className={`cp-toggle ${toggleValue ? 'on' : 'off'}`}>
+                            {toggleValue ? 'on' : 'off'}
+                          </span>
+                        )}
+                        {cmd.hasSubmenu && <span className="cp-submenu-arrow">›</span>}
+                        {cmd.shortcut && renderShortcut(cmd.shortcut)}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            )
           )}
         </div>
       </div>

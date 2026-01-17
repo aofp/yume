@@ -230,7 +230,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 <span className="key-btn">o</span>
               </div>
               <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">toggle model</span>
+              <span className="shortcut-desc">model & tools</span>
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
@@ -241,7 +241,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 <span className="key-btn">o</span>
               </div>
               <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">model & tools</span>
+              <span className="shortcut-desc">toggle model</span>
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">

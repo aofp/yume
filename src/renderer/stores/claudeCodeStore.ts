@@ -736,23 +736,27 @@ const restoreSessions = (): Session[] => {
         claudeSessionId: s.claudeSessionId, // KEEP this for --resume
         workingDirectory: s.workingDirectory,
         messages: s.messages || [],
-        analytics: s.analytics || {
-          totalMessages: 0,
-          userMessages: 0,
-          assistantMessages: 0,
-          toolUses: 0,
-          tokens: {
-            input: 0,
-            output: 0,
-            total: 0,
-            byModel: {
-              opus: { input: 0, output: 0, total: 0 },
-              sonnet: { input: 0, output: 0, total: 0 }
-            }
-          },
-          duration: 0,
-          lastActivity: new Date(),
-          thinkingTime: 0
+        analytics: {
+          ...(s.analytics || {
+            totalMessages: 0,
+            userMessages: 0,
+            assistantMessages: 0,
+            toolUses: 0,
+            tokens: {
+              input: 0,
+              output: 0,
+              total: 0,
+              byModel: {
+                opus: { input: 0, output: 0, total: 0 },
+                sonnet: { input: 0, output: 0, total: 0 }
+              }
+            },
+            duration: 0,
+            lastActivity: new Date(),
+            thinkingTime: 0
+          }),
+          // Clear compactPending on restore - we have token data, next message will refresh
+          compactPending: false
         },
         claudeTitle: s.claudeTitle,
         userRenamed: s.userRenamed,
@@ -1824,6 +1828,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         percentage: percentage,
                         remaining: Math.max(0, 200000 - currentTotal)
                       };
+
+                      // Clear compactPending if set - we now have valid token data
+                      if (analytics.compactPending) {
+                        console.log('🗜️ [COMPACT RECOVERY] Wrapper tokens received, clearing compactPending flag');
+                        analytics.compactPending = false;
+                      }
                     } else if (message.type === 'result') {
                       // Only log missing wrapper for result messages (where we expect tokens)
                       console.log('❌ [STORE-TOKENS] Result message WITHOUT wrapper tokens:', {

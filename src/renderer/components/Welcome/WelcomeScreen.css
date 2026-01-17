@@ -11,7 +11,6 @@
   padding: 0;
   /* Transparent to allow window transparency to show through (Windows uses body::before overlay) */
   background: transparent;
-  animation: fadeIn 0.3s ease;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -191,7 +190,6 @@
   justify-content: center;
   z-index: 1000;
   cursor: default;
-  animation: fadeInModal 0.15s ease;
 }
 
 @keyframes fadeInModal {
@@ -209,12 +207,12 @@
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  animation: modalFadeIn 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -489,7 +487,6 @@
   border: none;
   border-radius: 8px;
   cursor: default;
-  animation: cardFadeIn 0.3s ease backwards;
 }
 
 @keyframes cardFadeIn {

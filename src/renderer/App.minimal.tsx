@@ -41,6 +41,7 @@ const TRIGGER_RESUME_EVENT = appEventName('trigger-resume');
 export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected, checkVscodeInstallation, fetchClaudeVersion /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
@@ -48,6 +49,7 @@ export const App: React.FC = () => {
   const [showAgentsModal, setShowAgentsModal] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
+  const [analyticsInitialTab, setAnalyticsInitialTab] = useState<string | undefined>(undefined);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<'tabLimit' | 'feature' | 'demo'>('tabLimit');
@@ -277,6 +279,26 @@ export const App: React.FC = () => {
     const handleOpenCommandPalette = () => setShowCommandPalette(true);
     window.addEventListener('open-command-palette', handleOpenCommandPalette);
     return () => window.removeEventListener('open-command-palette', handleOpenCommandPalette);
+  }, []);
+
+  // Listen for open-settings-tab events (from CommandPalette)
+  useEffect(() => {
+    const handleOpenSettingsTab = (e: CustomEvent<{ tab: string }>) => {
+      setSettingsInitialTab(e.detail?.tab);
+      setShowSettings(true);
+    };
+    window.addEventListener('open-settings-tab', handleOpenSettingsTab as EventListener);
+    return () => window.removeEventListener('open-settings-tab', handleOpenSettingsTab as EventListener);
+  }, []);
+
+  // Listen for open-analytics-tab events (from CommandPalette)
+  useEffect(() => {
+    const handleOpenAnalyticsTab = (e: CustomEvent<{ tab: string }>) => {
+      setAnalyticsInitialTab(e.detail?.tab);
+      setShowAnalytics(true);
+    };
+    window.addEventListener('open-analytics-tab', handleOpenAnalyticsTab as EventListener);
+    return () => window.removeEventListener('open-analytics-tab', handleOpenAnalyticsTab as EventListener);
   }, []);
 
   // Listen for demo instance blocked event from Rust backend
@@ -1148,7 +1170,7 @@ export const App: React.FC = () => {
       {showSettings && (
         <ErrorBoundary name="SettingsModal">
           <Suspense fallback={null}>
-            <SettingsModalTabbed onClose={() => { setShowSettings(false); restoreFocusToChat(); }} />
+            <SettingsModalTabbed onClose={() => { setShowSettings(false); setSettingsInitialTab(undefined); restoreFocusToChat(); }} initialTab={settingsInitialTab} />
           </Suspense>
         </ErrorBoundary>
       )}
@@ -1443,9 +1465,11 @@ export const App: React.FC = () => {
               onClose={() => {
                 setShowAnalytics(false);
                 setAnalyticsProject(undefined);
+                setAnalyticsInitialTab(undefined);
                 restoreFocusToChat();
               }}
               initialProject={analyticsProject}
+              initialTab={analyticsInitialTab}
             />
           </Suspense>
         </ErrorBoundary>

@@ -8,7 +8,6 @@
   min-height: 120px;
   display: flex;
   flex-direction: column;
-  animation: slideIn 0.2s ease;
 }
 
 @keyframes slideIn {
@@ -170,7 +169,6 @@
   padding: 10px;
   min-width: 200px;
   z-index: 100;
-  animation: fadeIn 0.15s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
@@ -253,7 +251,6 @@
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 4px;
-  animation: fadeIn 0.2s ease;
 }
 
 .timeline-details h4 {
@@ -286,7 +283,6 @@
   color: rgba(255, 255, 255, 0.5);
   font-size: var(--text-base);
   font-family: var(--font-mono);
-  animation: fadeIn 0.15s ease;
 }
 
 .timeline-collapsed {

@@ -1424,14 +1424,7 @@ export const ClaudeChat: React.FC = () => {
         delete newPositions[currentSessionId];
         return newPositions;
       });
-      setInput('');
-      if (inputRef.current) {
-        inputRef.current.style.height = '44px';
-        inputRef.current.style.overflow = 'hidden';
-      }
-      if (currentSessionId) {
-        setTextareaHeights(prev => ({ ...prev, [currentSessionId]: 44 }));
-      }
+      // Keep input and attachments - don't clear them
     }
     setShowClearConfirm(false);
   }, [currentSessionId, clearContext, setIsAtBottom, setScrollPositions]);

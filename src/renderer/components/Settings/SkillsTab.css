@@ -22,7 +22,6 @@
   align-items: center;
   gap: 4px;
   z-index: 10000;
-  animation: toastIn 0.15s ease-out;
 }
 
 .skills-notification.success {

@@ -40,7 +40,6 @@
   align-items: center;
   gap: 8px;
   z-index: 9999;
-  animation: slideIn 0.15s ease;
   width: 320px; /* Fixed width to prevent jumping */
 }
 
@@ -150,7 +149,6 @@
 
 .empty-content {
   text-align: center;
-  animation: fadeIn 0.5s ease;
 }
 
 .empty-content h2 {
@@ -449,7 +447,6 @@
 
 .tool-icon {
   font-size: var(--text-lg);
-  animation: iconRotate 0.5s ease;
 }
 
 @keyframes iconRotate {
@@ -528,7 +525,6 @@
   font-size: var(--text-base);
   padding: 12px 0;
   opacity: 0.8;
-  animation: resultSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes resultSlide {
@@ -552,7 +548,7 @@
 .thinking-indicator-bottom {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   padding: 0;
   color: var(--fg-80);
   font-size: var(--text-sm);
@@ -2479,6 +2475,7 @@ textarea.context-full {
 .recent-modal {
   background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -2487,7 +2484,6 @@ textarea.context-full {
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  animation: modalFadeIn 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
 }

@@ -1,9 +1,5 @@
 /* Checkpoint button styles - Uses dictation button classes */
 
-.checkpoint-success {
-  animation: checkpointSuccess 1.5s ease;
-}
-
 @keyframes checkpointSuccess {
   0% {
     transform: scale(1);
