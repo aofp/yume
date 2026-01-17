@@ -626,7 +626,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                     </div>
                   </div>
 
-                  {/* Model + Provider in compact grid */}
+                  {/* Model + Token breakdown in compact grid */}
                   <div className="analytics-breakdown-grid">
                     {/* Model Usage */}
                     {Object.keys(filteredAnalytics.byModel).length > 0 && (
@@ -661,64 +661,31 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                       </div>
                     )}
 
-                    {/* Provider Usage - only show if multiple providers available */}
-                    {filteredAnalytics.byProvider && AVAILABLE_PROVIDERS.length > 1 && (
+                    {/* Token Breakdown - always visible */}
+                    {filteredAnalytics.tokenBreakdown && (
                       <div className="breakdown-section">
-                        <h3>providers</h3>
-                        <div className="provider-breakdown compact">
-                          {AVAILABLE_PROVIDERS.map(p => p.id)
-                            .filter(provider => isProviderSelected(provider))
-                            .map(provider => {
-                              const stats = filteredAnalytics.byProvider?.[provider];
-                              const totalTokens = AVAILABLE_PROVIDERS.map(p => p.id)
-                                .filter(p => isProviderSelected(p))
-                                .reduce((sum, p) => sum + (filteredAnalytics.byProvider?.[p]?.tokens || 0), 0);
-                              const percentage = totalTokens > 0 ? ((stats?.tokens || 0) / totalTokens * 100) : 0;
-
-                              return (
-                                <div key={provider} className="provider-stat compact">
-                                  <div className="provider-info">
-                                    <span className="provider-name">{provider === 'openai' ? 'codex' : provider}</span>
-                                    <span className="provider-tokens">{formatNumber(stats?.tokens || 0)} · {formatCost(stats?.cost || 0)}</span>
-                                  </div>
-                                  <div className="provider-bar">
-                                    <div
-                                      className="provider-bar-fill"
-                                      style={{ width: `${percentage}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
+                        <h3>token breakdown</h3>
+                        <div className="token-breakdown-compact">
+                          <div className="token-row">
+                            <span>input</span>
+                            <span>{formatNumber(filteredAnalytics.tokenBreakdown.input)}</span>
+                          </div>
+                          <div className="token-row">
+                            <span>output</span>
+                            <span>{formatNumber(filteredAnalytics.tokenBreakdown.output)}</span>
+                          </div>
+                          <div className="token-row">
+                            <span>cache read</span>
+                            <span>{formatNumber(filteredAnalytics.tokenBreakdown.cacheRead)}</span>
+                          </div>
+                          <div className="token-row">
+                            <span>cache new</span>
+                            <span>{formatNumber(filteredAnalytics.tokenBreakdown.cacheCreation)}</span>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
-
-                  {/* Token Breakdown - collapsed by default */}
-                  {filteredAnalytics.tokenBreakdown && (
-                    <details className="token-details">
-                      <summary>token breakdown</summary>
-                      <div className="token-breakdown-compact">
-                        <div className="token-row">
-                          <span>input</span>
-                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.input)}</span>
-                        </div>
-                        <div className="token-row">
-                          <span>output</span>
-                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.output)}</span>
-                        </div>
-                        <div className="token-row">
-                          <span>cache read</span>
-                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.cacheRead)}</span>
-                        </div>
-                        <div className="token-row">
-                          <span>cache new</span>
-                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.cacheCreation)}</span>
-                        </div>
-                      </div>
-                    </details>
-                  )}
                 </>
               )}
 

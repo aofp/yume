@@ -918,7 +918,7 @@
   flex: 0 0 auto;
   padding: 2px 2px 3px 2px; /* Default padding */
   background: var(--background-color);
-  border-top: 1px solid var(--fg-15);
+  border-top: 1px solid var(--fg-10);
   min-height: 60px;
   max-height: 40vh;
   overflow-y: auto;

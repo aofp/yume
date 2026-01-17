@@ -597,7 +597,7 @@
   padding: 3px;
   padding-top: 2px;
   background: var(--background-color);
-  border-top: 1px solid var(--fg-15);
+  border-top: 1px solid var(--fg-10);
   z-index: 100;
 }
 
@@ -650,12 +650,12 @@
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
-  opacity: .2;
+  opacity: .4;
 }
 
 .welcome-toolbar .welcome-version-badge:hover {
   color: var(--fg-80);
-  opacity: 1;
+  opacity: .9;
 }
 
 .welcome-toolbar .welcome-version-badge strong {
