@@ -2489,17 +2489,19 @@ app.get('/claude-analytics', async (req, res) => {
     // GPT-5.2-Codex: $1.75/M input, $14/M output
     // GPT-5.1-Codex-Mini: $0.25/M input, $2/M output
     const pricing = {
+      // Claude Sonnet 4.5: $3/M input, $15/M output, $3.75/M cache_creation, $0.30/M cache_read
       sonnet: {
         input: 3e-6,
         output: 15e-6,
         cacheCreation: 3.75e-6,
         cacheRead: 0.30e-6
       },
+      // Claude Opus 4.5 (Nov 2025 pricing): $5/M input, $25/M output, $6.25/M cache_creation, $0.50/M cache_read
       opus: {
-        input: 15e-6,
-        output: 75e-6,
-        cacheCreation: 18.75e-6,
-        cacheRead: 1.50e-6
+        input: 5e-6,
+        output: 25e-6,
+        cacheCreation: 6.25e-6,
+        cacheRead: 0.50e-6
       },
       // Claude Haiku 4.5: $0.80/M input, $4/M output, $1/M cache_creation, $0.08/M cache_read
       haiku: {
@@ -3108,7 +3110,7 @@ app.get('/claude-analytics', async (req, res) => {
       // Limits to prevent stack overflow in pkg binary
       const MAX_PROJECTS = 50;
       const MAX_FILES_PER_PROJECT = 10000;  // Increased to handle large projects with many subagents
-      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB max file size
       let projectCount = 0;
 
       // Recursive function to find all .jsonl files in a directory (ccusage compatible)
