@@ -123,9 +123,9 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files (36 files, ~18,500 lines, 175 Tauri commands)
-- `lib.rs` - Main entry, Tauri setup, all 175 commands registered
-- `app.rs` - Application constants (APP_NAME, APP_VERSION, APP_ID, etc.)
+### Critical Rust Files
+- `lib.rs` - Main entry, Tauri setup, command registration
+- `app.rs` - Application constants (APP_NAME, APP_VERSION, APP_ID)
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
 - `stream_parser.rs` - Claude output stream parsing
@@ -137,50 +137,50 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `port_manager.rs` - Dynamic port allocation (20000-65000)
 - `agents.rs` - Agent system management
 - `config.rs` - Production configuration management
-- `background_agents.rs` - Background agent queue manager (NEW)
-- `git_manager.rs` - Git branch operations for background agents (NEW)
-- `claude/mod.rs` - ClaudeManager for session lifecycle (legacy, being replaced)
-- `websocket/mod.rs` - WebSocket server (not currently used, kept for future)
+- `background_agents.rs` - Background agent queue manager
+- `git_manager.rs` - Git branch operations for background agents
+- `claude/mod.rs` - ClaudeManager for session lifecycle (legacy)
+- `websocket/mod.rs` - WebSocket server (not currently used)
 - `state/mod.rs` - Application state management
 - `process/mod.rs` - Process tracking module
-- `process/registry.rs` - ProcessRegistry for tracking all spawned processes
+- `process/registry.rs` - ProcessRegistry for tracking spawned processes
 - `db/mod.rs` - SQLite database implementation
 - `compaction/mod.rs` - CompactionManager implementation
 - `hooks/mod.rs` - Hook system implementation (9 event types)
 - `mcp/mod.rs` - MCP server management
-- `commands/mod.rs` - Main IPC commands (65 commands)
-- `commands/hooks.rs` - Hooks system (4 commands)
-- `commands/mcp.rs` - MCP integration (6 commands)
-- `commands/compaction.rs` - Context compaction (9 commands)
-- `commands/claude_commands.rs` - Direct Claude CLI commands (10 commands)
-- `commands/claude_detector.rs` - Claude installation detection (11 commands)
-- `commands/claude_info.rs` - Claude binary info and usage limits (3 commands)
-- `commands/database.rs` - SQLite database operations (12 commands)
-- `commands/custom_commands.rs` - Custom slash commands management (7 commands)
-- `commands/plugins.rs` - Plugin system (21 commands, 1,667 lines)
-- `commands/background_agents.rs` - Background agent operations (13 commands) (NEW)
-- `commands/memory.rs` - Memory MCP server management (10 commands) (NEW)
+- `commands/mod.rs` - Main IPC commands
+- `commands/hooks.rs` - Hooks system
+- `commands/mcp.rs` - MCP integration
+- `commands/compaction.rs` - Context compaction
+- `commands/claude_commands.rs` - Direct Claude CLI commands
+- `commands/claude_detector.rs` - Claude installation detection
+- `commands/claude_info.rs` - Claude binary info and usage limits
+- `commands/database.rs` - SQLite database operations
+- `commands/custom_commands.rs` - Custom slash commands management
+- `commands/plugins.rs` - Plugin system
+- `commands/background_agents.rs` - Background agent operations
+- `commands/memory.rs` - Memory MCP server management
 
 ### Critical Frontend Files
-**Stores (1 Zustand store):**
-- `stores/claudeCodeStore.ts` - Main Zustand store (6,148 lines, ~300KB, 172+ actions)
+**Stores:**
+- `stores/claudeCodeStore.ts` - Main Zustand store (monolith, consider splitting)
 
-**Services (27 files):**
-- `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,259 lines)
-- `services/claudeCodeClient.ts` - Socket.IO client for server communication (1,064 lines)
-- `services/compactionService.ts` - Context compaction logic (588 lines)
-- `services/licenseManager.ts` - License validation Zustand store (305 lines)
-- `services/conversationStore.ts` - UCF conversation persistence (NOT Zustand, service class)
-- `services/conversationTranslator.ts` - Multi-provider format translation (1,003 lines)
+**Services:**
+- `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri
+- `services/claudeCodeClient.ts` - Socket.IO client for server communication
+- `services/compactionService.ts` - Context compaction logic
+- `services/licenseManager.ts` - License validation Zustand store
+- `services/conversationStore.ts` - UCF conversation persistence
+- `services/conversationTranslator.ts` - Multi-provider format translation
 - `services/hooksConfigService.ts` - Hooks configuration
-- `services/hooksService.ts` - Hook execution (9 events, snake_case naming)
+- `services/hooksService.ts` - Hook execution (9 events)
 - `services/databaseService.ts` - Frontend database integration
 - `services/mcpService.ts` - MCP server management
-- `services/pluginService.ts` - Plugin management (install, enable, sync)
-- `services/checkpointService.ts` - Checkpoint and session state management (DISABLED)
+- `services/pluginService.ts` - Plugin management
+- `services/checkpointService.ts` - Checkpoint management (partially disabled)
 - `services/agentExecutionService.ts` - Agent execution
 - `services/claudeDetector.ts` - Claude detection logic
-- `services/wrapperIntegration.ts` - Token tracking (auto-compact at 120k tokens)
+- `services/wrapperIntegration.ts` - Token tracking
 - `services/platformBridge.ts` - Platform-specific utilities
 - `services/performanceMonitor.ts` - Real-time performance tracking
 - `services/fileSearchService.ts` - File search with caching
@@ -190,51 +190,25 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `services/systemPromptService.ts` - System prompt generation
 - `services/platformUtils.ts` - Platform detection utilities
 - `services/tauriApi.ts` - TypeScript types for Tauri commands
-- `services/backgroundAgentService.ts` - Background agent queue management (340 lines) (NEW)
-- `services/memoryService.ts` - Memory MCP server integration (433 lines) (NEW)
+- `services/backgroundAgentService.ts` - Background agent queue management
+- `services/memoryService.ts` - Memory MCP server integration
 
-**Components (no /Modals/ directory - modals scattered in subdirs):**
-- `App.minimal.tsx` - Main app component
-- `ClaudeMdEditor/ClaudeMdEditorModal.tsx` - CLAUDE.md editor
-- `Upgrade/UpgradeModal.tsx` - License upgrade prompts
-- `Analytics/AnalyticsModal.tsx` - Analytics dashboard
-- `Settings/SettingsModalTabbed.tsx` - Current settings (6 tabs: General, Hooks, MCP, Plugins, Skills, Providers)
-- `Settings/PluginsTab.tsx` - Plugin management UI
-- `Settings/SkillsTab.tsx` - Skills management UI with tabbed modal (triggers, content editor)
-- `Settings/TriggerEditor.tsx` - Tag-based trigger configuration (NEW)
-- `Settings/ContentEditor.tsx` - Markdown editor with preview (NEW)
-- `Settings/ProvidersTab.tsx` - Multi-provider configuration (Claude, Gemini, OpenAI)
-- `Settings/HooksTab.tsx` - Hook event configuration
-- `Settings/MCPTab.tsx` - MCP server management
-- `Timeline/TimelineNavigator.tsx` - Timeline & checkpoints UI
-- `Chat/ClaudeChat.tsx` - Main chat orchestrator (5,617 lines)
-- `Chat/MessageRenderer.tsx` - Message rendering (3,761 lines)
+**Key Components:**
+- `Chat/ClaudeChat.tsx` - Main chat orchestrator
+- `Chat/MessageRenderer.tsx` - Message rendering
 - `Chat/ContextBar.tsx` - Context usage visualization
-- `Chat/DiffViewer.tsx` - Code diff rendering
-- `Chat/VirtualizedMessageList.tsx` - Message virtualization with scroll anchoring
-- `Chat/StreamIndicator.tsx` - Real-time activity indicator (thinking/bash/compacting)
-- `Chat/InputArea.tsx` - Separated input with ultrathink highlighting
-- `CommandPalette/CommandPalette.tsx` - VS Code-style command palette (1,266 lines, 56 commands)
-- `CommandAutocomplete/CommandAutocomplete.tsx` - Slash command autocomplete (281 lines)
-- `MentionAutocomplete/MentionAutocomplete.tsx` - File picker with @ trigger (664 lines)
-- `ModelSelector/ModelToolsModal.tsx` - Model & tools selector (633 lines)
-- `ProviderSelector/ProviderSelector.tsx` - Provider dropdown (151 lines)
-- `NoProviderModal/NoProviderModal.tsx` - Startup provider selection (142 lines)
-- `Welcome/WelcomeScreen.tsx` - Landing screen with recent projects (623 lines)
-- `About/AboutModal.tsx` - About dialog with license status (116 lines)
-- `SystemModal/SystemModal.tsx` - Global alert/confirm dialogs (68 lines)
-- `ProjectsModal/ProjectsModal.tsx` - Projects and sessions browser (1,045 lines)
-- `ConfirmModal/ConfirmModal.tsx` - Reusable confirmation dialogs (93 lines)
-- `BackgroundAgents/AgentQueuePanel.tsx` - Background agent queue panel (NEW)
-- `BackgroundAgents/ProgressIndicator.tsx` - Real-time progress display (NEW)
+- `Chat/InputArea.tsx` - Input with ultrathink highlighting
+- `CommandPalette/CommandPalette.tsx` - VS Code-style command palette
+- `Settings/SettingsModalTabbed.tsx` - Settings (6 tabs)
+- `Settings/SkillsTab.tsx` - Skills management with triggers/content editor
+- `ModelSelector/ModelToolsModal.tsx` - Model & tools selector
+- `ProjectsModal/ProjectsModal.tsx` - Projects and sessions browser
+- `BackgroundAgents/AgentQueuePanel.tsx` - Background agent queue panel
 
-**Utilities:**
-- `utils/regexValidator.ts` - ReDoS pattern detection (268 lines) (NEW)
-
-### Type Definitions
-- `types/ucf.ts` - Unified Conversation Format types (459 lines)
-- `types/backgroundAgents.ts` - Background agent types and helpers (169 lines) (NEW)
-- `types/skill.ts` - Enhanced skill types with YAML parsing (308 lines) (NEW)
+**Type Definitions:**
+- `types/ucf.ts` - Unified Conversation Format types
+- `types/backgroundAgents.ts` - Background agent types
+- `types/skill.ts` - Skill types with YAML parsing
 
 ### Server Binaries (in resources/)
 Uses unified binary architecture - server and CLI combined into single binary:
@@ -248,18 +222,18 @@ Uses unified binary architecture - server and CLI combined into single binary:
 
 TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format. **Architecture**: yume-cli is embedded inside `yume-bin-*` unified binary and invoked via `yume-bin-* cli` subcommand. Shell wrapper scripts (`yume-cli-*`) provide the CLI interface.
 
-**Key Files** (~4,000 lines total):
-- `src/index.ts` (246 lines) - CLI entry point, argument parsing
-- `src/types.ts` (267 lines) - Type definitions (includes toolCallDelta.name)
-- `src/core/agent-loop.ts` (352 lines) - Main Think→Act→Observe loop with tool delta assembly
-- `src/core/plugins.ts` (361 lines) - Plugin loader (agents, skills from `~/.yume/plugins/`)
-- `src/core/emit.ts` (323 lines) - Stream-json message emitters
-- `src/core/session.ts` (228 lines) - Session persistence to `~/.yume/sessions/{provider}/`
-- `src/core/pathSecurity.ts` (181 lines) - Path validation, traversal prevention
-- `src/providers/gemini.ts` (364 lines) - Gemini CLI spawner with tool translation
-- `src/providers/openai.ts` (459 lines) - Codex CLI spawner with tool detection
-- `src/providers/base.ts` (110 lines) - Base provider class
-- `src/tools/` (7 tools) - bash, read, write, edit, glob, grep, ls
+**Key Files:**
+- `src/index.ts` - CLI entry point, argument parsing
+- `src/types.ts` - Type definitions
+- `src/core/agent-loop.ts` - Main Think→Act→Observe loop with tool delta assembly
+- `src/core/plugins.ts` - Plugin loader (agents, skills from `~/.yume/plugins/`)
+- `src/core/emit.ts` - Stream-json message emitters
+- `src/core/session.ts` - Session persistence to `~/.yume/sessions/{provider}/`
+- `src/core/pathSecurity.ts` - Path validation, traversal prevention
+- `src/providers/gemini.ts` - Gemini CLI spawner with tool translation
+- `src/providers/openai.ts` - Codex CLI spawner with tool detection
+- `src/providers/base.ts` - Base provider class
+- `src/tools/` - 7 tools: bash, read, write, edit, glob, grep, ls
 
 **Safety Limits**:
 - MAX_TURNS: 50, MAX_DURATION_MS: 10 min, MAX_HISTORY_MESSAGES: 100
@@ -399,9 +373,9 @@ PID tracking in `~/.yume/pids/` prevents multi-instance conflicts.
 - `Custom(String)` - User-defined agents
 
 **Rust Backend** (`src-tauri/src/`):
-- `background_agents.rs` (580 lines) - Queue manager, process spawning, timeout handling
-- `git_manager.rs` (329 lines) - Git branch operations for isolated agent work
-- `commands/background_agents.rs` (397 lines) - 13 Tauri IPC commands
+- `background_agents.rs` - Queue manager, process spawning, timeout handling
+- `git_manager.rs` - Git branch operations for isolated agent work
+- `commands/background_agents.rs` - 13 Tauri IPC commands
 
 **Git Branch Isolation**:
 - Branch prefix: `yume-async-{agent-type}-{agent-id}`
@@ -432,8 +406,8 @@ PID tracking in `~/.yume/pids/` prevents multi-instance conflicts.
 - Real-time status synchronization
 
 **UI Components**:
-- `AgentQueuePanel.tsx` (347 lines) - Sliding panel with agent cards
-- `ProgressIndicator.tsx` (55 lines) - Real-time progress display
+- `AgentQueuePanel.tsx` - Sliding panel with agent cards
+- `ProgressIndicator.tsx` - Real-time progress display
 
 **yume-cli Integration**:
 Supports `--async`, `--output-file`, `--git-branch` flags for background execution.
@@ -452,7 +426,7 @@ Supports `--async`, `--output-file`, `--git-branch` flags for background executi
 - **Relations**: Connections between entities with relation type
 - **Observations**: Facts attached to entities
 
-**Rust Backend** (`commands/memory.rs`, 486 lines):
+**Rust Backend** (`commands/memory.rs`):
 - Process management for MCP server
 - JSON-RPC request/response handling
 - Cross-platform: Uses `npx.cmd` on Windows, `npx` elsewhere
@@ -469,7 +443,7 @@ Supports `--async`, `--output-file`, `--git-branch` flags for background executi
 9. `memory_read_graph` - Read entire graph
 10. `memory_delete_entity` - Delete entity and relations
 
-**Frontend Service** (`memoryService.ts`, 433 lines):
+**Frontend Service** (`memoryService.ts`):
 - Singleton service initialized on app startup
 - High-level methods:
   - `remember(projectPath, fact, category)` - Store project fact
@@ -584,37 +558,23 @@ Context to inject when triggered
 
 **UI Components**:
 
-`TriggerEditor.tsx` (287 lines):
+**TriggerEditor.tsx**:
 - Tag-based UI for file patterns, keywords, regex
-- Three input sections: Extensions (*.ts), Keywords (react), Patterns (/regex/)
 - Real-time ReDoS validation with risk indicators
 - Match mode toggle: ANY (OR logic) vs ALL (AND logic)
-- Visual feedback: error (red), warning (yellow), safe (green)
-- Backspace removes last tag, Enter adds new tag
 
-`ContentEditor.tsx` (178 lines):
+**ContentEditor.tsx**:
 - Markdown editor with live preview toggle
-- Syntax highlighting for code blocks
-- Token estimation: ~1 token per 4 characters
-- Performance warning at >500 tokens
-- Placeholder text with instructions
+- Token estimation with performance warnings
 
-`regexValidator.ts` (268 lines):
-- ReDoS (Regular Expression Denial of Service) detection
-- Risk levels: `safe`, `low`, `medium`, `high`
-- Detects dangerous patterns:
-  - Nested quantifiers: `(a+)+`, `(a*)*`
-  - Overlapping alternations: `(a|a)+`
-  - Catastrophic backtracking: `.*.*`
-- Performance testing with adversarial strings
-- Suggestions for pattern optimization
-- Functions: `validateRegex()`, `testRegexPerformance()`
+**regexValidator.ts**:
+- ReDoS detection with risk levels: safe, low, medium, high
+- Detects nested quantifiers, overlapping alternations, catastrophic backtracking
 
-`types/skill.ts` (308 lines):
-- Enhanced `SkillTriggers` interface
-- YAML frontmatter parsing/generation: `parseSkillFrontmatter()`, `generateSkillFrontmatter()`
-- Trigger evaluation: `skillMatchesContext()` checks if skill should activate
-- Glob pattern to regex conversion for file matching
+**types/skill.ts**:
+- YAML frontmatter parsing/generation
+- Trigger evaluation: `skillMatchesContext()`
+- Glob pattern to regex conversion
 
 **Features**:
 - Toggle enable/disable status
@@ -1403,10 +1363,10 @@ After running build commands:
 - UI visible but functionality limited
 
 ### Component Architecture Issues
-- **ClaudeChat.tsx**: 5,617 lines - large but manageable
-- **MessageRenderer.tsx**: 3,761 lines - large but manageable
-- **claudeCodeStore.ts**: ~290KB monolith (6,044 lines, 170+ actions) - consider splitting
-- **Unified binary only on macOS**: Windows/Linux `yume-bin-*` binaries not yet built
+- **ClaudeChat.tsx** - Large but manageable monolith
+- **MessageRenderer.tsx** - Large but manageable
+- **claudeCodeStore.ts** - Monolith, consider splitting
+- **Unified binary only on macOS** - Windows/Linux binaries not yet built
 
 ### Hook Event Naming
 - Rust defines 9 events (PascalCase): UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
@@ -1421,7 +1381,7 @@ After running build commands:
 ### Unified Conversation Format (UCF)
 **Provider-agnostic type system** for multi-provider conversation portability.
 
-**Location**: `src/renderer/types/ucf.ts` (459 lines)
+**Location**: `src/renderer/types/ucf.ts`
 
 **Key Interfaces**:
 - `UnifiedConversation` - Provider-agnostic session format
@@ -1556,68 +1516,3 @@ After running build commands:
 
 Yume's one-time pricing is significant competitive advantage as competitors move to credit-based models with unpredictable costs.
 
-## Version History
-
-**Current audit**: 2026-01-17 (comprehensive documentation update)
-- **Rust files**: 36 files, ~18,500 lines, 175 Tauri commands (was 152)
-- **Store**: claudeCodeStore.ts now 6,148 lines (was 6,044), 172+ actions
-- **Services**: 27 files (was 25), +2: backgroundAgentService.ts, memoryService.ts
-- **NEW MAJOR FEATURES DOCUMENTED**:
-  - **Background Agents System** - Complete async agent execution with queue management
-    - `background_agents.rs` (580 lines) - Queue manager with 4 concurrent agents, 10min timeout
-    - `git_manager.rs` (329 lines) - Git branch isolation for agent work
-    - `commands/background_agents.rs` (397 lines) - 13 Tauri commands
-    - `backgroundAgentService.ts` (340 lines) - Frontend event-driven service
-    - `AgentQueuePanel.tsx` (347 lines), `ProgressIndicator.tsx` (55 lines) - UI components
-  - **Memory MCP Server System** - Persistent knowledge graph
-    - `commands/memory.rs` (486 lines) - 10 Tauri commands for MCP server
-    - `memoryService.ts` (433 lines) - Frontend service with auto-learning
-    - Storage: `~/.yume/memory.jsonl`
-  - **Skills UI Completion** - Full trigger/content editing
-    - `TriggerEditor.tsx` (287 lines) - Tag-based trigger config
-    - `ContentEditor.tsx` (178 lines) - Markdown editor with preview
-    - `regexValidator.ts` (268 lines) - ReDoS detection utility
-    - `types/skill.ts` (308 lines) - Enhanced skill types
-- **New types documented**: backgroundAgents.ts (169 lines), skill.ts (308 lines)
-- **Tauri command breakdown updated**: 175 total commands across 12 command files
-
-**Previous audit**: 2026-01-17 (post-feature review)
-- **Rust files**: 32 files, ~17,000 lines, 152 Tauri commands (was 148)
-- **Store**: claudeCodeStore.ts now 6,044 lines (was 6,015)
-- **ClaudeChat.tsx**: 5,617 lines (was 5,537)
-- **Command Palette**: 56 commands (was 75+), 1,266 lines
-- **New components documented**:
-  - ProjectsModal (1,045 lines) - Infinite scroll, SSE streaming, context menus
-  - ConfirmModal (93 lines) - Reusable confirmation dialogs
-  - CommandAutocomplete (281 lines) - Slash command autocomplete
-  - UCF types (459 lines) - Unified Conversation Format
-- **New features**:
-  - Git count badge on context bar
-  - Line changes tracking per session
-  - Session title persistence
-  - yume-cli Windows wrapper (auto-generated)
-- **Default settings changed**: `showAnalyticsMenu` and `showPluginsSettings` now true by default
-
-**Previous audit**: 2026-01-17
-- **Rust files**: 32 files, ~17,000 lines, 148 Tauri commands (corrected from overstated 45/24k/156)
-- **Store**: claudeCodeStore.ts now 6,015 lines with 170+ actions (was 5,967/80+)
-- **yume-cli**: ~4,000 lines total (was overstated as 4,509)
-- **New documented components**:
-  - Command Palette (1,267 lines, 75+ commands, VS Code-style with submenus)
-  - File Mention Autocomplete (664 lines, @ trigger with folder navigation)
-  - Model & Tools Modal (633 lines, with tool categories and keyboard nav)
-  - Files/Git Panel (embedded in ClaudeChat, Cmd+E/Cmd+G)
-  - Session Stats Modal (Cmd+., with provider-aware rate limits)
-  - Stream Indicator (thinking/bash/compacting states with timers)
-  - Welcome Screen (623 lines, quick project keys 1/2/3)
-  - Provider Selector, No Provider Modal, About Modal
-- **Config files documented**: themes.ts (11 themes), features.ts (7 flags), performance.ts (40+ params), tools.ts (15 tools), app.ts
-- Added app.rs to Rust files list (was missing)
-- Corrected commands/mod.rs count: 65 commands (was 68)
-
-**Previous audit**: 2026-01-16 (10-agent swarm review)
-- Fixed server binary naming: `yume-server-*` → `yume-bin-*` (unified binary)
-- Documented unified binary architecture (server + CLI in single binary)
-- Fixed plugin structure: plugin.json in `.claude-plugin/` subdir, not root
-- Corrected skills system: Rust commands exist, all use .md format
-- Clarified multi-provider: code complete but feature flags disabled by default

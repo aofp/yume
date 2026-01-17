@@ -96,22 +96,24 @@ fn augment_with_file_snapshot(
 
     // Handle standalone tool_use message: {"type":"tool_use","name":"Edit","input":{...}}
     if msg_type == "tool_use" {
-        let tool_name = json.get("name").and_then(|v| v.as_str()).unwrap_or("");
-        if !matches!(tool_name, "Edit" | "Write" | "MultiEdit") {
+        let tool_name = json.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if !matches!(tool_name.as_str(), "Edit" | "Write" | "MultiEdit") {
             return line.to_string();
         }
 
-        let Some(input) = json.get("input") else {
+        let file_path = json.get("input")
+            .and_then(|i| i.get("file_path"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let Some(file_path) = file_path else {
             return line.to_string();
         };
 
-        let Some(file_path) = input.get("file_path").and_then(|v| v.as_str()) else {
-            return line.to_string();
-        };
-
-        if let Some(snapshot) = create_file_snapshot(file_path, working_dir, session_id) {
+        if let Some(snapshot) = create_file_snapshot(&file_path, working_dir, session_id) {
             if let Some(obj) = json.as_object_mut() {
                 obj.insert("fileSnapshot".to_string(), snapshot);
+                info!("📸 Augmented standalone tool_use with fileSnapshot: {}", tool_name);
             }
         }
 

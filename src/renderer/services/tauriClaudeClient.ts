@@ -594,6 +594,10 @@ export class TauriClaudeClient {
             id: message.id || message.tool_id
           }
         };
+        // Preserve file snapshot for line change tracking (added by rust backend)
+        if (message.fileSnapshot) {
+          (transformedMessage as any).fileSnapshot = message.fileSnapshot;
+        }
       } else if (message.type === 'tool_result') {
         // Tool result
         // Support both Claude format (tool_use_id, content) and Gemini format (tool_id, output)
@@ -1076,6 +1080,10 @@ export class TauriClaudeClient {
             id: message.id || message.tool_id
           }
         };
+        // Preserve file snapshot for line change tracking (added by rust backend)
+        if (message.fileSnapshot) {
+          (transformedMessage as any).fileSnapshot = message.fileSnapshot;
+        }
       } else if (message.type === 'tool_result') {
         transformedMessage = {
           type: 'tool_result',

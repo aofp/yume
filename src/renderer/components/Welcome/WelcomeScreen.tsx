@@ -371,10 +371,9 @@ export const WelcomeScreen: React.FC = () => {
         >
           {APP_NAME} {APP_VERSION} {!isLicensed && <strong>demo</strong>}
         </span>
-        <div className="welcome-toolbar-spacer" />
         {/* Command palette button */}
         <button
-          className="btn-context-icon"
+          className="btn-context-icon ml2"
           onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
           title={`command palette (${modKey}+p)`}
           style={{ marginRight: '2px' }}
@@ -383,6 +382,7 @@ export const WelcomeScreen: React.FC = () => {
             <IconInputSearch size={12} stroke={1.5} />
           </span>
         </button>
+        <div className="welcome-toolbar-spacer" />
         <div className="btn-stats-container">
           <button
             className="btn-stats minimal"

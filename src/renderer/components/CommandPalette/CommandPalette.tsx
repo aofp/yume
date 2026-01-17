@@ -922,24 +922,36 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }
   }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight, setBackgroundOpacity]);
 
-  // Reset selection when query changes
+  // Reset selection when query changes - skip disabled items
   useEffect(() => {
-    setSelectedIndex(0);
+    // Find first non-disabled index
+    let firstEnabledIdx = 0;
+    if (!activeSubmenu) {
+      while (firstEnabledIdx < visualOrderCommands.length && visualOrderCommands[firstEnabledIdx]?.disabled) {
+        firstEnabledIdx++;
+      }
+    }
+    setSelectedIndex(firstEnabledIdx);
     if (activeSubmenu) {
       setSubmenuIndex(0);
     }
-  }, [query, activeSubmenu]);
+  }, [query, activeSubmenu, visualOrderCommands]);
 
   // Focus input when opening
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
       setQuery('');
-      setSelectedIndex(0);
+      // Find first non-disabled command
+      let firstEnabledIdx = 0;
+      while (firstEnabledIdx < visualOrderCommands.length && visualOrderCommands[firstEnabledIdx]?.disabled) {
+        firstEnabledIdx++;
+      }
+      setSelectedIndex(firstEnabledIdx);
       setIgnoreMouseUntilMove(true);
       lastMousePos.current = null;
     }
-  }, [isOpen]);
+  }, [isOpen, visualOrderCommands]);
 
   // Scroll selected item into view
   useEffect(() => {

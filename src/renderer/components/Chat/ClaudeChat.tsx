@@ -28,7 +28,7 @@ import { MessageRenderer } from './MessageRenderer';
 import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer, BashTimer, CompactingTimer } from './VirtualizedMessageList';
 import { StreamIndicator } from './StreamIndicator';
 import { InputArea } from './InputArea';
-import { ContextBar } from './ContextBar';
+import { ContextBar, ContextBarVisibility } from './ContextBar';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { ModelToolsModal } from '../ModelSelector/ModelToolsModal';
@@ -426,7 +426,9 @@ export const ClaudeChat: React.FC = () => {
     forkSession,
     forkSessionToProvider,
     showDictation,
-    showHistory
+    showHistory,
+    contextBarVisibility,
+    setContextBarVisibility
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -452,7 +454,9 @@ export const ClaudeChat: React.FC = () => {
     forkSession: state.forkSession,
     forkSessionToProvider: state.forkSessionToProvider,
     showDictation: state.showDictation,
-    showHistory: state.showHistory
+    showHistory: state.showHistory,
+    contextBarVisibility: state.contextBarVisibility,
+    setContextBarVisibility: state.setContextBarVisibility
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -4767,6 +4771,39 @@ export const ClaudeChat: React.FC = () => {
                         ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : '';
 
+                      // Calculate line changes for this message (from restorePoints after this message)
+                      const restorePoints = currentSession.restorePoints || [];
+                      let itemLinesAdded = 0;
+                      let itemLinesRemoved = 0;
+                      // Get next message index (or end of messages) to find changes caused by this message
+                      const nextUserMsg = userMessages[userIdx - 1]; // userMessages is reversed
+                      const endIdx = nextUserMsg ? nextUserMsg.idx : currentSession.messages.length;
+                      restorePoints
+                        .filter(rp => rp.messageIndex > idx && rp.messageIndex <= endIdx)
+                        .forEach(rp => {
+                          rp.fileSnapshots.forEach(snap => {
+                            const oldContent = snap.originalContent || '';
+                            const newContent = snap.content || '';
+                            const oldLines = oldContent ? oldContent.split('\n').length : 0;
+                            const newLines = newContent ? newContent.split('\n').length : 0;
+                            if (snap.isNewFile) {
+                              itemLinesAdded += newLines;
+                            } else if (snap.operation === 'edit') {
+                              // For edit, use oldContent (snippet) vs content (new snippet)
+                              const snapOldLines = snap.oldContent ? snap.oldContent.split('\n').length : 0;
+                              const snapNewLines = newContent ? newContent.split('\n').length : 0;
+                              itemLinesAdded += snapNewLines;
+                              itemLinesRemoved += snapOldLines;
+                            } else {
+                              if (newLines > oldLines) {
+                                itemLinesAdded += (newLines - oldLines);
+                              } else if (oldLines > newLines) {
+                                itemLinesRemoved += (oldLines - newLines);
+                              }
+                            }
+                          });
+                        });
+
                       // Check if streaming - disable rollback during streaming
                       const isStreaming = currentSession?.streaming;
 
@@ -4887,6 +4924,12 @@ export const ClaudeChat: React.FC = () => {
                         >
                           <span className="rollback-item-number">#{userMessages.length - userIdx}</span>
                           <span className="rollback-item-text">{displayText || '(empty)'}</span>
+                          {(itemLinesAdded > 0 || itemLinesRemoved > 0) && (
+                            <span className="rollback-item-lines">
+                              {itemLinesAdded > 0 && <span className="line-added">+{itemLinesAdded}</span>}
+                              {itemLinesRemoved > 0 && <span className="line-removed">-{itemLinesRemoved}</span>}
+                            </span>
+                          )}
                         </div>
                       );
                     });
@@ -5429,8 +5472,10 @@ export const ClaudeChat: React.FC = () => {
               isDictating={isDictating}
               onToggleDictation={toggleDictation}
               modKey={modKey}
-              showDictation={showDictation}
-              showHistory={showHistory}
+              showDictationSetting={showDictation}
+              showHistorySetting={showHistory}
+              visibility={contextBarVisibility}
+              onVisibilityChange={setContextBarVisibility}
               gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
               filesSubTab={filesSubTab}
               onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}

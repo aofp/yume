@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   IconFolder,
   IconGitBranch,
@@ -7,11 +7,20 @@ import {
   IconMicrophoneOff,
   IconInputSearch,
   IconRobot,
+  IconPencil,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode } from '../../services/tauriApi';
 import { getModelById, ProviderType } from '../../config/models';
+
+// Visibility settings for context bar buttons
+export interface ContextBarVisibility {
+  showCommandPalette: boolean;
+  showDictation: boolean;
+  showFilesPanel: boolean;
+  showHistory: boolean;
+}
 
 interface SessionMessage {
   type: string;
@@ -73,9 +82,13 @@ interface ContextBarProps {
   // Platform
   modKey: string;
 
-  // Feature toggles
-  showDictation: boolean;
-  showHistory: boolean;
+  // Feature toggles (from settings)
+  showDictationSetting: boolean;
+  showHistorySetting: boolean;
+
+  // Visibility toggles (from context menu)
+  visibility: ContextBarVisibility;
+  onVisibilityChange: (visibility: ContextBarVisibility) => void;
 
   // Git stats
   gitChangesCount: number;
@@ -126,8 +139,10 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   isDictating,
   onToggleDictation,
   modKey,
-  showDictation,
-  showHistory,
+  showDictationSetting,
+  showHistorySetting,
+  visibility,
+  onVisibilityChange,
   gitChangesCount,
   filesSubTab,
   onOpenCommandPalette,
@@ -135,6 +150,31 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onOpenSessionChanges,
   backgroundAgentCount = 0,
 }) => {
+  // Context menu state
+  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!contextMenuPos) return;
+    const handleClick = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenuPos(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [contextMenuPos]);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const toggleVisibility = (key: keyof ContextBarVisibility) => {
+    onVisibilityChange({ ...visibility, [key]: !visibility[key] });
+    setContextMenuPos(null);
+  };
   // Get context window from selected model
   const currentModel = getModelById(selectedModel);
   const contextWindowTokens = currentModel?.contextWindow || 200000;
@@ -167,81 +207,68 @@ export const ContextBar: React.FC<ContextBarProps> = ({
     return !isBashPrefix(text.trim());
   }).length;
 
+  // Build title for combined files button
+  const buildFilesButtonTitle = () => {
+    const parts = [];
+    if (filesSubTab === 'git') parts.push(`git (${modKey}+g)`);
+    else if (filesSubTab === 'sessions') parts.push('session changes');
+    else parts.push(`files (${modKey}+e)`);
+
+    if (gitChangesCount > 0) parts.push(`${gitChangesCount} git changes`);
+    if (backgroundAgentCount > 0) parts.push(`${backgroundAgentCount} agent${backgroundAgentCount > 1 ? 's' : ''}`);
+    if (lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0)) {
+      parts.push(`+${lineChanges.added} -${lineChanges.removed} lines`);
+    }
+    return parts.join(' • ');
+  };
+
   return (
-    <div className="context-bar">
-      <ModelSelector
-        value={selectedModel}
-        onChange={onModelChange}
-        toolCount={enabledToolsCount}
-        onOpenModal={onOpenModelModal}
-      />
+    <div className="context-bar" onContextMenu={handleContextMenu}>
+      {/* LEFT GROUP: model, palette, dictation */}
+      <div className="context-left">
+        <ModelSelector
+          value={selectedModel}
+          onChange={onModelChange}
+          toolCount={enabledToolsCount}
+          onOpenModal={onOpenModelModal}
+        />
 
-      {/* Files/Git button - opens files panel (with files/git tabs inside) - hidden in vscode mode */}
-      {!isVSCode() && (
-        <button
-          className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
-          onClick={() => {
-            setShowFilesPanel(!showFilesPanel);
-            setSelectedFile(null);
-            setFileContent('');
-            setSelectedGitFile(null);
-            setGitDiff(null);
-            setFocusedFileIndex(-1);
-            setFocusedGitIndex(-1);
-          }}
-          disabled={!workingDirectory}
-          title={filesSubTab === 'git' ? `git (${modKey}+g)` : `files (${modKey}+e)`}
-          style={{ marginLeft: '2px' }}
-        >
-          <span className="btn-icon-wrapper">
-            {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
-          </span>
-          {gitChangesCount > 0 && <span className="btn-git-text">{gitChangesCount}</span>}
-        </button>
-      )}
-
-      {/* Dictation button - after files/git, hidden in vscode mode or when disabled in settings */}
-      {!isVSCode() && showDictation && (
-        <button
-          className={`btn-context-icon ml2 ${isDictating ? 'active dictating' : ''}`}
-          onClick={onToggleDictation}
-          disabled={isReadOnly}
-          title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
-        >
-          <span className="btn-icon-wrapper">
-            {isDictating ? (
-              <IconMicrophone size={12} stroke={1.5} />
-            ) : (
-              <IconMicrophoneOff size={12} stroke={1.5} />
-            )}
-          </span>
-        </button>
-      )}
-
-      {/* Center - agents count + line changes */}
-      <div className="context-center">
-        {backgroundAgentCount > 0 && (
-          <span className="agents-running" title={`${backgroundAgentCount} background agent${backgroundAgentCount > 1 ? 's' : ''} running`}>
-            <IconRobot size={11} stroke={1.5} />
-            <span>{backgroundAgentCount}</span>
-          </span>
-        )}
-        {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
-          <span
-            className="line-changes"
-            title="session changes"
-            onClick={onOpenSessionChanges}
+        {/* Command palette button */}
+        {!isVSCode() && visibility.showCommandPalette && (
+          <button
+            className="btn-context-icon"
+            onClick={onOpenCommandPalette}
+            title={`command palette (${modKey}+p)`}
           >
-            <span className="line-added">+{lineChanges.added}</span>
-            <span className="line-removed">-{lineChanges.removed}</span>
-          </span>
+            <span className="btn-icon-wrapper">
+              <IconInputSearch size={12} stroke={1.5} />
+            </span>
+          </button>
+        )}
+
+        {/* Dictation button */}
+        {!isVSCode() && showDictationSetting && visibility.showDictation && (
+          <button
+            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
+            onClick={onToggleDictation}
+            disabled={isReadOnly}
+            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
+          >
+            <span className="btn-icon-wrapper">
+              {isDictating ? (
+                <IconMicrophone size={12} stroke={1.5} />
+              ) : (
+                <IconMicrophoneOff size={12} stroke={1.5} />
+              )}
+            </span>
+          </button>
         )}
       </div>
 
-      {/* Right - history + stats */}
-      <div className="context-info">
-        {/* History button - shown for both modes when enabled */}
-        {showHistory && (
+      {/* RIGHT GROUP: combined files button, history, context% */}
+      <div className="context-right">
+        {/* History button */}
+        {showHistorySetting && visibility.showHistory && (
           <button
             className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
             onClick={() => {
@@ -259,16 +286,42 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <span className="btn-rollback-count">{historyCount}</span>
           </button>
         )}
-        {/* Command palette button - before stats */}
-        <button
-          className="btn-context-icon"
-          onClick={onOpenCommandPalette}
-          title={`command palette (${modKey}+p)`}
-        >
-          <span className="btn-icon-wrapper">
-            <IconInputSearch size={12} stroke={1.5} />
-          </span>
-        </button>
+
+        {/* Combined files/git/sessions button with all stats */}
+        {!isVSCode() && visibility.showFilesPanel && (
+          <button
+            className={`btn-context-icon btn-files-combined ${showFilesPanel ? 'active' : ''}`}
+            onClick={() => {
+              setShowFilesPanel(!showFilesPanel);
+              setSelectedFile(null);
+              setFileContent('');
+              setSelectedGitFile(null);
+              setGitDiff(null);
+              setFocusedFileIndex(-1);
+              setFocusedGitIndex(-1);
+            }}
+            disabled={!workingDirectory}
+            title={buildFilesButtonTitle()}
+          >
+            <span className="btn-icon-wrapper">
+              {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : filesSubTab === 'sessions' ? <IconPencil size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
+            </span>
+
+            {/* Stats badges */}
+            <span className="btn-files-stats">
+              {gitChangesCount > 0 && <span className="stat-badge git-badge">{gitChangesCount}</span>}
+              {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
+              {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
+                <span className="stat-badge lines-badge">
+                  <span className="line-added">+{lineChanges.added}</span>
+                  <span className="line-removed">-{lineChanges.removed}</span>
+                </span>
+              )}
+            </span>
+          </button>
+        )}
+
+        {/* Context % button */}
         <div className="btn-stats-container">
           <button
             className={`btn-stats ${usageClass}`}
@@ -323,6 +376,49 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           )}
         </div>
       </div>
+
+      {/* Context menu for toggling button visibility */}
+      {contextMenuPos && (
+        <div
+          ref={contextMenuRef}
+          className="context-bar-menu"
+          style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
+        >
+          <div className="context-menu-header">Show/Hide Buttons</div>
+          <button
+            className={`context-menu-item ${visibility.showCommandPalette ? 'checked' : ''}`}
+            onClick={() => toggleVisibility('showCommandPalette')}
+          >
+            <span className="context-menu-check">{visibility.showCommandPalette ? '✓' : ''}</span>
+            Command Palette
+          </button>
+          {showDictationSetting && (
+            <button
+              className={`context-menu-item ${visibility.showDictation ? 'checked' : ''}`}
+              onClick={() => toggleVisibility('showDictation')}
+            >
+              <span className="context-menu-check">{visibility.showDictation ? '✓' : ''}</span>
+              Dictation
+            </button>
+          )}
+          <button
+            className={`context-menu-item ${visibility.showFilesPanel ? 'checked' : ''}`}
+            onClick={() => toggleVisibility('showFilesPanel')}
+          >
+            <span className="context-menu-check">{visibility.showFilesPanel ? '✓' : ''}</span>
+            Files Panel
+          </button>
+          {showHistorySetting && (
+            <button
+              className={`context-menu-item ${visibility.showHistory ? 'checked' : ''}`}
+              onClick={() => toggleVisibility('showHistory')}
+            >
+              <span className="context-menu-check">{visibility.showHistory ? '✓' : ''}</span>
+              History
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

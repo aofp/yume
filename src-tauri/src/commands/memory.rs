@@ -213,10 +213,109 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
     state.stdin = Some(stdin);
     state.stdout = Some(BufReader::new(stdout));
 
-    Ok(MemoryServerResult {
-        success: true,
-        error: None,
-    })
+    // Drop lock before doing MCP handshake
+    drop(state);
+
+    // Perform MCP initialization handshake
+    println!("[Memory] Performing MCP initialization handshake...");
+    match perform_mcp_handshake() {
+        Ok(_) => {
+            println!("[Memory] MCP handshake completed successfully");
+            Ok(MemoryServerResult {
+                success: true,
+                error: None,
+            })
+        }
+        Err(e) => {
+            println!("[Memory] MCP handshake failed: {}", e);
+            // Clean up on failure
+            let mut state = MEMORY_SERVER.lock().unwrap();
+            state.stdin = None;
+            state.stdout = None;
+            if let Some(mut child) = state.process.take() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            Ok(MemoryServerResult {
+                success: false,
+                error: Some(format!("MCP handshake failed: {}", e)),
+            })
+        }
+    }
+}
+
+/// Perform MCP protocol initialization handshake
+fn perform_mcp_handshake() -> Result<(), String> {
+    let mut state = MEMORY_SERVER
+        .lock()
+        .map_err(|e| format!("Failed to acquire lock: {}", e))?;
+
+    if state.stdin.is_none() || state.stdout.is_none() {
+        return Err("Server IO handles not available".to_string());
+    }
+
+    let id = REQUEST_ID.fetch_add(1, Ordering::SeqCst);
+
+    // Step 1: Send initialize request
+    let init_request = json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {
+                "name": "yume",
+                "version": "1.0.0"
+            }
+        }
+    });
+
+    let request_str = serde_json::to_string(&init_request)
+        .map_err(|e| format!("Failed to serialize init request: {}", e))?;
+
+    // Write init request
+    {
+        let stdin = state.stdin.as_mut().unwrap();
+        writeln!(stdin, "{}", request_str).map_err(|e| format!("Failed to write init request: {}", e))?;
+        stdin.flush().map_err(|e| format!("Failed to flush init request: {}", e))?;
+    }
+    println!("[Memory] Sent initialize request");
+
+    // Read init response
+    let mut response_line = String::new();
+    {
+        let stdout = state.stdout.as_mut().unwrap();
+        stdout
+            .read_line(&mut response_line)
+            .map_err(|e| format!("Failed to read init response: {}", e))?;
+    }
+    println!("[Memory] Received init response: {}", response_line.trim());
+
+    let response: Value = serde_json::from_str(&response_line)
+        .map_err(|e| format!("Failed to parse init response: {}", e))?;
+
+    if response.get("error").is_some() {
+        return Err(format!("Init error: {}", response["error"]));
+    }
+
+    // Step 2: Send initialized notification (no response expected)
+    let initialized_notification = json!({
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized"
+    });
+
+    let notif_str = serde_json::to_string(&initialized_notification)
+        .map_err(|e| format!("Failed to serialize initialized notification: {}", e))?;
+
+    {
+        let stdin = state.stdin.as_mut().unwrap();
+        writeln!(stdin, "{}", notif_str).map_err(|e| format!("Failed to write initialized notification: {}", e))?;
+        stdin.flush().map_err(|e| format!("Failed to flush initialized notification: {}", e))?;
+    }
+    println!("[Memory] Sent initialized notification");
+
+    Ok(())
 }
 
 /// Stop the memory MCP server

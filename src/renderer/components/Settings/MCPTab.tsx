@@ -8,8 +8,6 @@ import {
   IconBrain
 } from '@tabler/icons-react';
 import { mcpService, MCPServer } from '../../services/mcpService';
-import { pluginService } from '../../services/pluginService';
-import { memoryService } from '../../services/memoryService';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MCPTab.css';
 
@@ -18,14 +16,13 @@ interface MCPTabProps {
 }
 
 export const MCPTab: React.FC<MCPTabProps> = () => {
-  const { memoryEnabled, memoryServerRunning, setMemoryEnabled } = useClaudeCodeStore();
+  const { memoryEnabled, memoryServerRunning } = useClaudeCodeStore();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [transport, setTransport] = useState<'stdio' | 'sse'>('stdio');
   const [testingServer, setTestingServer] = useState<string | null>(null);
   const [removingServer, setRemovingServer] = useState<string | null>(null);
-  const [memoryToggling, setMemoryToggling] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
   
   // Confirmation modal state
@@ -71,35 +68,6 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
       console.error('Failed to load MCP servers:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMemoryToggle = async () => {
-    if (memoryToggling) return;
-    setMemoryToggling(true);
-
-    try {
-      if (memoryEnabled) {
-        // Disable: stop server first
-        await memoryService.stop();
-        setMemoryEnabled(false);
-        showNotification('memory server stopped', 'success');
-      } else {
-        // Enable: start server
-        setMemoryEnabled(true);
-        const started = await memoryService.start();
-        if (started) {
-          showNotification('memory server started', 'success');
-        } else {
-          showNotification('failed to start memory server', 'error');
-          setMemoryEnabled(false);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to toggle memory:', error);
-      showNotification('failed to toggle memory server', 'error');
-    } finally {
-      setMemoryToggling(false);
     }
   };
 
@@ -460,18 +428,14 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
                 </div>
               </div>
               <div className="server-actions">
-                <button
-                  className={`memory-toggle-btn ${memoryEnabled ? 'on' : 'off'}`}
-                  onClick={handleMemoryToggle}
-                  disabled={memoryToggling}
+                <div
+                  className={`toggle-switch compact ${memoryEnabled ? 'active' : ''} disabled`}
+                  title="toggle in settings → general → memory"
                 >
-                  {memoryToggling ? (
-                    <IconLoader2 size={10} className="spin" />
-                  ) : memoryEnabled ? (
-                    <IconCheck size={10} />
-                  ) : null}
-                  {memoryEnabled ? 'on' : 'off'}
-                </button>
+                  <span className="toggle-switch-label off">off</span>
+                  <span className="toggle-switch-label on">on</span>
+                  <div className="toggle-switch-slider" />
+                </div>
               </div>
             </div>
           </div>

@@ -63,6 +63,11 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     }));
   }, [lockedProvider, enabledProviders, selectedModel]);
 
+  // Get index in displayModels for a given model id (for keyboard nav in multi-provider view)
+  const getModelIndex = useCallback((modelId: string) => {
+    return displayModels.findIndex(m => m.id === modelId);
+  }, [displayModels]);
+
   // Build flat tool list matching visual layout order
   const flatToolList = useMemo(() => {
     const list: ToolDefinition[] = [];
@@ -408,23 +413,37 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     <span
                       className={`mt-provider-text ${isCollapsed ? '' : 'active'} ${!canCollapse ? 'no-collapse' : ''}`}
                       onClick={() => canCollapse && toggleProviderCollapse(provider.id)}
+                      onKeyDown={(e) => {
+                        if (canCollapse && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          toggleProviderCollapse(provider.id);
+                        }
+                      }}
+                      tabIndex={canCollapse ? 0 : -1}
+                      role={canCollapse ? 'button' : undefined}
                     >
                       {provider.name}
                     </span>
                     {!isCollapsed && (
                       <div className="mt-provider-models">
-                        {providerModels.map((model) => (
-                          <button
-                            key={model.id}
-                            className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''}`}
-                            onClick={() => {
-                              onModelChange(model.id);
-                              onClose();
-                            }}
-                          >
-                            {model.displayName}
-                          </button>
-                        ))}
+                        {providerModels.map((model) => {
+                          const modelIndex = getModelIndex(model.id);
+                          return (
+                            <button
+                              key={model.id}
+                              ref={el => { modelRefs.current[modelIndex] = el; }}
+                              className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''} ${focusedModelIndex === modelIndex ? 'focused' : ''}`}
+                              onClick={() => {
+                                onModelChange(model.id);
+                                onClose();
+                              }}
+                              onKeyDown={(e) => handleModelKeyDown(e, modelIndex)}
+                              tabIndex={focusedModelIndex === modelIndex ? 0 : -1}
+                            >
+                              {model.displayName}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -458,7 +477,19 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
 
           {/* Tools - collapsible */}
           <div className="mt-section">
-            <div className="mt-tools-header" onClick={() => setToolsExpanded(!toolsExpanded)}>
+            <div
+              className="mt-tools-header"
+              onClick={() => setToolsExpanded(!toolsExpanded)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setToolsExpanded(!toolsExpanded);
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-expanded={toolsExpanded}
+            >
               <span className="mt-label">
                 {toolsExpanded ? <IconChevronDown size={12} stroke={1.5} /> : <IconChevronRight size={12} stroke={1.5} />}
                 tools ({enabledTools.length}/{ALL_TOOLS.length})

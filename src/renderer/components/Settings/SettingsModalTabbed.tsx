@@ -937,7 +937,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       memory
-                      {memoryServerRunning && <span style={{ fontSize: '8px', color: 'var(--positive-color)' }}>●</span>}
                     </span>
                     <div
                       className={`toggle-switch compact ${memoryEnabled ? 'active' : ''}`}

@@ -40,6 +40,7 @@ const SHOW_PLUGINS_SETTINGS_KEY = appStorageKey('show-plugins-settings');
 const SHOW_SKILLS_SETTINGS_KEY = appStorageKey('show-skills-settings');
 const SHOW_DICTATION_KEY = appStorageKey('show-dictation');
 const SHOW_HISTORY_KEY = appStorageKey('show-history');
+const CONTEXT_BAR_VISIBILITY_KEY = appStorageKey('context-bar-visibility');
 const MEMORY_ENABLED_KEY = appStorageKey('memory_enabled');
 const VSCODE_EXTENSION_ENABLED_KEY = appStorageKey('vscode-extension-enabled');
 const AGENTS_KEY = appStorageKey('agents');
@@ -474,6 +475,14 @@ interface ClaudeCodeStore {
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
 
+  // Context bar visibility
+  contextBarVisibility: {
+    showCommandPalette: boolean;
+    showDictation: boolean;
+    showFilesPanel: boolean;
+    showHistory: boolean;
+  };
+
   // Agents
   agents: Agent[]; // List of available agents
   currentAgentId: string | null; // Currently selected agent for new sessions
@@ -584,6 +593,7 @@ interface ClaudeCodeStore {
   // Features visibility
   setShowDictation: (show: boolean) => void;
   setShowHistory: (show: boolean) => void;
+  setContextBarVisibility: (visibility: { showCommandPalette: boolean; showDictation: boolean; showFilesPanel: boolean; showHistory: boolean }) => void;
   setMemoryEnabled: (enabled: boolean) => void;
   setMemoryServerRunning: (running: boolean) => void;
 
@@ -853,7 +863,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       showSkillsSettings: false, // Default to hidden
       showDictation: true, // Default to enabled
       showHistory: true, // Default to enabled
-      memoryEnabled: false, // Default to disabled
+      memoryEnabled: (() => {
+        const stored = localStorage.getItem(MEMORY_ENABLED_KEY);
+        return stored !== null ? JSON.parse(stored) : true; // Default to enabled
+      })(),
       memoryServerRunning: false, // Not running initially
       vscodeExtensionEnabled: false, // Default to disabled
       vscodeConnected: false, // Not connected initially
@@ -861,6 +874,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       isVscodeInstalled: false, // Assume not installed until checked
       claudeVersion: null, // Not checked initially
       isDraggingTab: false, // No tab is being dragged initially
+      contextBarVisibility: (() => {
+        const stored = localStorage.getItem(CONTEXT_BAR_VISIBILITY_KEY);
+        return stored ? JSON.parse(stored) : {
+          showCommandPalette: true,
+          showDictation: true,
+          showFilesPanel: true,
+          showHistory: true,
+        };
+      })(), // Load from localStorage or default to all visible
       agents: [], // No agents initially, will load from localStorage
       currentAgentId: null, // No agent selected initially
       backgroundOpacity: 100, // Default to 100% opacity
@@ -4729,6 +4751,7 @@ ${content}`;
                   },
                   restorePoints: [], // Clear restore points to prevent stale rollback data
                   modifiedFiles: new Set(), // Clear modified files tracking
+                  lineChanges: { added: 0, removed: 0 }, // Reset line changes counter for new session
                   updatedAt: new Date()
                 }
                 : s
@@ -5073,6 +5096,18 @@ ${content}`;
               // Use duration_ms from result message for thinking time
               let shouldClearThinkingTime = false;
               if (message.type === 'result') {
+                // CRITICAL: Calculate duration_ms from thinkingStartTime if not provided by server
+                // This is needed for resumed sessions where messages flow through addMessageToSession
+                // rather than the createSession handler which has this same logic
+                if (!message.duration_ms && s.thinkingStartTime) {
+                  const calculatedDuration = Date.now() - s.thinkingStartTime;
+                  (message as any).duration_ms = calculatedDuration;
+                  console.log(`⏱️ [ELAPSED-TIME] Calculated duration_ms from thinkingStartTime in addMessageToSession: ${calculatedDuration}ms`);
+                } else if (!message.duration_ms) {
+                  console.warn(`⏱️ [ELAPSED-TIME] No duration_ms and no thinkingStartTime for session ${sessionId} in addMessageToSession`);
+                  (message as any).duration_ms = 0;
+                }
+
                 console.log(`📊 [THINKING TIME DEBUG] Result message in addMessageToSession:`, {
                   sessionId,
                   duration_ms: message.duration_ms,
@@ -5817,6 +5852,11 @@ ${content}`;
         localStorage.setItem(SHOW_HISTORY_KEY, JSON.stringify(show));
       },
 
+      setContextBarVisibility: (visibility: { showCommandPalette: boolean; showDictation: boolean; showFilesPanel: boolean; showHistory: boolean }) => {
+        set({ contextBarVisibility: visibility });
+        localStorage.setItem(CONTEXT_BAR_VISIBILITY_KEY, JSON.stringify(visibility));
+      },
+
       setMemoryEnabled: (enabled: boolean) => {
         set({ memoryEnabled: enabled });
         localStorage.setItem(MEMORY_ENABLED_KEY, JSON.stringify(enabled));
@@ -6131,6 +6171,7 @@ ${content}`;
         showSkillsSettings: state.showSkillsSettings,
         showDictation: state.showDictation,
         showHistory: state.showHistory,
+        contextBarVisibility: state.contextBarVisibility,
         memoryEnabled: state.memoryEnabled,
         vscodeExtensionEnabled: state.vscodeExtensionEnabled,
         agents: state.agents,
