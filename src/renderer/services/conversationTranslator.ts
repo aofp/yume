@@ -48,7 +48,7 @@ import {
   CLAUDE_ONLY_TOOLS,
 } from '../types/ucf';
 
-import { ALL_MODELS, getModelById, type ModelDefinition } from '../config/models';
+import { getModelById } from '../config/models';
 import { invoke } from '@tauri-apps/api/core';
 
 // =============================================================================

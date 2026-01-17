@@ -40,6 +40,7 @@ const SHOW_PLUGINS_SETTINGS_KEY = appStorageKey('show-plugins-settings');
 const SHOW_SKILLS_SETTINGS_KEY = appStorageKey('show-skills-settings');
 const SHOW_DICTATION_KEY = appStorageKey('show-dictation');
 const SHOW_HISTORY_KEY = appStorageKey('show-history');
+const MEMORY_ENABLED_KEY = appStorageKey('memory_enabled');
 const VSCODE_EXTENSION_ENABLED_KEY = appStorageKey('vscode-extension-enabled');
 const AGENTS_KEY = appStorageKey('agents');
 const CURRENT_AGENT_KEY = appStorageKey('current-agent');
@@ -460,6 +461,8 @@ interface ClaudeCodeStore {
   // Features visibility
   showDictation: boolean; // Whether to show dictation button and enable keybind
   showHistory: boolean; // Whether to show history button and enable keybind
+  memoryEnabled: boolean; // Whether built-in MCP memory server is enabled
+  memoryServerRunning: boolean; // Whether memory server process is currently running
 
   // VSCode extension
   vscodeExtensionEnabled: boolean; // Whether vscode extension is enabled (auto-installs when on)
@@ -581,6 +584,8 @@ interface ClaudeCodeStore {
   // Features visibility
   setShowDictation: (show: boolean) => void;
   setShowHistory: (show: boolean) => void;
+  setMemoryEnabled: (enabled: boolean) => void;
+  setMemoryServerRunning: (running: boolean) => void;
 
   // VSCode extension
   setVscodeExtensionEnabled: (enabled: boolean) => void;
@@ -848,6 +853,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       showSkillsSettings: false, // Default to hidden
       showDictation: true, // Default to enabled
       showHistory: true, // Default to enabled
+      memoryEnabled: false, // Default to disabled
+      memoryServerRunning: false, // Not running initially
       vscodeExtensionEnabled: false, // Default to disabled
       vscodeConnected: false, // Not connected initially
       vscodeConnectionCount: 0, // No connections initially
@@ -2647,6 +2654,25 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // Play completion sound if enabled
                       get().playCompletionSound();
 
+                      // Extract learnings from the completed conversation if memory is enabled
+                      if (get().memoryEnabled && get().memoryServerRunning) {
+                        const memSession = get().sessions.find(s => s.id === sessionId);
+                        if (memSession && memSession.messages.length >= 2) {
+                          // Get last user message and last assistant message
+                          const lastUserMsg = [...memSession.messages].reverse().find(m => m.type === 'user');
+                          const lastAssistantMsg = [...memSession.messages].reverse().find(m => m.type === 'assistant');
+                          if (lastUserMsg?.content && lastAssistantMsg?.content) {
+                            import('../services/memoryService').then(({ memoryService }) => {
+                              memoryService.extractLearnings(
+                                memSession.workingDirectory || '/',
+                                lastUserMsg.content as string,
+                                lastAssistantMsg.content as string
+                              ).catch(e => console.warn('[Memory] Extract learnings failed:', e));
+                            });
+                          }
+                        }
+                      }
+
                       // NOTE: Focus restoration removed here - now handled by ClaudeChat.tsx focus guards
                       // Calling restore_window_focus here caused race conditions with the periodic
                       // focus guard and was disrupting WKWebView's internal focus state
@@ -3559,6 +3585,20 @@ ${content}`;
           const provider = sessionForSend?.provider || getProviderForModel(modelToUse);
           const useDirectTauri = provider === 'gemini' || provider === 'openai';
           console.log('[Store] Provider:', provider, 'useDirectTauri:', useDirectTauri);
+
+          // Inject relevant memory context if memory is enabled
+          if (get().memoryEnabled && get().memoryServerRunning) {
+            try {
+              const { memoryService } = await import('../services/memoryService');
+              const memoryContext = await memoryService.getRelevantMemories(content);
+              if (memoryContext) {
+                console.log('[Store] Injecting memory context into message');
+                content = `${memoryContext}\n\n${content}`;
+              }
+            } catch (memErr) {
+              console.warn('[Store] Memory injection failed:', memErr);
+            }
+          }
 
           try {
             if (useDirectTauri) {
@@ -5777,6 +5817,15 @@ ${content}`;
         localStorage.setItem(SHOW_HISTORY_KEY, JSON.stringify(show));
       },
 
+      setMemoryEnabled: (enabled: boolean) => {
+        set({ memoryEnabled: enabled });
+        localStorage.setItem(MEMORY_ENABLED_KEY, JSON.stringify(enabled));
+      },
+
+      setMemoryServerRunning: (running: boolean) => {
+        set({ memoryServerRunning: running });
+      },
+
       setVscodeExtensionEnabled: (enabled: boolean) => {
         set({ vscodeExtensionEnabled: enabled });
         localStorage.setItem(VSCODE_EXTENSION_ENABLED_KEY, JSON.stringify(enabled));
@@ -6082,6 +6131,7 @@ ${content}`;
         showSkillsSettings: state.showSkillsSettings,
         showDictation: state.showDictation,
         showHistory: state.showHistory,
+        memoryEnabled: state.memoryEnabled,
         vscodeExtensionEnabled: state.vscodeExtensionEnabled,
         agents: state.agents,
         currentAgentId: state.currentAgentId

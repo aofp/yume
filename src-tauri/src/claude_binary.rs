@@ -626,29 +626,51 @@ fn compare_versions(a: &str, b: &str) -> Ordering {
 
 /// Helper function to create a Command with proper environment variables
 /// This ensures commands like Claude can find Node.js and other dependencies
+/// On Unix, creates a new process group (via setsid) for reliable process tree termination
+/// On Windows, uses CREATE_NEW_PROCESS_GROUP for similar functionality
 pub fn create_command_with_env(program: &str) -> Command {
     // On Windows, .cmd and .bat files need to be executed through cmd.exe
     #[cfg(target_os = "windows")]
     let mut cmd = {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
 
         let program_lower = program.to_lowercase();
         if program_lower.ends_with(".cmd") || program_lower.ends_with(".bat") {
             info!("Windows: Executing batch file through cmd.exe: {}", program);
             let mut c = Command::new("cmd.exe");
             c.arg("/c").arg(program);
-            c.creation_flags(CREATE_NO_WINDOW);
+            // Combine flags for no window + new process group (for taskkill /T)
+            c.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP);
             c
         } else {
             let mut c = Command::new(program);
-            c.creation_flags(CREATE_NO_WINDOW);
+            c.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP);
             c
         }
     };
 
     #[cfg(not(target_os = "windows"))]
-    let mut cmd = Command::new(program);
+    let mut cmd = {
+        use std::os::unix::process::CommandExt;
+
+        let mut c = Command::new(program);
+
+        // Set up process to become a session leader (creates new process group)
+        // This ensures kill -PGID kills the entire process tree
+        // SAFETY: setsid() is async-signal-safe and has no side effects on failure
+        unsafe {
+            c.pre_exec(|| {
+                // Create a new session, making this process the session leader
+                // This also creates a new process group with PGID = PID
+                let _ = libc::setsid();
+                Ok(())
+            });
+        }
+
+        c
+    };
 
     info!("Creating command for: {}", program);
 

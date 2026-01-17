@@ -675,8 +675,15 @@ fn sync_plugin_agents(
                 let content = fs::read_to_string(&agent.file_path)
                     .map_err(|e| format!("Failed to read agent {}: {}", agent.name, e))?;
 
+                // Explorer agent ALWAYS uses sonnet, regardless of requested model
+                let agent_model = if agent.name == "explorer" {
+                    "sonnet"
+                } else {
+                    new_model
+                };
+
                 // Replace model in frontmatter using regex-like approach
-                let updated_content = replace_model_in_frontmatter(&content, new_model);
+                let updated_content = replace_model_in_frontmatter(&content, agent_model);
 
                 fs::write(&dest_path, updated_content)
                     .map_err(|e| format!("Failed to write agent {}: {}", agent.name, e))?;

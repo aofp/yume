@@ -4,10 +4,13 @@ import { PluginBadge } from '../common/PluginBadge';
 import {
   IconPlus, IconTrash, IconRefresh,
   IconAlertCircle, IconCheck, IconLoader2,
-  IconTerminal, IconWorld, IconFolder, IconUser
+  IconTerminal, IconWorld, IconFolder, IconUser,
+  IconBrain
 } from '@tabler/icons-react';
 import { mcpService, MCPServer } from '../../services/mcpService';
 import { pluginService } from '../../services/pluginService';
+import { memoryService } from '../../services/memoryService';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MCPTab.css';
 
 interface MCPTabProps {
@@ -15,12 +18,14 @@ interface MCPTabProps {
 }
 
 export const MCPTab: React.FC<MCPTabProps> = () => {
+  const { memoryEnabled, memoryServerRunning, setMemoryEnabled } = useClaudeCodeStore();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [transport, setTransport] = useState<'stdio' | 'sse'>('stdio');
   const [testingServer, setTestingServer] = useState<string | null>(null);
   const [removingServer, setRemovingServer] = useState<string | null>(null);
+  const [memoryToggling, setMemoryToggling] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
   
   // Confirmation modal state
@@ -66,6 +71,35 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
       console.error('Failed to load MCP servers:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMemoryToggle = async () => {
+    if (memoryToggling) return;
+    setMemoryToggling(true);
+
+    try {
+      if (memoryEnabled) {
+        // Disable: stop server first
+        await memoryService.stop();
+        setMemoryEnabled(false);
+        showNotification('memory server stopped', 'success');
+      } else {
+        // Enable: start server
+        setMemoryEnabled(true);
+        const started = await memoryService.start();
+        if (started) {
+          showNotification('memory server started', 'success');
+        } else {
+          showNotification('failed to start memory server', 'error');
+          setMemoryEnabled(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle memory:', error);
+      showNotification('failed to toggle memory server', 'error');
+    } finally {
+      setMemoryToggling(false);
     }
   };
 
@@ -404,13 +438,53 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
         </div>
       )}
 
+      {/* Built-in Memory Server */}
+      {!showAddForm && (
+        <div className="mcp-builtin">
+          <div className="server-group">
+            <h5 className="group-title">
+              <IconBrain size={10} />
+              built-in
+            </h5>
+            <div className={`server-item memory-server ${memoryEnabled ? 'enabled' : ''}`}>
+              <div className="server-info">
+                <div className="server-name">
+                  <IconBrain size={10} />
+                  memory
+                  <span className={`server-status ${memoryServerRunning ? 'running' : 'stopped'}`}>
+                    {memoryServerRunning ? 'running' : 'stopped'}
+                  </span>
+                </div>
+                <div className="server-details">
+                  persistent knowledge graph in ~/.yume/memory.jsonl
+                </div>
+              </div>
+              <div className="server-actions">
+                <button
+                  className={`memory-toggle-btn ${memoryEnabled ? 'on' : 'off'}`}
+                  onClick={handleMemoryToggle}
+                  disabled={memoryToggling}
+                >
+                  {memoryToggling ? (
+                    <IconLoader2 size={10} className="spin" />
+                  ) : memoryEnabled ? (
+                    <IconCheck size={10} />
+                  ) : null}
+                  {memoryEnabled ? 'on' : 'off'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Server list */}
       {!showAddForm && (
         <div className="mcp-servers">
           {Object.keys(serversByScope).length === 0 ? (
             <div className="no-servers">
               <IconAlertCircle size={16} />
-              <span>no mcp servers configured</span>
+              <span>no other mcp servers configured</span>
             </div>
           ) : (
             Object.entries(serversByScope).map(([scope, scopeServers]) => (

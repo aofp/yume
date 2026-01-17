@@ -18,9 +18,4 @@ export const FEATURE_FLAGS = {
   // Provider availability (set to false to disable in build)
   PROVIDER_GEMINI_AVAILABLE: false,
   PROVIDER_OPENAI_AVAILABLE: false,
-};
-
-// Helper to check if a feature is enabled
-export function isFeatureEnabled(feature: keyof typeof FEATURE_FLAGS): boolean {
-  return FEATURE_FLAGS[feature];
-}
+} as const;

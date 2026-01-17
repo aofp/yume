@@ -1,410 +1,407 @@
 # Competitive Analysis 2026
 
-**Last Updated:** January 2026
-**Version:** 0.1.0 Pre-Release
+**Last Updated:** January 17, 2026
+**Version:** 1.0.0 (Comprehensive Research Update)
 
 ## Executive Summary
 
-yume is a standalone desktop wrapper for claude cli, differentiating from ide extensions and cloud-based tools by providing:
-- **native desktop experience** with minimal gui (tauri 2.x, rust backend)
-- **multi-tab session management** with persistence and crash recovery
-- **advanced token analytics** with per-project/model/date breakdowns
-- **plugin ecosystem** for extensibility without code changes
-- **performance monitoring** with real-time fps, memory, render time tracking
-- **license model** enabling sustainable development ($21 pro vs free trial)
-
-## Competitive Landscape
-
-### 1. IDE Extensions (Primary Competitors)
-
-#### **Cursor** ($16-200/month)
-- **type:** fork of vscode with ai integration
-- **strengths:**
-  - background agents executing tasks independently
-  - multi-root workspace support
-  - strong context maintenance
-  - familiar vscode interface
-- **weaknesses:**
-  - controversial shift from request-based to credit-based pricing
-  - requires $200/month for "ultra" tier (20x usage)
-  - complexity of usage-based credit system
-- **pricing:** pro $16-20/month, ultra $200/month, teams $32-40/user/month
-
-#### **Windsurf (formerly Codeium)** ($0-30/month)
-- **type:** standalone ide with agentic ai
-- **strengths:**
-  - cascade agent with multi-step planning
-  - flow state for shared workspace (ai + developer)
-  - free unlimited tab autocomplete
-  - preview deployments to netlify
-  - supports gpt-5.1, gemini 3 pro, claude 4
-- **weaknesses:**
-  - prompt credit limits on free tier (25/month)
-  - rebranding confusion
-- **pricing:** free (25 credits), pro $15/month (500 credits), teams $30/user/month (500 credits)
-
-#### **Continue.dev** (free, open source)
-- **type:** vs code / jetbrains extension
-- **strengths:**
-  - completely free and open source
-  - local llm support (privacy-focused)
-  - customizable context providers
-  - workflow automation and custom slash commands
-- **weaknesses:**
-  - requires existing ide installation
-  - less polished ux than commercial alternatives
-  - limited built-in analytics
-- **pricing:** free (open source)
-
-#### **Sourcegraph Cody** (free tier available)
-- **type:** ide extension (vscode, jetbrrains, visual studio, eclipse)
-- **strengths:**
-  - enterprise-grade context from remote codebases
-  - integration with jira, linear, notion, google docs
-  - multi-llm support (claude 3.5, gpt-4o, mixtral)
-  - strong security with zero retention, no training
-  - smart apply for multi-file refactoring
-- **weaknesses:**
-  - focused on enterprise market
-  - requires sourcegraph integration for best experience
-- **pricing:** free tier available, enterprise pricing undisclosed
-
-#### **GitHub Copilot Workspace** (included with copilot subscription)
-- **type:** integrated with github (copilot individual/business/enterprise)
-- **strengths:**
-  - agent mode with autonomous development
-  - mcp integration (jira, slack)
-  - multi-file editing with plan agent
-  - integrated terminal with repair agent
-- **weaknesses:**
-  - requires paid copilot subscription
-  - tightly coupled to github ecosystem
-  - workspace technical preview ended may 2025 (now relaunched)
-- **pricing:** included with copilot individual/business/enterprise
-
-### 2. Cloud-Based Full-Stack Tools
-
-#### **Replit Agent** ($20-35/month)
-- **type:** cloud-based browser ide
-- **strengths:**
-  - effort-based pricing scaling with complexity
-  - agent 3 with autonomous debugging, testing
-  - extended thinking mode for architecture
-  - built-in databases (postgresql)
-  - 50+ language support
-- **weaknesses:**
-  - cloud-only (no local development)
-  - simple tasks still cost ~$0.25
-  - vendor lock-in
-- **pricing:** core $20/month, teams $25/month + $40 usage credits/user
-
-#### **Bolt.new (StackBlitz)** (pricing undisclosed)
-- **type:** browser-based ai app builder
-- **strengths:**
-  - webcontainer tech (node.js in browser)
-  - 40% performance improvement in 2026
-  - prompt-to-production workflow
-  - generated 1m+ websites in 5 months
-  - $4m arr in 4 weeks (viral success)
-- **weaknesses:**
-  - focused on web apps (not general coding)
-  - browser-only development environment
-  - pricing not publicly disclosed
-- **pricing:** undisclosed (freemium model assumed)
-
-### 3. Claude CLI Wrappers (Direct Competitors)
-
-#### **Opcode (formerly Claudia)** (free, open source)
-- **type:** desktop wrapper for claude cli (tauri 2, react, typescript, rust)
-- **strengths:**
-  - 19k github stars (strong community)
-  - cross-platform (macos, linux, windows)
-  - mcp server management
-  - open source
-- **weaknesses:**
-  - requires claude cli installation
-  - unclear differentiation from yume
-  - recent rebrand from claudia may cause confusion
-- **pricing:** free (open source)
-
-#### **Claude Canvas** (free)
-- **type:** terminal-based visual interface
-- **strengths:**
-  - stays in terminal (no gui app needed)
-  - uses tmux for split panes
-  - lightweight
-- **weaknesses:**
-  - terminal-only (not true gui)
-  - limited features vs desktop apps
-- **pricing:** free
-
-#### **Official Claude Desktop App** (included with claude subscription)
-- **type:** official native desktop app by anthropic
-- **strengths:**
-  - official support from anthropic
-  - seamless integration with claude.ai
-  - no third-party dependencies
-- **weaknesses:**
-  - basic feature set
-  - no advanced analytics or multi-tab management
-  - limited extensibility
-- **pricing:** included with claude subscription
-
-## Feature Comparison Matrix
-
-| Feature | Yume | Cursor | Windsurf | Continue.dev | Cody | Copilot WS | Replit | Bolt.new | Opcode |
-|---------|----------|--------|----------|--------------|------|------------|--------|----------|--------|
-| **Standalone App** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Multi-Tab Sessions** | ✅ (99 pro) | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❓ |
-| **Token Analytics** | ✅ (per project/model/date) | basic | basic | ❌ | basic | basic | ✅ | ❌ | ❓ |
-| **Plugin System** | ✅ (commands/agents/hooks/skills/mcp) | ❌ | ❌ | ✅ | ❌ | ✅ (mcp) | ❌ | ❌ | ✅ (mcp) |
-| **Performance Monitor** | ✅ (fps/memory/render) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Timeline/Checkpoints** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❓ |
-| **Context Compaction** | ✅ (55/60/65% thresholds) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❓ |
-| **Crash Recovery** | ✅ | ✅ | ✅ | n/a | n/a | ✅ | ✅ | ✅ | ❓ |
-| **Custom Agents** | ✅ (yume-* built-in) | ✅ | ✅ (cascade) | ✅ | ❌ | ✅ | ✅ | ❌ | ❓ |
-| **Voice Dictation** | ✅ (web speech api) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **CLAUDE.md Editor** | ✅ (in-app) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | n/a | ❓ |
-| **Open Source** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Local LLMs** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Multi-LLM Support** | ❌ (claude only) | ✅ | ✅ | ✅ | ✅ | ❌ (github models) | ✅ | ✅ | ❌ (claude only) |
-| **Price (Pro)** | $21 one-time | $16-20/mo | $15/mo | free | varies | $10-19/mo | $20-35/mo | undisclosed | free |
-
-## Yume's Unique Advantages
-
-### 1. **Desktop-First Claude CLI Wrapper**
-- only standalone desktop app specifically designed for claude cli
-- not an ide extension requiring existing editor installation
-- minimal gui philosophy vs feature-bloated alternatives
-
-### 2. **Advanced Analytics & Token Tracking**
-- most comprehensive analytics dashboard in category
-- per-project, per-model, per-date breakdowns
-- cost tracking with cumulative totals from result messages
-- 7d/14d/30d/all-time views
-
-### 3. **Complete Plugin Ecosystem**
-- commands, agents, hooks, skills, mcp in single framework
-- no code changes needed for extensibility
-- "yume" bundled plugin with 5 core agents
-- auto-sync agents with selected model (opus/sonnet)
-
-### 4. **Performance Monitoring**
-- only tool with built-in fps/memory/render time tracking
-- real-time metrics with statistical summaries (p50/p90/p99)
-- debug mode with metric export
-- production console routing
-
-### 5. **Timeline & Checkpoints**
-- visual conversation state management
-- restore to any previous checkpoint
-- pre-compaction auto-saves
-- branching conversation support
-
-### 6. **Sustainable Pricing Model**
-- $21 one-time pro license (not subscription)
-- no monthly fees vs $15-200/month competitors
-- trial: 2 tabs, pro: 99 tabs
-- server-side validation with 5-min cache
-
-### 7. **OLED Black Theme**
-- designed for oled displays with true blacks
-- pastel accent colors
-- customizable background opacity (50-100%)
-- monospace & sans font selection
-
-## Strategic Gaps & Opportunities
-
-### Critical Gaps
-
-1. **Single LLM Support**
-   - yume locked to claude only
-   - competitors support multiple llms (gpt-4, gemini, mixtral)
-   - **recommendation:** maintain claude focus for v0.1.0, evaluate multi-llm post-launch
-
-2. **Not Open Source**
-   - continue.dev and opcode are oss with strong communities
-   - closed source limits community contributions
-   - **recommendation:** consider open sourcing core (not licensing) for community trust
-
-3. **No IDE Integration**
-   - competitors offer vscode/jetbrains/visual studio extensions
-   - some users prefer integrated workflow
-   - **recommendation:** maintain standalone focus, document why (simpler, faster, focused)
-
-4. **No Cloud Sync**
-   - competitors offer cloud-based session sync
-   - yume is local-only
-   - **recommendation:** potential future feature but ensure privacy/security first
-
-### Emerging Opportunities
-
-1. **MCP Protocol Leadership**
-   - mcp is gaining traction (copilot workspace, opcode)
-   - yume already has mcp support
-   - **opportunity:** position as "best mcp experience for claude"
-
-2. **Performance-First Narrative**
-   - no competitor emphasizes performance monitoring
-   - developers value fast, responsive tools
-   - **opportunity:** market as "fastest claude gui" with proof
-
-3. **Plugin Marketplace**
-   - no competitor has comprehensive plugin ecosystem like yume
-   - **opportunity:** launch plugin marketplace post-v0.1.0 for discoverability
-
-4. **Team Collaboration**
-   - cursor/windsurf/cody/replit all have team plans
-   - yume is single-user only
-   - **opportunity:** explore team features (shared sessions, knowledge bases)
-
-5. **Voice-First Coding**
-   - yume has voice dictation
-   - competitors lack voice features
-   - **opportunity:** expand voice commands beyond dictation (e.g., "run tests", "commit changes")
-
-## Competitive Positioning for v0.1.0
-
-### Target Market
-**Primary:** individual developers who value:
-- claude cli over other llms
-- native desktop experience over browser/ide extensions
-- comprehensive analytics for cost tracking
-- performance and responsiveness
-- one-time payment over subscriptions
-
-**Secondary:** teams evaluating claude cli wrappers for future team use
-
-### Key Messaging
-
-1. **"The Pro Desktop Experience for Claude CLI"**
-   - emphasize native, minimal, fast
-   - contrast with browser-based (replit, bolt) and ide extensions (cursor, windsurf)
-
-2. **"Own Your AI Coding Environment"**
-   - $21 one-time vs $15-200/month subscriptions
-   - no cloud lock-in, all local
-
-3. **"Built for Developers Who Track Everything"**
-   - comprehensive analytics dashboard
-   - performance monitoring built-in
-   - timeline & checkpoints for conversation management
-
-4. **"Extend Without Code"**
-   - plugin system for customization
-   - 5 built-in yume agents
-   - skills auto-inject context
-
-### Pre-Launch Checklist for v0.1.0
-
-#### Must-Have Polish
-- [ ] comprehensive documentation (architecture, api, troubleshooting)
-- [ ] smooth onboarding flow (detect claude cli, guide installation)
-- [ ] crash reporting with user consent
-- [ ] license activation ux testing
-- [ ] performance benchmarks vs opcode
-
-#### Nice-to-Have Pre-Launch
-- [ ] video demo showcasing unique features
-- [ ] plugin examples (1-2 sample plugins)
-- [ ] comparison page on website (yume vs competitors)
-- [ ] testimonials from beta users
-
-#### Post-Launch Priorities
-1. community building (discord/github discussions)
-2. plugin marketplace development
-3. multi-llm evaluation (if user demand)
-4. team features exploration
-5. ide extension consideration (vscode/jetbrains)
-
-## Risk Assessment
-
-### High Risk
-- **opcode competition:** similar tech stack (tauri 2, rust), 19k stars, open source
-  - **mitigation:** emphasize analytics, performance, licensing as differentiators
-
-- **official claude desktop app improvements:** anthropic may add features to official app
-  - **mitigation:** move fast on advanced features, maintain plugin ecosystem moat
-
-### Medium Risk
-- **subscription fatigue:** developers tired of monthly fees may resist $21 one-time
-  - **mitigation:** generous trial (2 tabs) to prove value before purchase
-
-- **claude cli changes:** breaking changes to cli could disrupt yume
-  - **mitigation:** monitor cli releases, maintain compatibility layer
-
-### Low Risk
-- **ide extension dominance:** users may prefer integrated workflow
-  - **mitigation:** standalone is feature not bug (focused, fast, minimal)
-
-## Recommendations for v0.1.0 Launch
-
-### Critical Actions
-1. **differentiate from opcode immediately**
-   - create comparison doc highlighting analytics, performance, licensing
-   - emphasize polished ux vs community-driven development
-
-2. **document performance benchmarks**
-   - measure startup time, message send time, memory usage
-   - compare to opcode, official app (if possible)
-
-3. **showcase analytics dashboard**
-   - this is biggest differentiator
-   - create demo video showing per-project cost tracking
-
-4. **plugin ecosystem marketing**
-   - highlight extensibility without code changes
-   - provide 2-3 example plugins for launch
-
-5. **pricing clarity**
-   - emphasize one-time $21 vs monthly subscriptions
-   - show cost comparison over 1 year vs cursor/windsurf
-
-### Launch Timeline
-1. **week 1:** documentation polish, comparison page, demo video
-2. **week 2:** beta testing with 10-20 users, feedback iteration
-3. **week 3:** launch prep (landing page, social media, producthunt)
-4. **week 4:** public launch on producthunt, hackernews, reddit
-
-### Success Metrics
-- 1000 downloads in first month
-- 100 pro licenses sold in first month
-- <5% crash rate
-- 4.5+ rating on producthunt
-- positive sentiment on hackernews/reddit
-
-## Conclusion
-
-yume occupies unique position as **premium desktop wrapper for claude cli** with:
-- advanced analytics unmatched by competitors
-- comprehensive plugin ecosystem
-- performance-first architecture
-- sustainable one-time pricing
-
-key to v0.1.0 success: **clear differentiation from opcode** (open source competitor) and **emphasis on polished ux + analytics**.
-
-post-launch, focus on community building and plugin marketplace to create moat against both open source (opcode) and commercial (cursor, windsurf) competitors.
+Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE extensions and cloud-based tools by:
+- **Multi-provider support** (Claude, Gemini, OpenAI via yume-cli shim)
+- **Native desktop experience** with minimal GUI (Tauri 2.x, Rust backend)
+- **Background agents** with queue management (4 concurrent, git branch isolation)
+- **Persistent memory system** via MCP server (auto-learns patterns)
+- **5 specialized AI agents** (architect, explorer, implementer, guardian, specialist)
+- **Plugin ecosystem** with 5 component types (commands, agents, hooks, skills, MCP)
+- **Skills with ReDoS protection** (safe regex-based context injection)
+- **One-time $21 pricing** vs $15-200/month subscriptions
+- **Advanced analytics** with per-project/model/date breakdowns
 
 ---
 
-## Sources
+## Market Landscape (January 2026)
 
-- [Windsurf (Formerly Codeium) Review 2025](https://skywork.ai/skypage/en/Windsurf-(Formerly-Codeium)-Review-2025:-The-Agentic-IDE-Changing-the-Game/1973911680657846272)
-- [Windsurf - The best AI for Coding](https://windsurf.com/)
-- [Windsurf Editor Review 2026](https://aitoolsinsights.com/tools/windsurf-editor-review-2026)
-- [Cursor Pricing](https://cursor.com/pricing)
-- [Cursor Changelog: What's coming next in 2026?](https://blog.promptlayer.com/cursor-changelog-whats-coming-next-in-2026/)
-- [Cursor AI Review 2026](https://www.nxcode.io/resources/news/cursor-review-2026)
-- [Continue - open-source AI code agent](https://marketplace.visualstudio.com/items?itemName=Continue.continue)
-- [Continue - Ship faster with Continuous AI](https://www.continue.dev/)
-- [Sourcegraph Cody](https://sourcegraph.com/cody)
-- [Sourcegraph Cody Review 2026](https://www.tooljunction.io/ai-tools/sourcegraph-cody)
-- [GitHub - winfunc/opcode](https://github.com/winfunc/opcode)
-- [5 New Claude Code GUI Apps](https://medium.com/@joe.njenga/4-new-claude-code-gui-apps-you-should-try-and-more-to-come-e73971d3a561)
-- [Claudia GUI](https://claudia.so)
-- [Replit Pricing](https://replit.com/pricing)
-- [Replit Review 2026](https://hackceleration.com/replit-review/)
-- [Bolt.new](https://bolt.new/)
-- [GitHub - stackblitz/bolt.new](https://github.com/stackblitz/bolt.new)
-- [GitHub Copilot Workspace](https://githubnext.com/projects/copilot-workspace)
-- [GitHub Copilot Guide 2026](https://aitoolsdevpro.com/ai-tools/github-copilot-guide/)
+### Tier 1: Major IDE Competitors
+
+| Tool | Type | Pricing | Valuation/Status | Key Strength |
+|------|------|---------|------------------|--------------|
+| **Cursor** | VS Code fork | $20-200/mo | **$29B valuation, $1B ARR** | Background agents, BugBot PR review, 8 parallel agents |
+| **Windsurf** | Full IDE | $15-60/mo | **Acquired by OpenAI $3B** | Cascade agent, SWE-1 models (950 tok/s), auto context |
+| **GitHub Copilot** | IDE Extension | $10-39/mo | **Microsoft** | Agent mode, Copilot CLI, coding agent for issues |
+
+### Tier 2: Open Source & Enterprise
+
+| Tool | Type | Pricing | Status | Key Strength |
+|------|------|---------|--------|--------------|
+| **Continue.dev** | VS Code/JetBrains Extension | Free/$10 teams | **26k GitHub stars** | Model-agnostic, 100% air-gapped, local LLMs |
+| **Aider** | Terminal CLI | Free (BYOK) | **Open source** | Deep git integration, architect mode, writes 75% of own code |
+| **Sourcegraph Cody** | IDE Extension | $59/user/mo | **Enterprise only** | Multi-repo context, codebase indexing |
+| **Zed** | Rust IDE | Free/$10 pro | **$32M funding** | 10x startup speed, ACP protocol, real-time collaboration |
+
+### Tier 3: Claude CLI Wrappers (Direct Competitors)
+
+| Tool | Type | Status | Key Difference |
+|------|------|--------|----------------|
+| **Opcode** | Desktop (Tauri) | 19k stars, open source | Open source, community-driven |
+| **Claude Canvas** | Terminal UI | Free | tmux-based, stays in terminal |
+| **Official Claude App** | Desktop | Anthropic | Basic features, no extensibility |
+
+---
+
+## Detailed Competitor Analysis
+
+### Cursor ($29B Valuation)
+
+**Killer Features:**
+- **Background Agents**: Run on remote Ubuntu VMs, clone repos, create PRs, up to 8 parallel agents
+- **BugBot**: AI PR reviewer catching logic bugs, 70%+ resolution rate, 2M+ PRs/month reviewed
+- **Multi-Agent Judging**: Evaluates parallel agent runs and recommends best solution
+- **Plan Mode**: Design approach before coding with Mermaid diagrams
+
+**Pricing:**
+| Plan | Price | Key Features |
+|------|-------|--------------|
+| Hobby | Free | 2,000 completions, 50 slow requests |
+| Pro | $20/mo | $20 credits, unlimited Auto mode |
+| Ultra | $200/mo | 20x Pro's allowance |
+| Teams | $40/user/mo | SSO, admin controls |
+
+**Weaknesses:**
+- Credit-based pricing caused controversy (June 2025)
+- Can be slow with large codebases (25% latency spikes)
+- Agent Mode makes unintended file changes if instructions imprecise
+- Customer support criticized
+
+### Windsurf (Acquired by OpenAI)
+
+**Killer Features:**
+- **Cascade**: Multi-file reasoning across entire projects, automatic context retrieval
+- **SWE-1 Models**: 950 tokens/sec (13x faster than Sonnet 4.5)
+- **Flow Awareness**: Deep integration between editor and models
+- **Memory System**: Learns your coding style and patterns
+
+**Pricing:**
+| Plan | Price | Credits |
+|------|-------|---------|
+| Free | $0 | 25 credits/month |
+| Pro | $15/mo | 500 credits/month |
+| Teams | $30/user/mo | 500 credits/user |
+| Enterprise | $60+/user/mo | Custom |
+
+**Weaknesses:**
+- Claude models require BYOK (strained Anthropic relationship)
+- Inconsistent quality with lower-tier models
+- Turbo mode can make unsupervised errors
+
+### GitHub Copilot (Microsoft)
+
+**Killer Features:**
+- **Agent Mode**: Autonomous development with terminal command execution
+- **Copilot Coding Agent**: Assign GitHub issues directly to Copilot
+- **Agent Skills**: Create reusable instruction folders
+- **Model Flexibility**: GPT-5, Claude Opus/Sonnet, Gemini
+
+**Pricing:**
+| Plan | Price | Premium Requests |
+|------|-------|------------------|
+| Free | $0 | 50/month |
+| Pro | $10/mo | 300/month |
+| Pro+ | $39/mo | 1,500/month |
+| Enterprise | $39/user/mo | 1,000/month |
+
+**Limitations:**
+- 64K token context limit (can't be increased)
+- Rate limits on intensive use
+- Tightly coupled to GitHub ecosystem
+
+### Continue.dev (Open Source)
+
+**Killer Features:**
+- **Model Agnostic**: Any LLM (local or cloud)
+- **100% Air-Gapped**: Full privacy with local models
+- **CLI with TUI**: Terminal-native with headless mode
+- **Background Agents**: Async agents for CI/CD
+
+**Limitations:**
+- Less polished UX than commercial tools
+- JetBrains Edit mode limited to single file
+- Requires more setup
+
+### Aider (Terminal-First)
+
+**Killer Features:**
+- **Architect Mode**: Two-model approach (architect + editor) for SOTA benchmarks
+- **Deep Git Integration**: Automatic commits with descriptive messages
+- **Multi-File Editing**: Coordinated changes across files
+- **Self-Developing**: Writes 70-75% of its own code
+
+**Limitations:**
+- Terminal only (no GUI)
+- Two LLM requests increases time/cost
+- Learning curve for commands
+
+### Zed (Rust Performance)
+
+**Killer Features:**
+- **10x Faster Startup**: 0.12s vs VS Code's 1.2s
+- **5x Less Memory**: 142MB vs VS Code's 730MB
+- **ACP Protocol**: Open standard for connecting any editor to any AI agent
+- **Real-Time Collaboration**: CRDTs like Google Docs
+
+**Limitations:**
+- Smaller extension ecosystem
+- Some features still in development
+- macOS-first (Windows recently stable)
+
+---
+
+## Feature Comparison Matrix
+
+| Feature | Yume | Cursor | Windsurf | Continue | Aider | Copilot | Zed |
+|---------|------|--------|----------|----------|-------|---------|-----|
+| **Multi-Provider** | ✅ 3 providers | ✅ Multiple | ✅ Multiple | ✅ Any | ✅ Any | ⚠️ Limited | ✅ Multiple |
+| **Background Agents** | ✅ 4 concurrent | ✅ 8 parallel | ✅ Cascade | ✅ | ❌ | ✅ | ❌ |
+| **Git Branch Isolation** | ✅ Auto-branch | ❌ | ❌ | ❌ | ⚠️ Manual | ❌ | ❌ |
+| **Memory System** | ✅ MCP graph | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **PR Review** | ❌ | ✅ BugBot | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Inline Autocomplete** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ Zeta |
+| **Git Integration** | ⚠️ View only | ✅ | ✅ | ✅ | ✅ Deep | ✅ | ✅ |
+| **Plugin System** | ✅ 5 types | ❌ | ❌ | ✅ | ❌ | ✅ MCP | ❌ |
+| **Skills (Context Inject)** | ✅ ReDoS-safe | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Custom Agents** | ✅ 5 built-in | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Analytics** | ✅ Advanced | ⚠️ Basic | ⚠️ Basic | ❌ | ❌ | ⚠️ Basic | ❌ |
+| **Voice Input** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Local LLMs** | ❌ | ❌ | ❌ | ✅ | ✅ Ollama | ❌ | ✅ Ollama |
+| **Collaboration** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ CRDTs |
+| **Open Source** | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| **One-Time Price** | ✅ $21 | ❌ | ❌ | ✅ Free | ✅ Free | ❌ | ✅ Free |
+
+---
+
+## Yume's Unique Competitive Advantages
+
+### 1. Background Agents with Git Branch Isolation (UNIQUE)
+**No competitor has automatic git branch isolation for async agents.**
+- 4 concurrent background agents with 10-minute timeout
+- Auto-creates isolated git branches: `yume-async-{agent}-{id}`
+- Review diff vs main before merging
+- Conflict detection and resolution
+- Clean branch cleanup after merge
+
+### 2. Persistent Memory System (UNIQUE APPROACH)
+**Knowledge graph via MCP server with auto-learning.**
+- Storage: `~/.yume/memory.jsonl` (persists across sessions)
+- Auto-extracts patterns from conversations (errors, decisions, architecture)
+- Searchable knowledge graph with entities/relations
+- Context injection for relevant memories
+- Competitors have memory but not MCP-based knowledge graph
+
+### 3. Multi-Provider CLI Shim (UNIQUE)
+No other Claude CLI wrapper supports transparent switching between Claude, Gemini, and OpenAI through a unified interface. The yume-cli shim normalizes all provider outputs to Claude-compatible stream-json.
+
+### 4. 5 Specialized Core Agents (UNIQUE)
+| Agent | Purpose | Why Different |
+|-------|---------|---------------|
+| yume-architect | Plans, designs, decomposes | Cursor has generic agents |
+| yume-explorer | Read-only codebase exploration | Safe exploration mode |
+| yume-implementer | Focused code changes | Small, incremental edits |
+| yume-guardian | Reviews, audits, verifies | Built-in code review |
+| yume-specialist | Domain-specific tasks | Configurable expertise |
+
+### 5. Plugin System with 5 Component Types (UNIQUE)
+Most comprehensive extensibility framework:
+- Commands (slash commands)
+- Agents (custom AI personas)
+- Hooks (9 event types)
+- Skills (auto-context injection with ReDoS protection)
+- MCP (server connections)
+
+### 6. Skills with ReDoS Protection (UNIQUE)
+**No competitor validates regex triggers for denial-of-service.**
+- Tag-based UI for extensions, keywords, regex patterns
+- Real-time ReDoS detection with risk levels (safe/low/medium/high)
+- Detects nested quantifiers, overlapping alternations, catastrophic backtracking
+- Performance testing with adversarial strings
+- Match mode: ANY (OR) vs ALL (AND) logic
+
+### 7. Unified Conversation Format (UCF) (UNIQUE)
+Provider-agnostic conversation format enabling:
+- Cross-provider session portability
+- Tool translation with status tracking
+- History format conversion (JSONL ↔ JSON)
+
+### 8. One-Time Pricing (COMPETITIVE MOAT)
+| Competitor | Annual Cost | Yume Savings |
+|------------|-------------|--------------|
+| Cursor Pro | $240 | 91% |
+| Windsurf Pro | $180 | 88% |
+| Copilot Pro | $100 | 79% |
+| Copilot Pro+ | $468 | 96% |
+| **Yume Pro** | **$21 once** | **Lifetime** |
+
+### 9. Advanced Analytics Dashboard (RARE)
+Only desktop Claude wrapper with:
+- Per-project token/cost breakdowns
+- Per-model usage analytics
+- Per-date trend analysis
+- Export to CSV/JSON
+
+### 10. Voice Dictation (RARE)
+Native Web Speech API integration for hands-free input.
+
+### 11. Line Changes Tracking (UNIQUE)
+Per-session tracking of code modifications:
+- Tracks added/removed lines per edit
+- Shows impact in ContextBar
+- Useful for code review awareness
+
+---
+
+## Critical Feature Gaps (Roadmap Priorities)
+
+### RECENTLY COMPLETED ✅
+
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| **Background/Async Agents** | ✅ COMPLETE | 4 concurrent agents, git branch isolation, 13 Tauri commands |
+| **Memory MCP Server** | ✅ COMPLETE | Knowledge graph in `~/.yume/memory.jsonl`, auto-learning |
+| **Skills UI Completion** | ✅ COMPLETE | TriggerEditor, ContentEditor, ReDoS validation |
+
+### HIGH PRIORITY (Remaining Gaps)
+
+| Gap | Impact | Competitor Reference |
+|-----|--------|---------------------|
+| **Automated PR Review** | BugBot catches 2M+ PRs/month | 70%+ resolution rate |
+| **Inline Code Suggestions** | Table stakes for IDE | All major competitors have this |
+
+### MEDIUM PRIORITY (Modern IDE Features)
+
+| Gap | Impact | Implementation Effort |
+|-----|--------|----------------------|
+| **Git Commit/Push UI** | Currently view-only | Medium |
+| **Collaborative Editing** | Zed has CRDTs | High |
+| **Debugger Integration** | Breakpoints, step-through | High |
+| **Code Navigation** | Go-to-definition, find refs | Medium |
+
+### LOWER PRIORITY (Nice to Have)
+
+| Gap | Impact |
+|-----|--------|
+| Windows/Linux unified binaries | Build scripts exist |
+| Checkpoint system activation | Socket listeners disabled |
+| Extension marketplace | Currently manual install |
+| Split view for files | Tabs already exist |
+
+---
+
+## Industry Trends to Monitor
+
+### 1. Multi-Agent Systems (1,445% Inquiry Surge - Gartner)
+- Cursor: 8 parallel agents with judging
+- Gartner predicts 40% of enterprise apps will embed agents by end of 2026
+- **Yume Opportunity**: Add parallel execution to existing 5-agent framework
+
+### 2. Protocol Standardization
+- **MCP**: Yume already supports
+- **ACP**: Zed's open standard, JetBrains adopting
+- **A2A**: Cross-vendor agent communication emerging
+- **Yume Opportunity**: Implement ACP for editor interop
+
+### 3. Local Models (Privacy Trend)
+- Continue.dev: Full Ollama support
+- Zed: Zeta local model (200ms p50 latency)
+- Qwen 2.5 Coder 32B competing with GPT-4o
+- **Yume Opportunity**: Add Ollama support via yume-cli
+
+### 4. Security Concerns (45% AI Code Has Flaws)
+- Automated code review before commit
+- Hallucination detection for dependencies
+- Shadow AI detection for enterprise
+- **Yume Opportunity**: yume-guardian agent + pre-commit hooks
+
+### 5. Vibe Coding Revolution
+- Collins Dictionary Word of the Year 2025
+- 25% of Y Combinator W25 batch: 95% AI-generated code
+- "Vibe coding hangover" reported with maintenance issues
+- **Yume Opportunity**: Quality-focused workflow with guardian agent
+
+---
+
+## Competitive Positioning for v1.0
+
+### Target Market
+**Primary:** Individual developers who value:
+- Multi-provider flexibility (not locked to one AI)
+- Native desktop experience over browser/IDE extensions
+- Comprehensive analytics for cost tracking
+- Plugin extensibility without code changes
+- One-time payment over subscriptions
+
+**Secondary:**
+- Teams evaluating Claude CLI wrappers
+- Developers burned by subscription fatigue
+
+### Key Messaging
+
+1. **"The Multi-Provider Claude Desktop"**
+   - Only wrapper supporting Claude + Gemini + OpenAI
+   - Unified interface, no provider lock-in
+
+2. **"Own Your AI Coding Environment"**
+   - $21 one-time vs $240-2400/year subscriptions
+   - All local, no cloud lock-in
+
+3. **"5 AI Agents, Zero Configuration"**
+   - Architect, Explorer, Implementer, Guardian, Specialist
+   - No prompt engineering required
+
+4. **"Built for Developers Who Track Everything"**
+   - Comprehensive analytics dashboard
+   - Per-project, per-model, per-date breakdowns
+
+### Risk Assessment
+
+#### High Risk
+- **Cursor's momentum**: $29B valuation, $1B ARR, rapid feature velocity
+  - *Mitigation*: Emphasize multi-provider + one-time pricing
+
+- **Claude CLI changes**: Breaking changes could disrupt yume
+  - *Mitigation*: yume-cli abstraction layer provides buffer
+
+#### Medium Risk
+- **Subscription fatigue backlash**: Some users may resist even $21
+  - *Mitigation*: Generous trial (2 tabs) to prove value
+
+- **Open source competition**: Opcode (19k stars), Continue.dev (26k stars)
+  - *Mitigation*: Focus on polish, multi-provider, analytics
+
+#### Low Risk
+- **IDE extension dominance**: Users may prefer integrated workflow
+  - *Mitigation*: Position standalone as feature (focused, fast, minimal)
+
+---
+
+## Sources (January 2026 Research)
+
+### Primary Sources
+- [Cursor Features](https://cursor.com/features) - Background agents, BugBot
+- [Cursor Pricing](https://cursor.com/pricing) - Credit-based tiers
+- [Cursor Changelog](https://cursor.com/changelog) - Recent updates
+- [Windsurf Official](https://windsurf.com/) - Cascade, SWE-1 models
+- [Windsurf Pricing](https://windsurf.com/pricing) - Credit system
+- [GitHub Copilot Plans](https://github.com/features/copilot/plans) - Agent mode
+- [Continue.dev](https://www.continue.dev/) - Open source assistant
+- [Aider](https://aider.chat/) - Terminal AI pair programmer
+- [Zed AI](https://zed.dev/ai) - ACP protocol, Zeta model
+- [Sourcegraph Cody](https://sourcegraph.com/cody) - Enterprise features
+
+### Market Analysis
+- [Anysphere Wikipedia](https://en.wikipedia.org/wiki/Anysphere) - Cursor $29B valuation
+- [CNBC Cursor Funding](https://www.cnbc.com/2025/11/13/cursor-ai-startup-funding-round-valuation.html)
+- [OpenAI Windsurf Acquisition](https://www.bloomberg.com/news/articles/2025-05-06/openai-reaches-agreement-to-buy-startup-windsurf-for-3-billion)
+- [Gartner Multi-Agent Report](https://machinelearningmastery.com/7-agentic-ai-trends-to-watch-in-2026/)
+- [Vibe Coding Wikipedia](https://en.wikipedia.org/wiki/Vibe_coding) - Collins Word of Year
+
+### Security & Trends
+- [AI Code Security](https://www.kiuwan.com/blog/ai-code-security/) - 45% flaw rate
+- [State of AI 2025](https://artificialanalysis.ai/insights/coding-agents-comparison)
+- [Developer Productivity Reality](https://www.technologyreview.com/2025/12/15/1128352/rise-of-ai-coding-developers-2026/)

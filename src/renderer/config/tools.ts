@@ -15,14 +15,14 @@ export interface ToolDefinition {
 
 export type ToolCategory = 'file-read' | 'file-write' | 'terminal' | 'web' | 'agents' | 'other';
 
-export const TOOL_CATEGORIES: Record<ToolCategory, { name: string; order: number }> = {
+export const TOOL_CATEGORIES = {
   'file-read': { name: 'read', order: 1 },
   'file-write': { name: 'write', order: 2 },
   terminal: { name: 'terminal', order: 3 },
   web: { name: 'web', order: 4 },
   agents: { name: 'agents', order: 5 },
   other: { name: 'other', order: 6 },
-};
+} as const satisfies Record<ToolCategory, { name: string; order: number }>;
 
 export const ALL_TOOLS: ToolDefinition[] = [
   // File Read Operations

@@ -19,6 +19,11 @@ export interface CLIArgs {
   apiBase?: string;
   permissionMode: PermissionMode;
   verbose: boolean;
+  // Async/background agent mode
+  async?: boolean;
+  outputFile?: string;
+  gitBranch?: string;
+  agentType?: string;
 }
 
 // Permission modes

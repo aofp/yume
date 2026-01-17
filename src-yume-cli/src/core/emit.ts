@@ -321,3 +321,31 @@ export function logVerbose(message: string): void {
     log(message);
   }
 }
+
+/**
+ * Emit progress update (for background agents)
+ * Written to stderr so it can be parsed by the parent process
+ */
+export function emitProgress(turnCount: number, currentAction: string, tokensUsed: number): void {
+  const progress = {
+    type: 'progress',
+    turn_count: turnCount,
+    current_action: currentAction,
+    tokens_used: tokensUsed,
+    timestamp: Date.now(),
+  };
+  process.stderr.write(JSON.stringify(progress) + '\n');
+}
+
+/**
+ * Emit git branch switch notification
+ */
+export function emitBranchSwitch(branch: string, success: boolean): void {
+  const notification = {
+    type: 'branch_switch',
+    branch,
+    success,
+    timestamp: Date.now(),
+  };
+  process.stderr.write(JSON.stringify(notification) + '\n');
+}

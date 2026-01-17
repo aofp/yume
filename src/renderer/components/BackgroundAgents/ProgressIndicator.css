@@ -1,0 +1,40 @@
+/* ProgressIndicator - Agent progress display */
+
+.progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(74, 158, 255, 0.08);
+  border-top: 1px solid rgba(74, 158, 255, 0.15);
+}
+
+.progress-spinner {
+  color: #4a9eff;
+  flex-shrink: 0;
+}
+
+.progress-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-action {
+  font-size: 11px;
+  color: var(--fg-70);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.progress-stat {
+  font-size: 9px;
+  color: var(--fg-50);
+  font-family: var(--font-mono);
+}

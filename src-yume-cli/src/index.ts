@@ -89,6 +89,21 @@ function parseArgs(): CLIArgs {
       case '-v':
         result.verbose = true;
         break;
+      case '--async':
+        result.async = true;
+        break;
+      case '--output-file':
+        result.outputFile = nextArg;
+        i++;
+        break;
+      case '--git-branch':
+        result.gitBranch = nextArg;
+        i++;
+        break;
+      case '--agent-type':
+        result.agentType = nextArg;
+        i++;
+        break;
       case '--help':
       case '-h':
         printHelp();
@@ -131,12 +146,21 @@ OPTIONS:
   -h, --help                   Show this help
   --version                    Show version
 
+ASYNC/BACKGROUND AGENT OPTIONS:
+  --async                      Run in background mode (write output to file)
+  --output-file <path>         Path to write session output (JSON)
+  --git-branch <name>          Git branch to work on (creates if needed)
+  --agent-type <type>          Agent type (architect, explorer, implementer, guardian, specialist)
+
 EXAMPLES:
   # New Gemini session
   yume-cli -P gemini -m gemini-2.0-flash -d /my/project -p "Hello"
 
   # Resume OpenAI session
   yume-cli -P openai -m gpt-4o -r sess-abc123
+
+  # Run background agent
+  yume-cli -P anthropic --async --agent-type architect --output-file ./out.json -p "Design auth system"
 
   # Use custom endpoint
   yume-cli -P openai --api-base http://localhost:11434/v1 -m llama3

@@ -846,18 +846,21 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     return submenuItems.filter(item => item.label.toLowerCase().includes(q));
   }, [submenuItems, query]);
 
+  // Helper to convert hex color to RGB string
+  const hexToRgb = (hex: string) => {
+    const h = hex.replace('#', '');
+    return `${parseInt(h.substring(0, 2), 16)}, ${parseInt(h.substring(2, 4), 16)}, ${parseInt(h.substring(4, 6), 16)}`;
+  };
+
   // Preview theme colors
   const previewTheme = useCallback((theme: Theme) => {
     const root = document.documentElement;
     root.style.setProperty('--background-color', theme.backgroundColor);
-    const bgHex = theme.backgroundColor.replace('#', '');
-    root.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
+    root.style.setProperty('--background-rgb', hexToRgb(theme.backgroundColor));
     root.style.setProperty('--foreground-color', theme.foregroundColor);
-    const fgHex = theme.foregroundColor.replace('#', '');
-    root.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
+    root.style.setProperty('--foreground-rgb', hexToRgb(theme.foregroundColor));
     root.style.setProperty('--accent-color', theme.accentColor);
-    const accentHex = theme.accentColor.replace('#', '');
-    root.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
+    root.style.setProperty('--accent-rgb', hexToRgb(theme.accentColor));
     root.style.setProperty('--positive-color', theme.positiveColor);
     root.style.setProperty('--negative-color', theme.negativeColor);
   }, []);
@@ -878,14 +881,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (originalColors) {
       const root = document.documentElement;
       root.style.setProperty('--background-color', originalColors.bg);
-      const bgHex = originalColors.bg.replace('#', '');
-      root.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
+      root.style.setProperty('--background-rgb', hexToRgb(originalColors.bg));
       root.style.setProperty('--foreground-color', originalColors.fg);
-      const fgHex = originalColors.fg.replace('#', '');
-      root.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
+      root.style.setProperty('--foreground-rgb', hexToRgb(originalColors.fg));
       root.style.setProperty('--accent-color', originalColors.accent);
-      const accentHex = originalColors.accent.replace('#', '');
-      root.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
+      root.style.setProperty('--accent-rgb', hexToRgb(originalColors.accent));
       root.style.setProperty('--positive-color', originalColors.positive);
       root.style.setProperty('--negative-color', originalColors.negative);
     }

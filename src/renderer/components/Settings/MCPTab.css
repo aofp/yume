@@ -418,3 +418,81 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Built-in servers section */
+.mcp-builtin {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Memory server specific */
+.memory-server {
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.memory-server.enabled {
+  border-color: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.03);
+}
+
+.memory-server .server-name svg {
+  color: var(--accent-color);
+}
+
+.server-status {
+  font-size: var(--text-xs);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.server-status.running {
+  color: var(--positive-color);
+  background: rgba(var(--positive-rgb), 0.1);
+  border: 1px solid rgba(var(--positive-rgb), 0.2);
+}
+
+.server-status.stopped {
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.memory-toggle-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: var(--text-sm);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 48px;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.memory-toggle-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.memory-toggle-btn.on {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+.memory-toggle-btn.on:hover {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  background: rgba(var(--accent-rgb), 0.15);
+}
+
+.memory-toggle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

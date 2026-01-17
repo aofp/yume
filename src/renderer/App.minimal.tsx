@@ -29,7 +29,7 @@ import { pluginService } from './services/pluginService';
 import { ensureProviderDefaults } from './services/providersService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { APP_NAME, appEventName, appStorageKey } from './config/app';
-import { isVSCode, invoke } from './services/tauriApi';
+import { isVSCode } from './services/tauriApi';
 import './App.minimal.css';
 
 const BG_OPACITY_KEY = appStorageKey('bg-opacity');
@@ -94,6 +94,16 @@ export const App: React.FC = () => {
 
     // Initialize plugin service early so slash commands work immediately
     pluginService.initialize().catch(e => console.warn('Plugin init:', e));
+
+    // Initialize memory service (auto-starts if enabled in settings)
+    import('./services/memoryService').then(m => {
+      m.memoryService.initialize().catch(e => console.warn('Memory init:', e));
+    });
+
+    // Initialize background agent service for queue tracking
+    import('./services/backgroundAgentService').then(m => {
+      m.backgroundAgentService.initialize().catch(e => console.warn('Background agent init:', e));
+    });
 
     // Auto-detect available providers (Gemini/OpenAI) and enable toolchains if supported
     ensureProviderDefaults().catch((error) => {

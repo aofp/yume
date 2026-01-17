@@ -15,8 +15,10 @@ Yume is a Tauri 2.x desktop application that provides a minimal GUI for Claude C
 - Real-time token tracking with cost analytics
 - **License management** (Trial: 2 tabs, Pro: 99 tabs with encrypted validation)
 - **Plugin system** for extending functionality (commands, agents, hooks, skills, MCP)
-- **Skills system** for auto-injecting context based on triggers
-- Custom agent system with system prompts
+- **Skills system** for auto-injecting context based on triggers (with ReDoS protection)
+- **Background agents** with queue management (4 concurrent, git branch isolation)
+- **Memory system** via MCP server (persistent knowledge graph in `~/.yume/memory.jsonl`)
+- Custom agent system with system prompts (5 core agents)
 - Hooks system for intercepting Claude behavior
 - MCP (Model Context Protocol) support
 - **Performance monitoring** with real-time metrics (FPS, memory, render time)
@@ -121,8 +123,8 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files (32 files, ~17,000 lines, 152 Tauri commands)
-- `lib.rs` - Main entry, Tauri setup, all 152 commands registered
+### Critical Rust Files (36 files, ~18,500 lines, 175 Tauri commands)
+- `lib.rs` - Main entry, Tauri setup, all 175 commands registered
 - `app.rs` - Application constants (APP_NAME, APP_VERSION, APP_ID, etc.)
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
@@ -135,6 +137,8 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `port_manager.rs` - Dynamic port allocation (20000-65000)
 - `agents.rs` - Agent system management
 - `config.rs` - Production configuration management
+- `background_agents.rs` - Background agent queue manager (NEW)
+- `git_manager.rs` - Git branch operations for background agents (NEW)
 - `claude/mod.rs` - ClaudeManager for session lifecycle (legacy, being replaced)
 - `websocket/mod.rs` - WebSocket server (not currently used, kept for future)
 - `state/mod.rs` - Application state management
@@ -154,12 +158,14 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `commands/database.rs` - SQLite database operations (12 commands)
 - `commands/custom_commands.rs` - Custom slash commands management (7 commands)
 - `commands/plugins.rs` - Plugin system (21 commands, 1,667 lines)
+- `commands/background_agents.rs` - Background agent operations (13 commands) (NEW)
+- `commands/memory.rs` - Memory MCP server management (10 commands) (NEW)
 
 ### Critical Frontend Files
 **Stores (1 Zustand store):**
-- `stores/claudeCodeStore.ts` - Main Zustand store (6,044 lines, ~290KB, 170+ actions)
+- `stores/claudeCodeStore.ts` - Main Zustand store (6,148 lines, ~300KB, 172+ actions)
 
-**Services (24 files):**
+**Services (27 files):**
 - `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,259 lines)
 - `services/claudeCodeClient.ts` - Socket.IO client for server communication (1,064 lines)
 - `services/compactionService.ts` - Context compaction logic (588 lines)
@@ -184,6 +190,8 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `services/systemPromptService.ts` - System prompt generation
 - `services/platformUtils.ts` - Platform detection utilities
 - `services/tauriApi.ts` - TypeScript types for Tauri commands
+- `services/backgroundAgentService.ts` - Background agent queue management (340 lines) (NEW)
+- `services/memoryService.ts` - Memory MCP server integration (433 lines) (NEW)
 
 **Components (no /Modals/ directory - modals scattered in subdirs):**
 - `App.minimal.tsx` - Main app component
@@ -192,7 +200,9 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `Analytics/AnalyticsModal.tsx` - Analytics dashboard
 - `Settings/SettingsModalTabbed.tsx` - Current settings (6 tabs: General, Hooks, MCP, Plugins, Skills, Providers)
 - `Settings/PluginsTab.tsx` - Plugin management UI
-- `Settings/SkillsTab.tsx` - Skills management UI (LIMITED: no trigger config UI)
+- `Settings/SkillsTab.tsx` - Skills management UI with tabbed modal (triggers, content editor)
+- `Settings/TriggerEditor.tsx` - Tag-based trigger configuration (NEW)
+- `Settings/ContentEditor.tsx` - Markdown editor with preview (NEW)
 - `Settings/ProvidersTab.tsx` - Multi-provider configuration (Claude, Gemini, OpenAI)
 - `Settings/HooksTab.tsx` - Hook event configuration
 - `Settings/MCPTab.tsx` - MCP server management
@@ -215,9 +225,16 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `SystemModal/SystemModal.tsx` - Global alert/confirm dialogs (68 lines)
 - `ProjectsModal/ProjectsModal.tsx` - Projects and sessions browser (1,045 lines)
 - `ConfirmModal/ConfirmModal.tsx` - Reusable confirmation dialogs (93 lines)
+- `BackgroundAgents/AgentQueuePanel.tsx` - Background agent queue panel (NEW)
+- `BackgroundAgents/ProgressIndicator.tsx` - Real-time progress display (NEW)
+
+**Utilities:**
+- `utils/regexValidator.ts` - ReDoS pattern detection (268 lines) (NEW)
 
 ### Type Definitions
 - `types/ucf.ts` - Unified Conversation Format types (459 lines)
+- `types/backgroundAgents.ts` - Background agent types and helpers (169 lines) (NEW)
+- `types/skill.ts` - Enhanced skill types with YAML parsing (308 lines) (NEW)
 
 ### Server Binaries (in resources/)
 Uses unified binary architecture - server and CLI combined into single binary:
@@ -361,6 +378,116 @@ When building on Windows for Windows, ensure:
 Sync commands: `sync_yume_agents(enabled, model)`, `are_yume_agents_synced`, `cleanup_yume_agents_on_exit`
 PID tracking in `~/.yume/pids/` prevents multi-instance conflicts.
 
+### Background Agents System
+**Async agent execution** with queue management and git branch isolation.
+
+**Architecture**:
+- `AgentQueueManager` - Thread-safe manager for background agent lifecycle
+- `MAX_CONCURRENT_AGENTS`: 4 (parallel execution limit)
+- `AGENT_TIMEOUT_SECS`: 600 (10 minute timeout)
+- Output directory: `~/.yume/agent-output/`
+- Event emission: `background-agent-status` (Tauri event)
+
+**Agent Status Flow**: `Queued` → `Running` → `Completed`/`Failed`/`Cancelled`
+
+**Agent Types** (maps to yume core agents):
+- `Architect` - Plans, designs, decomposes tasks
+- `Explorer` - Finds, reads, understands codebase
+- `Implementer` - Codes, edits, builds
+- `Guardian` - Reviews, audits, verifies
+- `Specialist` - Domain-specific tasks
+- `Custom(String)` - User-defined agents
+
+**Rust Backend** (`src-tauri/src/`):
+- `background_agents.rs` (580 lines) - Queue manager, process spawning, timeout handling
+- `git_manager.rs` (329 lines) - Git branch operations for isolated agent work
+- `commands/background_agents.rs` (397 lines) - 13 Tauri IPC commands
+
+**Git Branch Isolation**:
+- Branch prefix: `yume-async-{agent-type}-{agent-id}`
+- Auto-stash uncommitted changes before branch creation
+- Functions: `create_agent_branch`, `merge_agent_branch`, `delete_agent_branch`
+- Conflict detection: `check_merge_conflicts`
+- Cleanup: `cleanup_old_branches` removes merged branches
+
+**Tauri Commands (13)**:
+1. `queue_background_agent` - Queue new agent with optional git branch
+2. `get_agent_queue` - Get all agents (queued, running, completed)
+3. `get_background_agent` - Get specific agent by ID
+4. `cancel_background_agent` - Cancel running/queued agent
+5. `remove_background_agent` - Remove completed agent (cleans up branch)
+6. `get_agent_output` - Load agent session file
+7. `create_agent_branch` - Create git branch for agent
+8. `get_agent_branch_diff` - Get diff vs main branch
+9. `merge_agent_branch` - Merge agent work into main
+10. `delete_agent_branch` - Delete agent branch
+11. `check_agent_merge_conflicts` - Pre-merge conflict check
+12. `cleanup_old_agents` - Remove agents >24hrs old
+13. `update_agent_progress` - Update progress (from monitor)
+
+**Frontend Service** (`backgroundAgentService.ts`):
+- Event-driven architecture with Tauri event listeners
+- Subscribe/unsubscribe pattern for UI updates
+- Methods: `queueAgent`, `cancelAgent`, `removeAgent`, `mergeAgentBranch`
+- Real-time status synchronization
+
+**UI Components**:
+- `AgentQueuePanel.tsx` (347 lines) - Sliding panel with agent cards
+- `ProgressIndicator.tsx` (55 lines) - Real-time progress display
+
+**yume-cli Integration**:
+Supports `--async`, `--output-file`, `--git-branch` flags for background execution.
+
+### Memory MCP Server System
+**Persistent knowledge graph** using @modelcontextprotocol/server-memory.
+
+**Architecture**:
+- Storage: `~/.yume/memory.jsonl` (JSONL format)
+- MCP server: Spawned via `npx -y @modelcontextprotocol/server-memory`
+- Communication: JSON-RPC over stdin/stdout
+- Auto-start: When `memoryEnabled` is true on app startup
+
+**Knowledge Graph Model**:
+- **Entities**: Named nodes with type and observations
+- **Relations**: Connections between entities with relation type
+- **Observations**: Facts attached to entities
+
+**Rust Backend** (`commands/memory.rs`, 486 lines):
+- Process management for MCP server
+- JSON-RPC request/response handling
+- Cross-platform: Uses `npx.cmd` on Windows, `npx` elsewhere
+
+**Tauri Commands (10)**:
+1. `start_memory_server` - Start MCP server process
+2. `stop_memory_server` - Stop server process
+3. `check_memory_server` - Check if running
+4. `get_memory_file_path` - Get storage path
+5. `memory_create_entities` - Create entities in graph
+6. `memory_create_relations` - Create relations
+7. `memory_add_observations` - Add observations to entity
+8. `memory_search_nodes` - Search knowledge graph
+9. `memory_read_graph` - Read entire graph
+10. `memory_delete_entity` - Delete entity and relations
+
+**Frontend Service** (`memoryService.ts`, 433 lines):
+- Singleton service initialized on app startup
+- High-level methods:
+  - `remember(projectPath, fact, category)` - Store project fact
+  - `rememberPattern(pattern, context)` - Store coding pattern
+  - `rememberErrorFix(error, solution)` - Store error/fix pair
+  - `getRelevantMemories(context, maxResults)` - Get memories for prompt
+  - `extractLearnings(projectPath, userMessage, response)` - Auto-extract patterns
+
+**Store Integration**:
+- `memoryEnabled` - Enable/disable memory system
+- `memoryServerRunning` - Server status tracking
+- Actions: `setMemoryEnabled()`, `setMemoryServerRunning()`
+
+**Auto-Learning**:
+Automatically extracts and stores:
+- Error/fix patterns (when conversation contains error keywords)
+- Architecture decisions (when keywords like "best practice" appear)
+
 ### License Management System
 **Demo vs Pro**: Demo users limited to 2 tabs and 1 window. Pro license ($21) unlocks 99 tabs and 99 windows.
 
@@ -427,12 +554,13 @@ PID tracking in `~/.yume/pids/` prevents multi-instance conflicts.
 
 **Location**: `src/renderer/components/Settings/SkillsTab.tsx`
 
-**Status**: PARTIALLY IMPLEMENTED
-- UI only supports name/description editing
-- Trigger configuration NOT implemented in UI
-- Content editing NOT implemented in UI
-- Rust commands `write_skill_file`, `remove_skill_file` exist (implemented in commands/mod.rs)
-- All systems use `.md` files with YAML frontmatter (no format mismatch)
+**Status**: COMPLETE
+- Tabbed modal with General, Triggers, and Content tabs
+- `TriggerEditor.tsx` - Tag-based trigger configuration (extensions, keywords, regex)
+- `ContentEditor.tsx` - Markdown editor with preview toggle
+- `regexValidator.ts` - ReDoS detection for regex patterns
+- Rust commands `write_skill_file`, `remove_skill_file` for persistence
+- YAML frontmatter sync for skill files
 
 **Skill Types**:
 - **Custom Skills**: User-created, stored in localStorage (`yume_custom_skills`)
@@ -445,19 +573,56 @@ id: skill-id
 name: Skill Name
 description: What this skill does
 triggers:
-  - "*.py"
-  - "python"
-  - "/^def /"
+  extensions: ["*.py", "*.pyw"]
+  keywords: ["python", "django"]
+  patterns: ["/^def /", "/import .* from/"]
+  matchMode: any
 enabled: true
 ---
 Context to inject when triggered
 ```
 
-**Current Features**:
+**UI Components**:
+
+`TriggerEditor.tsx` (287 lines):
+- Tag-based UI for file patterns, keywords, regex
+- Three input sections: Extensions (*.ts), Keywords (react), Patterns (/regex/)
+- Real-time ReDoS validation with risk indicators
+- Match mode toggle: ANY (OR logic) vs ALL (AND logic)
+- Visual feedback: error (red), warning (yellow), safe (green)
+- Backspace removes last tag, Enter adds new tag
+
+`ContentEditor.tsx` (178 lines):
+- Markdown editor with live preview toggle
+- Syntax highlighting for code blocks
+- Token estimation: ~1 token per 4 characters
+- Performance warning at >500 tokens
+- Placeholder text with instructions
+
+`regexValidator.ts` (268 lines):
+- ReDoS (Regular Expression Denial of Service) detection
+- Risk levels: `safe`, `low`, `medium`, `high`
+- Detects dangerous patterns:
+  - Nested quantifiers: `(a+)+`, `(a*)*`
+  - Overlapping alternations: `(a|a)+`
+  - Catastrophic backtracking: `.*.*`
+- Performance testing with adversarial strings
+- Suggestions for pattern optimization
+- Functions: `validateRegex()`, `testRegexPerformance()`
+
+`types/skill.ts` (308 lines):
+- Enhanced `SkillTriggers` interface
+- YAML frontmatter parsing/generation: `parseSkillFrontmatter()`, `generateSkillFrontmatter()`
+- Trigger evaluation: `skillMatchesContext()` checks if skill should activate
+- Glob pattern to regex conversion for file matching
+
+**Features**:
 - Toggle enable/disable status
 - View plugin skill source attribution
 - Combined view of all available skills
-- Name/description editing only
+- Name/description/triggers/content editing
+- ReDoS validation with performance warnings
+- Match mode: any (default) or all triggers must match
 
 ### Performance Monitoring
 **Real-time performance metrics** for debugging and optimization.
@@ -958,6 +1123,67 @@ window.perfMonitor.exportMetrics();
 - Session count per project
 - Daily usage trends
 
+### Using Background Agents
+
+**Queue an Agent**:
+1. Open Command Palette (Cmd+P)
+2. Search for "queue agent" or use programmatic API
+3. Select agent type (Architect, Explorer, Implementer, Guardian, Specialist)
+4. Enter prompt/task description
+5. Optionally enable git branch isolation
+
+**Monitor Progress**:
+- View agent queue panel (sliding panel on right)
+- See real-time progress: turn count, current action, tokens used
+- Agents show status: Queued, Running, Completed, Failed, Cancelled
+
+**Review Agent Work**:
+1. Click completed agent to expand
+2. View output file contents
+3. If git branch enabled, review diff vs main
+4. Merge changes or discard
+
+**Git Branch Workflow**:
+- Agents can work in isolated branches: `yume-async-{type}-{id}`
+- Review changes before merging: `get_agent_branch_diff`
+- Check for conflicts: `check_agent_merge_conflicts`
+- Merge when ready: `merge_agent_branch` (auto-deletes branch)
+
+### Using Memory System
+
+**Enable Memory**:
+1. Open Settings → General tab
+2. Enable "Memory System" toggle
+3. Server auto-starts on next app launch
+
+**How It Works**:
+- Memory is stored in `~/.yume/memory.jsonl`
+- Knowledge graph with entities, relations, observations
+- Auto-learns from conversations (errors, patterns, decisions)
+
+**Manual Memory Operations**:
+```javascript
+// Store a fact about current project
+await memoryService.remember('/path/to/project', 'Prefers functional components', 'preference');
+
+// Store a coding pattern
+await memoryService.rememberPattern('Error Handling', 'Always use try-catch with specific error types');
+
+// Store error/solution pair
+await memoryService.rememberErrorFix('Module not found', 'Check import paths and tsconfig paths');
+
+// Search memories
+const { entities, relations } = await memoryService.searchNodes('react patterns');
+
+// Get relevant memories for prompt injection
+const context = await memoryService.getRelevantMemories('How should I handle errors?');
+```
+
+**View Memory Data**:
+- File location: `~/.yume/memory.jsonl`
+- Format: JSONL with entities and relations
+- Can be edited manually if needed
+
 ### Using Timeline & Checkpoints
 
 **Create Checkpoint**:
@@ -1163,10 +1389,12 @@ After running build commands:
 - **No mid-conversation switching**: Must fork session to change providers (by design)
 
 ### Skills System
-**Status**: PARTIALLY IMPLEMENTED
-- **No trigger config UI**: Skills only support name/description editing in UI
-- **No content editing UI**: Must edit .md files directly
-- Rust commands `write_skill_file`, `remove_skill_file` ARE implemented
+**Status**: COMPLETE
+- Tabbed modal with General, Triggers, and Content tabs
+- TriggerEditor for extensions/keywords/regex patterns
+- ContentEditor with markdown preview
+- ReDoS validation for regex patterns
+- Full CRUD operations via Rust commands
 
 ### Checkpoint System
 **Status**: ENABLED (feature flag true, but socket listeners disabled)
@@ -1222,9 +1450,138 @@ After running build commands:
 
 **Usage**: Displayed in ContextBar to show code impact per session
 
+## Competitive Analysis (January 2026)
+
+### Market Landscape
+
+| Tool | Type | Pricing | Valuation/Status | Key Strength |
+|------|------|---------|------------------|--------------|
+| **Cursor** | Full IDE (VS Code fork) | $20-200/mo | $29B, $1B ARR | Background agents, BugBot PR review |
+| **Windsurf** | Full IDE | $15-60/mo | Acquired by OpenAI $3B | Cascade agent, SWE-1 models |
+| **GitHub Copilot** | IDE Extension | $10-39/mo | Microsoft | Ecosystem integration, agent mode |
+| **Continue.dev** | Open Source Extension | Free/$10 teams | 26k GitHub stars | Model-agnostic, 100% air-gapped |
+| **Aider** | Terminal CLI | Free (BYOK) | Open source | Deep git integration, architect mode |
+| **Zed** | Rust IDE | Free/$10 pro | $32M funding | 10x startup speed, ACP protocol |
+| **Sourcegraph Cody** | Enterprise | $59/user/mo | Enterprise only now | Multi-repo context, codebase indexing |
+| **Yume** | Claude CLI GUI | $21 one-time | Independent | Multi-provider, plugin system, 5 agents |
+
+### Yume's Competitive Advantages
+
+**Unique Features (competitors lack):**
+1. **Multi-Provider CLI Shim** - Transparent Claude/Gemini/OpenAI support via unified interface
+2. **Background Agents with Git Isolation** - 4 concurrent agents with automatic branch management
+3. **Persistent Memory System** - Knowledge graph via MCP server (auto-learns patterns)
+4. **5 Specialized Core Agents** - Architect/Explorer/Implementer/Guardian/Specialist workflow
+5. **Plugin System with 5 Components** - Commands/Agents/Hooks/Skills/MCP in single framework
+6. **Skills with ReDoS Protection** - Safe regex-based context injection
+7. **Unified Conversation Format (UCF)** - Provider-agnostic conversation portability
+8. **Voice Dictation** - Native Web Speech API integration
+9. **Line Changes Tracking** - Per-session code modification statistics
+10. **One-Time Pricing** - $21 vs $20-200/month subscriptions
+
+**Strong Features (competitive parity):**
+- Analytics dashboard with project/model/date breakdowns
+- Timeline & checkpoints for conversation branching
+- Performance monitoring with FPS/memory/metrics export
+- CLAUDE.md in-app editor
+- 11 built-in themes with OLED support
+- Context compaction with intelligent thresholds
+
+### Next Features to Implement
+
+**RECENTLY COMPLETED (January 2026):**
+1. **Background/Async Agents** - FULLY DOCUMENTED
+   - `background_agents.rs` - Agent queue manager (MAX_CONCURRENT=4, 10min timeout)
+   - `git_manager.rs` - Git branch operations for isolated agent work
+   - `commands/background_agents.rs` - 13 Tauri commands for agent lifecycle
+   - yume-cli extended with `--async`, `--output-file`, `--git-branch` flags
+   - `AgentQueuePanel.tsx` - Sliding panel UI with agent cards
+   - `ProgressIndicator.tsx` - Real-time progress display
+   - `backgroundAgentService.ts` - Event-driven service with Tauri listeners
+2. **Memory MCP Server System** - FULLY DOCUMENTED
+   - `commands/memory.rs` - 10 Tauri commands for MCP memory server
+   - `memoryService.ts` - Frontend service with auto-learning from conversations
+   - Storage: `~/.yume/memory.jsonl` (persistent knowledge graph)
+3. **Skills UI Completion** - FULLY DOCUMENTED
+   - `TriggerEditor.tsx` - Tag-based trigger config (extensions, keywords, regex)
+   - `ContentEditor.tsx` - Markdown editor with preview toggle
+   - `regexValidator.ts` - ReDoS detection utility
+   - `types/skill.ts` - Enhanced types with YAML frontmatter parsing
+   - YAML frontmatter sync for skill files
+
+### Future Feature Gaps
+
+**HIGH PRIORITY:**
+- **Automated PR Review** - BugBot equivalent: catch bugs before merge
+- **Inline Code Suggestions** - Autocomplete beyond @mentions and /commands
+
+**MEDIUM PRIORITY:**
+- **Git Commit/Push UI** - Currently view-only (status/diff)
+- **Code Navigation** - Go-to-definition, find references (beyond LSP tools)
+
+**LOWER PRIORITY:**
+- **Windows/Linux Unified Binaries** - Build scripts exist, need compilation
+- **Checkpoint System Activation** - Socket listeners disabled, feature flag true
+
+### Technology Trends to Monitor
+
+**Multi-Agent Systems** (Gartner: 1,445% inquiry surge):
+- Cursor: Up to 8 parallel agents, multi-agent judging
+- Yume: 5 specialized agents (needs parallel execution)
+
+**Protocol Standardization**:
+- MCP (Model Context Protocol): Yume supports via plugins
+- ACP (Agent Client Protocol): Zed's open standard, JetBrains adopting
+- A2A (Agent-to-Agent): Cross-vendor agent communication
+
+**Local Models** (Privacy trend):
+- Continue.dev: Full Ollama support
+- Zed: Zeta local model (200ms p50 latency)
+- Yume: Consider local model support via yume-cli
+
+**Security Concerns** (45% AI code has flaws):
+- Automated code review before commit
+- Hallucination detection for dependencies
+- Shadow AI detection for enterprise
+
+### Pricing Strategy Analysis
+
+| Competitor | Monthly | Annual | Yume Advantage |
+|------------|---------|--------|----------------|
+| Cursor Pro | $20 | $240 | 91% savings |
+| Windsurf Pro | $15 | $180 | 88% savings |
+| Copilot Pro | $10 | $100 | 79% savings |
+| Copilot Pro+ | $39 | $468 | 96% savings |
+| **Yume Pro** | - | **$21 once** | **Lifetime access** |
+
+Yume's one-time pricing is significant competitive advantage as competitors move to credit-based models with unpredictable costs.
+
 ## Version History
 
-**Current audit**: 2026-01-17 (post-feature review)
+**Current audit**: 2026-01-17 (comprehensive documentation update)
+- **Rust files**: 36 files, ~18,500 lines, 175 Tauri commands (was 152)
+- **Store**: claudeCodeStore.ts now 6,148 lines (was 6,044), 172+ actions
+- **Services**: 27 files (was 25), +2: backgroundAgentService.ts, memoryService.ts
+- **NEW MAJOR FEATURES DOCUMENTED**:
+  - **Background Agents System** - Complete async agent execution with queue management
+    - `background_agents.rs` (580 lines) - Queue manager with 4 concurrent agents, 10min timeout
+    - `git_manager.rs` (329 lines) - Git branch isolation for agent work
+    - `commands/background_agents.rs` (397 lines) - 13 Tauri commands
+    - `backgroundAgentService.ts` (340 lines) - Frontend event-driven service
+    - `AgentQueuePanel.tsx` (347 lines), `ProgressIndicator.tsx` (55 lines) - UI components
+  - **Memory MCP Server System** - Persistent knowledge graph
+    - `commands/memory.rs` (486 lines) - 10 Tauri commands for MCP server
+    - `memoryService.ts` (433 lines) - Frontend service with auto-learning
+    - Storage: `~/.yume/memory.jsonl`
+  - **Skills UI Completion** - Full trigger/content editing
+    - `TriggerEditor.tsx` (287 lines) - Tag-based trigger config
+    - `ContentEditor.tsx` (178 lines) - Markdown editor with preview
+    - `regexValidator.ts` (268 lines) - ReDoS detection utility
+    - `types/skill.ts` (308 lines) - Enhanced skill types
+- **New types documented**: backgroundAgents.ts (169 lines), skill.ts (308 lines)
+- **Tauri command breakdown updated**: 175 total commands across 12 command files
+
+**Previous audit**: 2026-01-17 (post-feature review)
 - **Rust files**: 32 files, ~17,000 lines, 152 Tauri commands (was 148)
 - **Store**: claudeCodeStore.ts now 6,044 lines (was 6,015)
 - **ClaudeChat.tsx**: 5,617 lines (was 5,537)

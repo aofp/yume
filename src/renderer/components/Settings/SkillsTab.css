@@ -289,6 +289,13 @@
   max-width: 90vw;
 }
 
+.skill-edit-modal-large {
+  width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .skill-edit-modal h4 {
   color: var(--accent-color);
   font-size: var(--text-base);
@@ -372,4 +379,80 @@
 .skill-save-btn:disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* Modal Tabs */
+.skill-modal-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--fg-15);
+  padding-bottom: 8px;
+}
+
+.skill-modal-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--fg-50);
+  font-size: var(--text-sm);
+  cursor: default;
+  transition: all 0.1s;
+}
+
+.skill-modal-tab:hover {
+  background: var(--fg-08);
+  color: var(--fg-70);
+}
+
+.skill-modal-tab.active {
+  background: var(--fg-10);
+  color: var(--accent-color);
+}
+
+.skill-modal-tab svg {
+  opacity: 0.7;
+}
+
+.skill-modal-tab.active svg {
+  opacity: 1;
+}
+
+/* Modal Content */
+.skill-modal-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+/* Plugin Info */
+.skill-plugin-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--fg-50);
+  margin-top: 4px;
+}
+
+/* Trigger Count Badge */
+.skill-trigger-count {
+  font-size: var(--text-xs);
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--fg-08);
+  color: var(--fg-50);
+}
+
+/* Trigger Warning */
+.skill-trigger-warning {
+  font-size: var(--text-xs);
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 180, 100, 0.15);
+  color: #ffb464;
 }

@@ -15,7 +15,7 @@ export type Theme = {
   isBuiltIn?: boolean;
 };
 
-export const BUILT_IN_THEMES: Theme[] = [
+export const BUILT_IN_THEMES = [
   // === SORTED BY ACCENT HUE: violet → blue → cyan → green → yellow → orange → pink ===
 
   // yume - signature theme (violet ~255°)
@@ -128,9 +128,9 @@ export const BUILT_IN_THEMES: Theme[] = [
     name: 'ochre',
     backgroundColor: '#0a0908',
     foregroundColor: '#faf0d6',
-    accentColor: '#e9a828',
+    accentColor: '#ffc85b',
     positiveColor: '#87bb26',
-    negativeColor: '#cc241d',
+    negativeColor: '#f0423b',
     opacity: 1.0,
     isBuiltIn: true
   },
@@ -156,7 +156,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     foregroundColor: '#e8dcd0',
     accentColor: '#d57b60',
     positiveColor: '#8fbc8f',
-    negativeColor: '#fd8b8b',
+    negativeColor: '#ed6780',
     opacity: 1.0,
     isBuiltIn: true
   },
@@ -173,15 +173,10 @@ export const BUILT_IN_THEMES: Theme[] = [
     opacity: 1.0,
     isBuiltIn: true
   }
-];
+] satisfies readonly Theme[];
 
 // Default theme is the first one (yume)
 export const DEFAULT_THEME = BUILT_IN_THEMES[0];
-
-// Helper to get theme by ID
-export function getThemeById(id: string): Theme | undefined {
-  return BUILT_IN_THEMES.find(t => t.id === id);
-}
 
 // Default theme colors for init scripts (before React loads)
 export const DEFAULT_COLORS = {
@@ -190,4 +185,4 @@ export const DEFAULT_COLORS = {
   accent: DEFAULT_THEME.accentColor,
   positive: DEFAULT_THEME.positiveColor,
   negative: DEFAULT_THEME.negativeColor
-};
+} as const;

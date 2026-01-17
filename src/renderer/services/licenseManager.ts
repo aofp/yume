@@ -1,3 +1,5 @@
+// SECURITY NOTE: see audit report for critical vulnerabilities
+
 /**
  * license management for yume
  * demo: 2 tabs, 1 window

@@ -1,6 +1,35 @@
 // Performance configuration - optimized for snappy responsiveness
 
-export const PERFORMANCE_CONFIG = {
+export const PERFORMANCE_CONFIG: Readonly<{
+  VIRTUALIZATION_THRESHOLD: number;
+  VIRTUAL_OVERSCAN: number;
+  MESSAGE_BATCH_SIZE: number;
+  SEARCH_DEBOUNCE: number;
+  TYPING_DEBOUNCE: number;
+  RESIZE_DEBOUNCE: number;
+  SCROLL_THROTTLE: number;
+  MAX_MESSAGES_IN_MEMORY: number;
+  MAX_CACHE_SIZE: number;
+  CLEANUP_INTERVAL: number;
+  AUTO_SAVE_INTERVAL: number;
+  AUTO_CHECKPOINT_MESSAGES: number;
+  AUTO_CHECKPOINT_TOKENS: number;
+  SOCKET_RECONNECT_DELAY: number;
+  SOCKET_MAX_RECONNECT_ATTEMPTS: number;
+  REQUEST_TIMEOUT: number;
+  ANIMATION_DURATION: number;
+  TRANSITION_DURATION: number;
+  LOADER_DELAY: number;
+  ENABLE_PERFORMANCE_MONITORING: boolean;
+  LOG_SLOW_RENDERS: boolean;
+  SLOW_RENDER_THRESHOLD: number;
+  LOG_MEMORY_USAGE: boolean;
+  MEMORY_WARNING_THRESHOLD: number;
+  USE_WEB_WORKERS: boolean;
+  USE_INDEXED_DB: boolean;
+  USE_SERVICE_WORKER: boolean;
+  ENABLE_OFFLINE_MODE: boolean;
+}> = {
   // Message rendering
   VIRTUALIZATION_THRESHOLD: 50, // Use virtualization when messages exceed this count
   VIRTUAL_OVERSCAN: 25, // Number of items to render outside viewport (aggressive to eliminate flicker)
@@ -45,12 +74,3 @@ export const PERFORMANCE_CONFIG = {
   USE_SERVICE_WORKER: false,
   ENABLE_OFFLINE_MODE: false,
 };
-
-// Apply performance configuration to CSS variables
-export function applyPerformanceConfig(config: Partial<typeof PERFORMANCE_CONFIG>) {
-  Object.assign(PERFORMANCE_CONFIG, config);
-
-  document.documentElement.style.setProperty('--animation-duration', `${config.ANIMATION_DURATION ?? PERFORMANCE_CONFIG.ANIMATION_DURATION}ms`);
-  document.documentElement.style.setProperty('--transition-duration', `${config.TRANSITION_DURATION ?? PERFORMANCE_CONFIG.TRANSITION_DURATION}ms`);
-  document.documentElement.style.setProperty('--gpu-acceleration', 'auto');
-}

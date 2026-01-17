@@ -47,6 +47,7 @@ import { FEATURE_FLAGS } from '../../config/features';
 import { APP_NAME, appEventName, appStorageKey } from '../../config/app';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { pluginService } from '../../services/pluginService';
+import { backgroundAgentService } from '../../services/backgroundAgentService';
 import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
@@ -312,6 +313,7 @@ export const ClaudeChat: React.FC = () => {
   } | null>(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
+  const [backgroundAgentCount, setBackgroundAgentCount] = useState(0);
   const recognitionRef = useRef<any>(null);
   const dictationBaseTextRef = useRef<string>(''); // Text before dictation started
   const [searchQuery, setSearchQuery] = useState('');
@@ -354,7 +356,7 @@ export const ClaudeChat: React.FC = () => {
   const [showClaudeMdEditor, setShowClaudeMdEditor] = useState(false);
   const [hasResumableConversations, setHasResumableConversations] = useState<{ [sessionId: string]: boolean }>({});
   // Per-session panel states (derived values set after store destructuring)
-  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; filesSubTab: 'files' | 'git'; rollback: boolean } }>({});
+  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; filesSubTab: 'files' | 'git' | 'sessions'; rollback: boolean } }>({});
   // File browser state
   const [fileTree, setFileTree] = useState<any[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -370,6 +372,7 @@ export const ClaudeChat: React.FC = () => {
   const [gitLineStats, setGitLineStats] = useState<{ [file: string]: { added: number; deleted: number } }>({});
   const [gitDiff, setGitDiff] = useState<DiffDisplay | null>(null);
   const [selectedGitFile, setSelectedGitFile] = useState<string | null>(null);
+  const [selectedSessionFile, setSelectedSessionFile] = useState<string | null>(null);
   const [gitLoading, setGitLoading] = useState(false);
   const [isGitRepo, setIsGitRepo] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(true); // Start collapsed
@@ -523,11 +526,11 @@ export const ClaudeChat: React.FC = () => {
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
   // Get filesSubTab from localStorage (global preference) or fall back to session state
-  const savedFilesSubTab = localStorage.getItem('yume-files-sub-tab') as 'files' | 'git' | null;
+  const savedFilesSubTab = localStorage.getItem('yume-files-sub-tab') as 'files' | 'git' | 'sessions' | null;
   const filesSubTab = savedFilesSubTab ?? (currentSessionId ? panelStates[currentSessionId]?.filesSubTab ?? 'files' : 'files');
   const showGitPanel = showFilesPanel && filesSubTab === 'git'; // derived from sub-tab
   const showRollbackPanel = currentSessionId ? panelStates[currentSessionId]?.rollback ?? false : false;
-  const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean), subTab?: 'files' | 'git') => {
+  const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean), subTab?: 'files' | 'git' | 'sessions') => {
     if (!currentSessionId) return;
     // Save subTab to localStorage if provided
     if (subTab) {
@@ -539,7 +542,7 @@ export const ClaudeChat: React.FC = () => {
       return { ...prev, [currentSessionId]: { ...current, files: newFiles, filesSubTab: subTab ?? current.filesSubTab, rollback: newFiles ? false : current.rollback } };
     });
   }, [currentSessionId]);
-  const setFilesSubTab = useCallback((subTab: 'files' | 'git') => {
+  const setFilesSubTab = useCallback((subTab: 'files' | 'git' | 'sessions') => {
     // Save globally to localStorage
     localStorage.setItem('yume-files-sub-tab', subTab);
     if (!currentSessionId) return;
@@ -672,6 +675,15 @@ export const ClaudeChat: React.FC = () => {
     const interval = setInterval(() => fetchUsageLimits(true), 20 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchUsageLimits]);
+
+  // subscribe to background agent count updates
+  useEffect(() => {
+    const unsubscribe = backgroundAgentService.subscribe((agents) => {
+      const runningCount = agents.filter(a => a.status === 'running' || a.status === 'queued').length;
+      setBackgroundAgentCount(runningCount);
+    });
+    return unsubscribe;
+  }, []);
 
   // Also force refresh when modal opens
   useEffect(() => {
@@ -1461,42 +1473,64 @@ export const ClaudeChat: React.FC = () => {
     setShowClearConfirm(false);
   }, [currentSessionId, clearContext, setIsAtBottom, setScrollPositions]);
 
-  // Stop bash command
-  const handleStopBash = useCallback(() => {
+  // Stop bash command or streaming session
+  // This is the primary handler for the stop button and ESC key
+  const handleStopBash = useCallback(async () => {
+    console.log('[ClaudeChat] handleStopBash called', {
+      bashProcessId: currentSession?.bashProcessId,
+      streaming: currentSession?.streaming,
+      runningBash: currentSession?.runningBash,
+      sessionId: currentSessionId
+    });
+
+    // Try to kill bash process if one is running
     if (currentSession?.bashProcessId) {
-      import('@tauri-apps/api/core').then(({ invoke }) => {
-        invoke('kill_bash_process', {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('kill_bash_process', {
           processId: currentSession.bashProcessId
-        }).then(() => {
-          // Add cancelled message with elapsed time
-          const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
-          const cancelMessage = {
-            id: `bash-cancel-${Date.now()}`,
-            type: 'system' as const,
-            subtype: 'interrupted' as const,
-            message: `bash command cancelled (${elapsedTime}s)`,
-            timestamp: Date.now()
-          };
-
-          if (currentSessionId) {
-            addMessageToSession(currentSessionId, cancelMessage);
-          }
-
-          // Clear flags immediately
-          useClaudeCodeStore.setState(state => ({
-            sessions: state.sessions.map(s =>
-              s.id === currentSessionId
-                ? { ...s, runningBash: false, userBashRunning: false, bashProcessId: undefined }
-                : s
-            )
-          }));
-        }).catch(error => {
-          console.error('Failed to kill bash process:', error);
         });
-      });
-    } else if (currentSession?.streaming) {
-      // Fallback to interrupting the session if no bash process but streaming
-      interruptSession();
+
+        // Add cancelled message with elapsed time
+        const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
+        const cancelMessage = {
+          id: `bash-cancel-${Date.now()}`,
+          type: 'system' as const,
+          subtype: 'interrupted' as const,
+          message: `bash command cancelled (${elapsedTime}s)`,
+          timestamp: Date.now()
+        };
+
+        if (currentSessionId) {
+          addMessageToSession(currentSessionId, cancelMessage);
+        }
+
+        // Clear flags immediately
+        useClaudeCodeStore.setState(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === currentSessionId
+              ? { ...s, runningBash: false, userBashRunning: false, bashProcessId: undefined }
+              : s
+          )
+        }));
+
+        console.log('[ClaudeChat] Bash process killed successfully');
+      } catch (error) {
+        console.error('[ClaudeChat] Failed to kill bash process:', error);
+        // Fall through to interrupt the session as well
+      }
+    }
+
+    // Always interrupt the session if streaming (regardless of bash process result)
+    // This ensures the Claude process is also killed, not just the bash subprocess
+    if (currentSession?.streaming) {
+      console.log('[ClaudeChat] Interrupting streaming session');
+      try {
+        await interruptSession(currentSessionId || undefined);
+        console.log('[ClaudeChat] Session interrupted successfully');
+      } catch (error) {
+        console.error('[ClaudeChat] Failed to interrupt session:', error);
+      }
     }
   }, [currentSession?.bashProcessId, currentSession?.streaming, currentSessionId, bashElapsedTimes, addMessageToSession, interruptSession]);
 
@@ -2073,6 +2107,19 @@ export const ClaudeChat: React.FC = () => {
           setFocusedFileIndex(-1);
           setFocusedGitIndex(-1);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        // Toggle files panel on sessions sub-tab (only if has session changes)
+        if (currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0)) {
+          if (showFilesPanel && filesSubTab === 'sessions') {
+            setShowFilesPanel(false);
+          } else {
+            setShowFilesPanel(true, 'sessions');
+          }
+          setSelectedSessionFile(null);
+          setFocusedFileIndex(-1);
+          setFocusedGitIndex(-1);
+        }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'h' && showHistory) {
         e.preventDefault();
         // Toggle rollback/history panel (only if enabled in settings)
@@ -2300,7 +2347,39 @@ export const ClaudeChat: React.FC = () => {
     loadFileTree();
   }, [showFilesPanel, currentSession?.workingDirectory, isGitRepo]);
 
-  // Load git status when git panel is opened, and refresh every 30s while open
+  // Passive git status refresh for context bar badge (30s when panel closed, 15s when open)
+  useEffect(() => {
+    // Helper to normalize file paths for consistent matching across platforms
+    const normalizePaths = (paths: string[]): string[] =>
+      paths.map(p => p.replace(/\\/g, '/'));
+
+    // Lightweight refresh - just status for badge count
+    const refreshGitStatusLight = async () => {
+      if (!isGitRepo || !currentSession?.workingDirectory) return;
+      try {
+        const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
+        setGitStatus({
+          modified: normalizePaths(status.modified || []),
+          added: normalizePaths(status.added || []),
+          deleted: normalizePaths(status.deleted || []),
+          untracked: []
+        });
+      } catch {
+        // Silently fail
+      }
+    };
+
+    // Initial load
+    refreshGitStatusLight();
+
+    // Passive refresh: 30s when panel closed, 15s when open
+    const interval = showFilesPanel ? 15000 : 30000;
+    const intervalId = setInterval(refreshGitStatusLight, interval);
+
+    return () => clearInterval(intervalId);
+  }, [isGitRepo, currentSession?.workingDirectory, showFilesPanel]);
+
+  // Load full git details when panel is opened
   useEffect(() => {
     // Helper to fetch and parse line stats
     const fetchLineStats = async (workingDir: string) => {
@@ -2344,8 +2423,8 @@ export const ClaudeChat: React.FC = () => {
       }
     };
 
-    // Silent refresh - doesn't show loading or clear current state
-    const refreshGitStatus = async () => {
+    // Full refresh with extra details (branch, line stats, ahead count)
+    const refreshGitStatusFull = async () => {
       if (!showFilesPanel || !isGitRepo || !currentSession?.workingDirectory) return;
       try {
         const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
@@ -2411,12 +2490,14 @@ export const ClaudeChat: React.FC = () => {
     };
 
     // Load immediately when panel opens (with loading state)
-    loadGitStatus();
+    if (showFilesPanel) {
+      loadGitStatus();
+    }
 
-    // Auto-refresh every 30 seconds while panel is open (silent, no loading state)
+    // Full refresh every 15s while panel is open (silent, no loading state)
     let intervalId: ReturnType<typeof setInterval> | null = null;
     if (showFilesPanel && isGitRepo && currentSession?.workingDirectory) {
-      intervalId = setInterval(refreshGitStatus, 30000);
+      intervalId = setInterval(refreshGitStatusFull, 15000);
     }
 
     return () => {
@@ -4282,6 +4363,21 @@ export const ClaudeChat: React.FC = () => {
                       </span>
                     )}
                   </button>
+                  <button
+                    className={`tool-panel-tab ${filesSubTab === 'sessions' ? 'active' : ''} ${!(currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0)) ? 'disabled' : ''}`}
+                    onClick={() => setFilesSubTab('sessions')}
+                    disabled={!(currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0))}
+                    title={`session changes (${modKey}+s)`}
+                  >
+                    <IconPencil size={12} stroke={1.5} />
+                    <span>session</span>
+                    {currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0) && (
+                      <span className="git-tab-stats">
+                        <span className="git-added">+{currentSession.lineChanges.added}</span>
+                        <span className="git-deleted">-{currentSession.lineChanges.removed}</span>
+                      </span>
+                    )}
+                  </button>
                 </div>
               </>
             ) : (
@@ -4524,6 +4620,98 @@ export const ClaudeChat: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </>
+            )}
+            {/* Files Panel - Sessions Tab */}
+            {showFilesPanel && filesSubTab === 'sessions' && (
+              <>
+                <div className="tool-panel-list">
+                  {(() => {
+                    // Aggregate files from restorePoints
+                    const restorePoints = currentSession?.restorePoints || [];
+                    const fileMap = new Map<string, { operations: string[]; linesAdded: number; linesRemoved: number; latestSnapshot: any }>();
+                    restorePoints.forEach(rp => {
+                      rp.fileSnapshots.forEach((snap: any) => {
+                        const existing = fileMap.get(snap.path);
+                        if (existing) {
+                          if (!existing.operations.includes(snap.operation)) {
+                            existing.operations.push(snap.operation);
+                          }
+                          existing.latestSnapshot = snap;
+                        } else {
+                          fileMap.set(snap.path, {
+                            operations: [snap.operation],
+                            linesAdded: 0,
+                            linesRemoved: 0,
+                            latestSnapshot: snap,
+                          });
+                        }
+                      });
+                    });
+                    const files = Array.from(fileMap.entries()).map(([path, data]) => ({ path, ...data })).sort((a, b) => a.path.localeCompare(b.path));
+
+                    if (files.length === 0) {
+                      return <div className="tool-panel-empty">no file changes in this session</div>;
+                    }
+
+                    const getStatusLabel = (ops: string[]) => {
+                      if (ops.includes('create')) return 'A';
+                      if (ops.includes('delete')) return 'D';
+                      if (ops.includes('edit') || ops.includes('multiedit')) return 'M';
+                      if (ops.includes('write')) return 'W';
+                      return 'M';
+                    };
+                    const getStatusClass = (ops: string[]) => {
+                      if (ops.includes('create')) return 'added';
+                      if (ops.includes('delete')) return 'deleted';
+                      return 'modified';
+                    };
+
+                    return (
+                      <div className="git-file-list">
+                        {files.map((file) => (
+                          <div
+                            key={file.path}
+                            className={`git-file-item ${selectedSessionFile === file.path ? 'selected' : ''}`}
+                            onClick={() => setSelectedSessionFile(selectedSessionFile === file.path ? null : file.path)}
+                          >
+                            <span className={`git-status ${getStatusClass(file.operations)}`}>{getStatusLabel(file.operations)}</span>
+                            <span className="git-file-name">{file.path}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+                {selectedSessionFile && (() => {
+                  const restorePoints = currentSession?.restorePoints || [];
+                  let latestSnap: any = null;
+                  for (const rp of restorePoints) {
+                    for (const snap of rp.fileSnapshots) {
+                      if (snap.path === selectedSessionFile) {
+                        latestSnap = snap;
+                      }
+                    }
+                  }
+                  if (!latestSnap || (!latestSnap.oldContent && !latestSnap.content)) return null;
+                  const diff = { oldContent: latestSnap.oldContent || '', newContent: latestSnap.content || '' };
+                  return (
+                    <div className="tool-panel-preview">
+                      <div className="tool-panel-preview-header">
+                        <span className="tool-panel-preview-filename">{selectedSessionFile}</span>
+                        <button
+                          className="tool-panel-preview-close"
+                          onClick={() => setSelectedSessionFile(null)}
+                        >
+                          <IconX size={10} stroke={1.5} />
+                        </button>
+                      </div>
+                      <div className="tool-panel-preview-diff">
+                        <DiffViewer diff={diff} />
+                      </div>
+                    </div>
+                  );
+                })()}
               </>
             )}
             {/* Rollback Panel */}
@@ -5123,6 +5311,16 @@ export const ClaudeChat: React.FC = () => {
           );
         })()}
         <div ref={messagesEndRef} />
+        {/* Scroll to bottom button - shows when not at bottom */}
+        {currentSessionId && isAtBottom[currentSessionId] === false && (
+          <button
+            className="scroll-to-bottom-btn"
+            onClick={() => scrollToBottomHelper('smooth')}
+            title="scroll to bottom"
+          >
+            <IconChevronDown size={16} />
+          </button>
+        )}
       </div>
       )}
 
@@ -5151,7 +5349,7 @@ export const ClaudeChat: React.FC = () => {
           />
         </React.Suspense>
       )}
-      
+
       {/* Activity indicator moved inline with thinking indicator at end of messages */}
 
       {/* Input Area - textarea with attachments, drag-drop, and streaming controls */}
@@ -5237,6 +5435,8 @@ export const ClaudeChat: React.FC = () => {
               filesSubTab={filesSubTab}
               onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
               lineChanges={currentSession?.lineChanges}
+              onOpenSessionChanges={() => setShowFilesPanel(true, 'sessions')}
+              backgroundAgentCount={backgroundAgentCount}
             />
           </InputArea>
         );
@@ -5347,8 +5547,8 @@ export const ClaudeChat: React.FC = () => {
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 // Don't cap at 100% - show real percentage for context usage awareness
                 const percentageNum = rawPercentage;
-                // Check if tokens are pending after compact
-                const isTokensPending = currentSession?.analytics?.compactPending === true;
+                // Check if tokens are pending after compact - only show ? if pending AND no valid data
+                const isTokensPending = currentSession?.analytics?.compactPending === true && totalContextTokens === 0;
                 const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
 
                 return (
@@ -5357,8 +5557,8 @@ export const ClaudeChat: React.FC = () => {
                       <div className="stats-section">
                         <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
                           <div className="usage-bar-label">
-                            <span>{isTokensPending ? '?' : (currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k</span>
-                            <span className={((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) >= 60 ? 'usage-negative' : ''}>{isTokensPending ? '?%' : `${((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(2)}%`}</span>
+                            <span>{isTokensPending ? '?' : totalContextTokens.toLocaleString()} / 200k</span>
+                            <span className={rawPercentage >= 60 ? 'usage-negative' : ''}>{isTokensPending ? '?%' : `${rawPercentage.toFixed(2)}%`}</span>
                           </div>
                           <div className="usage-bar">
                             <div className="usage-bar-fill" style={{
@@ -5626,6 +5826,7 @@ export const ClaudeChat: React.FC = () => {
           />
         </React.Suspense>
       )}
+
     </div>
   );
 };

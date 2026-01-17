@@ -1,0 +1,268 @@
+/* TriggerEditor - Tag-based trigger configuration */
+
+.trigger-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trigger-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trigger-editor-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: lowercase;
+}
+
+.trigger-editor-total {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.trigger-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Tag Input Group */
+.tag-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-input-group.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.tag-input-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.tag-input-header svg {
+  opacity: 0.6;
+}
+
+.tag-input-label {
+  flex: 1;
+}
+
+.tag-input-count {
+  background: var(--bg-tertiary);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.tag-input-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px 8px;
+  min-height: 32px;
+}
+
+/* Tag List */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.tag-list:empty {
+  margin-bottom: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-color);
+  color: var(--accent-text);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.tag-text {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: currentColor;
+  opacity: 0.6;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: opacity 0.1s, background 0.1s;
+}
+
+.tag-remove:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Tag Input */
+.tag-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 2px 0;
+}
+
+.tag-input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.tag-input.error {
+  color: var(--color-error);
+}
+
+.tag-input.warning {
+  color: var(--color-warning);
+}
+
+.tag-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: var(--accent-color);
+  border: none;
+  color: var(--accent-text);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.tag-add-btn:hover {
+  opacity: 0.9;
+}
+
+/* Error/Warning Messages */
+.tag-error,
+.tag-warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  margin-top: 4px;
+  padding: 2px 0;
+}
+
+.tag-error {
+  color: var(--color-error);
+}
+
+.tag-warning {
+  color: var(--color-warning);
+}
+
+/* Match Mode */
+.trigger-match-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.match-mode-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.match-mode-options {
+  display: flex;
+  gap: 4px;
+}
+
+.match-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.match-mode-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.match-mode-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: var(--accent-text);
+}
+
+.match-mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.match-mode-btn svg {
+  opacity: 0;
+}
+
+.match-mode-btn.active svg {
+  opacity: 1;
+}
+
+/* Hint */
+.trigger-hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}

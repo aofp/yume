@@ -102,6 +102,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
     showSkillsSettings, setShowSkillsSettings,
     showDictation, setShowDictation,
     showHistory, setShowHistory,
+    memoryEnabled, setMemoryEnabled, memoryServerRunning,
     vscodeExtensionEnabled, setVscodeExtensionEnabled,
     vscodeConnected, isVscodeInstalled,
     backgroundOpacity, setBackgroundOpacity
@@ -926,6 +927,30 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                     <div
                       className={`toggle-switch compact ${showDictation ? 'active' : ''}`}
                       onClick={() => setShowDictation(!showDictation)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      memory
+                      {memoryServerRunning && <span style={{ fontSize: '8px', color: 'var(--positive-color)' }}>●</span>}
+                    </span>
+                    <div
+                      className={`toggle-switch compact ${memoryEnabled ? 'active' : ''}`}
+                      onClick={() => {
+                        const newEnabled = !memoryEnabled;
+                        setMemoryEnabled(newEnabled);
+                        // Memory server start/stop handled by memoryService
+                        if (newEnabled) {
+                          import('../../services/memoryService').then(m => m.memoryService.start());
+                        } else {
+                          import('../../services/memoryService').then(m => m.memoryService.stop());
+                        }
+                      }}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>

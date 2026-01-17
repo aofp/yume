@@ -390,6 +390,8 @@ impl ProcessRegistry {
     }
 
     /// Kill a process by PID using system commands (fallback method)
+    /// On Unix, uses process group kill to ensure all child processes are terminated
+    /// On Windows, uses taskkill /T to kill the process tree
     pub fn kill_process_by_pid(&self, run_id: i64, pid: u32) -> Result<bool, String> {
         info!("Attempting to kill process {} by PID {}", run_id, pid);
 
@@ -398,8 +400,9 @@ impl ProcessRegistry {
             {
                 use std::os::windows::process::CommandExt;
                 const CREATE_NO_WINDOW: u32 = 0x08000000;
+                // Use /T flag to kill the entire process tree (parent and all children)
                 std::process::Command::new("taskkill")
-                    .args(["/F", "/PID", &pid.to_string()])
+                    .args(["/F", "/T", "/PID", &pid.to_string()])
                     .creation_flags(CREATE_NO_WINDOW)
                     .output()
             }
@@ -408,10 +411,32 @@ impl ProcessRegistry {
                 unreachable!()
             }
         } else {
-            // First try SIGTERM
+            // On Unix, try to kill the process group first (negative PID)
+            // This ensures child processes are also terminated
+            let pgid = pid as i32;
+
+            // First try SIGTERM to the process group
             let term_result = std::process::Command::new("kill")
-                .args(["-TERM", &pid.to_string()])
+                .args(["-TERM", &format!("-{}", pgid)])
                 .output();
+
+            // If process group kill fails, fall back to single process kill
+            let term_result = match &term_result {
+                Ok(output) if output.status.success() => {
+                    info!("Sent SIGTERM to process group -{}", pgid);
+                    term_result
+                }
+                _ => {
+                    // Process group kill failed, try single process
+                    info!(
+                        "Process group kill failed for -{}, trying single process {}",
+                        pgid, pid
+                    );
+                    std::process::Command::new("kill")
+                        .args(["-TERM", &pid.to_string()])
+                        .output()
+                }
+            };
 
             match &term_result {
                 Ok(output) if output.status.success() => {
@@ -426,14 +451,25 @@ impl ProcessRegistry {
 
                     if let Ok(output) = check_result {
                         if output.status.success() {
-                            // Still running, send SIGKILL
+                            // Still running, send SIGKILL to process group first
                             warn!(
                                 "Process {} still running after SIGTERM, sending SIGKILL",
                                 pid
                             );
-                            std::process::Command::new("kill")
-                                .args(["-KILL", &pid.to_string()])
-                                .output()
+                            // Try process group SIGKILL first
+                            let pgkill = std::process::Command::new("kill")
+                                .args(["-KILL", &format!("-{}", pgid)])
+                                .output();
+
+                            match pgkill {
+                                Ok(ref out) if out.status.success() => pgkill,
+                                _ => {
+                                    // Fall back to single process SIGKILL
+                                    std::process::Command::new("kill")
+                                        .args(["-KILL", &pid.to_string()])
+                                        .output()
+                                }
+                            }
                         } else {
                             term_result
                         }
@@ -442,11 +478,20 @@ impl ProcessRegistry {
                     }
                 }
                 _ => {
-                    // SIGTERM failed, try SIGKILL directly
+                    // SIGTERM failed, try SIGKILL directly (process group first)
                     warn!("SIGTERM failed for PID {}, trying SIGKILL", pid);
-                    std::process::Command::new("kill")
-                        .args(["-KILL", &pid.to_string()])
-                        .output()
+                    let pgkill = std::process::Command::new("kill")
+                        .args(["-KILL", &format!("-{}", pgid)])
+                        .output();
+
+                    match pgkill {
+                        Ok(ref out) if out.status.success() => pgkill,
+                        _ => {
+                            std::process::Command::new("kill")
+                                .args(["-KILL", &pid.to_string()])
+                                .output()
+                        }
+                    }
                 }
             }
         };

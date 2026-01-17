@@ -32,6 +32,8 @@ mod state; // Application state management (sessions, settings, etc.)
 mod stream_parser; // Stream JSON parsing for Claude output
 mod websocket; // WebSocket server for real-time communication with frontend
 mod yume_cli_spawner; // yume-cli process spawning for Gemini/OpenAI providers // Agent management for AI assistants
+mod background_agents; // Background agent queue management
+mod git_manager; // Git branch operations for background agents
 
 use std::fs;
 use std::path::PathBuf;
@@ -239,6 +241,10 @@ pub fn run() {
             let production_config = config::init_production_config();
             app.manage(production_config.clone());
             
+            // Initialize background agent manager with app handle
+            let agent_manager = background_agents::get_agent_manager();
+            agent_manager.set_app_handle(app.handle().clone());
+
             // Initialize crash recovery system
             let crash_recovery_manager = crash_recovery::init_crash_recovery(&app.handle());
             app.manage(crash_recovery_manager);
@@ -1126,6 +1132,17 @@ pub fn run() {
             commands::mcp::mcp_test_connection,
             commands::mcp::mcp_import_claude_desktop,
             commands::mcp::mcp_export_config,
+            // Memory MCP server
+            commands::memory::start_memory_server,
+            commands::memory::stop_memory_server,
+            commands::memory::check_memory_server,
+            commands::memory::get_memory_file_path,
+            commands::memory::memory_create_entities,
+            commands::memory::memory_create_relations,
+            commands::memory::memory_add_observations,
+            commands::memory::memory_search_nodes,
+            commands::memory::memory_read_graph,
+            commands::memory::memory_delete_entity,
             // Agent operations
             agents::list_agents,
             agents::load_default_agents,
@@ -1169,6 +1186,20 @@ pub fn run() {
             commands::register_file_edit,
             commands::get_conflicting_edits,
             commands::clear_session_edits,
+            // Background agents operations
+            commands::background_agents::queue_background_agent,
+            commands::background_agents::get_agent_queue,
+            commands::background_agents::get_background_agent,
+            commands::background_agents::cancel_background_agent,
+            commands::background_agents::remove_background_agent,
+            commands::background_agents::get_agent_output,
+            commands::background_agents::create_agent_branch,
+            commands::background_agents::get_agent_branch_diff,
+            commands::background_agents::merge_agent_branch,
+            commands::background_agents::delete_agent_branch,
+            commands::background_agents::check_agent_merge_conflicts,
+            commands::background_agents::cleanup_old_agents,
+            commands::background_agents::update_agent_progress,
         ])
         .on_window_event(|app_handle, event| {
             // Global window event handler for app-level lifecycle
@@ -1189,6 +1220,8 @@ pub fn run() {
                         }
                         // Kill all bash processes first
                         commands::kill_all_bash_processes();
+                        // Stop memory server if running
+                        commands::memory::cleanup_memory_server();
                         // Then stop the server (which also runs pkill cleanup)
                         logged_server::stop_logged_server();
                         // Let Tauri handle the exit properly
@@ -1210,6 +1243,8 @@ pub fn run() {
         error!("Failed to cleanup core plugin: {}", e);
     }
     commands::kill_all_bash_processes();
+    // Stop memory server if running
+    commands::memory::cleanup_memory_server();
     logged_server::stop_logged_server();
 }
 

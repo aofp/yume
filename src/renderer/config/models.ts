@@ -168,9 +168,6 @@ export const ALL_MODELS: ModelDefinition[] = [
   ...GEMINI_MODELS,
 ];
 
-// Legacy: LATEST_MODELS for backward compatibility (Claude only)
-export const LATEST_MODELS = CLAUDE_MODELS;
-
 // Default model - Sonnet 4.5
 export const DEFAULT_MODEL = CLAUDE_MODELS.find((m) => m.family === 'sonnet')!;
 export const DEFAULT_MODEL_ID = DEFAULT_MODEL.id;
@@ -190,11 +187,6 @@ export const getDefaultModelForProvider = (provider: ProviderType): ModelDefinit
 // Quick lookup by ID
 export const getModelById = (id: string): ModelDefinition | undefined => {
   return ALL_MODELS.find((m) => m.id === id);
-};
-
-// Quick lookup by short name
-export const getModelByShortName = (shortName: string): ModelDefinition | undefined => {
-  return ALL_MODELS.find((m) => m.shortName === shortName);
 };
 
 // Quick lookup by family (legacy)
@@ -218,24 +210,10 @@ export const resolveModelId = (modelIdOrShortName: string): string => {
   return MODEL_ID_MAP[modelIdOrShortName] || modelIdOrShortName;
 };
 
-// Get provider by ID
-export const getProviderById = (id: ProviderType): ProviderDefinition | undefined => {
-  return PROVIDERS.find((p) => p.id === id);
-};
-
 // Get provider for a model
 export const getProviderForModel = (modelId: string): ProviderType => {
   const model = getModelById(modelId);
   return model?.provider || 'claude';
-};
-
-// For UI dropdown display (legacy - Claude only)
-export const getModelsForSelector = () => {
-  return CLAUDE_MODELS.map((m) => ({
-    id: m.id,
-    name: m.displayName,
-    description: m.description,
-  }));
 };
 
 // For UI dropdown display (with provider filter)
@@ -245,10 +223,4 @@ export const getModelsForSelectorByProvider = (provider: ProviderType) => {
     name: m.displayName,
     description: m.description,
   }));
-};
-
-// Get CLI command for a provider
-export const getCliCommand = (provider: ProviderType): string => {
-  const p = getProviderById(provider);
-  return p?.cliCommand || 'claude';
 };

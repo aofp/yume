@@ -92,11 +92,11 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
 
       if (yumePlugin) {
         setYumePluginEnabled(yumePlugin.enabled);
-        // All core agents use the currently selected model
+        // Explorer always uses sonnet; others use currently selected model
         const agents: Agent[] = yumePlugin.components.agents.map(a => ({
           id: `${APP_COMMAND_PREFIX}${a.name}`,
           name: a.name,
-          model: currentModelName as 'opus' | 'sonnet' | 'haiku',
+          model: (a.name === 'explorer' ? 'sonnet' : currentModelName) as 'opus' | 'sonnet' | 'haiku',
           system_prompt: a.description || '',
           created_at: 0,
           updated_at: 0,
@@ -503,21 +503,27 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                     <div className="agents-empty">loading plugin agents...</div>
                   ) : (
                     <div className={`agents-list ${!yumePluginEnabled ? 'agents-disabled' : ''}`}>
-                      {yumeAgents.map((agent, index) => (
-                        <div
-                          key={agent.id}
-                          className={`agent-item yume-agent ${focusedIndex === index ? 'focused' : ''}`}
-                          onMouseEnter={() => setFocusedIndex(index)}
-                        >
-                          <div className="agent-info">
-                            <div className="agent-name-row">
-                              <div className="agent-name">{agent.name}</div>
-                              <span className="agent-model">{agent.model}</span>
+                      {yumeAgents.map((agent, index) => {
+                        const isExplorer = agent.name === 'explorer';
+                        return (
+                          <div
+                            key={agent.id}
+                            className={`agent-item yume-agent ${focusedIndex === index ? 'focused' : ''}`}
+                            onMouseEnter={() => setFocusedIndex(index)}
+                          >
+                            <div className="agent-info">
+                              <div className="agent-name-row">
+                                <div className="agent-name">{agent.name}</div>
+                                <span className={`agent-model ${isExplorer ? 'model-locked' : 'model-reactive'}`}>
+                                  {agent.model}
+                                  {isExplorer && <span className="model-lock-icon">⌁</span>}
+                                </span>
+                              </div>
                             </div>
+                            <div className="agent-prompt-preview">{agent.system_prompt}</div>
                           </div>
-                          <div className="agent-prompt-preview">{agent.system_prompt}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </>

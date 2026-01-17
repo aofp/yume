@@ -6,6 +6,7 @@ import {
   IconMicrophone,
   IconMicrophoneOff,
   IconInputSearch,
+  IconRobot,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
@@ -80,13 +81,17 @@ interface ContextBarProps {
   gitChangesCount: number;
 
   // Files panel sub-tab
-  filesSubTab: 'files' | 'git';
+  filesSubTab: 'files' | 'git' | 'sessions';
 
   // Command palette
   onOpenCommandPalette: () => void;
 
   // Line changes for this session
   lineChanges?: { added: number; removed: number };
+  onOpenSessionChanges?: () => void;
+
+  // Background agents running count
+  backgroundAgentCount?: number;
 }
 
 export const ContextBar: React.FC<ContextBarProps> = ({
@@ -127,6 +132,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   filesSubTab,
   onOpenCommandPalette,
   lineChanges,
+  onOpenSessionChanges,
+  backgroundAgentCount = 0,
 }) => {
   // Get context window from selected model
   const currentModel = getModelById(selectedModel);
@@ -134,7 +141,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
   const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
   const percentageNum = rawPercentage;
-  const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
+  // Only show "?" when pending AND no valid token data
+  const percentage = (isTokensPending && totalContextTokens === 0) ? '?' : percentageNum.toFixed(2);
 
   // Determine usage class
   const usageClass = rawPercentage >= 65 ? 'critical' :
@@ -210,10 +218,20 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         </button>
       )}
 
-      {/* Center - line changes */}
+      {/* Center - agents count + line changes */}
       <div className="context-center">
+        {backgroundAgentCount > 0 && (
+          <span className="agents-running" title={`${backgroundAgentCount} background agent${backgroundAgentCount > 1 ? 's' : ''} running`}>
+            <IconRobot size={11} stroke={1.5} />
+            <span>{backgroundAgentCount}</span>
+          </span>
+        )}
         {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
-          <span className="line-changes" title="lines changed this session">
+          <span
+            className="line-changes"
+            title="session changes"
+            onClick={onOpenSessionChanges}
+          >
             <span className="line-added">+{lineChanges.added}</span>
             <span className="line-removed">-{lineChanges.removed}</span>
           </span>

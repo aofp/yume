@@ -7,6 +7,7 @@
 /// - Git integration
 /// - Server communication
 /// - Claude CLI direct spawning and management
+pub mod background_agents;
 pub mod claude_commands;
 pub mod claude_detector;
 pub mod claude_info;
@@ -15,6 +16,7 @@ pub mod custom_commands;
 pub mod database;
 pub mod hooks;
 pub mod mcp;
+pub mod memory;
 pub mod plugins;
 
 // Re-export custom commands directly so they're available at commands:: level
@@ -1104,13 +1106,30 @@ pub async fn spawn_bash(
     };
 
     #[cfg(not(target_os = "windows"))]
-    let mut child = Command::new("bash")
-        .current_dir(&cwd)
-        .args(&["-c", &command])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to spawn command: {}", e))?;
+    let mut child = {
+        use std::os::unix::process::CommandExt;
+
+        let mut cmd = Command::new("bash");
+        cmd.current_dir(&cwd)
+            .args(&["-c", &command])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        // Set up process to become a session leader (creates new process group)
+        // This ensures kill -PID kills the entire process tree
+        // SAFETY: setsid() is async-signal-safe and has no side effects on failure
+        unsafe {
+            cmd.pre_exec(|| {
+                // Create a new session, making this process the session leader
+                // This also creates a new process group with PGID = PID
+                let _ = libc::setsid();
+                Ok(())
+            });
+        }
+
+        cmd.spawn()
+            .map_err(|e| format!("Failed to spawn command: {}", e))?
+    };
 
     // Take stdout and stderr for streaming
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
@@ -1197,15 +1216,78 @@ pub async fn spawn_bash(
     Ok(process_id)
 }
 
-/// Kill a specific bash process
+/// Kill a specific bash process and all its child processes
+/// On Unix, kills the process group to ensure subprocesses are terminated
+/// On Windows, uses taskkill /T to kill the process tree
 #[tauri::command]
 pub fn kill_bash_process(process_id: String) -> Result<(), String> {
     let mut processes = BASH_PROCESSES.lock().unwrap();
 
     if let Some(mut child) = processes.remove(&process_id) {
+        // Get PID for process group/tree kill
+        let pid = child.id();
+
+        #[cfg(unix)]
+        {
+            // Try to kill the process group first (negative PID)
+            let pgid = pid as i32;
+            let pg_result = std::process::Command::new("kill")
+                .args(["-TERM", &format!("-{}", pgid)])
+                .output();
+
+            match pg_result {
+                Ok(output) if output.status.success() => {
+                    tracing::info!(
+                        "Killed bash process group -{} for: {}",
+                        pgid,
+                        process_id
+                    );
+                    // Wait briefly then force kill if still running
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    let _ = std::process::Command::new("kill")
+                        .args(["-KILL", &format!("-{}", pgid)])
+                        .output();
+                    return Ok(());
+                }
+                _ => {
+                    tracing::info!(
+                        "Process group kill failed, falling back to direct kill for: {}",
+                        process_id
+                    );
+                }
+            }
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            // Use /T to kill entire process tree
+            let result = std::process::Command::new("taskkill")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output();
+
+            match result {
+                Ok(output) if output.status.success() => {
+                    tracing::info!("Killed bash process tree {} for: {}", pid, process_id);
+                    return Ok(());
+                }
+                _ => {
+                    tracing::info!(
+                        "Process tree kill failed, falling back to direct kill for: {}",
+                        process_id
+                    );
+                }
+            }
+        }
+
+        // Fallback to direct child.kill()
         match child.kill() {
             Ok(_) => {
                 tracing::info!("Killed bash process: {}", process_id);
+                // Wait for process to fully exit
+                let _ = child.wait();
                 Ok(())
             }
             Err(e) => {
@@ -1220,6 +1302,7 @@ pub fn kill_bash_process(process_id: String) -> Result<(), String> {
 
 /// Kill all running bash processes - called on app exit
 /// This is a public function that can be called from lib.rs
+/// Uses process group/tree kill to ensure all subprocesses are terminated
 pub fn kill_all_bash_processes() {
     let mut processes = BASH_PROCESSES.lock().unwrap();
     let count = processes.len();
@@ -1227,10 +1310,46 @@ pub fn kill_all_bash_processes() {
     if count > 0 {
         tracing::info!("Killing {} bash processes on shutdown...", count);
         for (process_id, mut child) in processes.drain() {
-            match child.kill() {
-                Ok(_) => tracing::info!("Killed bash process: {}", process_id),
-                Err(e) => tracing::warn!("Failed to kill bash process {}: {}", process_id, e),
+            let pid = child.id();
+
+            // Try process group/tree kill first
+            let killed_tree = {
+                #[cfg(unix)]
+                {
+                    let pgid = pid as i32;
+                    // SIGKILL to process group for immediate termination on shutdown
+                    let result = std::process::Command::new("kill")
+                        .args(["-KILL", &format!("-{}", pgid)])
+                        .output();
+                    result.map(|o| o.status.success()).unwrap_or(false)
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    use std::os::windows::process::CommandExt;
+                    const CREATE_NO_WINDOW: u32 = 0x08000000;
+                    let result = std::process::Command::new("taskkill")
+                        .args(["/F", "/T", "/PID", &pid.to_string()])
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .output();
+                    result.map(|o| o.status.success()).unwrap_or(false)
+                }
+                #[cfg(not(any(unix, target_os = "windows")))]
+                {
+                    let _ = pid; // suppress unused warning
+                    false
+                }
+            };
+
+            if killed_tree {
+                tracing::info!("Killed bash process tree: {}", process_id);
+            } else {
+                // Fallback to direct kill
+                match child.kill() {
+                    Ok(_) => tracing::info!("Killed bash process: {}", process_id),
+                    Err(e) => tracing::warn!("Failed to kill bash process {}: {}", process_id, e),
+                }
             }
+
             // Wait briefly for process to exit
             let _ = child.wait();
         }

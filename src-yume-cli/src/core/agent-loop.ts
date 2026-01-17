@@ -24,9 +24,12 @@ import {
   emitError,
   emitErrorResult,
   emitMessageStop,
+  emitProgress,
+  emitBranchSwitch,
   log,
   logVerbose,
 } from './emit.js';
+import { execSync } from 'child_process';
 import {
   createSession,
   loadSession,
@@ -49,6 +52,51 @@ interface AgentLoopOptions {
 }
 
 /**
+ * Switch to a git branch (for background agents)
+ */
+function switchGitBranch(cwd: string, branch: string): boolean {
+  try {
+    // Check if branch exists
+    try {
+      execSync(`git rev-parse --verify ${branch}`, { cwd, stdio: 'pipe' });
+      // Branch exists, just switch to it
+      execSync(`git checkout ${branch}`, { cwd, stdio: 'pipe' });
+    } catch {
+      // Branch doesn't exist, create it
+      execSync(`git checkout -b ${branch}`, { cwd, stdio: 'pipe' });
+    }
+    return true;
+  } catch (e) {
+    log(`Failed to switch git branch: ${e}`);
+    return false;
+  }
+}
+
+/**
+ * Write session output to file (for async mode)
+ */
+function writeOutputFile(outputFile: string, session: Session, result: object): void {
+  try {
+    const output = {
+      session,
+      result,
+      timestamp: Date.now(),
+    };
+    const fs = require('fs');
+    const path = require('path');
+    // Ensure directory exists
+    const dir = path.dirname(outputFile);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(outputFile, JSON.stringify(output, null, 2));
+    logVerbose(`Wrote output to ${outputFile}`);
+  } catch (e) {
+    log(`Failed to write output file: ${e}`);
+  }
+}
+
+/**
  * Run the agent loop
  * This is the main entry point for processing a user prompt
  */
@@ -56,6 +104,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
   const { args, provider, tools, toolDefinitions } = options;
   const startTime = Date.now();
   let turnCount = 0;
+
+  // Handle git branch switching for background agents
+  if (args.gitBranch) {
+    const success = switchGitBranch(args.cwd, args.gitBranch);
+    emitBranchSwitch(args.gitBranch, success);
+    if (!success) {
+      log(`Warning: Failed to switch to branch ${args.gitBranch}, continuing on current branch`);
+    }
+  }
 
   // Load or create session
   let session: Session;
@@ -139,6 +196,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
 
       turnCount++;
       logVerbose(`Turn ${turnCount}`);
+
+      // Emit progress for background agents
+      if (args.async) {
+        emitProgress(turnCount, 'generating response', turnUsage.inputTokens + turnUsage.outputTokens);
+      }
 
       // Generate response from provider
       const pendingToolCalls: ToolCall[] = [];
@@ -293,6 +355,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
       for (const toolCall of pendingToolCalls) {
         logVerbose(`Executing tool: ${toolCall.name}`);
 
+        // Emit progress for background agents
+        if (args.async) {
+          emitProgress(turnCount, `executing ${toolCall.name}`, turnUsage.inputTokens + turnUsage.outputTokens);
+        }
+
         const executor = tools.find((t) => t.name === toolCall.name);
         if (!executor) {
           const errorMsg = `Unknown tool: ${toolCall.name}`;
@@ -334,14 +401,20 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
 
     // Emit final usage and result
     emitUsage(turnUsage);
-    emitResult({
+    const resultData = {
       sessionId: session.id,
       usage: turnUsage,
       durationMs: Date.now() - startTime,
       numTurns: turnCount,
       model: args.model,
-    });
+    };
+    emitResult(resultData);
     emitMessageStop();
+
+    // Write output file for async mode
+    if (args.async && args.outputFile) {
+      writeOutputFile(args.outputFile, session, { ...resultData, success: true });
+    }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     log(`Error in agent loop: ${errorMsg}`);
