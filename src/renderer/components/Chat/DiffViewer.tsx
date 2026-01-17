@@ -33,13 +33,19 @@ const getMarker = (type: 'add' | 'remove' | 'context'): string => {
 };
 
 export const DiffViewer: React.FC<DiffViewerProps> = ({ diff }) => {
+  const hunks = diff?.hunks ?? [];
+
+  if (hunks.length === 0) {
+    return null;
+  }
+
   return (
     <>
     {diff.file && (
       <div className="diff-header">{diff.file}</div>
     )}
     <div className="diff-container">
-      {diff.hunks.map((hunk, hunkIndex) => (
+      {hunks.map((hunk, hunkIndex) => (
         <div key={hunkIndex} className="diff-hunk">
           {hunk.lines.map((line, lineIndex) => (
             <div key={lineIndex} className={`diff-line diff-${line.type}`}>

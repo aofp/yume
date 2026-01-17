@@ -23,7 +23,7 @@ import {
   IconArrowsMinimize,
   IconCancel,
 } from '@tabler/icons-react';
-import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
+import { DiffViewer, DiffDisplay, DiffHunk, DiffLine, generateDiff } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
 import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer, BashTimer, CompactingTimer } from './VirtualizedMessageList';
 import { StreamIndicator } from './StreamIndicator';
@@ -1460,12 +1460,26 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [isDictating, startDictation, stopDictation]);
 
-  // Clear context with confirmation
+  // Clear context with confirmation (or skip if dialogs disabled)
   const handleClearContextRequest = useCallback(() => {
     if (currentSessionId && !currentSession?.readOnly && !currentSession?.streaming) {
-      setShowClearConfirm(true);
+      if (showConfirmDialogs) {
+        setShowClearConfirm(true);
+      } else {
+        // Skip confirmation - clear directly
+        clearContext(currentSessionId);
+        setIsAtBottom(prev => ({
+          ...prev,
+          [currentSessionId]: true
+        }));
+        setScrollPositions(prev => {
+          const newPositions = { ...prev };
+          delete newPositions[currentSessionId];
+          return newPositions;
+        });
+      }
     }
-  }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming]);
+  }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming, showConfirmDialogs, clearContext, setIsAtBottom, setScrollPositions]);
 
   const confirmClearContext = useCallback(() => {
     if (currentSessionId) {
@@ -1545,12 +1559,17 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.bashProcessId, currentSession?.streaming, currentSessionId, bashElapsedTimes, addMessageToSession, interruptSession]);
 
-  // Compact context with confirmation
+  // Compact context with confirmation (or skip if dialogs disabled)
   const handleCompactContextRequest = useCallback(() => {
     if (currentSessionId && !currentSession?.readOnly && !currentSession?.streaming) {
-      setShowCompactConfirm(true);
+      if (showConfirmDialogs) {
+        setShowCompactConfirm(true);
+      } else {
+        // Skip confirmation - compact directly
+        sendMessage('/compact');
+      }
     }
-  }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming]);
+  }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming, showConfirmDialogs, sendMessage]);
 
   const confirmCompactContext = useCallback(() => {
     if (currentSessionId) {
@@ -4757,7 +4776,7 @@ export const ClaudeChat: React.FC = () => {
                     }
                   }
                   if (!latestSnap || (!latestSnap.oldContent && !latestSnap.content)) return null;
-                  const diff = { oldContent: latestSnap.oldContent || '', newContent: latestSnap.content || '' };
+                  const diff = generateDiff(selectedSessionFile, latestSnap.oldContent || '', latestSnap.content || '');
                   return (
                     <div className="tool-panel-preview">
                       <div className="tool-panel-preview-header">

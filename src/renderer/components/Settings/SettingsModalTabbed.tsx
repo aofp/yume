@@ -844,7 +844,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">confirm close tabs</span>
+                    <span className="checkbox-label">confirm dialogs</span>
                     <div
                       className={`toggle-switch compact ${showConfirmDialogs ? 'active' : ''}`}
                       onClick={() => setShowConfirmDialogs(!showConfirmDialogs)}

@@ -448,7 +448,7 @@ interface ClaudeCodeStore {
   showResultStats: boolean; // Whether to show result stats (tokens, cost, duration) after responses
 
   // Confirm dialogs
-  showConfirmDialogs: boolean; // Whether to show confirm dialogs when closing tabs with active streams
+  showConfirmDialogs: boolean; // Whether to show confirm dialogs (close tabs, clear, compact, etc)
 
   // Auto-compact
   autoCompactEnabled: boolean; // Whether to auto-compact at 60% threshold
@@ -5258,6 +5258,31 @@ ${content}`;
                 // Track modified file
                 if (snapshot.path) {
                   modifiedFiles.add(snapshot.path);
+
+                  // Create restore point for session tab file list
+                  const newContent = msgInput?.content || msgInput?.new_string || '';
+                  const fileSnapshot: FileSnapshot = {
+                    path: snapshot.path,
+                    content: newContent,
+                    operation,
+                    timestamp: snapshot.timestamp || Date.now(),
+                    messageIndex: updatedMessages.length - 1,
+                    originalContent: snapshot.originalContent || '',
+                    isNewFile: snapshot.isNewFile || false,
+                    mtime: snapshot.mtime,
+                    sessionId: s.id
+                  };
+                  restorePoints.push({
+                    messageIndex: updatedMessages.length - 1,
+                    timestamp: Date.now(),
+                    fileSnapshots: [fileSnapshot],
+                    description: `${operation} ${snapshot.path.split(/[/\\]/).pop()}`
+                  });
+                  // Limit restore points
+                  if (restorePoints.length > MAX_RESTORE_POINTS_PER_SESSION) {
+                    restorePoints = restorePoints.slice(-MAX_RESTORE_POINTS_PER_SESSION);
+                  }
+                  console.log(`📸 [Store] Created restore point for: ${snapshot.path}`);
                 }
               }
 

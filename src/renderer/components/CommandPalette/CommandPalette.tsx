@@ -923,6 +923,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight, setBackgroundOpacity]);
 
   // Reset selection when query changes - skip disabled items
+  // Note: intentionally not including visualOrderCommands in deps to avoid infinite loop
   useEffect(() => {
     // Find first non-disabled index
     let firstEnabledIdx = 0;
@@ -935,9 +936,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (activeSubmenu) {
       setSubmenuIndex(0);
     }
-  }, [query, activeSubmenu, visualOrderCommands]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, activeSubmenu]);
 
   // Focus input when opening
+  // Note: intentionally not including visualOrderCommands in deps - only run on open
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -951,7 +954,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       setIgnoreMouseUntilMove(true);
       lastMousePos.current = null;
     }
-  }, [isOpen, visualOrderCommands]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Scroll selected item into view
   useEffect(() => {

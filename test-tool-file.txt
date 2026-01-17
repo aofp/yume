@@ -1,0 +1,3 @@
+this is a test file for tool verification
+line 2 - edited by edit tool
+line 3

@@ -211,7 +211,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   const buildFilesButtonTitle = () => {
     const parts = [];
     if (filesSubTab === 'git') parts.push(`git (${modKey}+g)`);
-    else if (filesSubTab === 'sessions') parts.push('session changes');
+    else if (filesSubTab === 'sessions') parts.push(`session changes (${modKey}+s)`);
     else parts.push(`files (${modKey}+e)`);
 
     if (gitChangesCount > 0) parts.push(`${gitChangesCount} git changes`);
