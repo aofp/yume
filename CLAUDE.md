@@ -121,8 +121,9 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files (45 files, ~24,000 lines, 156 Tauri commands)
-- `lib.rs` - Main entry, Tauri setup, all 156 commands registered
+### Critical Rust Files (32 files, ~17,000 lines, 148 Tauri commands)
+- `lib.rs` - Main entry, Tauri setup, all 148 commands registered
+- `app.rs` - Application constants (APP_NAME, APP_VERSION, APP_ID, etc.)
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
 - `stream_parser.rs` - Claude output stream parsing
@@ -143,7 +144,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `compaction/mod.rs` - CompactionManager implementation
 - `hooks/mod.rs` - Hook system implementation (9 event types)
 - `mcp/mod.rs` - MCP server management
-- `commands/mod.rs` - Main IPC commands (68 commands, 2,811 lines)
+- `commands/mod.rs` - Main IPC commands (65 commands)
 - `commands/hooks.rs` - Hooks system (4 commands)
 - `commands/mcp.rs` - MCP integration (6 commands)
 - `commands/compaction.rs` - Context compaction (9 commands)
@@ -156,7 +157,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 
 ### Critical Frontend Files
 **Stores (1 Zustand store):**
-- `stores/claudeCodeStore.ts` - Main Zustand store (5,967 lines, ~285KB, 80+ actions)
+- `stores/claudeCodeStore.ts` - Main Zustand store (6,015 lines, ~287KB, 170+ actions)
 
 **Services (24 files):**
 - `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,259 lines)
@@ -201,6 +202,16 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `Chat/ContextBar.tsx` - Context usage visualization
 - `Chat/DiffViewer.tsx` - Code diff rendering
 - `Chat/VirtualizedMessageList.tsx` - Message virtualization with scroll anchoring
+- `Chat/StreamIndicator.tsx` - Real-time activity indicator (thinking/bash/compacting)
+- `Chat/InputArea.tsx` - Separated input with ultrathink highlighting
+- `CommandPalette/CommandPalette.tsx` - VS Code-style command palette (1,267 lines, 75+ commands)
+- `MentionAutocomplete/MentionAutocomplete.tsx` - File picker with @ trigger (664 lines)
+- `ModelSelector/ModelToolsModal.tsx` - Model & tools selector (633 lines)
+- `ProviderSelector/ProviderSelector.tsx` - Provider dropdown (151 lines)
+- `NoProviderModal/NoProviderModal.tsx` - Startup provider selection (142 lines)
+- `Welcome/WelcomeScreen.tsx` - Landing screen with recent projects (623 lines)
+- `About/AboutModal.tsx` - About dialog with license status (116 lines)
+- `SystemModal/SystemModal.tsx` - Global alert/confirm dialogs (68 lines)
 
 ### Server Binaries (in resources/)
 Uses unified binary architecture - server and CLI combined into single binary:
@@ -214,7 +225,7 @@ Uses unified binary architecture - server and CLI combined into single binary:
 
 TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format. **Architecture**: yume-cli is embedded inside `yume-bin-*` unified binary and invoked via `yume-bin-* cli` subcommand. Shell wrapper scripts (`yume-cli-*`) provide the CLI interface.
 
-**Key Files** (4,509 lines total):
+**Key Files** (~4,000 lines total):
 - `src/index.ts` (246 lines) - CLI entry point, argument parsing
 - `src/types.ts` (267 lines) - Type definitions (includes toolCallDelta.name)
 - `src/core/agent-loop.ts` (352 lines) - Main Think→Act→Observe loop with tool delta assembly
@@ -225,7 +236,7 @@ TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates
 - `src/providers/gemini.ts` (364 lines) - Gemini CLI spawner with tool translation
 - `src/providers/openai.ts` (459 lines) - Codex CLI spawner with tool detection
 - `src/providers/base.ts` (110 lines) - Base provider class
-- `src/tools/` (8 tools) - bash, read, write, edit, glob, grep, ls, file
+- `src/tools/` (7 tools) - bash, read, write, edit, glob, grep, ls
 
 **Safety Limits**:
 - MAX_TURNS: 50, MAX_DURATION_MS: 10 min, MAX_HISTORY_MESSAGES: 100
@@ -509,6 +520,171 @@ Context to inject when triggered
 **View Modes**: All sessions vs specific project
 
 **Requires**: Socket.IO connection to server for data retrieval
+
+### Command Palette
+**VS Code-style command palette** with fuzzy search and keyboard navigation.
+
+**Location**: `src/renderer/components/CommandPalette/CommandPalette.tsx`
+**Keyboard Shortcut**: `Cmd+P` / `Ctrl+P`
+
+**Features**:
+- 75+ commands across 10 categories (tabs, panels, session, model, input, zoom, appearance, settings, menu, settings tabs)
+- Fuzzy search with scoring (exact > starts with > contains > category > fuzzy)
+- Submenu navigation for themes, font size, line height, opacity, plugins
+- Live theme preview (can cancel with Esc to restore)
+- Toggle commands with on/off state display
+- Keyboard navigation (Arrow keys, Enter, Tab, Escape)
+- Direct navigation to specific settings tabs
+
+**Key Commands**:
+- `new tab` (Cmd+T) - Open new session with folder picker
+- `close tab` (Cmd+W) - Close current tab
+- `files panel` (Cmd+E) - Toggle files browser
+- `git panel` (Cmd+G) - Toggle git changes
+- `search messages` (Cmd+F) - Search in conversation
+- `insert ultrathink` (Cmd+K) - Insert thinking prompt
+- `session stats` (Cmd+.) - View session statistics
+- `model & tools` (Cmd+O) - Open model/tools selector
+- `toggle model` (Cmd+Shift+O) - Switch between opus/sonnet
+
+### File Mention Autocomplete
+**Intelligent file picker** with fuzzy search and folder navigation.
+
+**Location**: `src/renderer/components/MentionAutocomplete/MentionAutocomplete.tsx`
+**Trigger**: Type `@` in the input field
+
+**Features**:
+- Fuzzy matching by file name
+- Path-based navigation (e.g., `@src/components/`)
+- Folder expansion with arrow right
+- File icons based on type (folder, code, test, config, docs)
+- Sorted: folders first, then configs, then alphabetical
+
+**Special Collections**:
+- `@r` - Recently edited files (10 most recent)
+- `@m` - Git modified files (only if git repo)
+
+**Navigation**:
+- Arrow up/down to select
+- Arrow left to go back to parent folder
+- Arrow right to expand folders or select files
+- Tab/Enter to insert file path
+- Backspace at `@` removes autocomplete
+- Escape to close
+
+### Files/Git Panel
+**Unified panel** with two tabs for browsing project files and git changes.
+
+**Files Tab** (Cmd+E):
+- Tree view of project files
+- File preview with syntax highlighting
+- Diff viewer for modified files
+- Click file to show preview, click again to insert as @mention
+- Edit CLAUDE.md button in header
+
+**Git Tab** (Cmd+G):
+- Shows modified, added, deleted files with icons
+- Line count statistics (additions/deletions)
+- Diff viewer for git changes
+- Auto-refresh every 30s when panel is open
+- Only shows when working directory is a git repo
+
+**Rollback Panel**:
+- History navigation view
+- Click messages to rollback conversation state
+- Shows all user/assistant message pairs
+
+### Session Stats Modal
+**Detailed session statistics** with context usage visualization.
+
+**Keyboard Shortcut**: `Cmd+.`
+
+**Features**:
+- **Context Usage**: Current tokens / 200k, percentage bar with 10% ticks
+- **Token Breakdown**: Actual (in/out), Cache (read/new)
+- **Session Metrics**: Message count, tool use count, Opus %, total cost
+- **Claude Rate Limits** (Claude provider only):
+  - 5-hour limit with reset timer and utilization %
+  - 7-day limit with reset timer and utilization %
+  - Visual bars with 20-min/1-day tick marks
+  - Warning color when >90% utilized
+- **Provider Awareness**: Shows "rate limits not available for {provider}" for Gemini/OpenAI
+
+### Model & Tools Modal
+**Modal for selecting models and enabling/disabling tools**.
+
+**Keyboard Shortcut**: `Cmd+O`
+
+**Features**:
+- Provider grouping (Claude, Gemini, OpenAI) with collapse support
+- Only shows enabled providers (filtered by feature flags)
+- Provider lock when session has messages
+- **Tool Management**:
+  - 6 categories: File Read, File Write, Web, Terminal, Other, Agents
+  - Click category label to toggle all tools in category
+  - "all/none" toggle for global enable/disable
+  - Individual tool buttons with descriptions on hover
+
+**Keyboard Navigation**:
+- Arrow keys for model selection (left/right)
+- Tab/Shift+Tab for sequential navigation
+- Arrow up/down for tool grid navigation
+- Enter/Space to select
+- Escape to close
+
+### Stream Indicator
+**Real-time activity indicator** showing Claude's current state.
+
+**States**:
+- **Thinking**: Red spinner, shows elapsed time
+- **Bash Running**: Negative color, with stop button, shows elapsed time
+- **Compacting**: Positive color, shows elapsed time
+- **Queued Followup**: Shows pending message after current action
+- **Pending Auto-Compact**: Shows message that will be sent after compaction
+
+### Welcome Screen
+**Landing screen** when no sessions are open.
+
+**Features**:
+- Large "+" button to create new session (with ripple effect)
+- Recent projects dropdown (shows count)
+- Quick navigation: Press 1/2/3 to open first 3 recent projects
+- Model selector in toolbar
+- Version badge with demo/pro indicator (click to upgrade)
+- Context usage stats button with auto-compact toggle
+- Command palette button
+
+### Configuration Files
+**Location**: `src/renderer/config/`
+
+**themes.ts** (11 built-in themes):
+- yume (violet), void (gray-blue), cobalt (night owl), slate (atom one), arctic (iceberg)
+- synth (synthwave), mint, grove (everforest), ochre (gruvbox), bourbon (zenburn), burnt (coral), rose (dracula)
+
+**features.ts** (7 feature flags):
+- `USE_VIRTUALIZATION`: true
+- `ENABLE_CHECKPOINTS`: true
+- `SHOW_TIMELINE`: true
+- `ENABLE_AGENT_EXECUTION`: true
+- `USE_NATIVE_RUST`: false (never enable)
+- `PROVIDER_GEMINI_AVAILABLE`: false
+- `PROVIDER_OPENAI_AVAILABLE`: false
+
+**performance.ts** (40+ tuning parameters):
+- `VIRTUALIZATION_THRESHOLD`: 50 messages
+- `VIRTUAL_OVERSCAN`: 25 items
+- `MAX_MESSAGES_IN_MEMORY`: 2000
+- `AUTO_SAVE_INTERVAL`: 30s
+- `ANIMATION_DURATION`: 100ms (snappy UI)
+
+**tools.ts** (15 Claude CLI tools):
+- Categories: file-read (3), file-write (3), terminal (2), web (2), agents (2), other (3)
+- All enabled by default
+- Dangerous tools: Write, Edit, NotebookEdit, Bash
+
+**app.ts** (app-level constants):
+- `APP_NAME`, `APP_VERSION`, `APP_ID`, `AGENT_PREFIX`, `PLUGIN_ID`
+- Helper functions: `appStorageKey()`, `appEventName()`
 
 ### Additional UI Features
 
@@ -927,7 +1103,7 @@ After running build commands:
 ### Component Architecture Issues
 - **ClaudeChat.tsx**: 5,537 lines - large but manageable
 - **MessageRenderer.tsx**: 3,761 lines - large but manageable
-- **claudeCodeStore.ts**: ~285KB monolith (5,967 lines) - consider splitting
+- **claudeCodeStore.ts**: ~287KB monolith (6,015 lines, 170+ actions) - consider splitting
 - **Unified binary only on macOS**: Windows/Linux `yume-bin-*` binaries not yet built
 
 ### Hook Event Naming
@@ -942,26 +1118,26 @@ After running build commands:
 
 ## Version History
 
-**Last comprehensive audit**: 2026-01-16 (10-agent swarm review)
-- Updated Rust file count: 32 → 45 files
-- Updated total lines: 16,853 → ~24,000 lines
-- Updated Tauri commands: 146 → 156 commands
-- Updated npm scripts: 46 → 45 scripts
-- Updated yume-cli lines: 2,600 → 4,509 lines
-- Corrected component line counts (ClaudeChat, MessageRenderer)
-- Added new feature flags (PROVIDER_GEMINI_AVAILABLE, PROVIDER_OPENAI_AVAILABLE)
-- Updated checkpoint system status
-- Fixed license format docs (Base32-like charset, not full alphanumeric)
-- Standardized terminology: "trial" → "demo"
-- Corrected getFeatures() return type (removed isTrial/isLicensed)
+**Last comprehensive audit**: 2026-01-17
+- **Rust files**: 32 files, ~17,000 lines, 148 Tauri commands (corrected from overstated 45/24k/156)
+- **Store**: claudeCodeStore.ts now 6,015 lines with 170+ actions (was 5,967/80+)
+- **yume-cli**: ~4,000 lines total (was overstated as 4,509)
+- **New documented components**:
+  - Command Palette (1,267 lines, 75+ commands, VS Code-style with submenus)
+  - File Mention Autocomplete (664 lines, @ trigger with folder navigation)
+  - Model & Tools Modal (633 lines, with tool categories and keyboard nav)
+  - Files/Git Panel (embedded in ClaudeChat, Cmd+E/Cmd+G)
+  - Session Stats Modal (Cmd+., with provider-aware rate limits)
+  - Stream Indicator (thinking/bash/compacting states with timers)
+  - Welcome Screen (623 lines, quick project keys 1/2/3)
+  - Provider Selector, No Provider Modal, About Modal
+- **Config files documented**: themes.ts (11 themes), features.ts (7 flags), performance.ts (40+ params), tools.ts (15 tools), app.ts
+- Added app.rs to Rust files list (was missing)
+- Corrected commands/mod.rs count: 65 commands (was 68)
+
+**Previous audit**: 2026-01-16 (10-agent swarm review)
 - Fixed server binary naming: `yume-server-*` → `yume-bin-*` (unified binary)
 - Documented unified binary architecture (server + CLI in single binary)
-- Corrected npm scripts: 46 → 45, utility scripts: 28 → 29
-- Fixed yume-cli status (embedded in unified binary, not standalone)
 - Fixed plugin structure: plugin.json in `.claude-plugin/` subdir, not root
-- Fixed MCP config: `.mcp.json` file at root, not `mcp/` directory
-- Corrected skills system: Rust commands exist, all use .md format (no mismatch)
-- Fixed hook events: both Rust and TS have 9 events (naming differs)
+- Corrected skills system: Rust commands exist, all use .md format
 - Clarified multi-provider: code complete but feature flags disabled by default
-- Added yume-cli provider naming note ('anthropic' vs 'claude')
-- Added model properties docs (contextWindow, maxOutput, supportsThinking, reasoningEffort)

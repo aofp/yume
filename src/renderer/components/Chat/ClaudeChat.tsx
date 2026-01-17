@@ -986,8 +986,26 @@ export const ClaudeChat: React.FC = () => {
 
   // Listen for global resume trigger (from keyboard shortcut)
   useEffect(() => {
-    const handleResumeEvent = () => {
-      if (!currentSession || !currentSessionId) return;
+    const handleResumeEvent = async () => {
+      // If no session open, try to open latest project first
+      if (!currentSession || !currentSessionId) {
+        const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
+        if (stored) {
+          try {
+            const projects = JSON.parse(stored);
+            if (projects.length > 0) {
+              // Open latest project and show resume modal after
+              const latestProject = projects[0];
+              await createSession(undefined, latestProject.path);
+              // Small delay to let session initialize, then show modal
+              setTimeout(() => setShowResumeModal(true), 100);
+            }
+          } catch (err) {
+            console.error('Failed to parse recent projects:', err);
+          }
+        }
+        return;
+      }
       // Open modal if there are resumable conversations (will open in new tab if current has messages)
       if (hasResumableConversations[currentSessionId]) {
         setShowResumeModal(true);
@@ -1024,7 +1042,7 @@ export const ClaudeChat: React.FC = () => {
       window.removeEventListener(TRIGGER_RESUME_EVENT, handleResumeEvent);
       window.removeEventListener(CHECK_RESUMABLE_EVENT, handleCheckResumable);
     };
-  }, [currentSession, currentSessionId, hasResumableConversations]);
+  }, [currentSession, currentSessionId, hasResumableConversations, createSession]);
 
   // Listen for restore-input event (when compaction is interrupted)
   useEffect(() => {
@@ -5204,6 +5222,7 @@ export const ClaudeChat: React.FC = () => {
               gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
               filesSubTab={filesSubTab}
               onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+              lineChanges={currentSession?.lineChanges}
             />
           </InputArea>
         );

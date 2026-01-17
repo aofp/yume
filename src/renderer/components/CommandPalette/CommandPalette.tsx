@@ -57,6 +57,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeSubmenu, setActiveSubmenu] = useState<SubmenuType>(null);
   const [submenuIndex, setSubmenuIndex] = useState(0);
+  const [previousSelectedIndex, setPreviousSelectedIndex] = useState(0);
   const [originalColors, setOriginalColors] = useState<{bg: string, fg: string, accent: string, positive: string, negative: string} | null>(null);
   const [originalFontSize, setOriginalFontSize] = useState<number | null>(null);
   const [originalLineHeight, setOriginalLineHeight] = useState<number | null>(null);
@@ -77,7 +78,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     deleteSession,
     forkSession,
     clearContext,
-    interruptSession,
     // Model
     selectedModel,
     toggleModel,
@@ -123,6 +123,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
+
+  // Check if there are recent projects (for resume when no session)
+  const hasRecentProjects = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('yume-recent-projects');
+      if (stored) {
+        const projects = JSON.parse(stored);
+        return projects.length > 0;
+      }
+    } catch {}
+    return false;
+  }, []);
 
   // Build commands list
   const commands = useMemo<CommandItem[]>(() => {
@@ -293,6 +305,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'panels',
       shortcut: [modKey, 'shift', 'r'],
       action: onOpenResume,
+      disabled: !currentSession && !hasRecentProjects,
     });
     cmds.push({
       id: 'keyboard-shortcuts',
@@ -309,6 +322,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('toggle-files-panel', { detail: 'files' }));
       },
+      disabled: !currentSession,
     });
     cmds.push({
       id: 'git-panel',
@@ -318,6 +332,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('toggle-files-panel', { detail: 'git' }));
       },
+      disabled: !currentSession,
     });
     cmds.push({
       id: 'sessions-browser',
@@ -325,6 +340,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'panels',
       shortcut: [modKey, 'j'],
       action: onOpenResume,
+      disabled: !currentSession && !hasRecentProjects,
     });
     cmds.push({
       id: 'session-stats',
@@ -334,11 +350,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('toggle-stats-modal'));
       },
+      disabled: !currentSession,
     });
 
     // Session
     const hasMessages = currentSession?.messages?.length;
-    const isStreaming = currentSession?.streaming;
     cmds.push({
       id: 'clear-context',
       label: 'clear context',
@@ -357,15 +373,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
       disabled: !hasMessages,
     });
-    cmds.push({
-      id: 'stop-generation',
-      label: 'stop generation',
-      category: 'session',
-      shortcut: ['escape'],
-      action: () => currentSessionId && interruptSession(currentSessionId),
-      disabled: !isStreaming,
-    });
-
     // Model
     cmds.push({
       id: 'model-tools',
@@ -391,6 +398,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('open-claude-md'));
       },
+      disabled: !currentSession?.workingDirectory,
     });
 
     // Input
@@ -402,6 +410,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('clear-input'));
       },
+      disabled: !currentSession,
     });
     cmds.push({
       id: 'search-messages',
@@ -411,6 +420,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('toggle-search'));
       },
+      disabled: !currentSession,
     });
     cmds.push({
       id: 'insert-ultrathink',
@@ -420,6 +430,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('insert-ultrathink'));
       },
+      disabled: !currentSession,
     });
     cmds.push({
       id: 'toggle-dictation',
@@ -429,6 +440,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('toggle-dictation'));
       },
+      disabled: !currentSession,
     });
 
     // Zoom
@@ -469,6 +481,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           positive: getComputedStyle(root).getPropertyValue('--positive-color').trim(),
           negative: getComputedStyle(root).getPropertyValue('--negative-color').trim(),
         });
+        setPreviousSelectedIndex(selectedIndex);
         setActiveSubmenu('theme');
         setSubmenuIndex(0);
         setQuery('');
@@ -481,6 +494,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'appearance',
       action: () => {
         setOriginalFontSize(fontSize);
+        setPreviousSelectedIndex(selectedIndex);
         setActiveSubmenu('fontSize');
         setSubmenuIndex(0);
         setQuery('');
@@ -493,6 +507,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'appearance',
       action: () => {
         setOriginalLineHeight(lineHeight);
+        setPreviousSelectedIndex(selectedIndex);
         setActiveSubmenu('lineHeight');
         setSubmenuIndex(0);
         setQuery('');
@@ -505,6 +520,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'appearance',
       action: () => {
         setOriginalOpacity(backgroundOpacity);
+        setPreviousSelectedIndex(selectedIndex);
         setActiveSubmenu('opacity');
         setSubmenuIndex(0);
         setQuery('');
@@ -516,6 +532,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       label: 'manage plugins',
       category: 'appearance',
       action: () => {
+        setPreviousSelectedIndex(selectedIndex);
         setActiveSubmenu('plugins');
         setSubmenuIndex(0);
         setQuery('');
@@ -523,23 +540,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       hasSubmenu: 'plugins',
     });
 
-    // Toggles - UI
-    cmds.push({
-      id: 'toggle-word-wrap',
-      label: 'toggle word wrap',
-      category: 'settings',
-      isToggle: true,
-      getValue: () => wordWrap,
-      action: () => setWordWrap(!wordWrap),
-    });
-    cmds.push({
-      id: 'toggle-sound',
-      label: 'toggle completion sound',
-      category: 'settings',
-      isToggle: true,
-      getValue: () => soundOnComplete,
-      action: () => setSoundOnComplete(!soundOnComplete),
-    });
+    // Toggles - Options (matches settings modal order)
     cmds.push({
       id: 'toggle-result-stats',
       label: 'toggle result stats',
@@ -549,12 +550,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => setShowResultStats(!showResultStats),
     });
     cmds.push({
-      id: 'toggle-auto-compact',
-      label: 'toggle auto compact',
+      id: 'toggle-sound',
+      label: 'toggle completion sound',
       category: 'settings',
       isToggle: true,
-      getValue: () => autoCompactEnabled,
-      action: () => setAutoCompactEnabled(!autoCompactEnabled),
+      getValue: () => soundOnComplete,
+      action: () => setSoundOnComplete(!soundOnComplete),
     });
     cmds.push({
       id: 'toggle-remember-tabs',
@@ -573,23 +574,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => setAutoGenerateTitle(!autoGenerateTitle),
     });
     cmds.push({
-      id: 'toggle-dictation-btn',
-      label: 'toggle dictation button',
+      id: 'toggle-auto-compact',
+      label: 'toggle auto compact',
       category: 'settings',
       isToggle: true,
-      getValue: () => showDictation,
-      action: () => setShowDictation(!showDictation),
+      getValue: () => autoCompactEnabled,
+      action: () => setAutoCompactEnabled(!autoCompactEnabled),
     });
     cmds.push({
-      id: 'toggle-history-btn',
-      label: 'toggle history button',
+      id: 'toggle-word-wrap',
+      label: 'toggle word wrap',
       category: 'settings',
       isToggle: true,
-      getValue: () => showHistory,
-      action: () => setShowHistory(!showHistory),
+      getValue: () => wordWrap,
+      action: () => setWordWrap(!wordWrap),
     });
 
-    // Toggles - Menu visibility
+    // Toggles - Menu visibility (matches settings modal order)
+    cmds.push({
+      id: 'toggle-analytics-menu',
+      label: 'toggle analytics menu',
+      category: 'menu',
+      isToggle: true,
+      getValue: () => showAnalyticsMenu,
+      action: () => setShowAnalyticsMenu(!showAnalyticsMenu),
+    });
     cmds.push({
       id: 'toggle-projects-menu',
       label: 'toggle projects menu',
@@ -606,31 +615,33 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       getValue: () => showAgentsMenu,
       action: () => setShowAgentsMenu(!showAgentsMenu),
     });
+
+    // Toggles - Features (matches settings modal order)
     cmds.push({
-      id: 'toggle-analytics-menu',
-      label: 'toggle analytics menu',
-      category: 'menu',
+      id: 'toggle-history-btn',
+      label: 'toggle history button',
+      category: 'features',
       isToggle: true,
-      getValue: () => showAnalyticsMenu,
-      action: () => setShowAnalyticsMenu(!showAnalyticsMenu),
+      getValue: () => showHistory,
+      action: () => setShowHistory(!showHistory),
+    });
+    cmds.push({
+      id: 'toggle-dictation-btn',
+      label: 'toggle dictation button',
+      category: 'features',
+      isToggle: true,
+      getValue: () => showDictation,
+      action: () => setShowDictation(!showDictation),
     });
 
-    // Toggles - Settings tabs
+    // Toggles - Settings tabs (matches settings modal order)
     cmds.push({
-      id: 'toggle-commands-tab',
-      label: 'toggle commands settings tab',
+      id: 'toggle-plugins-tab',
+      label: 'toggle plugins settings tab',
       category: 'settings tabs',
       isToggle: true,
-      getValue: () => showCommandsSettings,
-      action: () => setShowCommandsSettings(!showCommandsSettings),
-    });
-    cmds.push({
-      id: 'toggle-mcp-tab',
-      label: 'toggle mcp settings tab',
-      category: 'settings tabs',
-      isToggle: true,
-      getValue: () => showMcpSettings,
-      action: () => setShowMcpSettings(!showMcpSettings),
+      getValue: () => showPluginsSettings,
+      action: () => setShowPluginsSettings(!showPluginsSettings),
     });
     cmds.push({
       id: 'toggle-hooks-tab',
@@ -641,12 +652,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => setShowHooksSettings(!showHooksSettings),
     });
     cmds.push({
-      id: 'toggle-plugins-tab',
-      label: 'toggle plugins settings tab',
+      id: 'toggle-commands-tab',
+      label: 'toggle commands settings tab',
       category: 'settings tabs',
       isToggle: true,
-      getValue: () => showPluginsSettings,
-      action: () => setShowPluginsSettings(!showPluginsSettings),
+      getValue: () => showCommandsSettings,
+      action: () => setShowCommandsSettings(!showCommandsSettings),
     });
     cmds.push({
       id: 'toggle-skills-tab',
@@ -656,16 +667,25 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       getValue: () => showSkillsSettings,
       action: () => setShowSkillsSettings(!showSkillsSettings),
     });
+    cmds.push({
+      id: 'toggle-mcp-tab',
+      label: 'toggle mcp settings tab',
+      category: 'settings tabs',
+      isToggle: true,
+      getValue: () => showMcpSettings,
+      action: () => setShowMcpSettings(!showMcpSettings),
+    });
 
     return cmds;
   }, [
-    modKey, currentSessionId, currentSession, selectedModel,
+    modKey, currentSessionId, currentSession, selectedModel, hasRecentProjects,
     wordWrap, soundOnComplete, showResultStats, autoCompactEnabled,
     showProjectsMenu, showAgentsMenu, showAnalyticsMenu,
     showCommandsSettings, showMcpSettings, showHooksSettings,
     showPluginsSettings, showSkillsSettings, showDictation, showHistory,
     rememberTabs, autoGenerateTitle, fontSize, lineHeight, backgroundOpacity,
-    createSession, deleteSession, forkSession, clearContext, interruptSession, toggleModel,
+    selectedIndex, // needed for setPreviousSelectedIndex in submenu actions
+    createSession, deleteSession, forkSession, clearContext, toggleModel,
     setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled,
     setShowProjectsMenu, setShowAgentsMenu, setShowAnalyticsMenu,
     setShowCommandsSettings, setShowMcpSettings, setShowHooksSettings,
@@ -938,12 +958,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     restoreOriginals();
     setActiveSubmenu(null);
     setSubmenuIndex(0);
+    setSelectedIndex(previousSelectedIndex);
     setOriginalColors(null);
     setOriginalFontSize(null);
     setOriginalLineHeight(null);
     setOriginalOpacity(null);
     setQuery('');
-  }, [restoreOriginals]);
+  }, [restoreOriginals, previousSelectedIndex]);
 
   // Handle submenu item selection
   const handleSubmenuSelect = useCallback(async (item: SubmenuItem) => {

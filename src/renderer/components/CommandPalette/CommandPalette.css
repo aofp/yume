@@ -112,7 +112,7 @@
 }
 
 .cp-item.hover-enabled:hover {
-  background: var(--fg-05);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .cp-item.selected {

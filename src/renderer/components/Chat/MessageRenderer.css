@@ -308,6 +308,7 @@
 .content-text p,
 .markdown-content p {
   margin: 0 0 2px 0;
+  line-height: var(--leading-normal);
 }
 
 p {

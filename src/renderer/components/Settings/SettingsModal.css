@@ -454,7 +454,7 @@
 }
 
 .preset-dropdown-item:hover {
-  background: var(--fg-10);
+  background: rgba(var(--accent-rgb), 0.1);
   color: var(--accent-color);
 }
 
@@ -464,7 +464,7 @@
 }
 
 .preset-dropdown-item.focused {
-  background: var(--fg-10);
+  background: rgba(var(--accent-rgb), 0.1);
   color: var(--accent-color);
 }
 

@@ -5,7 +5,7 @@ import {
   IconHistory,
   IconMicrophone,
   IconMicrophoneOff,
-  IconCommand,
+  IconInputSearch,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
@@ -84,6 +84,9 @@ interface ContextBarProps {
 
   // Command palette
   onOpenCommandPalette: () => void;
+
+  // Line changes for this session
+  lineChanges?: { added: number; removed: number };
 }
 
 export const ContextBar: React.FC<ContextBarProps> = ({
@@ -123,6 +126,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   gitChangesCount,
   filesSubTab,
   onOpenCommandPalette,
+  lineChanges,
 }) => {
   // Get context window from selected model
   const currentModel = getModelById(selectedModel);
@@ -206,8 +210,14 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         </button>
       )}
 
-      {/* Center - empty spacer */}
+      {/* Center - line changes */}
       <div className="context-center">
+        {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
+          <span className="line-changes" title="lines changed this session">
+            <span className="line-added">+{lineChanges.added}</span>
+            <span className="line-removed">-{lineChanges.removed}</span>
+          </span>
+        )}
       </div>
 
       {/* Right - history + stats */}
@@ -238,7 +248,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           title={`command palette (${modKey}+p)`}
         >
           <span className="btn-icon-wrapper">
-            <IconCommand size={12} stroke={1.5} />
+            <IconInputSearch size={12} stroke={1.5} />
           </span>
         </button>
         <div className="btn-stats-container">

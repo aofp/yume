@@ -1452,6 +1452,22 @@ textarea.context-full {
   color: var(--negative-color, #ef4444);
 }
 
+.line-changes {
+  display: flex;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  opacity: 0.7;
+}
+
+.line-changes .line-added {
+  color: var(--positive-color, #22c55e);
+}
+
+.line-changes .line-removed {
+  color: var(--negative-color, #ef4444);
+}
+
 .btn-compact-center {
   margin-right: 0 !important;
 }

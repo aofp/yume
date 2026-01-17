@@ -402,6 +402,7 @@ export interface Session {
   cleanup?: () => void; // Cleanup function for event listeners
   lastAssistantMessageIds?: string[]; // Track last assistant message IDs for virtualization
   todos?: { content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }[]; // Track current todo list
+  lineChanges?: { added: number; removed: number }; // Track lines added/removed in this session
 }
 
 interface ClaudeCodeStore {
@@ -3094,6 +3095,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // Capture file snapshot for rollback if present
                         let restorePoints = [...(s.restorePoints || [])];
                         let modifiedFiles = new Set(s.modifiedFiles || []);
+                        let lineChanges = { ...(s.lineChanges || { added: 0, removed: 0 }) };
 
                         if (message.fileSnapshot) {
                           const snapshot = message.fileSnapshot;
@@ -3102,9 +3104,35 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           const editTimestamp = snapshot.timestamp || Date.now();
                           const editSessionId = snapshot.sessionId || s.id;
 
+                          // Calculate line changes
+                          const newContent = message.message?.input?.content || message.message?.input?.new_string || '';
+                          const oldContent = snapshot.originalContent || '';
+                          const newLines = newContent ? newContent.split('\n').length : 0;
+                          const oldLines = oldContent ? oldContent.split('\n').length : 0;
+
+                          if (snapshot.isNewFile) {
+                            // New file: all lines are added
+                            lineChanges.added += newLines;
+                          } else if (operation === 'edit') {
+                            // Edit: use old_string/new_string from input
+                            const oldStr = message.message?.input?.old_string || '';
+                            const newStr = message.message?.input?.new_string || '';
+                            const removedLines = oldStr ? oldStr.split('\n').length : 0;
+                            const addedLines = newStr ? newStr.split('\n').length : 0;
+                            lineChanges.added += addedLines;
+                            lineChanges.removed += removedLines;
+                          } else {
+                            // Write: diff the whole file
+                            if (newLines > oldLines) {
+                              lineChanges.added += (newLines - oldLines);
+                            } else if (oldLines > newLines) {
+                              lineChanges.removed += (oldLines - newLines);
+                            }
+                          }
+
                           const fileSnapshot: FileSnapshot = {
                             path: snapshot.path,
-                            content: message.message?.input?.content || message.message?.input?.new_string || '',
+                            content: newContent,
                             operation,
                             timestamp: editTimestamp,
                             messageIndex: s.messages.length, // Current position
@@ -3126,7 +3154,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             restorePoints = restorePoints.slice(-MAX_RESTORE_POINTS_PER_SESSION);
                           }
                           modifiedFiles.add(snapshot.path);
-                          console.log(`📸 [Store] Captured file snapshot for rollback: ${snapshot.path} (mtime=${snapshot.mtime})`);
+                          console.log(`📸 [Store] Captured file snapshot for rollback: ${snapshot.path} (mtime=${snapshot.mtime}) lines: +${lineChanges.added} -${lineChanges.removed}`);
 
                           // Register file edit in global registry for cross-session conflict detection
                           // Do this async and don't block state update
@@ -3151,6 +3179,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           pendingToolIds: pendingTools,
                           restorePoints,
                           modifiedFiles,
+                          lineChanges,
                           // Ensure thinkingStartTime is set if not already (safeguard for timer display)
                           thinkingStartTime: s.thinkingStartTime || Date.now(),
                         };
