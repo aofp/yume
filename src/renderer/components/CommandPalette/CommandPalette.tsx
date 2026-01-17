@@ -192,6 +192,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
     });
     cmds.push({
+      id: 'session-stats',
+      label: 'context usage',
+      category: 'panels',
+      shortcut: [modKey, '.'],
+      action: () => {
+        window.dispatchEvent(new CustomEvent('toggle-stats-modal'));
+      },
+      disabled: !currentSession,
+    });
+    cmds.push({
       id: 'close-tab',
       label: 'close tab',
       category: 'tabs',
@@ -362,16 +372,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       shortcut: [modKey, 'j'],
       action: onOpenResume,
       disabled: !currentSession && !hasRecentProjects,
-    });
-    cmds.push({
-      id: 'session-stats',
-      label: 'context usage',
-      category: 'panels',
-      shortcut: [modKey, '.'],
-      action: () => {
-        window.dispatchEvent(new CustomEvent('toggle-stats-modal'));
-      },
-      disabled: !currentSession,
     });
 
     // Session
