@@ -1,9 +1,8 @@
 import React from 'react';
 import {
   IconFolder,
+  IconGitBranch,
   IconHistory,
-  IconCancel,
-  IconArrowsMinimize,
   IconMicrophone,
   IconMicrophoneOff,
 } from '@tabler/icons-react';
@@ -71,6 +70,17 @@ interface ContextBarProps {
 
   // Platform
   modKey: string;
+
+  // Feature toggles
+  showDictation: boolean;
+  showHistory: boolean;
+
+  // Git stats
+  gitLineStats: { [file: string]: { added: number; deleted: number } };
+  gitAhead: number;
+
+  // Files panel sub-tab
+  filesSubTab: 'files' | 'git';
 }
 
 export const ContextBar: React.FC<ContextBarProps> = ({
@@ -105,6 +115,11 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   isDictating,
   onToggleDictation,
   modKey,
+  showDictation,
+  showHistory,
+  gitLineStats,
+  gitAhead,
+  filesSubTab,
 }) => {
   // Get context window from selected model
   const currentModel = getModelById(selectedModel);
@@ -148,7 +163,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       {/* Center - tools group */}
       <div className="context-center">
-        {/* Files button - opens files panel (with files/git tabs inside) - hidden in vscode mode */}
+        {/* Files/Git button - opens files panel (with files/git tabs inside) - hidden in vscode mode */}
         {!isVSCode() && (
           <button
             className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
@@ -162,10 +177,20 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               setFocusedGitIndex(-1);
             }}
             disabled={!workingDirectory}
-            title={`files (${modKey}+e)`}
+            title={filesSubTab === 'git' ? `git (${modKey}+g)` : `files (${modKey}+e)`}
           >
-            <span className="btn-icon-wrapper"><IconFolder size={12} stroke={1.5} /></span>
+            <span className="btn-icon-wrapper">
+              {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
+            </span>
+            {gitAhead > 0 && <span className="btn-git-ahead">↑{gitAhead}</span>}
           </button>
+        )}
+        {/* Git line stats - always visible when there are changes, dimmed unless files panel open */}
+        {Object.keys(gitLineStats).length > 0 && (
+          <span className="context-git-stats" style={{ opacity: showFilesPanel ? 1 : 0.5 }}>
+            <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
+            <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
+          </span>
         )}
 
         {/* History button - shown in center for vscode mode (replaces files/git) */}
@@ -190,10 +215,10 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       </div>
 
-      {/* Center absolute - dictation + history */}
-      <div className="context-center-absolute">
-        {/* Dictation button - hidden in vscode mode (no Web Speech API access) */}
-        {!isVSCode() && (
+      {/* Right - dictation + history + stats */}
+      <div className="context-info">
+        {/* Dictation button - hidden in vscode mode or when disabled in settings */}
+        {!isVSCode() && showDictation && (
           <button
             className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
             onClick={onToggleDictation}
@@ -209,9 +234,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             </span>
           </button>
         )}
-
-        {/* History button - hidden in vscode mode (shown in center instead) */}
-        {!isVSCode() && (
+        {/* History button - hidden in vscode mode or when disabled in settings */}
+        {!isVSCode() && showHistory && (
           <button
             className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
             onClick={() => {
@@ -229,26 +253,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <span className="btn-rollback-count">{historyCount}</span>
           </button>
         )}
-      </div>
-
-      {/* Right - stats and clear */}
-      <div className="context-info">
-        <button
-          className="btn-context-icon"
-          onClick={onClearRequest}
-          disabled={isReadOnly || !hasActivity || isStreaming}
-          title={`clear context (${modKey}+l)`}
-        >
-          <span className="btn-icon-wrapper"><IconCancel size={12} stroke={1.5} /></span>
-        </button>
-        <button
-          className="btn-context-icon"
-          onClick={onCompactRequest}
-          disabled={isReadOnly || !hasActivity || isStreaming}
-          title={`compact context (${modKey}+m)`}
-        >
-          <span className="btn-icon-wrapper"><IconArrowsMinimize size={12} stroke={1.5} /></span>
-        </button>
         <div className="btn-stats-container">
           <button
             className={`btn-stats ${usageClass}`}

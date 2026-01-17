@@ -347,43 +347,31 @@ export const WelcomeScreen: React.FC = () => {
             ))}
           </div>
         )}
-        {/* Version indicator - below quick nav */}
-        <div className="welcome-version-inline">
-          <span
-            className="welcome-version-badge"
-            onClick={() => {
-              if (isLicensed) {
-                window.dispatchEvent(new CustomEvent('showAboutModal'));
-              } else {
-                window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                  detail: { reason: 'demo' }
-                }));
-              }
-            }}
-          >
-            {APP_NAME}&nbsp;
-            {APP_VERSION}&nbsp;
-            {!isLicensed &&
-              <>
-              <strong>demo</strong>
-              </>
-            }
-          </span>
-        </div>
       </div>
 
-      {/* Model selector - bottom left like chat */}
-      <div className="model-selector-container">
+      {/* Bottom toolbar - like chat input area */}
+      <div className="welcome-toolbar">
         <ModelSelector
           value={selectedModel}
           onChange={setSelectedModel}
           toolCount={enabledTools.length}
           onOpenModal={() => setShowModelModal(true)}
         />
-      </div>
-
-      {/* Usage limit bars - bottom right like chat */}
-      <div className="welcome-usage-container">
+        <span
+          className="welcome-version-badge"
+          onClick={() => {
+            if (isLicensed) {
+              window.dispatchEvent(new CustomEvent('showAboutModal'));
+            } else {
+              window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+                detail: { reason: 'demo' }
+              }));
+            }
+          }}
+        >
+          {APP_NAME} {APP_VERSION} {!isLicensed && <strong>demo</strong>}
+        </span>
+        <div className="welcome-toolbar-spacer" />
         <div className="btn-stats-container">
           <button
             className="btn-stats minimal"

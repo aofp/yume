@@ -577,15 +577,6 @@ Context to inject when triggered
 - `sansFont` - Sans-serif font selection
 - `globalWatermarkImage` - Global watermark for all sessions
 
-**Performance Config** (`config/performance.ts`):
-- Message virtualization threshold (50 messages)
-- Virtual overscan (25 items)
-- Debounce/throttle delays (search 250ms, typing 50ms, resize 150ms, scroll 32ms)
-- Memory management (max 2000 messages, 100MB cache, 1 min cleanup interval)
-- Auto-save interval (30 seconds)
-- Socket reconnect (1s delay, 5 max attempts), request timeout (30s)
-- UI animations (100ms transitions)
-
 **Feature Flags** (`config/features.ts`):
 - `USE_VIRTUALIZATION` - Message virtualization (enabled)
 - `ENABLE_CHECKPOINTS` - Checkpoint system (enabled)

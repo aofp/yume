@@ -38,6 +38,8 @@ const SHOW_MCP_SETTINGS_KEY = appStorageKey('show-mcp-settings');
 const SHOW_HOOKS_SETTINGS_KEY = appStorageKey('show-hooks-settings');
 const SHOW_PLUGINS_SETTINGS_KEY = appStorageKey('show-plugins-settings');
 const SHOW_SKILLS_SETTINGS_KEY = appStorageKey('show-skills-settings');
+const SHOW_DICTATION_KEY = appStorageKey('show-dictation');
+const SHOW_HISTORY_KEY = appStorageKey('show-history');
 const VSCODE_EXTENSION_ENABLED_KEY = appStorageKey('vscode-extension-enabled');
 const AGENTS_KEY = appStorageKey('agents');
 const CURRENT_AGENT_KEY = appStorageKey('current-agent');
@@ -454,6 +456,10 @@ interface ClaudeCodeStore {
   showPluginsSettings: boolean; // Whether to show plugins tab in settings
   showSkillsSettings: boolean; // Whether to show skills tab in settings
 
+  // Features visibility
+  showDictation: boolean; // Whether to show dictation button and enable keybind
+  showHistory: boolean; // Whether to show history button and enable keybind
+
   // VSCode extension
   vscodeExtensionEnabled: boolean; // Whether vscode extension is enabled (auto-installs when on)
   vscodeConnected: boolean; // Whether vscode extension is connected
@@ -570,6 +576,10 @@ interface ClaudeCodeStore {
   setShowHooksSettings: (show: boolean) => void;
   setShowPluginsSettings: (show: boolean) => void;
   setShowSkillsSettings: (show: boolean) => void;
+
+  // Features visibility
+  setShowDictation: (show: boolean) => void;
+  setShowHistory: (show: boolean) => void;
 
   // VSCode extension
   setVscodeExtensionEnabled: (enabled: boolean) => void;
@@ -831,6 +841,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       showHooksSettings: false, // Default to hidden
       showPluginsSettings: true, // Default to enabled
       showSkillsSettings: false, // Default to hidden
+      showDictation: true, // Default to enabled
+      showHistory: true, // Default to enabled
       vscodeExtensionEnabled: false, // Default to disabled
       vscodeConnected: false, // Not connected initially
       vscodeConnectionCount: 0, // No connections initially
@@ -5648,6 +5660,16 @@ ${content}`;
         localStorage.setItem(SHOW_SKILLS_SETTINGS_KEY, JSON.stringify(show));
       },
 
+      setShowDictation: (show: boolean) => {
+        set({ showDictation: show });
+        localStorage.setItem(SHOW_DICTATION_KEY, JSON.stringify(show));
+      },
+
+      setShowHistory: (show: boolean) => {
+        set({ showHistory: show });
+        localStorage.setItem(SHOW_HISTORY_KEY, JSON.stringify(show));
+      },
+
       setVscodeExtensionEnabled: (enabled: boolean) => {
         set({ vscodeExtensionEnabled: enabled });
         localStorage.setItem(VSCODE_EXTENSION_ENABLED_KEY, JSON.stringify(enabled));
@@ -5951,6 +5973,8 @@ ${content}`;
         showHooksSettings: state.showHooksSettings,
         showPluginsSettings: state.showPluginsSettings,
         showSkillsSettings: state.showSkillsSettings,
+        showDictation: state.showDictation,
+        showHistory: state.showHistory,
         vscodeExtensionEnabled: state.vscodeExtensionEnabled,
         agents: state.agents,
         currentAgentId: state.currentAgentId

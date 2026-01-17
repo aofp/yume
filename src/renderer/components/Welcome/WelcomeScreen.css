@@ -585,36 +585,28 @@
   border-color: rgba(var(--accent-rgb), 0.2);
 }
 
-/* Model Selector - exact same positioning as chat */
-.model-selector-container {
+/* Bottom toolbar - like chat input area */
+.welcome-toolbar {
   position: fixed;
-  bottom: 2px;
-  left: 3px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px;
+  padding-top: 2px;
+  background: var(--background-color);
+  border-top: 1px solid var(--fg-15);
   z-index: 100;
 }
 
-/* macOS-specific adjustment for welcome screen */
-.platform-darwin .model-selector-container {
-  bottom: 3px;
+.welcome-toolbar-spacer {
+  flex: 1;
 }
 
-/* Usage limit bars container - fixed bottom right */
-.welcome-usage-container {
-  position: fixed;
-  bottom: 3px;
-  right: 3px;
-  z-index: 100
-}
-
-.platform-win32 .welcome-usage-container {
-  bottom: 2px !important;
-}
-
-.welcome-usage-container .btn-stats-container {
+.welcome-toolbar .btn-stats-container {
   pointer-events: auto;
-}
-
-.welcome-usage-container .btn-stats-limit-fill {
 }
 
 /* Hidden stats button - invisible but provides structure for limit bars */
@@ -647,32 +639,31 @@
   color: var(--accent-color);
 }
 
-/* Version indicator - inline below quick nav */
-.welcome-version-inline {
-  position: fixed;
-  bottom: 5px;
-  text-align: center;
-}
-
-.welcome-version-badge {
-  font-size: 8px;
+/* Version badge inside toolbar - centered absolutely */
+.welcome-toolbar .welcome-version-badge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
   font-family: var(--font-mono);
-  color: var(--fg-40);
+  color: var(--fg-60);
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
+  opacity: .2;
 }
 
-.welcome-version-badge:hover {
-  color: var(--fg-60);
+.welcome-toolbar .welcome-version-badge:hover {
+  color: var(--fg-80);
+  opacity: 1;
 }
 
-.welcome-version-badge strong {
+.welcome-toolbar .welcome-version-badge strong {
   color: var(--accent-color);
   font-weight: 600;
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
-.welcome-version-badge:hover strong {
+.welcome-toolbar .welcome-version-badge:hover strong {
   opacity: 1;
 }

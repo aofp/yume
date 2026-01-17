@@ -94,6 +94,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     showHooksSettings, setShowHooksSettings,
     showPluginsSettings, setShowPluginsSettings,
     showSkillsSettings, setShowSkillsSettings,
+    showDictation, setShowDictation,
+    showHistory, setShowHistory,
     vscodeExtensionEnabled, setVscodeExtensionEnabled,
     vscodeConnected, isVscodeInstalled,
     backgroundOpacity, setBackgroundOpacity
@@ -897,9 +899,35 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
                 </div>
 
-                {/* Right column: Settings */}
+                {/* Right column: Features + Settings Tabs */}
                 <div className="settings-column">
-                  <h4>settings</h4>
+                  <h4>features</h4>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">dictation</span>
+                    <div
+                      className={`toggle-switch compact ${showDictation ? 'active' : ''}`}
+                      onClick={() => setShowDictation(!showDictation)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">history</span>
+                    <div
+                      className={`toggle-switch compact ${showHistory ? 'active' : ''}`}
+                      onClick={() => setShowHistory(!showHistory)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <h4 style={{ marginTop: '16px' }}>settings tabs</h4>
 
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">plugins</span>

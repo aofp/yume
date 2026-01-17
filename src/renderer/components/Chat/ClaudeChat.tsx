@@ -20,6 +20,8 @@ import {
   IconChevronRight,
   IconHistory,
   IconPencil,
+  IconArrowsMinimize,
+  IconCancel,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
@@ -422,7 +424,9 @@ export const ClaudeChat: React.FC = () => {
     setAutoCompactEnabled,
     restoreToMessage,
     forkSession,
-    forkSessionToProvider
+    forkSessionToProvider,
+    showDictation,
+    showHistory
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -446,7 +450,9 @@ export const ClaudeChat: React.FC = () => {
     setAutoCompactEnabled: state.setAutoCompactEnabled,
     restoreToMessage: state.restoreToMessage,
     forkSession: state.forkSession,
-    forkSessionToProvider: state.forkSessionToProvider
+    forkSessionToProvider: state.forkSessionToProvider,
+    showDictation: state.showDictation,
+    showHistory: state.showHistory
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -519,11 +525,17 @@ export const ClaudeChat: React.FC = () => {
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
-  const filesSubTab = currentSessionId ? panelStates[currentSessionId]?.filesSubTab ?? 'files' : 'files';
+  // Get filesSubTab from localStorage (global preference) or fall back to session state
+  const savedFilesSubTab = localStorage.getItem('yume-files-sub-tab') as 'files' | 'git' | null;
+  const filesSubTab = savedFilesSubTab ?? (currentSessionId ? panelStates[currentSessionId]?.filesSubTab ?? 'files' : 'files');
   const showGitPanel = showFilesPanel && filesSubTab === 'git'; // derived from sub-tab
   const showRollbackPanel = currentSessionId ? panelStates[currentSessionId]?.rollback ?? false : false;
   const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean), subTab?: 'files' | 'git') => {
     if (!currentSessionId) return;
+    // Save subTab to localStorage if provided
+    if (subTab) {
+      localStorage.setItem('yume-files-sub-tab', subTab);
+    }
     setPanelStates(prev => {
       const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
       const newFiles = typeof value === 'function' ? value(current.files) : value;
@@ -531,6 +543,8 @@ export const ClaudeChat: React.FC = () => {
     });
   }, [currentSessionId]);
   const setFilesSubTab = useCallback((subTab: 'files' | 'git') => {
+    // Save globally to localStorage
+    localStorage.setItem('yume-files-sub-tab', subTab);
     if (!currentSessionId) return;
     setPanelStates(prev => {
       const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
@@ -544,6 +558,7 @@ export const ClaudeChat: React.FC = () => {
       const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
       const newGit = typeof value === 'function' ? value(current.files && current.filesSubTab === 'git') : value;
       if (newGit) {
+        localStorage.setItem('yume-files-sub-tab', 'git');
         return { ...prev, [currentSessionId]: { ...current, files: true, filesSubTab: 'git', rollback: false } };
       } else {
         // Closing git panel - close entire files panel
@@ -783,6 +798,55 @@ export const ClaudeChat: React.FC = () => {
       resizeObserver.disconnect();
     };
   }, []);
+
+  // Command palette event listeners
+  useEffect(() => {
+    const handleOpenModelTools = () => {
+      setModelToolsOpenedViaKeyboard(true);
+      setShowModelToolsModal(true);
+    };
+    const handleOpenClaudeMd = () => {
+      if (currentSession?.workingDirectory) {
+        setShowClaudeMdEditor(true);
+      }
+    };
+    const handleToggleFilesPanel = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === 'files') {
+        if (showFilesPanel && filesSubTab === 'files') {
+          setShowFilesPanel(false);
+        } else {
+          setShowFilesPanel(true, 'files');
+        }
+      } else if (detail === 'git') {
+        if (showFilesPanel && filesSubTab === 'git') {
+          setShowFilesPanel(false);
+        } else {
+          setShowFilesPanel(true, 'git');
+        }
+      } else if (detail === 'sessions') {
+        if (showFilesPanel && filesSubTab === 'sessions') {
+          setShowFilesPanel(false);
+        } else {
+          setShowFilesPanel(true, 'sessions');
+        }
+      }
+    };
+    const handleToggleStatsModal = () => {
+      setShowStatsModal(prev => !prev);
+    };
+
+    window.addEventListener('open-model-tools', handleOpenModelTools);
+    window.addEventListener('open-claude-md', handleOpenClaudeMd);
+    window.addEventListener('toggle-files-panel', handleToggleFilesPanel);
+    window.addEventListener('toggle-stats-modal', handleToggleStatsModal);
+    return () => {
+      window.removeEventListener('open-model-tools', handleOpenModelTools);
+      window.removeEventListener('open-claude-md', handleOpenClaudeMd);
+      window.removeEventListener('toggle-files-panel', handleToggleFilesPanel);
+      window.removeEventListener('toggle-stats-modal', handleToggleStatsModal);
+    };
+  }, [currentSession?.workingDirectory, showFilesPanel, filesSubTab, setShowFilesPanel]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -1083,7 +1147,138 @@ export const ClaudeChat: React.FC = () => {
     };
   }, [isMac]);
 
-  // No periodic focus guard - that was too aggressive
+  // macOS focus guardian: Detect and recover from unexpected focus loss
+  // This handles WKWebView bugs where DOM updates steal focus from textarea
+  useEffect(() => {
+    if (!isMac) return;
+
+    // Track if user intentionally moved focus away (clicking buttons, selecting text)
+    const intentionalFocusLossRef = { current: false };
+    let focusCheckTimeout: NodeJS.Timeout | null = null;
+
+    const shouldRestoreFocus = () => {
+      if (!inputRef.current || !document.hasFocus()) return false;
+      if (document.activeElement === inputRef.current) return false;
+      if (intentionalFocusLossRef.current) return false;
+
+      // Skip if user is selecting text
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return false;
+
+      // Skip if any modal is open
+      if (document.querySelector('.modal-overlay') ||
+          document.querySelector('.recent-modal-overlay') ||
+          document.querySelector('.projects-modal-overlay') ||
+          document.querySelector('.settings-modal-overlay') ||
+          document.querySelector('.mt-modal-overlay') ||
+          document.querySelector('[role="dialog"]')) return false;
+
+      // Skip if active element is another input/editable
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement ||
+          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
+          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
+
+      // Skip if focus is on a button, link, or clickable element
+      if (activeEl instanceof HTMLButtonElement ||
+          activeEl instanceof HTMLAnchorElement ||
+          (activeEl instanceof HTMLElement && activeEl.getAttribute('role') === 'button') ||
+          (activeEl instanceof HTMLElement && activeEl.getAttribute('tabindex') !== null)) return false;
+
+      // Skip if focus is in a scrollable area that user might be navigating
+      if (activeEl?.closest('.message-list') ||
+          activeEl?.closest('.tool-panel') ||
+          activeEl?.closest('.file-tree')) return false;
+
+      return true;
+    };
+
+    const scheduleFocusCheck = () => {
+      if (focusCheckTimeout) clearTimeout(focusCheckTimeout);
+      // Small delay to let intentional interactions complete
+      focusCheckTimeout = setTimeout(() => {
+        if (shouldRestoreFocus()) {
+          inputRef.current?.focus();
+        }
+        intentionalFocusLossRef.current = false;
+      }, 100);
+    };
+
+    // Mark focus loss as intentional when user clicks anywhere
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // If clicking on textarea, don't mark as intentional loss
+      if (target === inputRef.current) return;
+      // If clicking on a button or interactive element, mark as intentional
+      if (target.closest('button') ||
+          target.closest('a') ||
+          target.closest('[role="button"]') ||
+          target.closest('[tabindex]') ||
+          target.closest('input') ||
+          target.closest('textarea') ||
+          target.closest('.modal') ||
+          target.closest('[role="dialog"]')) {
+        intentionalFocusLossRef.current = true;
+      }
+    };
+
+    // Reset intentional flag after a short delay (user finished interaction)
+    const handleMouseUp = () => {
+      setTimeout(() => {
+        intentionalFocusLossRef.current = false;
+      }, 200);
+    };
+
+    // Detect when focus is unexpectedly lost (blur without mousedown)
+    const handleBlur = (e: FocusEvent) => {
+      if (e.target !== inputRef.current) return;
+      // Schedule a focus check to potentially restore focus
+      scheduleFocusCheck();
+    };
+
+    // Use MutationObserver to detect DOM changes that might steal focus
+    const observer = new MutationObserver((mutations) => {
+      // Only check if textarea was focused before mutations
+      if (document.activeElement !== inputRef.current &&
+          !intentionalFocusLossRef.current) {
+        // DOM changed and focus isn't on textarea - check if we should restore
+        scheduleFocusCheck();
+      }
+    });
+
+    // Observe the message list for changes (streaming messages)
+    const messageList = document.querySelector('.message-list');
+    if (messageList) {
+      observer.observe(messageList, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
+
+    document.addEventListener('mousedown', handleMouseDown, true);
+    document.addEventListener('mouseup', handleMouseUp, true);
+    inputRef.current?.addEventListener('blur', handleBlur);
+
+    // Periodic fallback check every 2 seconds as safety net
+    // This catches edge cases where focus is lost without triggering blur/mutation
+    const periodicCheck = setInterval(() => {
+      // Only run if document is focused and no intentional focus loss
+      if (document.hasFocus() && !intentionalFocusLossRef.current && shouldRestoreFocus()) {
+        console.log('[Focus Guardian] Restoring focus via periodic check');
+        inputRef.current?.focus();
+      }
+    }, 2000);
+
+    return () => {
+      if (focusCheckTimeout) clearTimeout(focusCheckTimeout);
+      clearInterval(periodicCheck);
+      observer.disconnect();
+      document.removeEventListener('mousedown', handleMouseDown, true);
+      document.removeEventListener('mouseup', handleMouseUp, true);
+      inputRef.current?.removeEventListener('blur', handleBlur);
+    };
+  }, [isMac]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -1969,9 +2164,9 @@ export const ClaudeChat: React.FC = () => {
         if (currentSession?.id && currentSession.messages.length > 0) {
           forkSession(currentSession.id);
         }
-      } else if (e.key === 'F5') {
+      } else if (e.key === 'F5' && showDictation) {
         e.preventDefault();
-        // Toggle dictation
+        // Toggle dictation (only if enabled in settings)
         toggleDictation();
       } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
         e.preventDefault();
@@ -2007,9 +2202,9 @@ export const ClaudeChat: React.FC = () => {
           setFocusedFileIndex(-1);
           setFocusedGitIndex(-1);
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'h' && showHistory) {
         e.preventDefault();
-        // Toggle rollback/history panel (exclude bash commands)
+        // Toggle rollback/history panel (only if enabled in settings)
         const hasUserMessages = currentSession?.messages.filter(m => {
           if (m.type !== 'user') return false;
           const content = m.message?.content;
@@ -2100,7 +2295,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash, showDictation, showHistory]);
 
 
 
@@ -4212,12 +4407,6 @@ export const ClaudeChat: React.FC = () => {
                     )}
                     {gitAhead > 0 && <span className="git-ahead-badge">↑{gitAhead}</span>}
                   </button>
-                  {Object.keys(gitLineStats).length > 0 && (
-                    <span className="tool-panel-git-stats">
-                      <span className="git-total-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
-                      <span className="git-total-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
-                    </span>
-                  )}
                 </div>
               </>
             ) : (
@@ -5167,6 +5356,11 @@ export const ClaudeChat: React.FC = () => {
               isDictating={isDictating}
               onToggleDictation={toggleDictation}
               modKey={modKey}
+              showDictation={showDictation}
+              showHistory={showHistory}
+              gitLineStats={gitLineStats}
+              gitAhead={gitAhead}
+              filesSubTab={filesSubTab}
             />
           </InputArea>
         );
@@ -5231,6 +5425,30 @@ export const ClaudeChat: React.FC = () => {
                     <div className="toggle-switch-slider" />
                   </div>
                 </div>
+                <button
+                  className="stats-action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCompactContextRequest();
+                  }}
+                  disabled={currentSession?.readOnly || !(currentSession?.messages?.length ?? 0) || currentSession?.streaming}
+                  title={`compact context (${modKey}+m)`}
+                >
+                  <IconArrowsMinimize size={14} stroke={1.5} />
+                  <span>compact</span>
+                </button>
+                <button
+                  className="stats-action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearContextRequest();
+                  }}
+                  disabled={currentSession?.readOnly || !(currentSession?.messages?.length ?? 0) || currentSession?.streaming}
+                  title={`clear context (${modKey}+l)`}
+                >
+                  <IconCancel size={14} stroke={1.5} />
+                  <span>clear</span>
+                </button>
                 <button className="stats-close" title="close (esc)" onClick={() => { setShowStatsModal(false); resetHoverStates(); }}>
                   <IconX size={16} />
                 </button>

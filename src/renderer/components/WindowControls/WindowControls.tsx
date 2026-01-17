@@ -213,13 +213,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
     );
   }
 
-  // Windows style controls
+  // Windows style controls (macOS-style traffic lights on right, menu on left)
   return (
-    <div className="window-controls">
+    <div className="windows-window-controls-wrapper">
       {/* Windows: Menu items on the left - projects, analytics, settings, keyboard shortcuts */}
-      <div
-        className="windows-left-controls"
-      >
+      <div className="windows-left-controls">
         {vscodeConnected && (
           <span className="vscode-indicator" title="vscode extension connected">
             [vscode connected]
@@ -260,17 +258,18 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </>
         )}
       </div>
-      {/* Spacer to push window controls to the right */}
-      <div className="window-controls-spacer" />
-      <button className="window-control minimize" onClick={handleMinimize}>
-        <span className="icon-opacity-70"><IconMinus size={14} stroke={1.5} /></span>
-      </button>
-      <button className="window-control maximize" onClick={handleMaximize}>
-        <span className="icon-opacity-70"><IconSquare size={12} stroke={1.5} /></span>
-      </button>
-      <button className="window-control close" onClick={handleClose}>
-        <span className="icon-opacity-70"><IconX size={16} stroke={1.5} /></span>
-      </button>
+      {/* Windows traffic light controls on the right (minimize, maximize, close order) */}
+      <div className={`windows-controls ${!isWindowFocused ? 'inactive' : ''}`}>
+        <button className="windows-control minimize" onClick={handleMinimize}>
+          <span className="windows-control-icon">−</span>
+        </button>
+        <button className="windows-control maximize" onClick={handleMaximize}>
+          <span className="windows-control-icon">+</span>
+        </button>
+        <button className="windows-control close" onClick={handleClose}>
+          <span className="windows-control-icon">×</span>
+        </button>
+      </div>
     </div>
   );
 };

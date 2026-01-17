@@ -12,9 +12,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
   const [isWindowActive, setIsWindowActive] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const titlebarRef = useRef<HTMLDivElement>(null);
-  
+
   // Platform detection
-  const isWindows = navigator.platform.toLowerCase().includes('win') || 
+  const isWindows = navigator.platform.toLowerCase().includes('win') ||
                    navigator.userAgent.toLowerCase().includes('windows');
   const isMac = navigator.platform.toLowerCase().includes('mac');
 

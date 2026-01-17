@@ -1,16 +1,4 @@
-.window-controls {
-  position: fixed;
-  top: 0;
-  left: 4px;
-  right: 0;
-  display: flex;
-  align-items: center;
-  height: 28px;
-  z-index: 100000;
-  -webkit-app-region: no-drag;
-  background: transparent;
-  padding: 0;
-}
+/* Old .window-controls class removed - now using platform-specific wrappers */
 
 /* macOS window controls wrapper */
 .mac-window-controls-wrapper {
@@ -44,11 +32,103 @@
   z-index: 10002;
 }
 
-/* Windows left side controls */
+/* Windows window controls wrapper */
+.windows-window-controls-wrapper {
+  position: relative;
+}
+
+/* Windows left side controls (menu items) */
 .windows-left-controls {
+  position: fixed;
+  top: 4px;
+  left: 4px;
   display: flex;
   align-items: center;
   gap: 2px;
+  background: transparent;
+  -webkit-app-region: no-drag;
+  z-index: 10002;
+}
+
+/* Windows traffic light controls on right */
+.windows-controls {
+  position: fixed;
+  top: 5px;
+  right: 5px;
+  left: auto;
+  display: flex;
+  gap: 8px;
+  background: transparent;
+  height: auto;
+  -webkit-app-region: no-drag;
+  z-index: 10002;
+}
+
+.windows-control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  padding: 0;
+}
+
+.windows-control-icon {
+  display: none;
+  font-size: var(--text-lg);
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.8);
+  line-height: 1;
+  position: relative;
+  top: 1px;
+}
+
+.windows-controls:hover .windows-control-icon {
+  display: block;
+}
+
+.windows-control.minimize {
+  background: var(--fg-15);
+}
+
+.windows-control.minimize:hover {
+  background: var(--fg-30);
+}
+
+.windows-control.maximize {
+  background: var(--fg-15);
+}
+
+.windows-control.maximize:hover {
+  background: var(--fg-30);
+}
+
+.windows-control.close {
+  background: var(--fg-15);
+}
+
+.windows-control.close:hover {
+  background: var(--negative-color);
+  opacity: 1;
+}
+
+/* Grey out all buttons when window is inactive */
+.windows-controls.inactive .windows-control {
+  background: var(--fg-15);
+}
+
+.windows-controls.inactive .windows-control:hover {
+  background: var(--fg-30);
+  opacity: 1;
+}
+
+.windows-controls.inactive .windows-control.close:hover {
+  background: var(--negative-color);
+  opacity: 1;
 }
 
 /* Toggle button styling */
@@ -93,10 +173,10 @@
   display: none;
   font-size: var(--text-lg);
   font-weight: bold;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.8);
   line-height: 1;
   position: relative;
-  top: -1px; /* Move icons up 1px */
+  top: 1px;
 }
 
 .mac-controls:hover .mac-control-icon {
@@ -109,7 +189,7 @@
 
 .mac-control.close:hover {
   background: var(--negative-color);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .mac-control.minimize {
@@ -214,26 +294,7 @@
   margin-right: 0;
 }
 
-.window-controls-spacer {
-  flex: 1;
-}
-
-.window-control.close {
-  background-color: transparent;
-}
-
-.window-control.close:hover {
-  background: rgba(var(--negative-rgb), 0.7);
-  color: #ffffff;
-}
-
-.window-control.close:hover .icon-opacity-70 {
-  opacity: 1;
-}
-
-.window-control:active {
-  background-color: var(--fg-20);
-}
+/* Old Windows-specific .window-control button styles removed - now using traffic lights */
 
 /* Make room for window controls in the layout */
 .session-tabs {

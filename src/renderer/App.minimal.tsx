@@ -14,6 +14,7 @@ const SettingsModalTabbed = React.lazy(() => import('./components/Settings/Setti
 const AboutModal = React.lazy(() => import('./components/About/AboutModal').then(m => ({ default: m.AboutModal })));
 const AnalyticsModal = React.lazy(() => import('./components/Analytics/AnalyticsModal').then(m => ({ default: m.AnalyticsModal })));
 const KeyboardShortcuts = React.lazy(() => import('./components/KeyboardShortcuts/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
+const CommandPalette = React.lazy(() => import('./components/CommandPalette/CommandPalette').then(m => ({ default: m.CommandPalette })));
 const RecentProjectsModal = React.lazy(() => import('./components/RecentProjectsModal/RecentProjectsModal').then(m => ({ default: m.RecentProjectsModal })));
 const ProjectsModal = React.lazy(() => import('./components/ProjectsModal/ProjectsModal').then(m => ({ default: m.ProjectsModal })));
 const AgentsModal = React.lazy(() => import('./components/AgentsModal/AgentsModal').then(m => ({ default: m.AgentsModal })));
@@ -47,6 +48,7 @@ export const App: React.FC = () => {
   const [showAgentsModal, setShowAgentsModal] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<'tabLimit' | 'feature' | 'demo'>('tabLimit');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
@@ -699,11 +701,10 @@ export const App: React.FC = () => {
         setShowProjectsModal(true);
       }
 
-      // Ctrl+P for command palette (TODO: implement)
+      // Ctrl+P for command palette
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
-        // TODO: setShowCommandPalette(true);
-        console.log('Command palette - coming soon??');
+        setShowCommandPalette(true);
       }
       
       // Ctrl+N for agents modal
@@ -737,8 +738,11 @@ export const App: React.FC = () => {
       }
       // Escape or Backspace to close modals (when not typing)
       if (e.key === 'Escape' || (e.key === 'Backspace' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName))) {
-        // Close modals in priority order
-        if (showHelpModal) {
+        // Close modals in priority order (command palette first since it has its own escape handling)
+        if (showCommandPalette) {
+          e.preventDefault();
+          setShowCommandPalette(false);
+        } else if (showHelpModal) {
           e.preventDefault();
           setShowHelpModal(false);
         } else if (showAbout) {
@@ -787,7 +791,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelpModal, showAbout, showSettings, showRecentModal, showProjectsModal, sessions, setCurrentSession]);
+  }, [showHelpModal, showAbout, showSettings, showRecentModal, showProjectsModal, showCommandPalette, sessions, setCurrentSession]);
 
   // Apply theme colors, zoom level, and window state from localStorage on mount
   useEffect(() => {
@@ -1156,6 +1160,23 @@ export const App: React.FC = () => {
         <ErrorBoundary name="KeyboardShortcuts">
           <Suspense fallback={null}>
             <KeyboardShortcuts onClose={() => { setShowHelpModal(false); restoreFocusToChat(); }} />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {showCommandPalette && (
+        <ErrorBoundary name="CommandPalette">
+          <Suspense fallback={null}>
+            <CommandPalette
+              isOpen={showCommandPalette}
+              onClose={() => { setShowCommandPalette(false); restoreFocusToChat(); }}
+              onOpenSettings={() => setShowSettings(true)}
+              onOpenAnalytics={() => { setAnalyticsProject(undefined); setShowAnalytics(true); }}
+              onOpenAgents={() => setShowAgentsModal(true)}
+              onOpenProjects={() => setShowProjectsModal(true)}
+              onOpenRecent={() => setShowRecentModal(true)}
+              onOpenHelp={() => setShowHelpModal(true)}
+              onOpenResume={() => window.dispatchEvent(new CustomEvent(TRIGGER_RESUME_EVENT))}
+            />
           </Suspense>
         </ErrorBoundary>
       )}
