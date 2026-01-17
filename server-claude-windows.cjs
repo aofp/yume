@@ -1083,16 +1083,18 @@ app.get('/health', (req, res) => {
 // Claude usage limits endpoint (for vscode mode - mirrors tauri get_claude_usage_limits)
 app.get('/claude-usage-limits', async (req, res) => {
   try {
-    // Read credentials from macOS keychain
-    const { execSync } = require('child_process');
+    // Read credentials from ~/.claude/.credentials.json (Windows stores credentials in file, not Credential Manager)
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+
+    const credsPath = path.join(os.homedir(), '.claude', '.credentials.json');
+
     let credentialsJson;
     try {
-      credentialsJson = execSync(
-        'security find-generic-password -s "Claude Code-credentials" -w',
-        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
-      ).trim();
+      credentialsJson = fs.readFileSync(credsPath, 'utf8');
     } catch (e) {
-      return res.status(401).json({ error: 'No Claude credentials found in keychain' });
+      return res.status(401).json({ error: `No Claude credentials found at ${credsPath}. Please run 'claude' CLI and authenticate first.` });
     }
 
     const credentials = JSON.parse(credentialsJson);
