@@ -102,7 +102,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
     showPluginsSettings, setShowPluginsSettings,
     showSkillsSettings, setShowSkillsSettings,
     showDictation, setShowDictation,
-    showHistory, setShowHistory,
     memoryEnabled, setMemoryEnabled, memoryServerRunning,
     vscodeExtensionEnabled, setVscodeExtensionEnabled,
     vscodeConnected, isVscodeInstalled,
@@ -844,18 +843,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">confirm dialogs</span>
-                    <div
-                      className={`toggle-switch compact ${showConfirmDialogs ? 'active' : ''}`}
-                      onClick={() => setShowConfirmDialogs(!showConfirmDialogs)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
                     <span className="checkbox-label">remember tabs</span>
                     <div
                       className={`toggle-switch compact ${rememberTabs ? 'active' : ''}`}
@@ -872,6 +859,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                     <div
                       className={`toggle-switch compact ${autoGenerateTitle ? 'active' : ''}`}
                       onClick={() => setAutoGenerateTitle(!autoGenerateTitle)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">confirm dialogs</span>
+                    <div
+                      className={`toggle-switch compact ${showConfirmDialogs ? 'active' : ''}`}
+                      onClick={() => setShowConfirmDialogs(!showConfirmDialogs)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -924,30 +923,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                   <h4>features</h4>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">history</span>
-                    <div
-                      className={`toggle-switch compact ${showHistory ? 'active' : ''}`}
-                      onClick={() => setShowHistory(!showHistory)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
-                    <span className="checkbox-label">dictation</span>
-                    <div
-                      className={`toggle-switch compact ${showDictation ? 'active' : ''}`}
-                      onClick={() => setShowDictation(!showDictation)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
                     <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       memory
                     </span>
@@ -963,6 +938,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                           import('../../services/memoryService').then(m => m.memoryService.stop());
                         }
                       }}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">dictation</span>
+                    <div
+                      className={`toggle-switch compact ${showDictation ? 'active' : ''}`}
+                      onClick={() => setShowDictation(!showDictation)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -1661,7 +1648,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
 
   return (
     <>
-      <div className="settings-modal-overlay">
+      <div className="settings-modal-overlay" onContextMenu={(e) => e.preventDefault()}>
         <div className="settings-modal">
           <div className={`settings-header${isDragging ? ' is-dragging' : ''}`} ref={headerRef} data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
             <div className="settings-header-left" data-tauri-drag-region>
@@ -1751,10 +1738,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                       className={`toggle-switch compact ${vscodeExtensionEnabled ? 'active' : ''}`}
                       onClick={() => {
                         if (!isVscodeInstalled) return;
-                        
+
                         const newEnabled = !vscodeExtensionEnabled;
                         setVscodeExtensionEnabled(newEnabled);
-                        
+
                         // Handle install/uninstall manually
                         if (newEnabled) {
                           if (!vscodeConnected) {
@@ -1765,6 +1752,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                               .finally(() => setVscodeInstalling(false));
                           }
                         } else {
+                          // First disconnect all vscode clients via server
+                          claudeCodeClient.disconnectVscodeClients();
+                          // Then uninstall the extension
                           invoke('uninstall_vscode_extension')
                             .then(() => console.log('VSCode extension uninstalled'))
                             .catch((err) => console.error('Failed to uninstall vscode extension:', err));

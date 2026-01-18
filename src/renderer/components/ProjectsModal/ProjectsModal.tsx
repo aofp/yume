@@ -737,7 +737,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
   if (!isOpen) return null;
 
   return (
-    <div className="projects-modal-overlay" onClick={onClose}>
+    <div className="projects-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div className="projects-modal" onClick={e => e.stopPropagation()}>
         <div className="projects-header" data-tauri-drag-region onClick={() => setContextMenu(null)} onContextMenu={(e) => e.preventDefault()}>
           <div className="projects-title" data-tauri-drag-region>

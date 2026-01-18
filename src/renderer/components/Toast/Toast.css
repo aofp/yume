@@ -1,0 +1,34 @@
+/* Global Toast - minimal, centered, one at a time */
+
+.global-toast {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  border: 1px solid var(--fg-20);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  z-index: 99999;
+  pointer-events: none;
+  color: var(--fg-80);
+}
+
+/* Positive - uses theme positive color (success, enabled, saved, on) */
+.global-toast.success {
+  border-color: rgba(var(--positive-rgb), 0.5);
+  color: var(--positive-color);
+}
+
+/* Negative - uses theme negative color (error, disabled, failed, off) */
+.global-toast.error {
+  border-color: rgba(var(--negative-rgb), 0.5);
+  color: var(--negative-color);
+}
+
+/* Neutral - accent color (info, status) */
+.global-toast.info {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--accent-color);
+}

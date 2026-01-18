@@ -35,7 +35,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
 
   return (
     <>
-    <div className="about-modal-overlay" onClick={onClose}>
+    <div className="about-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div className="about-modal" onClick={(e) => e.stopPropagation()}>
         <div className="about-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>about</h3>

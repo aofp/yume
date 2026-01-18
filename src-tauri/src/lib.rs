@@ -1075,6 +1075,7 @@ pub fn run() {
             commands::close_window,
             commands::show_context_menu,
             commands::restore_window_focus,
+            commands::get_macos_focus_state,
             // Settings and state
             commands::save_settings,
             commands::load_settings,

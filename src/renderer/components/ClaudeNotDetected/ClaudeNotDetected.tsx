@@ -5,7 +5,7 @@ import './ClaudeNotDetected.css';
 
 export const ClaudeNotDetected: React.FC = () => {
   return (
-    <div className="claude-not-detected-overlay">
+    <div className="claude-not-detected-overlay" onContextMenu={(e) => e.preventDefault()}>
       <div className="claude-not-detected-modal">
         <div className="claude-not-detected-icon">
           <IconAlertTriangle size={48} stroke={1.5} />

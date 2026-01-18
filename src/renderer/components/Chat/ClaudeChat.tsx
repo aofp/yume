@@ -52,7 +52,8 @@ import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
-import { resolveModelId, getProviderForModel } from '../../config/models';
+import { resolveModelId, getProviderForModel, ALL_MODELS } from '../../config/models';
+import { toastService } from '../../services/toastService';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
 
@@ -114,6 +115,7 @@ interface FileTreeNodeProps {
   selectedFile: string | null;
   expandedFolders: Set<string>;
   gitStatus: { modified: string[]; added: string[]; deleted: string[] } | null;
+  sessionFiles: Set<string>; // Files modified in this session
   workingDirectory: string;
   focusedPath: string | null;
   onToggleFolder: (path: string) => void;
@@ -128,6 +130,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
   selectedFile,
   expandedFolders,
   gitStatus,
+  sessionFiles,
   workingDirectory,
   focusedPath,
   onToggleFolder,
@@ -151,12 +154,21 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
   const isDeleted = gitStatus?.deleted.includes(relativePath) || false;
   const hasGitChanges = isModified || isAdded || isDeleted;
 
+  // Check session changes - full path or relative path match
+  const isSessionChanged = sessionFiles.has(normalizedPath) || sessionFiles.has(relativePath);
+
   // For directories, check if any children have git changes
   const folderPrefix = relativePath ? `${relativePath}/` : '';
   const hasModifiedChildren = isDirectory && gitStatus?.modified.some(f => f.startsWith(folderPrefix));
   const hasAddedChildren = isDirectory && gitStatus?.added.some(f => f.startsWith(folderPrefix));
   const hasDeletedChildren = isDirectory && gitStatus?.deleted.some(f => f.startsWith(folderPrefix));
   const hasChangedChildren = hasModifiedChildren || hasAddedChildren || hasDeletedChildren;
+
+  // For directories, check if any children have session changes
+  const hasSessionChangedChildren = isDirectory && Array.from(sessionFiles).some(f => {
+    const normalizedF = f.replace(/\\/g, '/');
+    return normalizedF.startsWith(normalizedPath + '/') || normalizedF.startsWith(folderPrefix);
+  });
 
   // Get git status indicator
   const getGitIndicator = () => {
@@ -181,10 +193,15 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
   };
   const gitClass = getGitClass();
 
+  // Determine opacity class: session changes = full, git-only = reduced
+  const opacityClass = (hasGitChanges || hasChangedChildren)
+    ? ((isSessionChanged || hasSessionChangedChildren) ? '' : 'git-only-change')
+    : '';
+
   return (
     <React.Fragment>
       <div
-        className={`file-tree-item ${isDirectory ? 'directory' : ''} ${isSelected ? 'selected' : ''} ${isFocused ? 'focused' : ''} ${gitClass}`}
+        className={`file-tree-item ${isDirectory ? 'directory' : ''} ${isSelected ? 'selected' : ''} ${isFocused ? 'focused' : ''} ${gitClass} ${opacityClass}`}
         style={{ paddingLeft: `${6 + depth * 16}px` }}
         onClick={() => {
           if (isDirectory) {
@@ -229,6 +246,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
               selectedFile={selectedFile}
               expandedFolders={expandedFolders}
               gitStatus={gitStatus}
+              sessionFiles={sessionFiles}
               workingDirectory={workingDirectory}
               focusedPath={focusedPath}
               onToggleFolder={onToggleFolder}
@@ -277,6 +295,15 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
       const nextChildrenModified = nextModified.some(f => f.startsWith(folderPrefix));
       if (prevChildrenModified !== nextChildrenModified) return false;
     }
+  }
+
+  // Check if session files changed for this item
+  if (prevProps.sessionFiles !== nextProps.sessionFiles) {
+    const normalizedPath = itemPath.replace(/\\/g, '/');
+    const relativePath = normalizedPath.replace(prevProps.workingDirectory.replace(/\\/g, '/'), '').replace(/^\//, '');
+    const prevInSession = prevProps.sessionFiles.has(normalizedPath) || prevProps.sessionFiles.has(relativePath);
+    const nextInSession = nextProps.sessionFiles.has(normalizedPath) || nextProps.sessionFiles.has(relativePath);
+    if (prevInSession !== nextInSession) return false;
   }
 
   // Callbacks are stable (created with useCallback in parent)
@@ -431,7 +458,6 @@ export const ClaudeChat: React.FC = () => {
     forkSession,
     forkSessionToProvider,
     showDictation,
-    showHistory,
     contextBarVisibility,
     setContextBarVisibility,
     showConfirmDialogs
@@ -460,7 +486,6 @@ export const ClaudeChat: React.FC = () => {
     forkSession: state.forkSession,
     forkSessionToProvider: state.forkSessionToProvider,
     showDictation: state.showDictation,
-    showHistory: state.showHistory,
     contextBarVisibility: state.contextBarVisibility,
     setContextBarVisibility: state.setContextBarVisibility,
     showConfirmDialogs: state.showConfirmDialogs
@@ -473,16 +498,36 @@ export const ClaudeChat: React.FC = () => {
     state.sessions.find(s => s.id === currentSessionId)
   );
 
+  // Compute session file stats from restore points
+  const sessionFileStats = useMemo(() => {
+    const restorePoints = currentSession?.restorePoints || [];
+    const fileSet = new Set<string>();
+    let linesAdded = 0;
+    let linesRemoved = 0;
+    restorePoints.forEach(rp => {
+      rp.fileSnapshots?.forEach((snap: any) => {
+        fileSet.add(snap.path);
+      });
+    });
+    // Use lineChanges if available (more accurate)
+    if (currentSession?.lineChanges) {
+      linesAdded = currentSession.lineChanges.added;
+      linesRemoved = currentSession.lineChanges.removed;
+    }
+    return { fileCount: fileSet.size, linesAdded, linesRemoved, files: fileSet };
+  }, [currentSession?.restorePoints, currentSession?.lineChanges]);
+
   // Custom model change handler for cross-agent resumption
   const handleModelChange = useCallback((newModelId: string) => {
     const resolvedNewModel = resolveModelId(newModelId);
     const resolvedOldModel = resolveModelId(selectedModel);
 
     // If session has messages and provider is changing, fork it
-    if (currentSession && currentSession.messages.length > 0 && 
+    if (currentSession && currentSession.messages.length > 0 &&
         getProviderForModel(resolvedNewModel) !== getProviderForModel(resolvedOldModel)) {
       console.log(`[ClaudeChat] Provider change detected with active messages. Forking session to ${newModelId}...`);
       forkSessionToProvider(currentSession.id, newModelId);
+      toastService.info('session forked');
     } else {
       setSelectedModel(newModelId);
     }
@@ -696,6 +741,106 @@ export const ClaudeChat: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // DIAGNOSTIC: Track focus loss on macOS
+  // This monitors document.activeElement and logs when focus unexpectedly leaves the textarea
+  useEffect(() => {
+    if (!isMac) return;
+
+    let lastActiveElement: Element | null = null;
+    let lastTextareaFocused = false;
+    let focusLossCount = 0;
+
+    const checkFocus = () => {
+      const currentActive = document.activeElement;
+      const isTextarea = currentActive === inputRef.current;
+      const textareaExists = inputRef.current !== null;
+
+      // Detect focus loss from textarea
+      if (lastTextareaFocused && !isTextarea && textareaExists) {
+        focusLossCount++;
+        const stack = new Error().stack;
+        console.warn(`[FOCUS DEBUG #${focusLossCount}] 🔴 Textarea lost focus!`, {
+          previousActive: lastActiveElement?.tagName,
+          previousClass: (lastActiveElement as HTMLElement)?.className,
+          currentActive: currentActive?.tagName,
+          currentClass: (currentActive as HTMLElement)?.className,
+          currentId: (currentActive as HTMLElement)?.id,
+          documentHasFocus: document.hasFocus(),
+          windowFocused: document.visibilityState,
+          inputRefExists: !!inputRef.current,
+          timestamp: new Date().toISOString(),
+          // Capture what might have caused it
+          openModals: {
+            statsModal: showStatsModal,
+            modelTools: showModelToolsModal,
+            agentExecutor: showAgentExecutor,
+            resumeModal: showResumeModal,
+          },
+          streaming: currentSession?.streaming,
+          runningBash: currentSession?.runningBash,
+        });
+
+        // Log what element now has focus
+        if (currentActive && currentActive !== document.body) {
+          console.warn(`[FOCUS DEBUG] Focus moved to:`, {
+            tag: currentActive.tagName,
+            class: (currentActive as HTMLElement)?.className,
+            id: (currentActive as HTMLElement)?.id,
+            role: currentActive.getAttribute('role'),
+            tabIndex: currentActive.getAttribute('tabindex'),
+          });
+        } else if (currentActive === document.body) {
+          console.warn(`[FOCUS DEBUG] Focus fell to document.body (no specific element)`);
+        }
+
+        // Also check native macOS state
+        if (window.__TAURI__) {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke<string>('get_macos_focus_state').then(state => {
+              console.warn(`[FOCUS DEBUG] Native macOS state: ${state}`);
+            }).catch(() => {});
+          });
+        }
+      }
+
+      // Track for next check
+      if (currentActive !== lastActiveElement) {
+        lastActiveElement = currentActive;
+      }
+      lastTextareaFocused = isTextarea;
+    };
+
+    // Check focus state frequently
+    const intervalId = setInterval(checkFocus, 100);
+
+    // Also listen to focusin/focusout events for more detail
+    const handleFocusIn = (e: FocusEvent) => {
+      if (e.target === inputRef.current) {
+        console.log('[FOCUS DEBUG] ✅ Textarea gained focus via focusin');
+      }
+    };
+
+    const handleFocusOut = (e: FocusEvent) => {
+      if (e.target === inputRef.current) {
+        const relatedTarget = e.relatedTarget as HTMLElement;
+        console.log('[FOCUS DEBUG] ⚠️ Textarea focusout event', {
+          relatedTarget: relatedTarget?.tagName,
+          relatedClass: relatedTarget?.className,
+          relatedId: relatedTarget?.id,
+        });
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, [isMac, showStatsModal, showModelToolsModal, showAgentExecutor, showResumeModal, currentSession?.streaming, currentSession?.runningBash]);
+
   // Also force refresh when modal opens
   useEffect(() => {
     if (showStatsModal) {
@@ -776,6 +921,18 @@ export const ClaudeChat: React.FC = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [currentSession?.messages?.length, shouldUseVirtualization, currentSessionId]);
+
+  // Scroll to top of messages
+  const scrollToTopHelper = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
+    const estimatedProcessedCount = currentSession?.messages?.length || 0;
+    const useVirtualization = shouldUseVirtualization(estimatedProcessedCount);
+
+    if (useVirtualization && virtualizedMessageListRef.current) {
+      virtualizedMessageListRef.current.scrollToTop(behavior);
+    } else if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = 0;
+    }
+  }, [currentSession?.messages?.length, shouldUseVirtualization]);
 
   // Track viewport and input container changes for zoom
   useEffect(() => {
@@ -1455,8 +1612,10 @@ export const ClaudeChat: React.FC = () => {
   const toggleDictation = useCallback(() => {
     if (isDictating) {
       stopDictation();
+      toastService.info('dictation off');
     } else {
       startDictation();
+      toastService.info('dictation on');
     }
   }, [isDictating, startDictation, stopDictation]);
 
@@ -1468,6 +1627,7 @@ export const ClaudeChat: React.FC = () => {
       } else {
         // Skip confirmation - clear directly
         clearContext(currentSessionId);
+        toastService.info('context cleared');
         setIsAtBottom(prev => ({
           ...prev,
           [currentSessionId]: true
@@ -1484,6 +1644,7 @@ export const ClaudeChat: React.FC = () => {
   const confirmClearContext = useCallback(() => {
     if (currentSessionId) {
       clearContext(currentSessionId);
+      toastService.info('context cleared');
       setIsAtBottom(prev => ({
         ...prev,
         [currentSessionId]: true
@@ -1552,6 +1713,7 @@ export const ClaudeChat: React.FC = () => {
       console.log('[ClaudeChat] Interrupting streaming session');
       try {
         await interruptSession(currentSessionId || undefined);
+        toastService.error('interrupted');
         console.log('[ClaudeChat] Session interrupted successfully');
       } catch (error) {
         console.error('[ClaudeChat] Failed to interrupt session:', error);
@@ -1567,6 +1729,7 @@ export const ClaudeChat: React.FC = () => {
       } else {
         // Skip confirmation - compact directly
         sendMessage('/compact');
+        toastService.info('compacting...');
       }
     }
   }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming, showConfirmDialogs, sendMessage]);
@@ -1574,6 +1737,7 @@ export const ClaudeChat: React.FC = () => {
   const confirmCompactContext = useCallback(() => {
     if (currentSessionId) {
       sendMessage('/compact');
+      toastService.info('compacting...');
     }
     setShowCompactConfirm(false);
   }, [currentSessionId, sendMessage]);
@@ -1771,6 +1935,7 @@ export const ClaudeChat: React.FC = () => {
     setShowRollbackPanel(false);
     setShowRollbackConfirm(false);
     setPendingRollbackData(null);
+    toastService.info('rolled back');
     console.log(`[Rollback] Restored conversation, placed message in input`);
   }, [currentSessionId, currentSession?.streaming, pendingRollbackData, restoreToMessage, setShowRollbackPanel, setInput]);
 
@@ -2137,7 +2302,9 @@ export const ClaudeChat: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '.' || e.key === '>' || e.code === 'Period')) {
         e.preventDefault();
         // Toggle auto-compact setting
-        setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+        const newValue = autoCompactEnabled === false;
+        setAutoCompactEnabled(newValue);
+        toastService[newValue ? 'success' : 'error'](`auto-compact ${newValue ? 'on' : 'off'}`);
       } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === '.' || e.code === 'Period')) {
         e.preventDefault();
         // Toggle stats modal
@@ -2162,6 +2329,7 @@ export const ClaudeChat: React.FC = () => {
         // Fork session - duplicate current session with all messages and context %
         if (currentSession?.id && currentSession.messages.length > 0) {
           forkSession(currentSession.id);
+          toastService.info('session forked');
         }
       } else if (e.key === 'F5' && showDictation) {
         e.preventDefault();
@@ -2210,9 +2378,9 @@ export const ClaudeChat: React.FC = () => {
           setFocusedFileIndex(-1);
           setFocusedGitIndex(-1);
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'h' && showHistory) {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
         e.preventDefault();
-        // Toggle rollback/history panel (only if enabled in settings)
+        // Toggle rollback/history panel
         const hasUserMessages = currentSession?.messages.filter(m => {
           if (m.type !== 'user') return false;
           const content = m.message?.content;
@@ -2252,6 +2420,14 @@ export const ClaudeChat: React.FC = () => {
           console.log('[ClaudeChat] ESC pressed - interrupting');
           handleStopBash();
         }
+      } else if (e.ctrlKey && e.key === 'ArrowDown') {
+        // Ctrl+Down: scroll to bottom of chat
+        e.preventDefault();
+        forceScrollToBottomHelper('smooth');
+      } else if (e.ctrlKey && e.key === 'ArrowUp') {
+        // Ctrl+Up: scroll to top of chat
+        e.preventDefault();
+        scrollToTopHelper('smooth');
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
         // Panel keyboard navigation
         if (showFilesPanel && fileTree.length > 0) {
@@ -2303,7 +2479,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash, showDictation, showHistory]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash, showDictation, forceScrollToBottomHelper, scrollToTopHelper]);
 
 
 
@@ -3595,7 +3771,11 @@ export const ClaudeChat: React.FC = () => {
         streamingStartTimeRef.current[currentSessionId] = Date.now();
         console.log('[ClaudeChat] Recording streaming start time for session (first message):', currentSessionId);
       }
-      
+
+      // Close side panels when sending a message so user can see agent response
+      if (showFilesPanel) setShowFilesPanel(false);
+      if (showRollbackPanel) setShowRollbackPanel(false);
+
       await sendMessage(messageContent, bashCommandMode);
       
       // Mark as at bottom and force scroll after sending message
@@ -4429,6 +4609,21 @@ export const ClaudeChat: React.FC = () => {
                     <span>files</span>
                   </button>
                   <button
+                    className={`tool-panel-tab ${filesSubTab === 'sessions' ? 'active' : ''}`}
+                    onClick={() => setFilesSubTab('sessions')}
+                    title={`session changes (${modKey}+s)`}
+                  >
+                    <IconPencil size={12} stroke={1.5} />
+                    <span>session</span>
+                    {sessionFileStats.fileCount > 0 && (
+                      <span className="git-tab-stats">
+                        <span>{sessionFileStats.fileCount}</span>
+                        <span className="git-added">+{sessionFileStats.linesAdded}</span>
+                        <span className="git-deleted">-{sessionFileStats.linesRemoved}</span>
+                      </span>
+                    )}
+                  </button>
+                  <button
                     className={`tool-panel-tab ${filesSubTab === 'git' ? 'active' : ''}`}
                     onClick={() => setFilesSubTab('git')}
                     disabled={!isGitRepo}
@@ -4442,21 +4637,6 @@ export const ClaudeChat: React.FC = () => {
                         {gitAhead > 0 && <span>↑{gitAhead}</span>}
                         <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
                         <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    className={`tool-panel-tab ${filesSubTab === 'sessions' ? 'active' : ''} ${!(currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0)) ? 'disabled' : ''}`}
-                    onClick={() => setFilesSubTab('sessions')}
-                    disabled={!(currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0))}
-                    title={`session changes (${modKey}+s)`}
-                  >
-                    <IconPencil size={12} stroke={1.5} />
-                    <span>session</span>
-                    {currentSession?.lineChanges && (currentSession.lineChanges.added > 0 || currentSession.lineChanges.removed > 0) && (
-                      <span className="git-tab-stats">
-                        <span className="git-added">+{currentSession.lineChanges.added}</span>
-                        <span className="git-deleted">-{currentSession.lineChanges.removed}</span>
                       </span>
                     )}
                   </button>
@@ -4519,6 +4699,7 @@ export const ClaudeChat: React.FC = () => {
                           selectedFile={selectedFile}
                           expandedFolders={expandedFolders}
                           gitStatus={gitStatus}
+                          sessionFiles={sessionFileStats.files}
                           workingDirectory={currentSession?.workingDirectory || ''}
                           focusedPath={focusedPath}
                           onToggleFolder={toggleFolder}
@@ -5436,8 +5617,8 @@ export const ClaudeChat: React.FC = () => {
         {currentSessionId && isAtBottom[currentSessionId] === false && (
           <button
             className="scroll-to-bottom-btn"
-            onClick={() => scrollToBottomHelper('smooth')}
-            title="scroll to bottom"
+            onClick={() => forceScrollToBottomHelper('smooth')}
+            title={`scroll to bottom (ctrl+↓) • ctrl+↑ for top`}
           >
             <IconChevronDown size={16} />
           </button>
@@ -5551,15 +5732,18 @@ export const ClaudeChat: React.FC = () => {
               onToggleDictation={toggleDictation}
               modKey={modKey}
               showDictationSetting={showDictation}
-              showHistorySetting={showHistory}
               visibility={contextBarVisibility}
               onVisibilityChange={setContextBarVisibility}
               gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
+              gitLinesAdded={Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}
+              gitLinesRemoved={Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}
+              sessionFileCount={sessionFileStats.fileCount}
+              sessionLinesAdded={sessionFileStats.linesAdded}
+              sessionLinesRemoved={sessionFileStats.linesRemoved}
               filesSubTab={filesSubTab}
               onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-              lineChanges={currentSession?.lineChanges}
-              onOpenSessionChanges={() => setShowFilesPanel(true, 'sessions')}
               backgroundAgentCount={backgroundAgentCount}
+              pendingToolInfo={currentSession?.pendingToolInfo}
             />
           </InputArea>
         );
@@ -5601,7 +5785,7 @@ export const ClaudeChat: React.FC = () => {
       />
 
       {showStatsModal && (
-        <div className="stats-modal-overlay" onClick={() => { setShowStatsModal(false); resetHoverStates(); }}>
+        <div className="stats-modal-overlay" onClick={() => { setShowStatsModal(false); resetHoverStates(); }} onContextMenu={(e) => e.preventDefault()}>
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
             <div className="stats-header">
               <h3>
@@ -5615,7 +5799,9 @@ export const ClaudeChat: React.FC = () => {
                     className={`toggle-switch compact ${autoCompactEnabled !== false ? 'active' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+                      const newValue = autoCompactEnabled === false;
+                      setAutoCompactEnabled(newValue);
+                      toastService[newValue ? 'success' : 'error'](`auto-compact ${newValue ? 'on' : 'off'}`);
                     }}
                     title={autoCompactEnabled !== false ? `auto-compact on (60%) • ${modKey}+shift+. to toggle` : `auto-compact off • ${modKey}+shift+. to toggle`}
                   >
@@ -5669,10 +5855,6 @@ export const ClaudeChat: React.FC = () => {
                 const contextWindowTokens = 200000;
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 // Don't cap at 100% - show real percentage for context usage awareness
-                const percentageNum = rawPercentage;
-                // Check if tokens are pending after compact - only show ? if pending AND no valid data
-                const isTokensPending = currentSession?.analytics?.compactPending === true && totalContextTokens === 0;
-                const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
 
                 return (
                   <>
@@ -5680,8 +5862,8 @@ export const ClaudeChat: React.FC = () => {
                       <div className="stats-section">
                         <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
                           <div className="usage-bar-label">
-                            <span>{isTokensPending ? '?' : totalContextTokens.toLocaleString()} / 200k</span>
-                            <span className={rawPercentage >= 60 ? 'usage-negative' : ''}>{isTokensPending ? '?%' : `${rawPercentage.toFixed(2)}%`}</span>
+                            <span>{totalContextTokens.toLocaleString()} / 200k</span>
+                            <span className={rawPercentage >= 60 ? 'usage-negative' : ''}>{rawPercentage.toFixed(2)}%</span>
                           </div>
                           <div className="usage-bar">
                             <div className="usage-bar-fill" style={{

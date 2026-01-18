@@ -180,7 +180,7 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
   
   return (
-    <div className="agent-executor-overlay">
+    <div className="agent-executor-overlay" onContextMenu={(e) => e.preventDefault()}>
       <div className="agent-executor">
         <div className="agent-header">
           <div className="agent-title">

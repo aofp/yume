@@ -2461,6 +2461,62 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
     Ok(())
 }
 
+/// Debug command to get macOS focus state
+/// Returns info about NSWindow and WKWebView first responder status
+#[tauri::command]
+pub fn get_macos_focus_state(window: tauri::WebviewWindow) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::id;
+        use std::ffi::CStr;
+
+        let ns_window = window.ns_window().map_err(|e| format!("Failed to get NSWindow: {}", e))?;
+        unsafe {
+            let ns_window = ns_window as id;
+
+            // Get NSApp state
+            let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
+            let is_active: bool = msg_send![ns_app, isActive];
+
+            // Get NSWindow state
+            let is_key: bool = msg_send![ns_window, isKeyWindow];
+            let is_main: bool = msg_send![ns_window, isMainWindow];
+
+            // Get first responder
+            let first_responder: id = msg_send![ns_window, firstResponder];
+            let responder_class: id = msg_send![first_responder, class];
+            let class_name: id = msg_send![responder_class, description];
+            let class_name_ptr: *const i8 = msg_send![class_name, UTF8String];
+            let responder_name = if !class_name_ptr.is_null() {
+                CStr::from_ptr(class_name_ptr).to_str().unwrap_or("unknown")
+            } else {
+                "null"
+            };
+
+            // Check if first responder accepts first responder
+            let accepts_first: bool = if first_responder != cocoa::base::nil {
+                msg_send![first_responder, acceptsFirstResponder]
+            } else {
+                false
+            };
+
+            let result = format!(
+                "NSApp.isActive={}, NSWindow.isKey={}, NSWindow.isMain={}, firstResponder={}, acceptsFirstResponder={}",
+                is_active, is_key, is_main, responder_name, accepts_first
+            );
+
+            log::info!("[Focus Debug] {}", result);
+            Ok(result)
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+        Ok("Not macOS".to_string())
+    }
+}
+
 /// Get Claude CLI version
 #[tauri::command]
 pub async fn get_claude_version() -> Result<String, String> {

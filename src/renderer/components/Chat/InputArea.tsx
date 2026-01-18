@@ -183,7 +183,7 @@ export const InputArea = memo(function InputArea({
             />
           </div>
           {isContextFull && (
-            <div className="context-full-overlay">
+            <div className="context-full-overlay" onContextMenu={(e) => e.preventDefault()}>
               <div className="context-full-message">
                 context {contextPercentage.toFixed(0)}% full
               </div>

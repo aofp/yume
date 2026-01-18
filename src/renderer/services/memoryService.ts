@@ -45,6 +45,7 @@ class MemoryService {
    * Start the memory MCP server
    */
   async start(): Promise<boolean> {
+    console.log('[MemoryService] start() called');
     if (this.isStarting) {
       console.log('[MemoryService] Already starting...');
       return false;
@@ -57,10 +58,12 @@ class MemoryService {
     }
 
     this.isStarting = true;
-    console.log('[MemoryService] Starting memory server...');
+    console.log('[MemoryService] Starting memory server via tauri...');
 
     try {
+      console.log('[MemoryService] Invoking start_memory_server command...');
       const result = await invoke<MemoryServerResult>('start_memory_server');
+      console.log('[MemoryService] Tauri start_memory_server result:', JSON.stringify(result));
 
       if (result.success) {
         console.log('[MemoryService] Memory server started successfully');
@@ -133,13 +136,33 @@ class MemoryService {
    * Initialize memory service on app startup
    */
   async initialize(): Promise<void> {
+    console.log('[MemoryService] Initializing...');
     const store = useClaudeCodeStore.getState();
+    console.log('[MemoryService] Initial state:', { memoryEnabled: store.memoryEnabled, memoryServerRunning: store.memoryServerRunning });
 
     await this.checkStatus();
 
-    if (store.memoryEnabled && !store.memoryServerRunning) {
+    // Get fresh state after checkStatus
+    const freshStore = useClaudeCodeStore.getState();
+    console.log('[MemoryService] After checkStatus:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
+
+    if (freshStore.memoryEnabled && !freshStore.memoryServerRunning) {
       console.log('[MemoryService] Auto-starting memory server...');
-      await this.start();
+      const started = await this.start();
+      console.log('[MemoryService] Auto-start result:', started);
+
+      // Test: write a startup marker to verify the system works
+      if (started) {
+        console.log('[MemoryService] Testing memory write...');
+        const testResult = await this.createEntities([{
+          name: 'yume:startup-test',
+          entityType: 'system',
+          observations: [`Memory system initialized at ${new Date().toISOString()}`]
+        }]);
+        console.log('[MemoryService] Test write result:', testResult);
+      }
+    } else {
+      console.log('[MemoryService] Not auto-starting:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
     }
   }
 
@@ -161,13 +184,16 @@ class MemoryService {
    * Create entities in the knowledge graph
    */
   async createEntities(entities: MemoryEntity[]): Promise<boolean> {
+    console.log('[MemoryService] createEntities called with:', JSON.stringify(entities));
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot create entities');
       return false;
     }
 
     try {
+      console.log('[MemoryService] Invoking memory_create_entities...');
       const result = await invoke<MemoryServerResult>('memory_create_entities', { entities });
+      console.log('[MemoryService] memory_create_entities result:', JSON.stringify(result));
       if (!result.success) {
         console.error('[MemoryService] Failed to create entities:', result.error);
       }

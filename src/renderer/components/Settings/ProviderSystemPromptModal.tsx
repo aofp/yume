@@ -79,7 +79,7 @@ export const ProviderSystemPromptModal: React.FC<ProviderSystemPromptModalProps>
   const isOverLimit = charCount > charLimit;
 
   return (
-    <div className="provider-prompt-modal-overlay">
+    <div className="provider-prompt-modal-overlay" onContextMenu={(e) => e.preventDefault()}>
       <div className="provider-prompt-modal">
         <div
           className="provider-prompt-header"

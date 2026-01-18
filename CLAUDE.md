@@ -25,6 +25,7 @@ Yume is a Tauri 2.x desktop application that provides a minimal GUI for Claude C
 - **Timeline & checkpoints** for conversation state management
 - **Analytics dashboard** with per-project/model/date breakdowns
 - **CLAUDE.md editor** for editing project documentation
+- **Toast notifications** for user feedback (session ops, dictation, compaction)
 - Crash recovery for sessions
 - OLED black theme with pastel accents
 
@@ -192,6 +193,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `services/tauriApi.ts` - TypeScript types for Tauri commands
 - `services/backgroundAgentService.ts` - Background agent queue management
 - `services/memoryService.ts` - Memory MCP server integration
+- `services/toastService.ts` - Global toast notification singleton
 
 **Key Components:**
 - `Chat/ClaudeChat.tsx` - Main chat orchestrator
@@ -204,6 +206,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `ModelSelector/ModelToolsModal.tsx` - Model & tools selector
 - `ProjectsModal/ProjectsModal.tsx` - Projects and sessions browser
 - `BackgroundAgents/AgentQueuePanel.tsx` - Background agent queue panel
+- `Toast/Toast.tsx` - Toast notification component
 
 **Type Definitions:**
 - `types/ucf.ts` - Unified Conversation Format types
@@ -418,49 +421,71 @@ Supports `--async`, `--output-file`, `--git-branch` flags for background executi
 **Architecture**:
 - Storage: `~/.yume/memory.jsonl` (JSONL format)
 - MCP server: Spawned via `npx -y @modelcontextprotocol/server-memory`
-- Communication: JSON-RPC over stdin/stdout
+- Communication: JSON-RPC 2.0 over stdin/stdout
 - Auto-start: When `memoryEnabled` is true on app startup
+- Cleanup: `cleanup_memory_server()` called on app exit
+
+**MCP Protocol Details**:
+- Protocol version: `2024-11-05`
+- Handshake: `initialize` request → response → `notifications/initialized`
+- Request IDs: Atomic counter for concurrent requests
+- 500ms startup delay before handshake to ensure server readiness
 
 **Knowledge Graph Model**:
 - **Entities**: Named nodes with type and observations
 - **Relations**: Connections between entities with relation type
 - **Observations**: Facts attached to entities
 
+**Entity Naming Conventions**:
+- Projects: `project:{path-with-dashes}` (e.g., `project:Users-yuru-myapp`)
+- Patterns: `pattern:{name-slug}` (max 50 chars)
+- Errors: `error:{first-30-chars-slug}`
+- System: `yume:startup-test` (initialization marker)
+
 **Rust Backend** (`commands/memory.rs`):
-- Process management for MCP server
-- JSON-RPC request/response handling
+- Global `MEMORY_SERVER` state with Mutex for thread safety
+- Process management with stdin/stdout handles
+- JSON-RPC request/response handling with error propagation
+- Enhanced PATH resolution for npx (homebrew, nvm, pnpm paths)
 - Cross-platform: Uses `npx.cmd` on Windows, `npx` elsewhere
 
 **Tauri Commands (10)**:
-1. `start_memory_server` - Start MCP server process
-2. `stop_memory_server` - Stop server process
-3. `check_memory_server` - Check if running
+1. `start_memory_server` - Start MCP server process with handshake
+2. `stop_memory_server` - Stop server process (kills child)
+3. `check_memory_server` - Check if running (uses try_wait)
 4. `get_memory_file_path` - Get storage path
-5. `memory_create_entities` - Create entities in graph
-6. `memory_create_relations` - Create relations
+5. `memory_create_entities` - Create entities via `tools/call`
+6. `memory_create_relations` - Create relations via `tools/call`
 7. `memory_add_observations` - Add observations to entity
 8. `memory_search_nodes` - Search knowledge graph
 9. `memory_read_graph` - Read entire graph
 10. `memory_delete_entity` - Delete entity and relations
 
 **Frontend Service** (`memoryService.ts`):
-- Singleton service initialized on app startup
+- Singleton service with `isStarting`/`isStopping` guards
+- Initialization writes startup test entity to verify system works
 - High-level methods:
   - `remember(projectPath, fact, category)` - Store project fact
   - `rememberPattern(pattern, context)` - Store coding pattern
   - `rememberErrorFix(error, solution)` - Store error/fix pair
-  - `getRelevantMemories(context, maxResults)` - Get memories for prompt
+  - `getRelevantMemories(context, maxResults)` - Get memories for prompt injection
   - `extractLearnings(projectPath, userMessage, response)` - Auto-extract patterns
+- Low-level methods: `createEntities()`, `createRelations()`, `addObservations()`, `searchNodes()`, `readGraph()`, `deleteEntity()`
 
 **Store Integration**:
 - `memoryEnabled` - Enable/disable memory system
 - `memoryServerRunning` - Server status tracking
 - Actions: `setMemoryEnabled()`, `setMemoryServerRunning()`
 
-**Auto-Learning**:
-Automatically extracts and stores:
-- Error/fix patterns (when conversation contains error keywords)
-- Architecture decisions (when keywords like "best practice" appear)
+**Auto-Learning Triggers**:
+- Error/fix patterns: Detects `/error|bug|fix|issue|problem|crash|fail/i` in messages
+- Architecture decisions: Detects `/should (use|prefer|avoid)|best practice|pattern|architecture|design/i`
+- Stores first 200-500 chars as summary
+
+**Search Algorithm**:
+- Extracts words >3 chars from context
+- Takes first 5 terms as search query
+- Returns formatted `<memory-context>` block for prompt injection
 
 ### License Management System
 **Demo vs Pro**: Demo users limited to 2 tabs and 1 window. Pro license ($21) unlocks 99 tabs and 99 windows.
@@ -679,6 +704,32 @@ Context to inject when triggered
 - `model & tools` (Cmd+O) - Open model/tools selector
 - `toggle model` (Cmd+Shift+O) - Switch between opus/sonnet
 
+### Keyboard Shortcuts
+**Global shortcuts** available throughout the app.
+
+**Tab Navigation**:
+- `Ctrl+Tab` - Next tab (works regardless of input field focus)
+- `Ctrl+Shift+Tab` - Previous tab
+- `Cmd/Ctrl+1-9` - Jump to specific tab by number
+
+**Panels & Modals**:
+- `Cmd/Ctrl+P` - Command Palette
+- `Cmd/Ctrl+E` - Files Panel
+- `Cmd/Ctrl+G` - Git Panel
+- `Cmd/Ctrl+S` - Session Changes Panel
+- `Cmd/Ctrl+O` - Model & Tools
+- `Cmd/Ctrl+.` - Session Stats
+
+**Input**:
+- `Cmd/Ctrl+K` - Insert ultrathink prompt
+- `Cmd/Ctrl+L` - Clear context
+- `F5` - Toggle voice dictation
+- `?` - Toggle keyboard shortcuts help overlay
+
+**Help Overlay**:
+- Press `?` or `Esc` to toggle
+- Formatted with dotted leaders, organized by category
+
 ### Command Autocomplete
 **Intelligent slash command autocomplete** triggered by `/` in the input field.
 
@@ -731,7 +782,7 @@ Context to inject when triggered
 - Escape to close
 
 ### Files/Git Panel
-**Unified panel** with two tabs for browsing project files and git changes.
+**Unified panel** with three tabs for browsing project files, git changes, and session changes.
 
 **Files Tab** (Cmd+E):
 - Tree view of project files
@@ -747,6 +798,14 @@ Context to inject when triggered
 - Auto-refresh every 30s when panel is open
 - Only shows when working directory is a git repo
 - **Git count badge** on tab button showing total changed files (modified + added + deleted)
+
+**Session Changes Tab** (Cmd+S):
+- Shows files modified during current session (aggregated from restore points)
+- Status indicators: A (added), D (deleted), M (modified), W (write)
+- Line change statistics badge: `+added -removed`
+- Click file to view inline diff (before/after comparison)
+- Tab disabled when no session changes exist
+- Files sorted alphabetically with color-coded status
 
 **Rollback Panel**:
 - History navigation view
@@ -836,8 +895,10 @@ Context to inject when triggered
 - `AUTO_SAVE_INTERVAL`: 30s
 - `ANIMATION_DURATION`: 100ms (snappy UI)
 
-**tools.ts** (15 Claude CLI tools):
-- Categories: file-read (3), file-write (3), terminal (2), web (2), agents (2), other (3)
+**tools.ts** (16 Claude CLI tools):
+- Categories: file-read (3), file-write (3), terminal (2), web (2), agents (2), mcp (1), other (3)
+- MCP: One toggle per server (e.g., `mcp__memory` expands to 7 actual tools via `expandMcpTools()`)
+- MCP Memory tools: `create_entities`, `create_relations`, `add_observations`, `delete_entities`, `search_nodes`, `open_nodes`, `read_graph`
 - All enabled by default
 - Dangerous tools: Write, Edit, NotebookEdit, Bash
 
@@ -905,6 +966,11 @@ Context to inject when triggered
 - Warning thresholds (55%, 60%, 65%)
 - **Provider-aware rate limits**: 5h/7d limit bars only shown for Claude provider
 - Stats modal shows "claude 5h/7d" labels or "rate limits not available for {provider}" for Gemini/OpenAI
+- **Button visibility customization**: Right-click context bar to toggle button visibility
+  - Customizable: Command Palette, Dictation, Files Panel, History buttons
+  - Persisted in localStorage (`yume_context-bar-visibility`)
+  - Context menu shows checkmarks for visible buttons
+- **Line changes badge**: Shows `+added -removed` lines on files button
 
 **Diff Viewer** (`DiffViewer.tsx`):
 - Line-by-line file diffs
@@ -925,11 +991,28 @@ Context to inject when triggered
 - Visual indicator (pulsing mic) when active
 - Preserves existing input text
 
+**Toast Notification System** (`services/toastService.ts`, `components/Toast/`):
+- Global singleton service for app-wide notifications
+- Positioned 64px from top, centered horizontally
+- Single toast at a time, no stacking
+- 3 types: `success` (green), `error` (red), `info` (accent color)
+- Default duration: 2000ms (2 seconds)
+- API: `toastService.success(msg)`, `toastService.error(msg)`, `toastService.info(msg)`, `toastService.dismiss()`
+- Used for: session operations, dictation toggle, context clearing, compaction, interruptions
+
 **Message Rollback** (History Panel):
 - Visual message history with undo capability
 - Roll back to any previous message state
 - Branching conversation support
 - Accessible via history button in context bar
+
+**Focus Preservation System** (`main.tsx`, `App.minimal.tsx`):
+- Non-aggressive focus restoration (only restores if textarea was focused before modal)
+- Window focus change detection via Tauri events (`window-focus-change`)
+- Tracks `textareaFocusedOnBlur` state to prevent focus fighting
+- macOS-specific WKWebView settling delay (50ms)
+- Skips restoration when modals are open or other inputs are focused
+- Functions: `saveFocusState()`, `restoreFocusToChat()`
 
 ### Configuration Options
 
@@ -951,6 +1034,7 @@ Context to inject when triggered
 - `monoFont` - Monospace font selection
 - `sansFont` - Sans-serif font selection
 - `globalWatermarkImage` - Global watermark for all sessions
+- `contextBarVisibility` - Context bar button visibility (persisted separately)
 
 **Feature Flags** (`config/features.ts`):
 - `USE_VIRTUALIZATION` - Message virtualization (enabled)
@@ -1235,6 +1319,14 @@ const context = await memoryService.getRelevantMemories('How should I handle err
 - Force-trigger at 65%
 - Review compaction manifests to preserve important context
 
+**Store Optimizations** (`claudeCodeStore.ts`):
+- Debounced storage writes (100ms) - prevents UI freezes when toggling settings
+- Flush on app close prevents data loss
+- Streaming end debounce (1.5s) - prevents premature state changes
+- Subagent tracking prevents streaming end while subagents active
+- Message hash caching (WeakMap) - fast deduplication using signatures
+- Avoids expensive JSON.stringify comparisons
+
 ### Security
 
 **License Keys**:
@@ -1408,7 +1500,13 @@ After running build commands:
 - Edit operations: Captures old_string → new_string, calculates removed vs added lines
 - Write operations: Tracks new content line counts
 
-**Usage**: Displayed in ContextBar to show code impact per session
+**UI Integration**:
+- **Context Bar**: Files button shows badge with `+added -removed` lines
+- **Files Panel**: Session Changes tab badge displays line change summary
+- **Session Tab**: Enables/disables Session Changes tab based on changes
+- Reset to `{ added: 0, removed: 0 }` on new session creation
+
+**Data Source**: Aggregated from `session.restorePoints` for historical changes
 
 ## Competitive Analysis (January 2026)
 

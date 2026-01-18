@@ -82,7 +82,7 @@ export const CheckpointButton: React.FC<CheckpointButtonProps> = ({
       </button>
       
       {showDialog && (
-        <div className="checkpoint-dialog-overlay" onClick={() => setShowDialog(false)}>
+        <div className="checkpoint-dialog-overlay" onClick={() => setShowDialog(false)} onContextMenu={(e) => e.preventDefault()}>
           <div className="checkpoint-dialog" onClick={(e) => e.stopPropagation()}>
             <h3 className="checkpoint-dialog-title">Create Checkpoint</h3>
             

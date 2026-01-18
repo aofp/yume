@@ -379,13 +379,14 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="recent-modal-overlay"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div 
         className="recent-modal"

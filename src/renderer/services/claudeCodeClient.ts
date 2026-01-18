@@ -1057,6 +1057,14 @@ export class ClaudeCodeClient {
       this.sendCurrentSettings();
     }
   }
+
+  // Force disconnect all vscode clients (called when user disables extension)
+  disconnectVscodeClients(): void {
+    if (this.socket?.connected) {
+      debugLog('[Client] Requesting server to disconnect all VSCode clients');
+      this.socket.emit('vscode:disconnectAll');
+    }
+  }
 }
 
 // Singleton instance

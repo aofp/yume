@@ -27,7 +27,9 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import { systemPromptService } from './services/systemPromptService';
 import { pluginService } from './services/pluginService';
 import { ensureProviderDefaults } from './services/providersService';
+import { toastService } from './services/toastService';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { Toast } from './components/Toast/Toast';
 import { APP_NAME, appEventName, appStorageKey } from './config/app';
 import { isVSCode } from './services/tauriApi';
 import './App.minimal.css';
@@ -62,22 +64,80 @@ export const App: React.FC = () => {
 
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
 
-  // Helper function to reset hover states after modal closes
-  // Focus restoration is minimal - typing auto-focuses via handleGlobalTyping
+  // Track whether textarea was focused before modal opens
+  // This enables non-aggressive focus restoration: only restore if user was typing before modal
   const isMac = React.useMemo(() => navigator.platform.toLowerCase().includes('mac'), []);
+  const textareaWasFocusedRef = useRef(false);
+
+  // Helper to save current focus state before opening a modal
+  const saveFocusState = React.useCallback(() => {
+    const activeEl = document.activeElement;
+    textareaWasFocusedRef.current = activeEl?.classList.contains('chat-input') || false;
+  }, []);
+
+  // Helper function to restore focus after modal closes
+  // Non-aggressive: only restores if textarea was focused before modal opened
   const restoreFocusToChat = React.useCallback(() => {
-    // Use RAF to ensure modal is fully unmounted
+    // Only restore if textarea was focused before modal opened
+    if (!textareaWasFocusedRef.current) {
+      return;
+    }
+
+    // Use RAF + small delay to ensure modal is fully unmounted
+    // macOS WKWebView needs extra time for DOM to settle
     requestAnimationFrame(() => {
-      // WORKAROUND: Reset hover states by toggling pointer-events
-      // SKIP on macOS: pointer-events manipulation causes textarea focus loss on WKWebView
-      if (!isMac) {
-        document.body.style.pointerEvents = 'none';
-        requestAnimationFrame(() => {
-          document.body.style.pointerEvents = '';
-        });
-      }
+      setTimeout(() => {
+        // Skip if another modal is now open
+        if (document.querySelector('.modal-overlay') ||
+            document.querySelector('[role="dialog"]') ||
+            document.querySelector('.settings-modal-overlay')) {
+          return;
+        }
+
+        // Skip if focus has moved to another input (user clicked elsewhere intentionally)
+        const currentActive = document.activeElement;
+        if (currentActive instanceof HTMLInputElement ||
+            currentActive instanceof HTMLTextAreaElement ||
+            (currentActive instanceof HTMLElement && currentActive.isContentEditable)) {
+          // Already focused on an input - don't steal focus
+          if (!currentActive.classList.contains('chat-input')) {
+            return;
+          }
+        }
+
+        // Restore focus to textarea
+        const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.focus();
+        }
+
+        // Reset state
+        textareaWasFocusedRef.current = false;
+
+        // WORKAROUND: Reset hover states by toggling pointer-events (non-macOS only)
+        if (!isMac) {
+          document.body.style.pointerEvents = 'none';
+          requestAnimationFrame(() => {
+            document.body.style.pointerEvents = '';
+          });
+        }
+      }, isMac ? 50 : 0); // macOS needs a small delay for WKWebView
     });
   }, [isMac]);
+
+  // Track modals opening to save focus state
+  // This lets us restore focus only if textarea was focused before modal opened
+  const anyModalOpen = showSettings || showAbout || showHelpModal || showRecentModal ||
+    showProjectsModal || showAgentsModal || showAnalytics || showCommandPalette || showUpgradeModal;
+  const prevModalOpenRef = useRef(anyModalOpen);
+
+  useEffect(() => {
+    // When a modal opens (transition from closed to open), save current focus state
+    if (anyModalOpen && !prevModalOpenRef.current) {
+      saveFocusState();
+    }
+    prevModalOpenRef.current = anyModalOpen;
+  }, [anyModalOpen, saveFocusState]);
 
   // Load session mappings and initialize fonts on startup
   useEffect(() => {
@@ -1042,11 +1102,12 @@ export const App: React.FC = () => {
           {/* Show copy option if text is selected */}
           {contextMenu.hasSelection && (
             <>
-              <button 
+              <button
                 className="context-menu-item"
                 onClick={() => {
                   if (contextMenu.selectedText) {
                     navigator.clipboard.writeText(contextMenu.selectedText);
+                    toastService.info('copied');
                   }
                   setContextMenu(null);
                 }}
@@ -1070,6 +1131,7 @@ export const App: React.FC = () => {
                       const end = textarea.selectionEnd || 0;
                       const selectedText = textarea.value.substring(start, end) || textarea.value;
                       await navigator.clipboard.writeText(selectedText);
+                      toastService.info('copied');
                     } catch (err) {
                       console.error('Failed to copy:', err);
                     }
@@ -1128,7 +1190,7 @@ export const App: React.FC = () => {
           )}
           {contextMenu.isMessageBubble && (
             <>
-              <button 
+              <button
                 className="context-menu-item"
                 onClick={() => {
                   // Copy message content
@@ -1137,6 +1199,7 @@ export const App: React.FC = () => {
                     if (messageContent) {
                       const text = (messageContent as HTMLElement).innerText;
                       navigator.clipboard.writeText(text);
+                      toastService.info('copied');
                     }
                   }
                   setContextMenu(null);
@@ -1505,6 +1568,7 @@ export const App: React.FC = () => {
           <NoProviderModal />
         </Suspense>
       </ErrorBoundary>
+      <Toast />
     </div>
   );
 };

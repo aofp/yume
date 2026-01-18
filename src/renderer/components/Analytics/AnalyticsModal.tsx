@@ -512,7 +512,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const heatmapMaxTokens = Math.max(...heatmapItems.map((day) => day.tokens), 1);
 
   return (
-    <div className="analytics-modal-overlay" onClick={onClose}>
+    <div className="analytics-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div className="analytics-modal" onClick={(e) => e.stopPropagation()}>
         <div className="analytics-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
           <div className="analytics-header-left" data-tauri-drag-region>

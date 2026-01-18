@@ -76,7 +76,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
   const isOverLimit = charCount > charLimit;
 
   return (
-    <div className="system-prompt-modal-overlay">
+    <div className="system-prompt-modal-overlay" onContextMenu={(e) => e.preventDefault()}>
       <div className="system-prompt-modal">
         <div className="system-prompt-header" style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties} onContextMenu={(e) => e.preventDefault()}>
           <h3 style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties}>system prompt append configuration</h3>

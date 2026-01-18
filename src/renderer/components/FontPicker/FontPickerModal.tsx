@@ -98,7 +98,7 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   };
 
   return (
-    <div className="font-picker-overlay" onClick={onClose}>
+    <div className="font-picker-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div className="font-picker-modal" onClick={(e) => e.stopPropagation()}>
         <div className="font-picker-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>{fontType === 'monospace' ? 'monospace' : 'sans-serif'} fonts</h3>

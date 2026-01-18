@@ -42,7 +42,7 @@ export const SystemModal: React.FC<SystemModalProps> = ({
   };
 
   return (
-    <div className="system-modal-overlay" onClick={handleOverlayClick}>
+    <div className="system-modal-overlay" onClick={handleOverlayClick} onContextMenu={(e) => e.preventDefault()}>
       <div className="system-modal">
         <div className="system-modal-content">{message}</div>
         <div className="system-modal-buttons">

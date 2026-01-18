@@ -281,7 +281,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
   return (
     <>
-      <div className="settings-modal-overlay" onClick={onClose}>
+      <div className="settings-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
         <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
           <div className="settings-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
             <h3>

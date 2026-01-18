@@ -164,6 +164,7 @@ interface VirtualizedMessageListProps {
 
 export interface VirtualizedMessageListRef {
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  scrollToTop: (behavior?: 'auto' | 'smooth') => void;
   isAtBottom: () => boolean;
   forceScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   scrollToIndex: (index: number, behavior?: 'auto' | 'smooth') => void;
@@ -460,6 +461,10 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       isAutoScrollingRef.current = true;
       scrollToTrueBottom(behavior);
       setTimeout(() => { isAutoScrollingRef.current = false; }, 100);
+    },
+    scrollToTop: (behavior: 'auto' | 'smooth' = 'auto') => {
+      if (!parentRef.current) return;
+      parentRef.current.scrollTo({ top: 0, behavior });
     },
     isAtBottom: () => checkIfAtBottom(),
     forceScrollToBottom: (behavior: 'auto' | 'smooth' = 'auto') => {

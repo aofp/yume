@@ -81,7 +81,7 @@ export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
   const currentInstall = getCurrentInstallation();
 
   return (
-    <div className="claude-modal-overlay" onClick={onClose}>
+    <div className="claude-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div className="claude-modal" onClick={(e) => e.stopPropagation()}>
         <div className="claude-modal-header" onContextMenu={(e) => e.preventDefault()}>
           <span className="modal-title">claude cli configuration</span>

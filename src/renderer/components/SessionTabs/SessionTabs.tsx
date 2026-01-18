@@ -5,6 +5,7 @@ import { AnalyticsModal } from '../Analytics/AnalyticsModal';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { isVSCode } from '../../services/tauriApi';
 import { APP_NAME, appStorageKey } from '../../config/app';
+import { toastService } from '../../services/toastService';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
 
@@ -1175,7 +1176,7 @@ export const SessionTabs: React.FC = () => {
               if (workingDir !== '/') {
                 const name = workingDir.split(/[/\\]/).pop() || workingDir;
                 const newProject = { path: workingDir, name, lastOpened: Date.now(), accessCount: 1 };
-                
+
                 // Get existing recent projects
                 const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
                 let recentProjects = [];
@@ -1186,7 +1187,7 @@ export const SessionTabs: React.FC = () => {
                 } catch (err) {
                   console.error('Failed to parse recent projects:', err);
                 }
-                
+
                 // Update recent projects list
                 const updated = [
                   newProject,
@@ -1198,6 +1199,7 @@ export const SessionTabs: React.FC = () => {
               }
 
               createSession(undefined, workingDir);
+              toastService.info('tab duplicated');
             }
             setContextMenu(null);
           }}>duplicate tab ({modKey}+d)</button>
@@ -1206,6 +1208,7 @@ export const SessionTabs: React.FC = () => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession && targetSession.messages.length > 0) {
               await forkSession(contextMenu.sessionId);
+              toastService.info('session forked');
             }
             setContextMenu(null);
           }} disabled={!sessions.find(s => s.id === contextMenu.sessionId)?.messages.length} style={{
@@ -1266,10 +1269,11 @@ export const SessionTabs: React.FC = () => {
                 
                 <div className="separator" />
                 
-                <button 
+                <button
                   onClick={() => {
                     if (hasMessages) {
                       clearContext(contextMenu.sessionId);
+                      toastService.info('context cleared');
                       setContextMenu(null);
                     }
                   }}

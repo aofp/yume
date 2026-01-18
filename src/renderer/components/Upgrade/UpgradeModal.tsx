@@ -28,7 +28,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
 
 
   return (
-    <div className="upgrade-modal-overlay" onClick={onClose}>
+    <div className="upgrade-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div className="upgrade-modal" onClick={e => e.stopPropagation()}>
         <div className="upgrade-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>

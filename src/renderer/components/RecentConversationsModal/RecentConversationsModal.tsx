@@ -199,6 +199,7 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
           onClose();
         }
       }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div
         className="recent-modal"

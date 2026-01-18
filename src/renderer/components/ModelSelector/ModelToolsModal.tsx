@@ -77,6 +77,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     list.push(...toolsByCategory.terminal);
     list.push(...toolsByCategory.other);
     list.push(...toolsByCategory.agents);
+    list.push(...toolsByCategory.mcp);
     return list;
   }, [toolsByCategory]);
 
@@ -88,10 +89,16 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     const tm = toolsByCategory.terminal.length;
     const ot = toolsByCategory.other.length;
     const ag = toolsByCategory.agents.length;
+    const mc = toolsByCategory.mcp.length;
+    const row0End = fr + fw;
+    const row1End = row0End + wb + tm;
+    const row2End = row1End + ot + ag;
+    const row3End = row2End + mc;
     return [
-      { start: 0, leftEnd: fr, rightStart: fr, end: fr + fw },           // row 0
-      { start: fr + fw, leftEnd: fr + fw + wb, rightStart: fr + fw + wb, end: fr + fw + wb + tm }, // row 1
-      { start: fr + fw + wb + tm, leftEnd: fr + fw + wb + tm + ot, rightStart: fr + fw + wb + tm + ot, end: fr + fw + wb + tm + ot + ag }, // row 2
+      { start: 0, leftEnd: fr, rightStart: fr, end: row0End },           // row 0: read + write
+      { start: row0End, leftEnd: row0End + wb, rightStart: row0End + wb, end: row1End }, // row 1: web + terminal
+      { start: row1End, leftEnd: row1End + ot, rightStart: row1End + ot, end: row2End }, // row 2: other + agents
+      { start: row2End, leftEnd: row3End, rightStart: row3End, end: row3End }, // row 3: mcp (full width)
     ];
   }, [toolsByCategory]);
 
@@ -369,7 +376,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="mt-modal-overlay" onClick={onClose}>
+    <div className="mt-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div
         className={`mt-modal ${isKeyboardNav ? 'keyboard-nav' : ''}`}
         onClick={(e) => e.stopPropagation()}
@@ -641,6 +648,33 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                 </span>
                 <div className="mt-tools-grid">
                   {toolsByCategory.agents.map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>}
+
+            {/* MCP (full width row) */}
+            {toolsExpanded && <div className="mt-category-row">
+              <div className="mt-category mt-category-full">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('mcp') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('mcp')}
+                >
+                  mcp
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory.mcp.map(tool => (
                     <button
                       key={tool.id}
                       ref={el => { toolRefs.current.set(tool.id, el); }}

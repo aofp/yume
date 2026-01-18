@@ -9,6 +9,8 @@ use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::time::Duration;
+use std::thread;
 
 // Global store for memory server process and IO handles
 struct MemoryServerState {
@@ -86,6 +88,77 @@ fn get_memory_dir() -> Result<PathBuf, String> {
     }
 
     Ok(yume_dir)
+}
+
+/// Add memory server to Claude Code CLI using `claude mcp add`
+/// This allows Claude Code agent to use the memory tools
+fn add_memory_to_mcp_config() -> Result<(), String> {
+    let memory_file = get_memory_dir()?.join("memory.jsonl");
+
+    // First check if memory server already exists
+    let check_output = Command::new("claude")
+        .args(["mcp", "list"])
+        .output()
+        .map_err(|e| format!("Failed to run claude mcp list: {}", e))?;
+
+    let list_output = String::from_utf8_lossy(&check_output.stdout);
+    if list_output.contains("memory:") {
+        println!("[Memory] Memory server already registered with Claude Code");
+        return Ok(());
+    }
+
+    // Use `claude mcp add` to register the memory server at user scope
+    // Format: claude mcp add -s user memory -e MEMORY_FILE_PATH=... -- npx -y @modelcontextprotocol/server-memory
+    let output = Command::new("claude")
+        .args([
+            "mcp", "add",
+            "-s", "user",
+            "memory",
+            "-e", &format!("MEMORY_FILE_PATH={}", memory_file.to_string_lossy()),
+            "--",
+            "npx", "-y", "@modelcontextprotocol/server-memory"
+        ])
+        .output()
+        .map_err(|e| format!("Failed to run claude mcp add: {}", e))?;
+
+    if output.status.success() {
+        println!("[Memory] Registered memory server with Claude Code CLI");
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // If already exists, that's fine
+        if stderr.contains("already exists") {
+            println!("[Memory] Memory server already registered");
+            Ok(())
+        } else {
+            Err(format!("Failed to add memory server: {}", stderr))
+        }
+    }
+}
+
+/// Remove memory server from Claude Code CLI using `claude mcp remove`
+fn remove_memory_from_mcp_config() -> Result<(), String> {
+    // Use `claude mcp remove` to unregister the memory server
+    let output = Command::new("claude")
+        .args(["mcp", "remove", "-s", "user", "memory"])
+        .output()
+        .map_err(|e| format!("Failed to run claude mcp remove: {}", e))?;
+
+    if output.status.success() {
+        println!("[Memory] Removed memory server from Claude Code CLI");
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // If not found, that's fine
+        if stderr.contains("not found") || stderr.contains("does not exist") {
+            println!("[Memory] Memory server was not registered");
+            Ok(())
+        } else {
+            // Log warning but don't fail - server might not be registered
+            println!("[Memory] Warning removing memory server: {}", stderr);
+            Ok(())
+        }
+    }
 }
 
 /// Get the full path to the memory file
@@ -179,7 +252,50 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
     #[cfg(not(target_os = "windows"))]
     let npx_cmd = "npx";
 
-    let mut child = Command::new(npx_cmd)
+    // Get PATH from environment to ensure npx is findable
+    // In bundled apps, PATH is often minimal, so we add common node locations
+    let mut path_env = std::env::var("PATH").unwrap_or_default();
+
+    // Add common Node.js/npm paths that might not be in bundled app's PATH
+    let home = std::env::var("HOME").unwrap_or_default();
+    let extra_paths = vec![
+        "/usr/local/bin".to_string(),        // homebrew intel
+        "/opt/homebrew/bin".to_string(),     // homebrew arm64
+        format!("{}/Library/pnpm", home),    // pnpm
+        format!("{}/.local/bin", home),      // local bin
+        "/usr/bin".to_string(),
+    ];
+
+    for extra in &extra_paths {
+        if !path_env.contains(extra) {
+            path_env = format!("{}:{}", extra, path_env);
+        }
+    }
+
+    // Also expand nvm paths
+    let nvm_dir = format!("{}/.nvm/versions/node", home);
+    if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+        for entry in entries.flatten() {
+            let bin_path = entry.path().join("bin");
+            if bin_path.exists() {
+                let bin_str = bin_path.to_string_lossy();
+                if !path_env.contains(bin_str.as_ref()) {
+                    path_env = format!("{}:{}", bin_str, path_env);
+                }
+            }
+        }
+    }
+
+    println!("[Memory] Enhanced PATH: {}", path_env);
+
+    // Set the enhanced PATH for this process and child processes
+    std::env::set_var("PATH", &path_env);
+
+    // Try to find npx explicitly
+    let npx_path = which::which(npx_cmd).map_err(|e| format!("npx not found: {}. PATH={}", e, path_env))?;
+    println!("[Memory] Found npx at: {:?}", npx_path);
+
+    let mut child = Command::new(&npx_path)
         .arg("-y")
         .arg("@modelcontextprotocol/server-memory")
         .env(
@@ -216,11 +332,21 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
     // Drop lock before doing MCP handshake
     drop(state);
 
+    // Give the server time to initialize before handshake
+    println!("[Memory] Waiting for server to initialize...");
+    thread::sleep(Duration::from_millis(500));
+
     // Perform MCP initialization handshake
     println!("[Memory] Performing MCP initialization handshake...");
     match perform_mcp_handshake() {
         Ok(_) => {
             println!("[Memory] MCP handshake completed successfully");
+
+            // Add memory server to Claude's MCP config so CLI can use it
+            if let Err(e) = add_memory_to_mcp_config() {
+                println!("[Memory] Warning: Failed to add to MCP config: {}", e);
+            }
+
             Ok(MemoryServerResult {
                 success: true,
                 error: None,
@@ -244,8 +370,33 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
     }
 }
 
+/// Read a line from stdout with a timeout
+fn read_line_with_timeout(stdout: &mut BufReader<ChildStdout>, _timeout: Duration) -> Result<String, String> {
+    // Note: timeout parameter reserved for future async implementation
+
+    // We can't easily do async with BufReader, so we'll use a simpler approach:
+    // Just read with a manual timeout using poll-like behavior
+    // For now, just do a regular read but log if it takes too long
+    let start = std::time::Instant::now();
+    let mut line = String::new();
+
+    // Note: This is still blocking, but we'll detect slow responses
+    match stdout.read_line(&mut line) {
+        Ok(_) => {
+            let elapsed = start.elapsed();
+            if elapsed > Duration::from_secs(5) {
+                println!("[Memory] Warning: read took {:?}", elapsed);
+            }
+            Ok(line)
+        }
+        Err(e) => Err(format!("Read error: {}", e)),
+    }
+}
+
 /// Perform MCP protocol initialization handshake
 fn perform_mcp_handshake() -> Result<(), String> {
+    println!("[Memory] Starting MCP handshake...");
+
     let mut state = MEMORY_SERVER
         .lock()
         .map_err(|e| format!("Failed to acquire lock: {}", e))?;
@@ -274,26 +425,29 @@ fn perform_mcp_handshake() -> Result<(), String> {
     let request_str = serde_json::to_string(&init_request)
         .map_err(|e| format!("Failed to serialize init request: {}", e))?;
 
+    println!("[Memory] Sending initialize request: {}", request_str);
+
     // Write init request
     {
         let stdin = state.stdin.as_mut().unwrap();
         writeln!(stdin, "{}", request_str).map_err(|e| format!("Failed to write init request: {}", e))?;
         stdin.flush().map_err(|e| format!("Failed to flush init request: {}", e))?;
     }
-    println!("[Memory] Sent initialize request");
+    println!("[Memory] Sent initialize request, waiting for response...");
 
-    // Read init response
-    let mut response_line = String::new();
-    {
+    // Read init response with timeout logging
+    let response_line = {
         let stdout = state.stdout.as_mut().unwrap();
-        stdout
-            .read_line(&mut response_line)
-            .map_err(|e| format!("Failed to read init response: {}", e))?;
-    }
+        read_line_with_timeout(stdout, Duration::from_secs(30))?
+    };
     println!("[Memory] Received init response: {}", response_line.trim());
 
+    if response_line.is_empty() {
+        return Err("Empty response from server".to_string());
+    }
+
     let response: Value = serde_json::from_str(&response_line)
-        .map_err(|e| format!("Failed to parse init response: {}", e))?;
+        .map_err(|e| format!("Failed to parse init response '{}': {}", response_line.trim(), e))?;
 
     if response.get("error").is_some() {
         return Err(format!("Init error: {}", response["error"]));
@@ -313,7 +467,7 @@ fn perform_mcp_handshake() -> Result<(), String> {
         writeln!(stdin, "{}", notif_str).map_err(|e| format!("Failed to write initialized notification: {}", e))?;
         stdin.flush().map_err(|e| format!("Failed to flush initialized notification: {}", e))?;
     }
-    println!("[Memory] Sent initialized notification");
+    println!("[Memory] Sent initialized notification - handshake complete");
 
     Ok(())
 }
@@ -321,6 +475,11 @@ fn perform_mcp_handshake() -> Result<(), String> {
 /// Stop the memory MCP server
 #[tauri::command]
 pub async fn stop_memory_server() -> Result<MemoryServerResult, String> {
+    // Remove memory server from Claude's MCP config first
+    if let Err(e) = remove_memory_from_mcp_config() {
+        println!("[Memory] Warning: Failed to remove from MCP config: {}", e);
+    }
+
     let mut state = MEMORY_SERVER
         .lock()
         .map_err(|e| format!("Failed to acquire lock: {}", e))?;
@@ -569,6 +728,11 @@ pub fn memory_delete_entity(entity_name: String) -> Result<MemoryServerResult, S
 
 /// Kill memory server on app exit (called from cleanup)
 pub fn cleanup_memory_server() {
+    // Remove memory server from Claude's MCP config on exit
+    if let Err(e) = remove_memory_from_mcp_config() {
+        println!("[Memory] Warning: Failed to remove from MCP config on exit: {}", e);
+    }
+
     if let Ok(mut state) = MEMORY_SERVER.lock() {
         state.stdin = None;
         state.stdout = None;

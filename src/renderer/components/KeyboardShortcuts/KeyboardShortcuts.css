@@ -64,6 +64,21 @@
   flex-direction: column;
 }
 
+.shortcut-category {
+  color: var(--fg-40);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: lowercase;
+  margin-top: 8px;
+  margin-bottom: 2px;
+  padding-left: 1px;
+  user-select: none;
+}
+
+.shortcut-category:first-child {
+  margin-top: 0;
+}
+
 .shortcut-spacer {
   height: 8px;
 }

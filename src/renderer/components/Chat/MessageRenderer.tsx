@@ -36,6 +36,7 @@ import {
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { isBashPrefix } from '../../utils/helpers';
 import { APP_AGENT_PREFIX, APP_ID } from '../../config/app';
+import { toastService } from '../../services/toastService';
 import './MessageRenderer.css';
 
 // Selection preservation utilities for streaming messages
@@ -1470,6 +1471,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
 
               // Copy error to clipboard
               navigator.clipboard.writeText(resultContent).then(() => {
+                toastService.info('error copied');
               }).catch(err => {
                 console.error('Failed to copy error:', err);
               });
@@ -1722,9 +1724,10 @@ const MessageRendererBase: React.FC<{
         const handleContextMenu = (e: React.MouseEvent) => {
           e.preventDefault();
           e.stopPropagation();
-          
+
           // Copy error to clipboard
           navigator.clipboard.writeText(errorText).then(() => {
+            toastService.info('error copied');
           }).catch(err => {
             console.error('Failed to copy error:', err);
           });

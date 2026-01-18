@@ -10,7 +10,7 @@ import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
 import { isBashPrefix } from '../utils/helpers';
 import { appEventName, appStorageKey } from '../config/app';
-import { loadEnabledTools, DEFAULT_ENABLED_TOOLS, ALL_TOOLS } from '../config/tools';
+import { loadEnabledTools, DEFAULT_ENABLED_TOOLS, ALL_TOOLS, expandMcpTools, getAllMcpToolIds } from '../config/tools';
 
 const SESSIONS_KEY = appStorageKey('sessions');
 const SESSIONS_TIMESTAMP_KEY = appStorageKey('sessions-timestamp');
@@ -40,7 +40,6 @@ const SHOW_HOOKS_SETTINGS_KEY = appStorageKey('show-hooks-settings');
 const SHOW_PLUGINS_SETTINGS_KEY = appStorageKey('show-plugins-settings');
 const SHOW_SKILLS_SETTINGS_KEY = appStorageKey('show-skills-settings');
 const SHOW_DICTATION_KEY = appStorageKey('show-dictation');
-const SHOW_HISTORY_KEY = appStorageKey('show-history');
 const CONTEXT_BAR_VISIBILITY_KEY = appStorageKey('context-bar-visibility');
 const MEMORY_ENABLED_KEY = appStorageKey('memory_enabled');
 const VSCODE_EXTENSION_ENABLED_KEY = appStorageKey('vscode-extension-enabled');
@@ -388,6 +387,7 @@ export interface Session {
   bashProcessId?: string; // Current bash process ID for cancellation
   watermarkImage?: string; // Base64 or URL for watermark image
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
+  pendingToolInfo?: Map<string, { name: string; startTime: number }>; // Track pending tool names for context center
   thinkingStartTime?: number; // Track when thinking started for this session
   lastMessageTime?: number; // Track last message received time (for streaming state protection)
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
@@ -465,7 +465,6 @@ interface ClaudeCodeStore {
 
   // Features visibility
   showDictation: boolean; // Whether to show dictation button and enable keybind
-  showHistory: boolean; // Whether to show history button and enable keybind
   memoryEnabled: boolean; // Whether built-in MCP memory server is enabled
   memoryServerRunning: boolean; // Whether memory server process is currently running
 
@@ -599,7 +598,6 @@ interface ClaudeCodeStore {
 
   // Features visibility
   setShowDictation: (show: boolean) => void;
-  setShowHistory: (show: boolean) => void;
   setContextBarVisibility: (visibility: { showCommandPalette: boolean; showDictation: boolean; showFilesPanel: boolean; showHistory: boolean }) => void;
   setMemoryEnabled: (enabled: boolean) => void;
   setMemoryServerRunning: (running: boolean) => void;
@@ -752,6 +750,7 @@ const restoreSessions = (): Session[] => {
         status: 'paused' as const, // Mark as paused until reconnected
         streaming: false,
         pendingToolIds: new Set(),
+        pendingToolInfo: new Map(),
         modifiedFiles: new Set(s.modifiedFiles || []),
         createdAt: new Date(s.createdAt),
         updatedAt: new Date(s.updatedAt),
@@ -873,7 +872,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       showPluginsSettings: true, // Default to enabled
       showSkillsSettings: false, // Default to hidden
       showDictation: true, // Default to enabled
-      showHistory: true, // Default to enabled
       memoryEnabled: (() => {
         const stored = localStorage.getItem(MEMORY_ENABLED_KEY);
         return stored !== null ? JSON.parse(stored) : true; // Default to enabled
@@ -1042,6 +1040,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             claudeTitle: `tab ${tabNumber}`, // Default title as 'tab x'
             originalTabNumber: tabNumber, // Store original tab number for restoring after clear
             pendingToolIds: new Set(),
+            pendingToolInfo: new Map(),
             analytics: {
               totalMessages: 0,
               userMessages: 0,
@@ -1120,11 +1119,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             }
 
             // Use enabled tools from store (user-configurable via Cmd+O modal)
-            // Compute disallowed tools = ALL_TOOLS - enabledTools
+            // Expand MCP server toggles to actual tool IDs, then compute disallowed
             const enabledToolsList = get().enabledTools;
-            const disabledToolsList = ALL_TOOLS
-              .map(t => t.id)
-              .filter(id => !enabledToolsList.includes(id));
+            const expandedEnabledTools = expandMcpTools(enabledToolsList);
+            // Get all possible tool IDs (base tools + all MCP tools)
+            const allToolIds = [...ALL_TOOLS.map(t => t.id), ...getAllMcpToolIds()];
+            const disabledToolsList = allToolIds
+              .filter(id => !expandedEnabledTools.includes(id))
+              // Filter out MCP server toggle IDs (they're not real tools)
+              .filter(id => !id.match(/^mcp__[^_]+$/));
 
             // Route session creation based on provider
             const resolvedModel = resolveModelId(selectedModel);
@@ -1240,6 +1243,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               claudeSessionId,
               claudeTitle: pendingSession.claudeTitle, // Keep the 'tab x' title
               pendingToolIds: new Set(),
+              pendingToolInfo: new Map(),
               // Initialize fresh analytics for new session (even if resuming)
               analytics: {
                 totalMessages: 0,
@@ -1446,7 +1450,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             ...s,
                             streaming: false,
                             // DON'T clear thinkingStartTime here - we need it for the result message
-                            pendingToolIds: new Set()
+                            pendingToolIds: new Set(),
+                            pendingToolInfo: new Map()
                           };
                         }
                         return s;
@@ -2609,6 +2614,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           streaming: false,
                           thinkingStartTime: undefined,
                           pendingToolIds: new Set(), // Clear pending tools on error
+                          pendingToolInfo: new Map(),
                           messages: (() => {
                             let updatedMessages = [...s.messages, errorMessage];
                             const MAX_MESSAGES = 500;
@@ -3122,7 +3128,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                               runningBash: false,
                               userBashRunning: false,
                               analytics: updatedAnalytics,
-                              pendingToolIds: new Set() // Clear pending tools on interrupt/error
+                              pendingToolIds: new Set(), // Clear pending tools on interrupt/error
+                              pendingToolInfo: new Map()
                             };
                           }
                           return s;
@@ -3133,7 +3140,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   } else if (message.type === 'tool_use') {
                     // When we get a tool_use message, ensure streaming is active
                     // This handles cases where tools are running (especially Task/agent tools)
-                    console.log('Tool use message received, ensuring streaming state is active');
+                    console.log('[ContextCenter] 🔧 Tool use message received:', message.message?.name, message.message?.id);
 
                     // Track if this is a Bash command
                     const isBash = message.message?.name === 'Bash';
@@ -3143,12 +3150,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
                     // Add tool ID to pending set
                     const toolId = message.message?.id;
+                    const toolName = message.message?.name || 'unknown';
                     sessions = sessions.map(s => {
                       if (s.id === sessionId) {
                         const pendingTools = new Set(s.pendingToolIds || []);
+                        const pendingToolInfo = new Map(s.pendingToolInfo || []);
                         if (toolId) {
                           pendingTools.add(toolId);
-                          console.log(`[Store] Added tool ${toolId} to pending. Total pending: ${pendingTools.size}`);
+                          pendingToolInfo.set(toolId, { name: toolName, startTime: Date.now() });
+                          console.log(`[ContextCenter] ✅ Added tool ${toolId} (${toolName}) to pendingToolInfo. Size: ${pendingToolInfo.size}`);
                         }
 
                         // Capture file snapshot for rollback if present
@@ -3236,6 +3246,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           streaming: true,
                           runningBash: isBash ? true : s.runningBash,
                           pendingToolIds: pendingTools,
+                          pendingToolInfo,
                           restorePoints,
                           modifiedFiles,
                           lineChanges,
@@ -3252,14 +3263,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     sessions = sessions.map(s => {
                       if (s.id === sessionId) {
                         const pendingTools = new Set(s.pendingToolIds || []);
+                        const pendingToolInfo = new Map(s.pendingToolInfo || []);
                         if (toolUseId && pendingTools.has(toolUseId)) {
                           pendingTools.delete(toolUseId);
+                          pendingToolInfo.delete(toolUseId);
                           console.log(`[Store] Removed tool ${toolUseId} from pending. Remaining: ${pendingTools.size}`);
                         }
                         return {
                           ...s,
                           runningBash: false,
-                          pendingToolIds: pendingTools
+                          pendingToolIds: pendingTools,
+                          pendingToolInfo
                         };
                       }
                       return s;
@@ -4457,7 +4471,8 @@ ${content}`;
                   assistantMessages: messagesToCopy.filter(m => m.type === 'assistant').length,
                   toolUses: s.analytics.toolUses || 0,
                   // Copy token analytics so context % is preserved
-                  tokens: sourceSession.analytics?.tokens ? { ...sourceSession.analytics.tokens } : s.analytics.tokens
+                  tokens: sourceSession.analytics?.tokens ? { ...sourceSession.analytics.tokens } : s.analytics.tokens,
+                  compactPending: false // Never inherit compactPending from source
                 }
               };
             }
@@ -4604,6 +4619,7 @@ ${content}`;
                   userBashRunning: false,
                   thinkingStartTime: undefined,
                   pendingToolIds: new Set(), // Clear pending tools on interrupt
+                  pendingToolInfo: new Map(),
                   analytics: updatedAnalytics,
                   // Clear compaction state on interrupt (message already captured above)
                   // Always clear isCompacting on interrupt - handles both auto and manual /compact
@@ -4722,6 +4738,7 @@ ${content}`;
                   claudeTitle: s.userRenamed ? s.claudeTitle : `tab ${tabNumber}`, // Keep custom titles, reset default ones
                   originalTabNumber: tabNumber, // Update original tab number for future clears
                   pendingToolIds: new Set(), // Clear pending tools
+                  pendingToolInfo: new Map(),
                   streaming: false, // Stop streaming
                   wasCompacted: false, // Reset compacted flag
                   compactionState: undefined, // Reset compaction state (clears pendingAutoCompact flag)
@@ -4909,6 +4926,19 @@ ${content}`;
             sessions: state.sessions.map(s => {
               if (s.id !== sessionId) return s;
 
+              // If this is an interrupted message and bash was running, append "bash stopped"
+              let processedMessage = message;
+              if (message.type === 'system' && (message as any).subtype === 'interrupted' && s.runningBash) {
+                const originalMsg = typeof message.message === 'string'
+                  ? message.message
+                  : (message.message?.content || 'task interrupted');
+                processedMessage = {
+                  ...message,
+                  message: `${originalMsg} (bash stopped)`
+                };
+                console.log('[Store] Appended "bash stopped" to interrupt message');
+              }
+
               // Initialize analytics if we need to update tokens
               let analytics = s.analytics;
 
@@ -4984,18 +5014,19 @@ ${content}`;
 
               // Normal message handling - with deduplication
               // Check if message with same ID already exists (race condition prevention)
+              // Use processedMessage for adding to array (may have "bash stopped" appended)
               let updatedMessages: typeof s.messages;
-              if (message.id) {
-                const existingIndex = s.messages.findIndex(m => m.id === message.id);
+              if (processedMessage.id) {
+                const existingIndex = s.messages.findIndex(m => m.id === processedMessage.id);
                 if (existingIndex >= 0) {
                   // Update existing message instead of adding duplicate
                   updatedMessages = [...s.messages];
-                  updatedMessages[existingIndex] = message;
-                  console.log(`[Store] Updated existing message ${message.id} (dedup)`);
+                  updatedMessages[existingIndex] = processedMessage;
+                  console.log(`[Store] Updated existing message ${processedMessage.id} (dedup)`);
                 } else {
-                  updatedMessages = [...s.messages, message];
+                  updatedMessages = [...s.messages, processedMessage];
                 }
-              } else if (message.type === 'result') {
+              } else if (processedMessage.type === 'result') {
                 // Special handling for result messages without IDs
                 // Only allow ONE result per turn - find and merge with any existing result
                 const messages = [...s.messages];
@@ -5014,20 +5045,20 @@ ${content}`;
                   const existing = messages[existingResultIndex];
                   messages[existingResultIndex] = {
                     ...existing,
-                    ...message,
-                    usage: message.usage || existing.usage,
-                    duration_ms: message.duration_ms || (existing as any).duration_ms,
-                    total_cost_usd: message.total_cost_usd || (existing as any).total_cost_usd,
-                    model: message.model || (existing as any).model,
-                    result: message.result || (existing as any).result
+                    ...processedMessage,
+                    usage: processedMessage.usage || existing.usage,
+                    duration_ms: processedMessage.duration_ms || (existing as any).duration_ms,
+                    total_cost_usd: processedMessage.total_cost_usd || (existing as any).total_cost_usd,
+                    model: processedMessage.model || (existing as any).model,
+                    result: processedMessage.result || (existing as any).result
                   };
                   console.log(`[Store] Merged result message (dedup)`);
                   updatedMessages = messages;
                 } else {
-                  updatedMessages = [...s.messages, message];
+                  updatedMessages = [...s.messages, processedMessage];
                 }
               } else {
-                updatedMessages = [...s.messages, message];
+                updatedMessages = [...s.messages, processedMessage];
               }
               const MAX_MESSAGES = 500;
 
@@ -5460,7 +5491,8 @@ ${content}`;
                 contextWindow: restoredContextWindow,
                 cost: session.analytics?.cost || { total: 0, byModel: { opus: 0, sonnet: 0 } },
                 lastActivity: new Date(),
-                thinkingTime: session.analytics?.thinkingTime || 0
+                thinkingTime: session.analytics?.thinkingTime || 0,
+                compactPending: false // Clear compactPending on restore
               }
             };
 
@@ -5889,11 +5921,6 @@ ${content}`;
         localStorage.setItem(SHOW_DICTATION_KEY, JSON.stringify(show));
       },
 
-      setShowHistory: (show: boolean) => {
-        set({ showHistory: show });
-        localStorage.setItem(SHOW_HISTORY_KEY, JSON.stringify(show));
-      },
-
       setContextBarVisibility: (visibility: { showCommandPalette: boolean; showDictation: boolean; showFilesPanel: boolean; showHistory: boolean }) => {
         set({ contextBarVisibility: visibility });
         localStorage.setItem(CONTEXT_BAR_VISIBILITY_KEY, JSON.stringify(visibility));
@@ -6213,7 +6240,6 @@ ${content}`;
         showPluginsSettings: state.showPluginsSettings,
         showSkillsSettings: state.showSkillsSettings,
         showDictation: state.showDictation,
-        showHistory: state.showHistory,
         contextBarVisibility: state.contextBarVisibility,
         memoryEnabled: state.memoryEnabled,
         vscodeExtensionEnabled: state.vscodeExtensionEnabled,

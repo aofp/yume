@@ -8,6 +8,8 @@ import {
   IconInputSearch,
   IconRobot,
   IconPencil,
+  IconTerminal2,
+  IconUsers,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
@@ -84,7 +86,6 @@ interface ContextBarProps {
 
   // Feature toggles (from settings)
   showDictationSetting: boolean;
-  showHistorySetting: boolean;
 
   // Visibility toggles (from context menu)
   visibility: ContextBarVisibility;
@@ -92,6 +93,13 @@ interface ContextBarProps {
 
   // Git stats
   gitChangesCount: number;
+  gitLinesAdded: number;
+  gitLinesRemoved: number;
+
+  // Session file stats
+  sessionFileCount: number;
+  sessionLinesAdded: number;
+  sessionLinesRemoved: number;
 
   // Files panel sub-tab
   filesSubTab: 'files' | 'git' | 'sessions';
@@ -99,12 +107,11 @@ interface ContextBarProps {
   // Command palette
   onOpenCommandPalette: () => void;
 
-  // Line changes for this session
-  lineChanges?: { added: number; removed: number };
-  onOpenSessionChanges?: () => void;
-
   // Background agents running count
   backgroundAgentCount?: number;
+
+  // Pending tool info for context center
+  pendingToolInfo?: Map<string, { name: string; startTime: number }>;
 }
 
 export const ContextBar: React.FC<ContextBarProps> = ({
@@ -140,15 +147,18 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onToggleDictation,
   modKey,
   showDictationSetting,
-  showHistorySetting,
   visibility,
   onVisibilityChange,
   gitChangesCount,
+  gitLinesAdded,
+  gitLinesRemoved,
+  sessionFileCount,
+  sessionLinesAdded,
+  sessionLinesRemoved,
   filesSubTab,
   onOpenCommandPalette,
-  lineChanges,
-  onOpenSessionChanges,
   backgroundAgentCount = 0,
+  pendingToolInfo,
 }) => {
   // Context menu state
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -210,15 +220,15 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   // Build title for combined files button
   const buildFilesButtonTitle = () => {
     const parts = [];
-    if (filesSubTab === 'git') parts.push(`git (${modKey}+g)`);
-    else if (filesSubTab === 'sessions') parts.push(`session changes (${modKey}+s)`);
-    else parts.push(`files (${modKey}+e)`);
-
-    if (gitChangesCount > 0) parts.push(`${gitChangesCount} git changes`);
-    if (backgroundAgentCount > 0) parts.push(`${backgroundAgentCount} agent${backgroundAgentCount > 1 ? 's' : ''}`);
-    if (lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0)) {
-      parts.push(`+${lineChanges.added} -${lineChanges.removed} lines`);
+    if (filesSubTab === 'git') {
+      parts.push(`git (${modKey}+g)`);
+      if (gitChangesCount > 0) parts.push(`${gitChangesCount} files, +${gitLinesAdded} -${gitLinesRemoved}`);
+    } else {
+      // files or sessions tab - show session stats
+      parts.push(filesSubTab === 'sessions' ? `session changes (${modKey}+s)` : `files (${modKey}+e)`);
+      if (sessionFileCount > 0) parts.push(`${sessionFileCount} files, +${sessionLinesAdded} -${sessionLinesRemoved}`);
     }
+    if (backgroundAgentCount > 0) parts.push(`${backgroundAgentCount} agent${backgroundAgentCount > 1 ? 's' : ''}`);
     return parts.join(' • ');
   };
 
@@ -265,10 +275,51 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         )}
       </div>
 
+      {/* CENTER: active status indicators */}
+      {(() => {
+        // Derive counts from pendingToolInfo
+        const taskCount = pendingToolInfo ? Array.from(pendingToolInfo.values()).filter(t => t.name === 'Task').length : 0;
+        const bashCount = pendingToolInfo ? Array.from(pendingToolInfo.values()).filter(t => t.name === 'Bash').length : 0;
+        const showCenter = taskCount > 0 || bashCount > 0 || backgroundAgentCount > 0;
+
+        // Debug: log pendingToolInfo stats
+        console.log('[ContextBar] render - pendingToolInfo:',
+          pendingToolInfo ? `Map(${pendingToolInfo.size})` : 'undefined',
+          'taskCount:', taskCount,
+          'bashCount:', bashCount,
+          'bgAgents:', backgroundAgentCount
+        );
+
+        if (!showCenter) return null;
+
+        return (
+          <div className="context-center">
+            {taskCount > 0 && (
+              <span className="context-status-item agent">
+                <IconRobot size={10} stroke={1.5} />
+                <span className="context-status-label">{taskCount > 1 ? taskCount : ''} agent{taskCount > 1 ? 's' : ''}</span>
+              </span>
+            )}
+            {bashCount > 0 && (
+              <span className="context-status-item bash">
+                <IconTerminal2 size={10} stroke={1.5} />
+                <span className="context-status-label">{bashCount > 1 ? bashCount : ''} bash</span>
+              </span>
+            )}
+            {backgroundAgentCount > 0 && (
+              <span className="context-status-item bg-agent">
+                <IconUsers size={10} stroke={1.5} />
+                <span className="context-status-label">{backgroundAgentCount} bg</span>
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* RIGHT GROUP: combined files button, history, context% */}
       <div className="context-right">
         {/* History button */}
-        {showHistorySetting && visibility.showHistory && (
+        {visibility.showHistory && (
           <button
             className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
             onClick={() => {
@@ -307,19 +358,27 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : filesSubTab === 'sessions' ? <IconPencil size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
             </span>
 
-            {/* Stats badges - only render container if there are stats to show */}
-            {(gitChangesCount > 0 || backgroundAgentCount > 0 || (lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0))) && (
-              <span className="btn-files-stats">
-                {gitChangesCount > 0 && <span className="stat-badge git-badge">{gitChangesCount}</span>}
-                {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
-                {lineChanges && (lineChanges.added > 0 || lineChanges.removed > 0) && (
-                  <span className="stat-badge lines-badge">
-                    <span className="line-added">+{lineChanges.added}</span>
-                    <span className="line-removed">-{lineChanges.removed}</span>
-                  </span>
-                )}
-              </span>
-            )}
+            {/* Stats badges based on selected tab */}
+            {(() => {
+              const showGitStats = filesSubTab === 'git';
+              const fileCount = showGitStats ? gitChangesCount : sessionFileCount;
+              const linesAdded = showGitStats ? gitLinesAdded : sessionLinesAdded;
+              const linesRemoved = showGitStats ? gitLinesRemoved : sessionLinesRemoved;
+              const hasStats = fileCount > 0 || backgroundAgentCount > 0;
+              if (!hasStats) return null;
+              return (
+                <span className="btn-files-stats">
+                  {fileCount > 0 && <span className="stat-badge git-badge">{fileCount}</span>}
+                  {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
+                  {(linesAdded > 0 || linesRemoved > 0) && (
+                    <span className="stat-badge lines-badge">
+                      <span className="line-added">+{linesAdded}</span>
+                      <span className="line-removed">-{linesRemoved}</span>
+                    </span>
+                  )}
+                </span>
+              );
+            })()}
           </button>
         )}
 
@@ -410,15 +469,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <span className="context-menu-check">{visibility.showFilesPanel ? '✓' : ''}</span>
             Files Panel
           </button>
-          {showHistorySetting && (
-            <button
-              className={`context-menu-item ${visibility.showHistory ? 'checked' : ''}`}
-              onClick={() => toggleVisibility('showHistory')}
-            >
-              <span className="context-menu-check">{visibility.showHistory ? '✓' : ''}</span>
-              History
-            </button>
-          )}
         </div>
       )}
     </div>

@@ -290,6 +290,11 @@
   margin-top: 0;
 }
 
+.mt-category-full {
+  margin-top: 0;
+  grid-column: 1 / -1;
+}
+
 .mt-category-text {
   color: var(--fg-40);
   font-size: var(--text-xs);

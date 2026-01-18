@@ -431,7 +431,7 @@ export const WelcomeScreen: React.FC = () => {
 
       {/* Stats Modal */}
       {showStatsModal && (
-        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
+        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)} onContextMenu={(e) => e.preventDefault()}>
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
             <div className="stats-header">
               <h3>

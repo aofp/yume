@@ -370,7 +370,7 @@ export const SkillsTab: React.FC<SkillsTabProps> = ({ onSkillChange }) => {
 
       {/* Edit Modal - Enhanced with Tabs */}
       {editModal.isOpen && editModal.skill && (
-        <div className="skill-edit-overlay" onClick={() => setEditModal({ isOpen: false, skill: null, isNew: false, activeTab: 'general' })}>
+        <div className="skill-edit-overlay" onClick={() => setEditModal({ isOpen: false, skill: null, isNew: false, activeTab: 'general' })} onContextMenu={(e) => e.preventDefault()}>
           <div className="skill-edit-modal skill-edit-modal-large" onClick={e => e.stopPropagation()}>
             <h4>{editModal.isNew ? 'create skill' : (isPluginSkill ? 'view skill' : 'edit skill')}</h4>
 

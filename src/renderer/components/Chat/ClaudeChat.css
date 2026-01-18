@@ -267,7 +267,6 @@
   background: none;
   border: none;
   color: rgba(var(--foreground-rgb), 0.4);
-  cursor: pointer;
   padding: 0;
   display: flex;
   align-items: center;
@@ -1465,6 +1464,42 @@ textarea.context-full {
   align-items: center;
   margin-top: 1px;
   margin-left: auto;
+}
+
+/* Center group - active status indicators */
+.context-center {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: 8px;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  opacity: 0.7;
+}
+
+.context-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(var(--foreground-rgb), 0.05);
+}
+
+.context-status-item.agent {
+  color: var(--accent-color);
+}
+
+.context-status-item.bash {
+  color: var(--positive-color, #22c55e);
+}
+
+.context-status-item.bg-agent {
+  color: var(--secondary-color, #888);
+}
+
+.context-status-label {
+  white-space: nowrap;
 }
 
 .context-git-stats {
@@ -3594,6 +3629,11 @@ textarea.context-full {
 
 .file-tree-item.git-deleted .file-tree-name {
   color: var(--negative-color);
+}
+
+/* Git-only changes (not in this session) get reduced opacity */
+.file-tree-item.git-only-change {
+  opacity: 0.7;
 }
 
 /* Minimal bottom-right status indicators */

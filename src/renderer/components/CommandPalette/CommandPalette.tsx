@@ -5,11 +5,12 @@ import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { platformBridge } from '../../services/platformBridge';
 import { BUILT_IN_THEMES, type Theme } from '../../config/themes';
 import { pluginService } from '../../services/pluginService';
+import { toastService } from '../../services/toastService';
 import type { InstalledPlugin } from '../../types/plugin';
 import './CommandPalette.css';
 
 // Submenu types
-type SubmenuType = 'theme' | 'fontSize' | 'lineHeight' | 'opacity' | 'plugins' | null;
+type SubmenuType = 'theme' | 'fontSize' | 'lineHeight' | 'plugins' | null;
 
 interface SubmenuItem {
   id: string;
@@ -61,7 +62,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [originalColors, setOriginalColors] = useState<{bg: string, fg: string, accent: string, positive: string, negative: string} | null>(null);
   const [originalFontSize, setOriginalFontSize] = useState<number | null>(null);
   const [originalLineHeight, setOriginalLineHeight] = useState<number | null>(null);
-  const [originalOpacity, setOriginalOpacity] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -108,18 +108,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setShowSkillsSettings,
     showDictation,
     setShowDictation,
-    showHistory,
-    setShowHistory,
     rememberTabs,
     setRememberTabs,
     autoGenerateTitle,
     setAutoGenerateTitle,
+    showConfirmDialogs,
+    setShowConfirmDialogs,
+    memoryEnabled,
+    setMemoryEnabled,
     fontSize,
     setFontSize,
     lineHeight,
     setLineHeight,
-    backgroundOpacity,
-    setBackgroundOpacity,
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -206,7 +206,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       label: 'close tab',
       category: 'tabs',
       shortcut: [modKey, 'w'],
-      action: () => currentSessionId && deleteSession(currentSessionId),
+      action: () => {
+        if (currentSessionId) {
+          deleteSession(currentSessionId);
+          toastService.info('tab closed');
+        }
+      },
       disabled: !currentSessionId,
     });
     cmds.push({
@@ -217,6 +222,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         if (currentSession) {
           createSession(currentSession.name ? `${currentSession.name} (copy)` : undefined, currentSession.workingDirectory);
+          toastService.info('tab duplicated');
         }
       },
       disabled: !currentSession,
@@ -226,7 +232,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       label: 'fork session',
       category: 'tabs',
       shortcut: [modKey, 'shift', 'd'],
-      action: () => currentSessionId && forkSession(currentSessionId),
+      action: () => {
+        if (currentSessionId) {
+          forkSession(currentSessionId);
+          toastService.info('session forked');
+        }
+      },
       disabled: !currentSession || !currentSession.messages?.length,
     });
 
@@ -366,6 +377,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       disabled: !currentSession,
     });
     cmds.push({
+      id: 'session-changes-panel',
+      label: 'open session changes panel',
+      category: 'panels',
+      shortcut: [modKey, 's'],
+      action: () => {
+        window.dispatchEvent(new CustomEvent('toggle-files-panel', { detail: 'session' }));
+      },
+      disabled: !currentSession,
+    });
+    cmds.push({
       id: 'sessions-browser',
       label: 'browse sessions',
       category: 'panels',
@@ -381,7 +402,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       label: 'clear context',
       category: 'session',
       shortcut: [modKey, 'l'],
-      action: () => currentSessionId && clearContext(currentSessionId),
+      action: () => {
+        if (currentSessionId) {
+          clearContext(currentSessionId);
+          toastService.info('context cleared');
+        }
+      },
       disabled: !hasMessages,
     });
     cmds.push({
@@ -430,6 +456,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       shortcut: [modKey, 'u'],
       action: () => {
         window.dispatchEvent(new CustomEvent('clear-input'));
+        toastService.info('input cleared');
       },
       disabled: !currentSession,
     });
@@ -526,19 +553,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       hasSubmenu: 'lineHeight',
     });
     cmds.push({
-      id: 'select-opacity',
-      label: `background opacity (${backgroundOpacity}%)`,
-      category: 'appearance',
-      action: () => {
-        setOriginalOpacity(backgroundOpacity);
-        setPreviousSelectedIndex(selectedIndex);
-        setActiveSubmenu('opacity');
-        setSubmenuIndex(0);
-        setQuery('');
-      },
-      hasSubmenu: 'opacity',
-    });
-    cmds.push({
       id: 'manage-plugins',
       label: 'manage plugins',
       category: 'appearance',
@@ -593,6 +607,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => setAutoCompactEnabled(!autoCompactEnabled),
     });
     cmds.push({
+      id: 'toggle-confirm-dialogs',
+      label: 'toggle confirm dialogs',
+      category: 'settings',
+      isToggle: true,
+      getValue: () => showConfirmDialogs,
+      action: () => setShowConfirmDialogs(!showConfirmDialogs),
+    });
+    cmds.push({
       id: 'toggle-word-wrap',
       label: 'toggle word wrap',
       category: 'settings',
@@ -629,12 +651,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     // Toggles - Features (matches settings modal order)
     cmds.push({
-      id: 'toggle-history-btn',
-      label: 'toggle history button',
+      id: 'toggle-memory',
+      label: 'toggle memory',
       category: 'features',
       isToggle: true,
-      getValue: () => showHistory,
-      action: () => setShowHistory(!showHistory),
+      getValue: () => memoryEnabled,
+      action: async () => {
+        const newEnabled = !memoryEnabled;
+        setMemoryEnabled(newEnabled);
+        if (newEnabled) {
+          const { memoryService } = await import('../../services/memoryService');
+          memoryService.start();
+        } else {
+          const { memoryService } = await import('../../services/memoryService');
+          memoryService.stop();
+        }
+      },
     });
     cmds.push({
       id: 'toggle-dictation-btn',
@@ -690,17 +722,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     return cmds;
   }, [
     modKey, currentSessionId, currentSession, selectedModel, hasRecentProjects,
-    wordWrap, soundOnComplete, showResultStats, autoCompactEnabled,
+    wordWrap, soundOnComplete, showResultStats, autoCompactEnabled, showConfirmDialogs,
     showProjectsMenu, showAgentsMenu, showAnalyticsMenu,
     showCommandsSettings, showMcpSettings, showHooksSettings,
-    showPluginsSettings, showSkillsSettings, showDictation, showHistory,
-    rememberTabs, autoGenerateTitle, fontSize, lineHeight, backgroundOpacity,
+    showPluginsSettings, showSkillsSettings, showDictation, memoryEnabled,
+    rememberTabs, autoGenerateTitle, fontSize, lineHeight,
     currentThemeName, selectedIndex, // needed for setPreviousSelectedIndex in submenu actions
     createSession, deleteSession, forkSession, clearContext, toggleModel,
-    setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled,
+    setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled, setShowConfirmDialogs,
     setShowProjectsMenu, setShowAgentsMenu, setShowAnalyticsMenu,
-    setShowCommandsSettings, setShowMcpSettings, setShowHooksSettings,
-    setShowPluginsSettings, setShowSkillsSettings, setShowDictation, setShowHistory,
+    setShowCommandsSettings, setShowMcpSettings, setShowHooksSettings, setMemoryEnabled,
+    setShowPluginsSettings, setShowSkillsSettings, setShowDictation,
     setRememberTabs, setAutoGenerateTitle,
     onOpenSettings, onOpenAnalytics, onOpenAgents, onOpenProjects, onOpenRecent,
     onOpenHelp, onOpenResume,
@@ -782,34 +814,28 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   }, [activeSubmenu]);
 
   // Font size options (8-24px)
-  const fontSizeOptions = useMemo(() =>
-    [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map(size => ({
+  // Use originalFontSize when in submenu (for checkmark), otherwise current fontSize
+  const fontSizeOptions = useMemo(() => {
+    const checkValue = originalFontSize !== null ? originalFontSize : fontSize;
+    return [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map(size => ({
       id: `font-${size}`,
       label: `${size}px`,
       data: size,
-      isSelected: fontSize === size,
-    })),
-  [fontSize]);
+      isSelected: checkValue === size,
+    }));
+  }, [fontSize, originalFontSize]);
 
   // Line height options (1.0-2.0)
-  const lineHeightOptions = useMemo(() =>
-    [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0].map(h => ({
+  // Use originalLineHeight when in submenu (for checkmark), otherwise current lineHeight
+  const lineHeightOptions = useMemo(() => {
+    const checkValue = originalLineHeight !== null ? originalLineHeight : lineHeight;
+    return [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0].map(h => ({
       id: `lh-${h}`,
       label: `${h.toFixed(1)}`,
       data: h,
-      isSelected: lineHeight === h,
-    })),
-  [lineHeight]);
-
-  // Opacity options (50-100%)
-  const opacityOptions = useMemo(() =>
-    [50, 60, 70, 75, 80, 85, 90, 95, 100].map(o => ({
-      id: `opacity-${o}`,
-      label: `${o}%`,
-      data: o,
-      isSelected: backgroundOpacity === o,
-    })),
-  [backgroundOpacity]);
+      isSelected: checkValue === h,
+    }));
+  }, [lineHeight, originalLineHeight]);
 
   // Plugin items
   const pluginItems = useMemo<SubmenuItem[]>(() =>
@@ -824,20 +850,20 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   // Submenu items based on active submenu
   const submenuItems = useMemo<SubmenuItem[]>(() => {
     switch (activeSubmenu) {
-      case 'theme':
-        return allThemes.map(t => ({ id: t.id, label: t.name, data: t }));
+      case 'theme': {
+        const currentThemeId = localStorage.getItem('currentThemeId') || 'yume';
+        return allThemes.map(t => ({ id: t.id, label: t.name, data: t, isSelected: t.id === currentThemeId }));
+      }
       case 'fontSize':
         return fontSizeOptions;
       case 'lineHeight':
         return lineHeightOptions;
-      case 'opacity':
-        return opacityOptions;
       case 'plugins':
         return pluginItems;
       default:
         return [];
     }
-  }, [activeSubmenu, allThemes, fontSizeOptions, lineHeightOptions, opacityOptions, pluginItems]);
+  }, [activeSubmenu, allThemes, fontSizeOptions, lineHeightOptions, pluginItems]);
 
   // Filter submenu items by query
   const filteredSubmenuItems = useMemo(() => {
@@ -895,10 +921,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (originalLineHeight !== null) {
       setLineHeight(originalLineHeight);
     }
-    if (originalOpacity !== null) {
-      setBackgroundOpacity(originalOpacity);
-    }
-  }, [originalColors, originalFontSize, originalLineHeight, originalOpacity, setFontSize, setLineHeight, setBackgroundOpacity]);
+  }, [originalColors, originalFontSize, originalLineHeight, setFontSize, setLineHeight]);
 
   // Preview when submenu index changes
   useEffect(() => {
@@ -915,12 +938,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       case 'lineHeight':
         setLineHeight(item.data as number);
         break;
-      case 'opacity':
-        setBackgroundOpacity(item.data as number);
-        break;
       // plugins don't need preview
     }
-  }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight, setBackgroundOpacity]);
+  }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight]);
 
   // Reset selection when query changes - skip disabled items
   // Note: intentionally not including visualOrderCommands in deps to avoid infinite loop
@@ -1001,7 +1021,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setOriginalColors(null);
     setOriginalFontSize(null);
     setOriginalLineHeight(null);
-    setOriginalOpacity(null);
     setQuery('');
   }, [restoreOriginals, previousSelectedIndex]);
 
@@ -1023,11 +1042,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       case 'lineHeight':
         setActiveSubmenu(null);
         setOriginalLineHeight(null);
-        onClose();
-        break;
-      case 'opacity':
-        setActiveSubmenu(null);
-        setOriginalOpacity(null);
         onClose();
         break;
       case 'plugins':
@@ -1192,13 +1206,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     theme: 'select theme',
     fontSize: 'font size',
     lineHeight: 'line height',
-    opacity: 'background opacity',
     plugins: 'plugins',
   };
   const submenuTitle = activeSubmenu ? submenuTitles[activeSubmenu] || '' : '';
 
   return (
-    <div className="cp-overlay" onClick={() => { if (activeSubmenu) { exitSubmenu(); } else { onClose(); } }}>
+    <div className="cp-overlay" onClick={() => { if (activeSubmenu) { exitSubmenu(); } else { onClose(); } }} onContextMenu={(e) => e.preventDefault()}>
       <div className="cp-modal" onClick={e => { e.stopPropagation(); inputRef.current?.focus(); }}>
         <div className="cp-search">
           {activeSubmenu ? (

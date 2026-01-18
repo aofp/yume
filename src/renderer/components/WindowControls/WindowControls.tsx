@@ -165,15 +165,16 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             <span className="mac-control-icon">+</span>
           </button>
         </div>
+        {/* VSCode indicator right after traffic lights on mac (left side) */}
+        {vscodeConnected && (
+          <span className="vscode-indicator" title="vscode extension connected">
+            [vscode connected]
+          </span>
+        )}
         {/* Mac: Menu items to the right of title - projects, analytics, settings, keyboard shortcuts */}
         <div
           className="mac-right-controls"
         >
-          {vscodeConnected && (
-            <span className="vscode-indicator" title="vscode extension connected">
-              [vscode connected]
-            </span>
-          )}
           {!isExpanded ? (
             <button
               className="window-control-toggle"
@@ -218,11 +219,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
     <div className="windows-window-controls-wrapper">
       {/* Windows: Menu items on the left - projects, analytics, settings, keyboard shortcuts */}
       <div className="windows-left-controls">
-        {vscodeConnected && (
-          <span className="vscode-indicator" title="vscode extension connected">
-            [vscode connected]
-          </span>
-        )}
         {!isExpanded ? (
           <button
             className="window-control-toggle"
@@ -270,6 +266,12 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           <span className="windows-control-icon">×</span>
         </button>
       </div>
+      {/* VSCode indicator after traffic lights on windows (right side) */}
+      {vscodeConnected && (
+        <span className="vscode-indicator" title="vscode extension connected">
+          [vscode connected]
+        </span>
+      )}
     </div>
   );
 };

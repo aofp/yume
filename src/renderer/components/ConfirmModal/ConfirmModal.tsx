@@ -52,7 +52,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <div className="confirm-modal-overlay" onClick={onCancel}>
+    <div className="confirm-modal-overlay" onClick={onCancel} onContextMenu={(e) => e.preventDefault()}>
       <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="confirm-modal-header" onContextMenu={(e) => e.preventDefault()}>
           <div className="confirm-modal-title">

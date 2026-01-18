@@ -4634,6 +4634,20 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Force disconnect all vscode clients (called when user disables extension)
+  socket.on('vscode:disconnectAll', () => {
+    console.log(`🆚 Disconnecting all VSCode clients (${vscodeConnections.size} total)`);
+    // Tell all vscode clients to disconnect
+    vscodeConnections.forEach(id => {
+      io.to(id).emit('vscode:forceDisconnect');
+    });
+    // Clear the connections
+    vscodeConnections.clear();
+    vscodeConnected = false;
+    // Broadcast updated status
+    io.emit('vscode:status', { connected: false, count: 0 });
+  });
+
   socket.on('createSession', async (data, callback) => {
     try {
       // Check if this is loading an existing session

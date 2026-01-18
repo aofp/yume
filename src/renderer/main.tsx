@@ -57,13 +57,17 @@ import('@tauri-apps/api/core').then(m => {
 });
 
 // Import Tauri event listener for reliable window focus detection
+// Track if textarea was focused when window lost focus (for non-aggressive restoration)
+let textareaFocusedOnBlur = false;
+const isMacPlatform = navigator.platform.toLowerCase().includes('mac');
+
 import('@tauri-apps/api/event').then(({ listen }) => {
   // Listen for native window focus changes from Tauri
   // This is more reliable than web 'focus' event on macOS
   listen<boolean>('window-focus-change', (event) => {
     if (event.payload) {
-      // Window gained focus - force hover state re-evaluation via synthetic mouse movement
-      // Inject a tiny mouse move event to force browser to recalculate hover states
+      // Window gained focus
+      // Force hover state re-evaluation via synthetic mouse movement
       const syntheticMove = new MouseEvent('mousemove', {
         bubbles: true,
         cancelable: true,
@@ -72,6 +76,39 @@ import('@tauri-apps/api/event').then(({ listen }) => {
         clientY: -1
       });
       document.dispatchEvent(syntheticMove);
+
+      // Non-aggressive focus restoration: only restore if textarea was focused when window lost focus
+      if (textareaFocusedOnBlur && isMacPlatform) {
+        // Small delay for WKWebView to settle
+        setTimeout(() => {
+          // Skip if a modal is open
+          if (document.querySelector('.modal-overlay') ||
+              document.querySelector('[role="dialog"]') ||
+              document.querySelector('.settings-modal-overlay')) {
+            return;
+          }
+
+          // Skip if another input is already focused (user clicked it)
+          const currentActive = document.activeElement;
+          if (currentActive instanceof HTMLInputElement ||
+              currentActive instanceof HTMLTextAreaElement ||
+              (currentActive instanceof HTMLElement && currentActive.isContentEditable)) {
+            if (!currentActive.classList.contains('chat-input')) {
+              return;
+            }
+          }
+
+          const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+          if (textarea) {
+            textarea.focus();
+          }
+        }, 50);
+      }
+      textareaFocusedOnBlur = false;
+    } else {
+      // Window lost focus - track if textarea was focused
+      const activeEl = document.activeElement;
+      textareaFocusedOnBlur = activeEl?.classList.contains('chat-input') || false;
     }
   });
 }).catch(() => {

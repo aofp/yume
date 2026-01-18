@@ -480,7 +480,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
 
       {/* Edit Hook Modal */}
       {showEditModal && editingHook && (
-        <div className="hook-modal-overlay" onClick={() => setShowEditModal(false)}>
+        <div className="hook-modal-overlay" onClick={() => setShowEditModal(false)} onContextMenu={(e) => e.preventDefault()}>
           <div className="hook-modal" onClick={(e) => e.stopPropagation()}>
             <div className="hook-modal-header">
               <h4>edit {editingHook.name} <span style={{ fontSize: '10px', color: '#666', fontWeight: 'normal' }}>({editingHook.event || editingHook.id})</span></h4>
@@ -566,7 +566,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
 
       {/* Add Custom Hook Modal */}
       {showCustomModal && (
-        <div className="hook-modal-overlay" onClick={() => setShowCustomModal(false)}>
+        <div className="hook-modal-overlay" onClick={() => setShowCustomModal(false)} onContextMenu={(e) => e.preventDefault()}>
           <div className="hook-modal" onClick={(e) => e.stopPropagation()}>
             <div className="hook-modal-header">
               <h4>add custom hook</h4>

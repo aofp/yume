@@ -424,7 +424,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
       
-      <div className="agents-modal-overlay" onClick={onClose}>
+      <div className="agents-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
         <div className="agents-modal" onClick={e => e.stopPropagation()}>
         <div className="agents-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
           <div className="agents-header-left" data-tauri-drag-region>
