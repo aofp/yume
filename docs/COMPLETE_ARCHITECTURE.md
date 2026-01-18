@@ -1,7 +1,7 @@
 # Yume Complete Architecture Documentation
 
 **Version:** 0.1.0
-**Last Updated:** January 14, 2026
+**Last Updated:** January 18, 2026
 **Status:** Beta - Approaching Production
 
 ## Table of Contents
@@ -74,12 +74,14 @@ Yume employs a sophisticated three-process architecture that ensures separation 
 5. **Bounded Buffers**: 100KB stream parser buffer (Rust) and 10MB line buffer (server) prevent memory leaks
 6. **Atomic Operations**: Thread-safe operations using Rust's atomic types
 
-### 1.3 Multi-Provider Expansion (Active)
-To support Gemini and OpenAI/Codex without rewriting the UI, Yume is introducing a **translation layer** (`yume-cli`) that emits Claude-compatible stream-json. Gemini integration is currently the primary focus.
+### 1.3 Multi-Provider Architecture (Complete - macOS)
+Yume supports Gemini and OpenAI/Codex via **yume-cli shim** that emits Claude-compatible stream-json.
 
-- **Shim Strategy:** `yume-cli` implements the agent loop and normalizes provider streams.
-- **Protocol Contract:** Output must match the current stream parser (`src-tauri/src/stream_parser.rs`).
-- **Adapters:** Server-side adapters spawn the shim with provider flags.
+- **Unified Binary:** `yume-bin-*` combines server + yume-cli (macOS arm64/x64 complete)
+- **Shim Strategy:** `yume-cli` implements agent loop, normalizes provider streams to Claude format
+- **Protocol Contract:** Output matches stream parser (`src-tauri/src/stream_parser.rs`)
+- **Feature Flags:** `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` default false
+- **Provider Lock:** Sessions lock to initial provider, switching forks session by design
 
 See `docs/expansion-plan/ARCHITECTURE_OVERVIEW.md` and `docs/expansion-plan/PROTOCOL_NORMALIZATION.md`.
 

@@ -1,7 +1,7 @@
 # Yume Master Documentation Index
 
 **Created:** January 3, 2025
-**Updated:** January 14, 2026
+**Updated:** January 18, 2026
 **Total Documentation:** 8 core guides + expansion plan suite
 **Coverage:** Core codebase + competitive analysis + multi-provider expansion documented
 
@@ -288,8 +288,8 @@
 ## 🔮 Future Expansion Plans (Yume 2.0)
 
 ### 9. [Expansion Plan](expansion-plan/ARCHITECTURE_OVERVIEW.md)
-**Status:** In Progress (Gemini Integration Active)
-**Goal:** Abstract backend to support Gemini, Codex, and generic OpenAI agents.
+**Status:** COMPLETE (macOS), Windows/Linux Pending
+**Goal:** Multi-provider support via yume-cli shim (Claude, Gemini, OpenAI/Codex)
 
 #### Key Documents:
 - [**Architecture Overview**](expansion-plan/ARCHITECTURE_OVERVIEW.md): Adapter pattern design.
@@ -466,6 +466,13 @@ Server binaries are stored in `src-tauri/resources/` for each platform:
 | `yume-implementer` | Focused code changes |
 | `yume-guardian` | Code review and auditing |
 | `yume-specialist` | Domain-specific tasks |
+
+**Background Agents** (Async Execution):
+- 4 concurrent agents max
+- Git branch isolation (`yume-async-{type}-{id}`)
+- 10 minute timeout per agent
+- Output to `~/.yume/agent-output/`
+- 13 Tauri commands for lifecycle management
 
 **Sync Mechanism**:
 - PID tracking prevents multi-instance conflicts

@@ -1,6 +1,6 @@
 # Yume Project Status
 
-**Date:** January 17, 2026
+**Date:** January 18, 2026
 **Version:** 0.1.0 (Pre-Release)
 **Status:** BETA - Approaching Release Readiness
 
@@ -8,7 +8,7 @@
 
 Yume is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). The application has reached beta quality with major systems implemented: plugin architecture, skills system, error boundaries, CSP security, crash recovery, analytics, and compiled server binaries. Primary remaining work is code signing, console cleanup, and distribution preparation.
 
-**Expansion Plan:** Multi-provider support (Gemini, OpenAI/Codex) is ~90% complete via a translation layer (`yume-cli`) that emits Claude-compatible stream-json. Key milestones: plugin system for yume-cli, VSCode extension commands, UCF conversation format. See `docs/expansion-plan/ROADMAP.md`.
+**Multi-Provider Status:** Multi-provider support (Gemini, OpenAI/Codex) is COMPLETE via `yume-cli` shim that emits Claude-compatible stream-json. Unified binaries (`yume-bin-*`) built for macOS (arm64/x64), Windows/Linux binaries pending. Feature flags `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` set to false by default. See `docs/expansion-plan/ROADMAP.md`.
 
 ## Current State
 
@@ -26,11 +26,14 @@ Yume is a sophisticated GUI for Claude CLI with intelligent context management t
 - **Performance monitoring** - Real-time metrics tracking (FPS, memory, etc.)
 - **Analytics dashboard** - Comprehensive usage analytics with breakdowns
 - **Compiled server binaries** - No Node.js dependency for end users
+- **Unified binary architecture** - yume-bin-* combines server + yume-cli (macOS complete)
+- **Memory system** - Persistent knowledge graph via MCP server (auto-learns patterns)
+- **Background agents** - 4 concurrent agents with git branch isolation
 
 ### ⚠️ Remaining Issues
 1. **Code signing** - Certificates needed for macOS/Windows distribution
-2. **Console.log cleanup** - 591 occurrences need removal
-3. **Memory optimization** - Bounded buffers implemented but can be tuned further
+2. **Windows/Linux binaries** - yume-cli binaries for windows/linux not built (scripts exist)
+3. **Console.log cleanup** - Need cleanup in production code
 4. **Platform testing** - Need more WSL and Linux testing
 5. **Documentation videos** - Tutorial videos not yet created
 
