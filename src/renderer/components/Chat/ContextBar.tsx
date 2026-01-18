@@ -285,19 +285,19 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           {pendingBashCount > 0 && (
             <span className="context-status-item bash">
               <IconTerminal2 size={10} stroke={1.5} />
-              {pendingBashCount > 1 && <span className="context-status-label">{pendingBashCount}</span>}
+              <span className="context-status-label">{pendingBashCount}</span>
             </span>
           )}
           {pendingAgentCount > 0 && (
             <span className="context-status-item agent">
               <IconRobot size={10} stroke={1.5} />
-              {pendingAgentCount > 1 && <span className="context-status-label">{pendingAgentCount}</span>}
+              <span className="context-status-label">{pendingAgentCount}</span>
             </span>
           )}
           {backgroundAgentCount > 0 && (
             <span className="context-status-item bg-agent">
               <IconUsers size={10} stroke={1.5} />
-              {backgroundAgentCount > 1 && <span className="context-status-label">{backgroundAgentCount}</span>}
+              <span className="context-status-label">{backgroundAgentCount}</span>
             </span>
           )}
         </div>

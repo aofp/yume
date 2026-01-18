@@ -2054,6 +2054,79 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
+// Get token usage from session file - lightweight endpoint for stats refresh
+app.get('/session-tokens/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { workingDirectory } = req.query;
+
+    if (!workingDirectory) {
+      return res.status(400).json({ error: 'workingDirectory query param required' });
+    }
+
+    // Convert working directory to project path format (e.g., /Users/yuru/yume -> -Users-yuru-yume)
+    const projectPath = workingDirectory.replace(/^\//, '-').replace(/\//g, '-');
+    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+
+    console.log('[session-tokens] Fetching tokens for:', { sessionId, workingDirectory, projectPath, sessionPath });
+
+    if (!existsSync(sessionPath)) {
+      return res.json({ found: false, usage: null });
+    }
+
+    const { readFile } = fs.promises;
+    const content = await readFile(sessionPath, 'utf8');
+    const lines = content.split(/\$|\n/).filter(line => line.trim());
+
+    // Track context usage from the LAST assistant message (snapshot, not accumulated)
+    let lastContextSnapshot = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 };
+
+    for (const line of lines) {
+      try {
+        const data = JSON.parse(line);
+
+        // Get context snapshot from assistant messages (overwrite with latest)
+        if (data.type === 'assistant' && data.message?.usage) {
+          const usage = data.message.usage;
+          const input = usage.input_tokens || 0;
+          const output = usage.output_tokens || 0;
+          const cacheRead = usage.cache_read_input_tokens || 0;
+          const cacheCreation = usage.cache_creation_input_tokens || 0;
+          // Context window = cache_read + cache_creation + input (NOT output)
+          lastContextSnapshot = {
+            input,
+            output,
+            cacheRead,
+            cacheCreation,
+            total: cacheRead + cacheCreation + input
+          };
+        }
+      } catch (err) {
+        // Skip invalid lines
+      }
+    }
+
+    const contextPercentage = (lastContextSnapshot.total / 200000) * 100;
+
+    console.log('[session-tokens] Returning:', lastContextSnapshot);
+
+    res.json({
+      found: true,
+      usage: {
+        input_tokens: lastContextSnapshot.input,
+        output_tokens: lastContextSnapshot.output,
+        cache_read_input_tokens: lastContextSnapshot.cacheRead,
+        cache_creation_input_tokens: lastContextSnapshot.cacheCreation,
+        total_context: lastContextSnapshot.total,
+        context_percentage: contextPercentage
+      }
+    });
+  } catch (error) {
+    console.error('[session-tokens] Error:', error);
+    res.status(500).json({ error: 'Failed to get session tokens', details: error.message });
+  }
+});
+
 // Load a yume-cli session (gemini/openai) - these are stored as JSON in ~/.yume/sessions/
 app.get('/yume-session/:provider/:sessionId', async (req, res) => {
   try {

@@ -3500,12 +3500,14 @@ const MessageRendererBase: React.FC<{
                   </div>
                 )}
               </div>
-              <div className="elapsed-time">
-                {elapsedSeconds}
-                {showResultStats && message.model && ` • ${
-                  formatModelName(message.model)
-                }`}
-              </div>
+              {!isStreaming && (
+                <div className="elapsed-time">
+                  {elapsedSeconds}
+                  {showResultStats && message.model && ` • ${
+                    formatModelName(message.model)
+                  }`}
+                </div>
+              )}
             </div>
           );
         }
@@ -3575,17 +3577,19 @@ const MessageRendererBase: React.FC<{
                 </div>
               </div>
             )}
-            <div className="elapsed-time">
-              {elapsedSeconds}
-              {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
-              {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
-              {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
-              {showResultStats && message.model && ` • ${
-                message.model.includes('opus') ? 'opus 4.5' :
-                message.model.includes('sonnet') ? 'sonnet 4.5' :
-                message.model
-              }`}
-            </div>
+            {!isStreaming && (
+              <div className="elapsed-time">
+                {elapsedSeconds}
+                {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
+                {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+                {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
+                {showResultStats && message.model && ` • ${
+                  message.model.includes('opus') ? 'opus 4.5' :
+                  message.model.includes('sonnet') ? 'sonnet 4.5' :
+                  message.model
+                }`}
+              </div>
+            )}
           </div>
         );
       } else if (message.is_error && !looksLikeSuccess) {
@@ -3646,21 +3650,23 @@ const MessageRendererBase: React.FC<{
 
         return (
           <div className="message result-success">
-            <div className="elapsed-time">
-              {elapsedSeconds}
-              {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
-              {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
-              {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
-              {showResultStats && message.model && ` • ${
-                message.model.includes('opus') ? 'opus 4.5' :
-                message.model.includes('sonnet') ? 'sonnet 4.5' :
-                message.model
-              }`}
-            </div>
+            {!isStreaming && (
+              <div className="elapsed-time">
+                {elapsedSeconds}
+                {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
+                {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+                {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
+                {showResultStats && message.model && ` • ${
+                  message.model.includes('opus') ? 'opus 4.5' :
+                  message.model.includes('sonnet') ? 'sonnet 4.5' :
+                  message.model
+                }`}
+              </div>
+            )}
           </div>
         );
       }
-      
+
     case 'permission':
       // Hide permission request messages
       return null;

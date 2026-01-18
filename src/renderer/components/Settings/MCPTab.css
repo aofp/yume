@@ -426,11 +426,6 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Memory server specific */
-.memory-server {
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
 .memory-server.enabled {
   border-color: rgba(var(--accent-rgb), 0.25);
   background: rgba(var(--accent-rgb), 0.03);
@@ -473,7 +468,6 @@
   gap: 4px;
   min-width: 48px;
   justify-content: center;
-  transition: all 0.15s ease;
 }
 
 .memory-toggle-btn:hover {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin, IconInputSearch } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin, IconInputSearch, IconArrowsMinimize, IconCancel } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
@@ -454,6 +454,22 @@ export const WelcomeScreen: React.FC = () => {
                     <div className="toggle-switch-slider" />
                   </div>
                 </div>
+                <button
+                  className="stats-action-btn"
+                  disabled={true}
+                  title={`compact context (${modKey}+m)`}
+                >
+                  <IconArrowsMinimize size={14} stroke={1.5} />
+                  <span>compact</span>
+                </button>
+                <button
+                  className="stats-action-btn"
+                  disabled={true}
+                  title={`clear context (${modKey}+l)`}
+                >
+                  <IconCancel size={14} stroke={1.5} />
+                  <span>clear</span>
+                </button>
                 <button className="stats-close" onClick={() => setShowStatsModal(false)}>
                   <IconX size={16} />
                 </button>

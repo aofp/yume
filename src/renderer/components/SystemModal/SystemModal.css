@@ -22,7 +22,6 @@
   max-width: 400px;
   user-select: none;
   -webkit-user-select: none;
-  animation: slideUp 0.15s ease;
 }
 
 .system-modal-content {

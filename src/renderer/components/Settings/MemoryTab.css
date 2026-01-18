@@ -6,37 +6,6 @@
   position: relative;
 }
 
-/* Notification */
-.memory-notification {
-  position: absolute;
-  top: -8px;
-  right: 0;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: var(--text-base);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 100;
-}
-
-.memory-notification.success {
-  border-color: rgba(var(--positive-rgb), 0.3);
-  color: var(--positive-color);
-}
-
-.memory-notification.error {
-  border-color: rgba(var(--negative-rgb), 0.3);
-  color: var(--negative-color);
-}
-
-.memory-notification.info {
-  border-color: rgba(var(--accent-rgb), 0.3);
-  color: var(--accent-color);
-}
-
 /* Header */
 .memory-header {
   display: flex;
@@ -79,31 +48,15 @@
   opacity: 0.7;
 }
 
-/* Status indicator inline with section header */
-.memory-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Toggle loading state */
+.memory-section-header .toggle-switch.compact.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Toggle positioning */
+.memory-section-header .toggle-switch {
   margin-left: auto;
-}
-
-.memory-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.memory-status-dot.running {
-  background-color: var(--positive-color);
-}
-
-.memory-status-dot.stopped {
-  background-color: var(--fg-30);
-}
-
-.memory-status-text {
-  font-size: var(--text-sm);
-  color: var(--fg-70);
 }
 
 /* Settings row */

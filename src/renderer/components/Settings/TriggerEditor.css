@@ -123,7 +123,6 @@
   opacity: 0.6;
   cursor: pointer;
   border-radius: 2px;
-  transition: opacity 0.1s, background 0.1s;
 }
 
 .tag-remove:hover {
@@ -174,7 +173,6 @@
   color: var(--accent-text);
   border-radius: 3px;
   cursor: pointer;
-  transition: opacity 0.1s;
 }
 
 .tag-add-btn:hover {
@@ -230,7 +228,6 @@
   color: var(--text-secondary);
   font-size: 10px;
   cursor: pointer;
-  transition: all 0.1s;
 }
 
 .match-mode-btn:hover:not(:disabled) {

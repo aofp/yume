@@ -7,17 +7,15 @@ import {
   IconDatabase,
   IconTrash,
   IconRefresh,
-  IconAlertCircle,
-  IconCheck,
   IconLoader2,
   IconChevronDown,
-  IconChevronRight,
-  IconSettings
+  IconChevronRight
 } from '@tabler/icons-react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { invoke } from '@tauri-apps/api/core';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { memoryService, MemoryEntity } from '../../services/memoryService';
+import { toastService } from '../../services/toastService';
 import './MemoryTab.css';
 
 interface GraphStats {
@@ -31,13 +29,10 @@ export const MemoryTab: React.FC = () => {
   const [pruning, setPruning] = useState(false);
   const [memoryFilePath, setMemoryFilePath] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [graphStats, setGraphStats] = useState<GraphStats | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: 'error' | 'success' | 'info';
-  } | null>(null);
 
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -66,15 +61,8 @@ export const MemoryTab: React.FC = () => {
     return () => window.removeEventListener('memory-load-graph', handleLoadGraph);
   }, [memoryServerRunning]);
 
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
-
   const showNotification = (message: string, type: 'error' | 'success' | 'info') => {
-    setNotification({ message, type });
+    toastService[type](message);
   };
 
   const loadMemoryFilePath = async () => {
@@ -87,6 +75,8 @@ export const MemoryTab: React.FC = () => {
   };
 
   const toggleMemory = async (enabled: boolean) => {
+    if (toggling) return;
+    setToggling(true);
     try {
       setMemoryEnabled(enabled);
 
@@ -109,6 +99,8 @@ export const MemoryTab: React.FC = () => {
     } catch (error) {
       console.error('Failed to toggle memory:', error);
       showNotification('failed to toggle memory', 'error');
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -254,30 +246,23 @@ export const MemoryTab: React.FC = () => {
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* Notification */}
-      {notification && (
-        <div className={`memory-notification ${notification.type}`}>
-          {notification.type === 'error' && <IconAlertCircle size={12} />}
-          {notification.type === 'success' && <IconCheck size={12} />}
-          <span>{notification.message}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="memory-header">
         <h4>memory system</h4>
       </div>
 
-      {/* Status Section */}
+      {/* Memory Toggle Section */}
       <div className="memory-section">
         <div className="memory-section-header">
-          <IconSettings size={12} />
-          <span>status</span>
-          <div className="memory-status-indicator">
-            <div className={`memory-status-dot ${memoryServerRunning ? 'running' : 'stopped'}`} />
-            <span className="memory-status-text">
-              {memoryServerRunning ? 'running' : 'stopped'}
-            </span>
+          <IconBrain size={12} />
+          <span>memory</span>
+          <div
+            className={`toggle-switch compact ${memoryServerRunning ? 'active' : ''} ${toggling ? 'loading' : ''}`}
+            onClick={() => !toggling && toggleMemory(!memoryEnabled)}
+          >
+            <span className="toggle-switch-label off">off</span>
+            <span className="toggle-switch-label on">on</span>
+            <div className="toggle-switch-slider" />
           </div>
         </div>
 

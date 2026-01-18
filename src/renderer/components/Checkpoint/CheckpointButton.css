@@ -44,7 +44,6 @@
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 0.2s ease;
 }
 
 @keyframes fadeIn {
@@ -63,7 +62,6 @@
   padding: 20px;
   min-width: 400px;
   max-width: 500px;
-  animation: slideUp 0.2s ease;
 }
 
 @keyframes slideUp {

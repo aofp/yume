@@ -271,7 +271,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s;
   z-index: 10;
   pointer-events: auto;
 }
@@ -1485,16 +1484,16 @@ textarea.context-full {
   background: rgba(var(--foreground-rgb), 0.05);
 }
 
-.context-status-item.agent {
-  color: var(--accent-color);
+.context-status-item.bash {
+  color: var(--negative-color);
 }
 
-.context-status-item.bash {
-  color: var(--positive-color, #22c55e);
+.context-status-item.agent {
+  color: var(--positive-color);
 }
 
 .context-status-item.bg-agent {
-  color: var(--secondary-color, #888);
+  color: var(--accent-color);
 }
 
 .context-status-label {
@@ -1714,7 +1713,6 @@ textarea.context-full {
   cursor: default;
   width: 100%;
   text-align: left;
-  transition: all 60ms ease;
 }
 
 .context-menu-item:hover {

@@ -102,7 +102,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 
 ### Build System Notes
 - **45 npm scripts** total (see package.json)
-- **25 utility scripts** in `scripts/` directory
+- **30 utility scripts** in `scripts/` directory
 - Server compilation: esbuild bundle → bytenode V8 bytecode → pkg binary
 - V8 bytecode protection prevents source inspection
 - **Unified binary architecture**: Server + yume-cli combined into single `yume-bin-*` binary
@@ -201,7 +201,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `Chat/ContextBar.tsx` - Context usage visualization
 - `Chat/InputArea.tsx` - Input with ultrathink highlighting
 - `CommandPalette/CommandPalette.tsx` - VS Code-style command palette
-- `Settings/SettingsModalTabbed.tsx` - Settings (7 tabs)
+- `Settings/SettingsModalTabbed.tsx` - Settings (9 tabs: General, Appearance, Providers, Hooks, Commands, MCP, Plugins, Skills, Memory)
 - `Settings/SkillsTab.tsx` - Skills management with triggers/content editor
 - `Settings/MemoryTab.tsx` - Memory MCP server configuration
 - `ModelSelector/ModelToolsModal.tsx` - Model & tools selector
@@ -225,6 +225,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 Uses unified binary architecture - server and CLI combined into single binary:
 - `yume-bin-macos-arm64` / `yume-bin-macos-x64` - macOS unified binaries
 - `yume-cli-macos-arm64` / `yume-cli-macos-x64` - Shell wrappers that invoke `yume-bin-* cli`
+- `yume-vscode/yume-*.vsix` - Bundled VSCode extension for optional installation
 - Windows/Linux binaries: Not currently bundled (build scripts exist)
 
 ### yume-cli (Multi-Provider Shim)
@@ -1470,8 +1471,8 @@ After running build commands:
 
 ### Hook Event Naming
 - Rust defines 9 events (PascalCase): UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
-- TypeScript defines 9 events (snake_case): user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, compaction_trigger, error
-- Event count matches, only naming convention differs
+- TypeScript defines 8 events (snake_case): user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, error
+- Mismatch: Rust has `CompactionTrigger` not exposed to TypeScript
 
 ### Build System
 - **dist-server cleanup needed**: 965MB with test/intermediate builds

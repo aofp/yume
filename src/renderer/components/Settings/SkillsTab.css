@@ -401,7 +401,6 @@
   color: var(--fg-50);
   font-size: var(--text-sm);
   cursor: default;
-  transition: all 0.1s;
 }
 
 .skill-modal-tab:hover {

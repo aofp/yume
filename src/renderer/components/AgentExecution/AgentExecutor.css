@@ -11,7 +11,6 @@
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 0.2s ease;
 }
 
 .agent-executor {
@@ -24,7 +23,6 @@
   max-height: 700px;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s ease;
 }
 
 @keyframes slideUp {
@@ -174,10 +172,6 @@
 .agent-advanced-toggle button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.agent-advanced {
-  animation: fadeIn 0.2s ease;
 }
 
 .agent-output {

@@ -522,6 +522,11 @@ export const ClaudeChat: React.FC = () => {
 
   // Compute pending tool counts from pendingToolInfo Map
   // Depend on pendingToolCounter (primitive) to detect Map changes that React can't see
+  // Uses minimum display time (500ms) so fast-completing agents are still visible
+  const MIN_TOOL_DISPLAY_MS = 500;
+  const [displayedToolCounts, setDisplayedToolCounts] = useState({ agentCount: 0, bashCount: 0 });
+  const toolDisplayTimers = useRef<{ agent?: ReturnType<typeof setTimeout>; bash?: ReturnType<typeof setTimeout> }>({});
+
   const pendingToolCounts = useMemo(() => {
     const info = currentSession?.pendingToolInfo;
     if (!info || info.size === 0) return { agentCount: 0, bashCount: 0 };
@@ -534,6 +539,45 @@ export const ClaudeChat: React.FC = () => {
     console.log(`[ContextCenter] 📊 Computed tool counts: bash=${bashCount}, agent=${agentCount}, total=${info.size}, counter=${currentSession?.pendingToolCounter}`);
     return { agentCount, bashCount };
   }, [currentSession?.pendingToolInfo, currentSession?.pendingToolCounter]);
+
+  // Apply minimum display time for tool counts
+  useEffect(() => {
+    const { agentCount, bashCount } = pendingToolCounts;
+    console.log(`[ContextCenter] 🔄 useEffect triggered: pending={bash=${bashCount}, agent=${agentCount}}, displayed={bash=${displayedToolCounts.bashCount}, agent=${displayedToolCounts.agentCount}}`);
+
+    // Handle agent count changes
+    if (agentCount > 0) {
+      // Show immediately when agents start
+      if (toolDisplayTimers.current.agent) {
+        clearTimeout(toolDisplayTimers.current.agent);
+        toolDisplayTimers.current.agent = undefined;
+      }
+      if (displayedToolCounts.agentCount !== agentCount) {
+        console.log(`[ContextCenter] 🤖 Setting displayed agentCount to ${agentCount}`);
+        setDisplayedToolCounts(prev => ({ ...prev, agentCount }));
+      }
+    } else if (displayedToolCounts.agentCount > 0) {
+      // Delay hiding agents by MIN_TOOL_DISPLAY_MS
+      if (!toolDisplayTimers.current.agent) {
+        console.log(`[ContextCenter] 🤖 Scheduling agent hide in ${MIN_TOOL_DISPLAY_MS}ms`);
+        toolDisplayTimers.current.agent = setTimeout(() => {
+          console.log(`[ContextCenter] 🤖 Timer fired - hiding agent`);
+          setDisplayedToolCounts(prev => ({ ...prev, agentCount: 0 }));
+          toolDisplayTimers.current.agent = undefined;
+        }, MIN_TOOL_DISPLAY_MS);
+      }
+    }
+
+    // Handle bash count changes (immediate - bash usually runs longer)
+    if (bashCount !== displayedToolCounts.bashCount) {
+      console.log(`[ContextCenter] 🖥️ Setting displayed bashCount to ${bashCount}`);
+      setDisplayedToolCounts(prev => ({ ...prev, bashCount }));
+    }
+
+    return () => {
+      if (toolDisplayTimers.current.agent) clearTimeout(toolDisplayTimers.current.agent);
+    };
+  }, [pendingToolCounts, displayedToolCounts.agentCount, displayedToolCounts.bashCount]);
 
   // Custom model change handler for cross-agent resumption
   const handleModelChange = useCallback((newModelId: string) => {
@@ -859,12 +903,31 @@ export const ClaudeChat: React.FC = () => {
     };
   }, [isMac, showStatsModal, showModelToolsModal, showAgentExecutor, showResumeModal, currentSession?.streaming, currentSession?.runningBash]);
 
-  // Also force refresh when modal opens
+  // Also force refresh when modal opens - including fetching tokens from session file
   useEffect(() => {
     if (showStatsModal) {
       fetchUsageLimits(true);
+
+      // If analytics tokens are 0 but we have a claudeSessionId, fetch from session file
+      if (currentSession?.claudeSessionId && currentSession?.workingDirectory &&
+          (!currentSession?.analytics?.tokens?.total || currentSession.analytics.tokens.total === 0)) {
+        const serverPort = claudeCodeClient.getServerPort();
+        if (serverPort) {
+          const url = `http://localhost:${serverPort}/session-tokens/${encodeURIComponent(currentSession.claudeSessionId)}?workingDirectory=${encodeURIComponent(currentSession.workingDirectory)}`;
+          console.log('[StatsModal] Fetching tokens from session file:', url);
+          fetch(url)
+            .then(res => res.json())
+            .then(data => {
+              if (data.found && data.usage) {
+                console.log('[StatsModal] Got tokens from session file:', data.usage);
+                useClaudeCodeStore.getState().updateSessionAnalyticsFromFile(currentSessionId!, data.usage);
+              }
+            })
+            .catch(err => console.error('[StatsModal] Failed to fetch tokens:', err));
+        }
+      }
     }
-  }, [showStatsModal, fetchUsageLimits]);
+  }, [showStatsModal, fetchUsageLimits, currentSession?.claudeSessionId, currentSession?.workingDirectory, currentSession?.analytics?.tokens?.total, currentSessionId]);
 
   // Close stats modal on escape
   useEffect(() => {
@@ -2334,6 +2397,7 @@ export const ClaudeChat: React.FC = () => {
         setSearchVisible(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault();
+        setShowStatsModal(false);
         handleClearContextRequest();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
@@ -2365,6 +2429,7 @@ export const ClaudeChat: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
         e.preventDefault();
         // Trigger compact command with confirmation
+        setShowStatsModal(false);
         handleCompactContextRequest();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r' && e.shiftKey) {
         e.preventDefault();
@@ -6073,8 +6138,8 @@ export const ClaudeChat: React.FC = () => {
               setFilesSubTab={setFilesSubTab}
               onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
               backgroundAgentCount={backgroundAgentCount}
-              pendingAgentCount={pendingToolCounts.agentCount}
-              pendingBashCount={pendingToolCounts.bashCount}
+              pendingAgentCount={displayedToolCounts.agentCount}
+              pendingBashCount={displayedToolCounts.bashCount}
             />
           </InputArea>
         );
@@ -6145,6 +6210,7 @@ export const ClaudeChat: React.FC = () => {
                   className="stats-action-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setShowStatsModal(false);
                     handleCompactContextRequest();
                   }}
                   disabled={currentSession?.readOnly || !(currentSession?.messages?.length ?? 0) || currentSession?.streaming}
@@ -6157,6 +6223,7 @@ export const ClaudeChat: React.FC = () => {
                   className="stats-action-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setShowStatsModal(false);
                     handleClearContextRequest();
                   }}
                   disabled={currentSession?.readOnly || !(currentSession?.messages?.length ?? 0) || currentSession?.streaming}

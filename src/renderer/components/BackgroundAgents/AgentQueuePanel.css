@@ -12,7 +12,6 @@
   display: flex;
   flex-direction: column;
   z-index: 1000;
-  animation: slideInRight 0.2s ease-out;
 }
 
 @keyframes slideInRight {
@@ -75,7 +74,6 @@
   border-radius: 4px;
   color: var(--fg-50);
   cursor: pointer;
-  transition: all 0.1s;
 }
 
 .agent-queue-btn:hover {
@@ -188,7 +186,6 @@
   gap: 8px;
   padding: 10px 12px;
   cursor: pointer;
-  transition: background 0.1s;
 }
 
 .agent-card-header:hover {
@@ -298,7 +295,6 @@
   color: var(--fg-60);
   font-size: 10px;
   cursor: pointer;
-  transition: all 0.1s;
 }
 
 .agent-action-btn:hover {

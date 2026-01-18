@@ -5375,6 +5375,30 @@ ${content}`;
                 }
               }
 
+              // Track pending tools for context center display (bash/agent indicators)
+              let pendingToolIds = new Set(s.pendingToolIds || []);
+              let pendingToolInfo = new Map(s.pendingToolInfo || []);
+              let pendingToolCounter = s.pendingToolCounter || 0;
+
+              if (message.type === 'tool_use') {
+                const toolId = (message as any).message?.id;
+                const toolName = (message as any).message?.name || 'unknown';
+                if (toolId) {
+                  pendingToolIds.add(toolId);
+                  pendingToolInfo.set(toolId, { name: toolName, startTime: Date.now() });
+                  pendingToolCounter++;
+                  console.log(`[ContextCenter] ✅ Added tool ${toolId} (${toolName}) to pendingToolInfo. Size: ${pendingToolInfo.size}`);
+                }
+              } else if (message.type === 'tool_result') {
+                const toolUseId = (message as any).message?.tool_use_id;
+                if (toolUseId && pendingToolIds.has(toolUseId)) {
+                  pendingToolIds.delete(toolUseId);
+                  pendingToolInfo.delete(toolUseId);
+                  pendingToolCounter++;
+                  console.log(`[ContextCenter] ❌ Removed tool ${toolUseId} from pendingToolInfo. Size: ${pendingToolInfo.size}`);
+                }
+              }
+
               const newCounter = (s.messageUpdateCounter || 0) + 1;
               // DEBUG: Log bash message update
               if (message.id?.startsWith?.('bash-')) {
@@ -5388,6 +5412,9 @@ ${content}`;
                 lineChanges,
                 restorePoints,
                 modifiedFiles,
+                pendingToolIds,
+                pendingToolInfo,
+                pendingToolCounter,
                 // Force React re-render by updating a counter (fixes bash output not showing)
                 messageUpdateCounter: newCounter,
                 // Clear thinkingStartTime after we've used it for result

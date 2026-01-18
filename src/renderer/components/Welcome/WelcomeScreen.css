@@ -651,7 +651,7 @@
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
-  opacity: .2;
+  opacity: .4;
 }
 
 .platform-win32 .welcome-toolbar .welcome-version-badge {

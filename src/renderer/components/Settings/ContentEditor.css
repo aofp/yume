@@ -40,7 +40,6 @@
   color: var(--text-secondary);
   font-size: 10px;
   cursor: pointer;
-  transition: all 0.1s;
 }
 
 .content-tab:hover:not(:disabled) {
@@ -75,7 +74,6 @@
   border-radius: 4px;
   color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.1s;
 }
 
 .content-action-btn:hover:not(:disabled) {
