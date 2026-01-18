@@ -598,6 +598,10 @@
   z-index: 100;
 }
 
+.platform-win32 .welcome-toolbar {
+  padding: 2px;
+}
+
 .welcome-toolbar-spacer {
   flex: 1;
 }
@@ -648,6 +652,10 @@
   -webkit-user-select: none;
   cursor: default;
   opacity: .2;
+}
+
+.platform-win32 .welcome-toolbar .welcome-version-badge {
+ bottom: 6px
 }
 
 .welcome-toolbar .welcome-version-badge:hover {

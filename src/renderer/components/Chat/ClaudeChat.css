@@ -957,7 +957,7 @@
   max-height: 40vh; /* Limit to 40% of viewport height */
   background: var(--background-color);
   border-top: 1px solid var(--fg-20);
-  padding: 2px 2px 3px 2px;
+  padding: 2px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
 
@@ -1446,7 +1446,6 @@ textarea.context-full {
   position: relative;
   margin-top: 1px;
   margin-bottom: 0;
-  top: 1px; /* Move buttons down 1px in Windows builds */
 }
 
 /* Left group - model, palette, dictation */
@@ -3468,6 +3467,11 @@ textarea.context-full {
   font-size: var(--text-base);
 }
 
+/* Ensure icons inherit text color */
+.file-tree-item svg {
+  color: inherit;
+}
+
 .file-tree-item:hover {
   background: rgba(var(--accent-rgb), 0.1);
   color: var(--fg-70);
@@ -3614,26 +3618,33 @@ textarea.context-full {
 }
 
 .file-git-status.folder-changed {
-  color: var(--accent-color);
+  color: inherit;
   font-size: var(--text-base);
 }
 
-/* Color file/folder names based on git status */
-.file-tree-item.git-modified .file-tree-name {
+/* Color entire item (icons + text) based on git status */
+.file-tree-item.git-modified {
   color: var(--accent-color);
 }
 
-.file-tree-item.git-added .file-tree-name {
+.file-tree-item.git-added {
   color: var(--positive-color);
 }
 
-.file-tree-item.git-deleted .file-tree-name {
+.file-tree-item.git-deleted {
   color: var(--negative-color);
 }
 
 /* Git-only changes (not in this session) get reduced opacity */
 .file-tree-item.git-only-change {
-  opacity: 0.7;
+  opacity: 0.8;
+}
+
+/* Session-edited files get full opacity and bold */
+.file-tree-item.git-modified:not(.git-only-change) .file-tree-name,
+.file-tree-item.git-added:not(.git-only-change) .file-tree-name,
+.file-tree-item.git-deleted:not(.git-only-change) .file-tree-name {
+  font-weight: 600;
 }
 
 /* Minimal bottom-right status indicators */
@@ -3740,6 +3751,11 @@ textarea.context-full {
   opacity: 0.8;
   position: relative;
   top: 1px;
+}
+
+/* Windows: move rollback count text up 1px */
+.platform-win32 .btn-rollback-count {
+  top: 0;
 }
 
 /* Rollback Panel */

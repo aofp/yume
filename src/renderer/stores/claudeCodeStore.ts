@@ -86,7 +86,11 @@ const messageHashCache = new WeakMap<any, string>();
 // Streaming end debounce timers - prevent premature streaming=false when Claude continues working
 // Maps sessionId -> timeoutId
 const streamingEndTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const STREAMING_END_DEBOUNCE_MS = 1500; // Wait 1.5s after streaming_end before actually clearing
+
+// Platform-aware debounce: Windows has longer delays between Claude CLI turns
+// macOS: 1.5s is sufficient, Windows: needs 3.5s due to slower IPC/process timing
+const IS_WINDOWS = navigator.platform.toLowerCase().includes('win');
+const STREAMING_END_DEBOUNCE_MS = IS_WINDOWS ? 3500 : 1500;
 
 // Track active subagent parent tool IDs - prevents streaming=false while subagent is working
 // Maps sessionId -> Set of parent_tool_use_ids that have active subagents

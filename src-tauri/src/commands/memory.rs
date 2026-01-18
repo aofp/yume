@@ -12,6 +12,9 @@ use std::sync::Mutex;
 use std::time::Duration;
 use std::thread;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 // Global store for memory server process and IO handles
 struct MemoryServerState {
     process: Option<Child>,
@@ -295,8 +298,8 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
     let npx_path = which::which(npx_cmd).map_err(|e| format!("npx not found: {}. PATH={}", e, path_env))?;
     println!("[Memory] Found npx at: {:?}", npx_path);
 
-    let mut child = Command::new(&npx_path)
-        .arg("-y")
+    let mut cmd = Command::new(&npx_path);
+    cmd.arg("-y")
         .arg("@modelcontextprotocol/server-memory")
         .env(
             "MEMORY_FILE_PATH",
@@ -304,7 +307,16 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
         )
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    // Hide console window on Windows
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to start memory server: {}", e))?;
 

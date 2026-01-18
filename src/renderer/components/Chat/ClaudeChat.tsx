@@ -4653,7 +4653,7 @@ export const ClaudeChat: React.FC = () => {
                 <button
                   className="tool-panel-edit-claude-md"
                   onClick={() => setShowClaudeMdEditor(true)}
-                  title="edit CLAUDE.md"
+                  title={`edit CLAUDE.md (${modKey}+shift+e)`}
                 >
                   <IconPencil size={12} stroke={1.5} />
                   <span>CLAUDE.md</span>
