@@ -17,6 +17,7 @@ import { HooksTab } from './HooksTab';
 import { MCPTab } from './MCPTab';
 import { PluginsTab } from './PluginsTab';
 import { SkillsTab } from './SkillsTab';
+import { MemoryTab } from './MemoryTab';
 import { ProvidersTab } from './ProvidersTab';
 import { invoke } from '@tauri-apps/api/core';
 import { hooksService, HookScriptConfig } from '../../services/hooksService';
@@ -32,17 +33,18 @@ import { appStorageKey } from '../../config/app';
 interface SettingsModalProps {
   onClose: () => void;
   initialTab?: string;
+  initialFontPicker?: 'monospace' | 'sans-serif';
 }
 
 // Tab type definition
-type SettingsTab = 'general' | 'appearance' | 'providers' | 'hooks' | 'commands' | 'mcp' | 'plugins' | 'skills';
+type SettingsTab = 'general' | 'appearance' | 'providers' | 'hooks' | 'commands' | 'mcp' | 'plugins' | 'skills' | 'memory';
 
 // Theme system - imported from shared config
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_COLORS, type Theme } from '../../config/themes';
 
 const SETTINGS_TAB_STORAGE_KEY = appStorageKey('settings_last_tab', '_');
 
-export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, initialTab }) => {
+export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, initialTab, initialFontPicker }) => {
   const { isLicensed } = useLicenseStore();
   const validTabs = ['general', 'appearance', 'providers', 'hooks', 'commands', 'mcp', 'plugins', 'skills'];
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
@@ -68,7 +70,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
   const [showColorPicker, setShowColorPicker] = useState<'background' | 'foreground' | 'accent' | 'positive' | 'negative' | null>(null);
   const [hoveredColorType, setHoveredColorType] = useState<string | null>(null);
   const [previewColor, setPreviewColor] = useState<string | null>(null);
-  const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(null);
+  const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(initialFontPicker || null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,11 +126,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
       skills: showSkillsSettings,
       mcp: showMcpSettings,
       plugins: showPluginsSettings,
+      memory: memoryEnabled,
     };
     if (!tabVisibility[activeTab]) {
       setActiveTab('general');
     }
-  }, [showPluginsSettings, showCommandsSettings, showHooksSettings, showSkillsSettings, showMcpSettings]);
+  }, [showPluginsSettings, showCommandsSettings, showHooksSettings, showSkillsSettings, showMcpSettings, memoryEnabled]);
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -925,17 +928,28 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       memory
+                      {memoryServerRunning && <span style={{ fontSize: '8px', color: 'var(--positive-color)' }}>●</span>}
                     </span>
                     <div
                       className={`toggle-switch compact ${memoryEnabled ? 'active' : ''}`}
-                      onClick={() => {
+                      onClick={async () => {
                         const newEnabled = !memoryEnabled;
                         setMemoryEnabled(newEnabled);
                         // Memory server start/stop handled by memoryService
-                        if (newEnabled) {
-                          import('../../services/memoryService').then(m => m.memoryService.start());
-                        } else {
-                          import('../../services/memoryService').then(m => m.memoryService.stop());
+                        try {
+                          const { memoryService } = await import('../../services/memoryService');
+                          if (newEnabled) {
+                            const started = await memoryService.start();
+                            if (!started) {
+                              console.error('[Settings] Failed to start memory server');
+                              setMemoryEnabled(false);
+                            }
+                          } else {
+                            await memoryService.stop();
+                          }
+                        } catch (error) {
+                          console.error('[Settings] Memory toggle error:', error);
+                          if (newEnabled) setMemoryEnabled(false);
                         }
                       }}
                     >
@@ -1638,6 +1652,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
       case 'skills':
         return <SkillsTab />;
 
+      case 'memory':
+        return <MemoryTab />;
+
       case 'providers':
         return <ProvidersTab />;
 
@@ -1703,6 +1720,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                     label="mcp"
                     active={activeTab === 'mcp'}
                     onClick={() => setActiveTab('mcp')}
+                  />
+                )}
+                {memoryEnabled && (
+                  <TabButton
+                    label="mem"
+                    active={activeTab === 'memory'}
+                    onClick={() => setActiveTab('memory')}
                   />
                 )}
               </div>

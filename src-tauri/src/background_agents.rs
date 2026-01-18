@@ -361,38 +361,57 @@ impl AgentQueueManager {
     }
 
     /// Start the next queued agent if capacity available
+    ///
+    /// RACE CONDITION FIX: Previously had a TOCTOU bug where:
+    /// 1. Thread A checks running_count=3, finds agent-1, releases lock
+    /// 2. Thread B checks running_count=3, finds agent-1, releases lock
+    /// 3. Both start agent-1, exceeding MAX_CONCURRENT_AGENTS
+    /// Now we atomically claim the agent by setting status=Running inside write lock.
     pub fn try_start_next(&self, yume_cli_path: &str) -> Option<String> {
-        // Check capacity
-        if self.get_running_count() >= MAX_CONCURRENT_AGENTS {
+        // Atomically find and claim next agent (prevents double-start race)
+        let (agent_id, agent_data) = {
+            let mut agents = self.agents.write().ok()?;
+            let running_count = self.get_running_count();
+
+            // Check capacity inside lock
+            if running_count >= MAX_CONCURRENT_AGENTS {
+                return None;
+            }
+
+            // Find next queued agent and atomically claim it
+            let next = agents
+                .values_mut()
+                .filter(|a| a.status == AgentStatus::Queued)
+                .min_by_key(|a| a.created_at)?;
+
+            let id = next.id.clone();
+            let data = next.clone();
+
+            // Atomically mark as "claimed" to prevent other threads from starting it
+            // We use Running status here - if start fails, we'll set it to Failed
+            next.status = AgentStatus::Running;
+            next.started_at = Some(
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs()
+            );
+
+            (id, data)
+        }; // Write lock released here
+
+        // Now start the agent (lock released, won't block other operations)
+        if let Err(e) = self.start_agent_internal(&agent_id, yume_cli_path, &agent_data) {
+            error!("Failed to start agent {}: {}", agent_id, e);
+            self.update_status(&agent_id, AgentStatus::Failed, Some(e));
             return None;
         }
 
-        // Find next queued agent
-        let next_id = {
-            let agents = self.agents.read().ok()?;
-            agents
-                .values()
-                .filter(|a| a.status == AgentStatus::Queued)
-                .min_by_key(|a| a.created_at)
-                .map(|a| a.id.clone())
-        };
-
-        if let Some(id) = next_id {
-            if let Err(e) = self.start_agent(&id, yume_cli_path) {
-                error!("Failed to start agent {}: {}", id, e);
-                self.update_status(&id, AgentStatus::Failed, Some(e));
-                return None;
-            }
-            return Some(id);
-        }
-
-        None
+        Some(agent_id)
     }
 
-    /// Start a specific agent
-    fn start_agent(&self, id: &str, yume_cli_path: &str) -> Result<(), String> {
-        let agent = self.get_agent(id).ok_or("Agent not found")?;
-
+    /// Internal helper: actually spawn the agent process (after it's been claimed)
+    fn start_agent_internal(&self, id: &str, yume_cli_path: &str, agent: &BackgroundAgent) -> Result<(), String> {
         // Build command
         let mut cmd = Command::new(yume_cli_path);
         cmd.arg("--provider").arg("anthropic")
@@ -435,17 +454,10 @@ impl AgentQueueManager {
             });
         }
 
-        // Update agent state and emit event
+        // Update agent with PID and emit event
         let agent_to_emit = if let Ok(mut agents) = self.agents.write() {
             if let Some(agent) = agents.get_mut(id) {
-                agent.status = AgentStatus::Running;
                 agent.process_id = Some(pid);
-                agent.started_at = Some(
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs()
-                );
                 Some(agent.clone())
             } else {
                 None

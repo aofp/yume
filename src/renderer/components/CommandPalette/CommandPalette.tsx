@@ -77,7 +77,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     createSession,
     deleteSession,
     forkSession,
-    clearContext,
     // Model
     selectedModel,
     toggleModel,
@@ -116,10 +115,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setShowConfirmDialogs,
     memoryEnabled,
     setMemoryEnabled,
+    memoryServerRunning,
     fontSize,
     setFontSize,
     lineHeight,
     setLineHeight,
+    monoFont,
+    sansFont,
+    isStreaming,
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -208,8 +211,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       shortcut: [modKey, 'w'],
       action: () => {
         if (currentSessionId) {
-          deleteSession(currentSessionId);
-          toastService.info('tab closed');
+          // Use event to trigger confirmation dialog if streaming/bash running
+          window.dispatchEvent(new CustomEvent('request-close-tabs', {
+            detail: { sessionIds: [currentSessionId], action: 'single' }
+          }));
         }
       },
       disabled: !currentSessionId,
@@ -308,6 +313,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'mcp' } })),
       });
     }
+    if (memoryEnabled) {
+      cmds.push({
+        id: 'settings-memory',
+        label: 'settings: memory',
+        category: 'panels',
+        action: () => window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'memory' } })),
+      });
+    }
     cmds.push({
       id: 'open-analytics',
       label: 'open analytics',
@@ -403,12 +416,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       category: 'session',
       shortcut: [modKey, 'l'],
       action: () => {
-        if (currentSessionId) {
-          clearContext(currentSessionId);
-          toastService.info('context cleared');
-        }
+        // Use event to trigger confirmation dialog if needed
+        window.dispatchEvent(new CustomEvent('request-clear-context'));
       },
-      disabled: !hasMessages,
+      disabled: !hasMessages || isStreaming,
     });
     cmds.push({
       id: 'compact-context',
@@ -418,7 +429,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       action: () => {
         window.dispatchEvent(new CustomEvent('trigger-compaction'));
       },
-      disabled: !hasMessages,
+      disabled: !hasMessages || isStreaming,
     });
     // Model
     cmds.push({
@@ -525,6 +536,24 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         setQuery('');
       },
       hasSubmenu: 'theme',
+    });
+    cmds.push({
+      id: 'select-mono-font',
+      label: `monospace font (${monoFont || 'Agave'})`,
+      category: 'appearance',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('open-font-picker', { detail: { fontType: 'monospace' } }));
+        onClose();
+      },
+    });
+    cmds.push({
+      id: 'select-sans-font',
+      label: `sans font (${sansFont || 'Agave'})`,
+      category: 'appearance',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('open-font-picker', { detail: { fontType: 'sans-serif' } }));
+        onClose();
+      },
     });
     cmds.push({
       id: 'select-font-size',
@@ -652,8 +681,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     // Toggles - Features (matches settings modal order)
     cmds.push({
       id: 'toggle-memory',
-      label: 'toggle memory',
-      category: 'features',
+      label: `toggle memory${memoryServerRunning ? ' (running)' : ''}`,
+      category: 'memory',
       isToggle: true,
       getValue: () => memoryEnabled,
       action: async () => {
@@ -662,11 +691,68 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         if (newEnabled) {
           const { memoryService } = await import('../../services/memoryService');
           memoryService.start();
+          toastService.success('memory server started');
         } else {
           const { memoryService } = await import('../../services/memoryService');
           memoryService.stop();
+          toastService.info('memory server stopped');
         }
       },
+    });
+    cmds.push({
+      id: 'memory-view-graph',
+      label: 'view memory graph',
+      category: 'memory',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('open-settings-tab', { detail: { tab: 'memory' } }));
+        // small delay to let settings modal open, then trigger load
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('memory-load-graph'));
+        }, 100);
+      },
+      disabled: !memoryServerRunning,
+    });
+    cmds.push({
+      id: 'memory-search',
+      label: 'search memory',
+      category: 'memory',
+      action: async () => {
+        const query = window.prompt('search memory for:');
+        if (query?.trim()) {
+          const { memoryService } = await import('../../services/memoryService');
+          const { entities } = await memoryService.searchNodes(query.trim());
+          if (entities.length === 0) {
+            toastService.info('no memories found');
+          } else {
+            const summary = entities.slice(0, 5).map(e => `• ${e.name}`).join('\n');
+            toastService.success(`found ${entities.length} memories`);
+            console.log('[Memory Search]', entities);
+          }
+        }
+      },
+      disabled: !memoryServerRunning,
+    });
+    cmds.push({
+      id: 'memory-clear',
+      label: 'clear all memory',
+      category: 'memory',
+      action: async () => {
+        if (window.confirm('permanently delete all memories? this cannot be undone.')) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const result = await invoke<{ success: boolean; error?: string }>('memory_clear_all');
+            if (result.success) {
+              toastService.success('all memories cleared');
+            } else {
+              toastService.error(result.error || 'failed to clear');
+            }
+          } catch (error) {
+            console.error('Failed to clear memories:', error);
+            toastService.error('failed to clear memories');
+          }
+        }
+      },
+      disabled: !memoryServerRunning,
     });
     cmds.push({
       id: 'toggle-dictation-btn',
@@ -721,14 +807,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     return cmds;
   }, [
-    modKey, currentSessionId, currentSession, selectedModel, hasRecentProjects,
+    modKey, currentSessionId, currentSession, selectedModel, hasRecentProjects, isStreaming,
     wordWrap, soundOnComplete, showResultStats, autoCompactEnabled, showConfirmDialogs,
     showProjectsMenu, showAgentsMenu, showAnalyticsMenu,
     showCommandsSettings, showMcpSettings, showHooksSettings,
-    showPluginsSettings, showSkillsSettings, showDictation, memoryEnabled,
-    rememberTabs, autoGenerateTitle, fontSize, lineHeight,
+    showPluginsSettings, showSkillsSettings, showDictation, memoryEnabled, memoryServerRunning,
+    rememberTabs, autoGenerateTitle, fontSize, lineHeight, monoFont, sansFont,
     currentThemeName, selectedIndex, // needed for setPreviousSelectedIndex in submenu actions
-    createSession, deleteSession, forkSession, clearContext, toggleModel,
+    createSession, deleteSession, forkSession, toggleModel,
     setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled, setShowConfirmDialogs,
     setShowProjectsMenu, setShowAgentsMenu, setShowAnalyticsMenu,
     setShowCommandsSettings, setShowMcpSettings, setShowHooksSettings, setMemoryEnabled,
@@ -781,20 +867,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       .map(s => s.cmd);
   }, [commands, query]);
 
-  const categoryOrder = ['session', 'tabs', 'panels', 'model', 'input', 'zoom', 'appearance', 'settings', 'menu', 'features', 'settings tabs'];
+  const categoryOrder = ['session', 'tabs', 'panels', 'model', 'input', 'zoom', 'appearance', 'memory', 'settings', 'menu', 'features', 'settings tabs'];
 
-  // Build visual order: group by category, sort categories, put disabled at end of each category
+  // Build visual order: group by category, sort categories
+  // Hide disabled items unless they match the search query directly
   const visualOrderCommands = useMemo(() => {
-    const grouped = filteredCommands.reduce((acc, cmd) => {
+    const q = query.toLowerCase().trim();
+
+    // Filter out disabled items unless they match the search query
+    const visibleCommands = filteredCommands.filter(cmd => {
+      if (!cmd.disabled) return true;
+      // Show disabled items only if user is specifically searching for them
+      if (q && cmd.label.toLowerCase().includes(q)) return true;
+      return false;
+    });
+
+    const grouped = visibleCommands.reduce((acc, cmd) => {
       if (!acc[cmd.category]) acc[cmd.category] = [];
       acc[cmd.category].push(cmd);
       return acc;
     }, {} as Record<string, CommandItem[]>);
-
-    // Sort each category: enabled first, disabled last
-    Object.keys(grouped).forEach(cat => {
-      grouped[cat].sort((a, b) => (a.disabled ? 1 : 0) - (b.disabled ? 1 : 0));
-    });
 
     const sortedCats = Object.keys(grouped).sort((a, b) => {
       const aIdx = categoryOrder.indexOf(a);
@@ -804,7 +896,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     // Flatten to single array in visual order
     return sortedCats.flatMap(cat => grouped[cat]);
-  }, [filteredCommands]);
+  }, [filteredCommands, query]);
 
   // Load plugins when opening plugins submenu
   useEffect(() => {
@@ -813,27 +905,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }
   }, [activeSubmenu]);
 
-  // Font size options (8-24px)
+  // Font size options (9-18px, step 0.5) - matches settings modal
   // Use originalFontSize when in submenu (for checkmark), otherwise current fontSize
   const fontSizeOptions = useMemo(() => {
     const checkValue = originalFontSize !== null ? originalFontSize : fontSize;
-    return [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map(size => ({
+    const sizes: number[] = [];
+    for (let s = 9; s <= 18; s += 0.5) sizes.push(s);
+    return sizes.map(size => ({
       id: `font-${size}`,
       label: `${size}px`,
       data: size,
-      isSelected: checkValue === size,
+      isSelected: Math.abs(checkValue - size) < 0.01,
     }));
   }, [fontSize, originalFontSize]);
 
-  // Line height options (1.0-2.0)
+  // Line height options (0.9-1.8, step 0.05) - matches settings modal
   // Use originalLineHeight when in submenu (for checkmark), otherwise current lineHeight
   const lineHeightOptions = useMemo(() => {
     const checkValue = originalLineHeight !== null ? originalLineHeight : lineHeight;
-    return [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0].map(h => ({
+    const heights: number[] = [];
+    for (let h = 0.9; h <= 1.8; h += 0.05) heights.push(Math.round(h * 100) / 100);
+    return heights.map(h => ({
       id: `lh-${h}`,
-      label: `${h.toFixed(1)}`,
+      label: `${h.toFixed(2)}`,
       data: h,
-      isSelected: checkValue === h,
+      isSelected: Math.abs(checkValue - h) < 0.01,
     }));
   }, [lineHeight, originalLineHeight]);
 

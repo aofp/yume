@@ -102,7 +102,7 @@ npm run ensure:server          # Check if server binary exists, build if missing
 
 ### Build System Notes
 - **45 npm scripts** total (see package.json)
-- **29 utility scripts** in `scripts/` directory
+- **25 utility scripts** in `scripts/` directory
 - Server compilation: esbuild bundle → bytenode V8 bytecode → pkg binary
 - V8 bytecode protection prevents source inspection
 - **Unified binary architecture**: Server + yume-cli combined into single `yume-bin-*` binary
@@ -201,8 +201,9 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `Chat/ContextBar.tsx` - Context usage visualization
 - `Chat/InputArea.tsx` - Input with ultrathink highlighting
 - `CommandPalette/CommandPalette.tsx` - VS Code-style command palette
-- `Settings/SettingsModalTabbed.tsx` - Settings (6 tabs)
+- `Settings/SettingsModalTabbed.tsx` - Settings (7 tabs)
 - `Settings/SkillsTab.tsx` - Skills management with triggers/content editor
+- `Settings/MemoryTab.tsx` - Memory MCP server configuration
 - `ModelSelector/ModelToolsModal.tsx` - Model & tools selector
 - `ProjectsModal/ProjectsModal.tsx` - Projects and sessions browser
 - `BackgroundAgents/AgentQueuePanel.tsx` - Background agent queue panel
@@ -212,6 +213,13 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `types/ucf.ts` - Unified Conversation Format types
 - `types/backgroundAgents.ts` - Background agent types
 - `types/skill.ts` - Skill types with YAML parsing
+
+**Utilities:**
+- `utils/regexValidator.ts` - ReDoS pattern detection for skill triggers
+- `utils/helpers.ts` - Common utility functions
+- `utils/logger.ts` - Logging utilities
+- `utils/chatHelpers.ts` - Chat-specific helpers
+- `utils/fontLoader.ts` - Font loading utilities
 
 ### Server Binaries (in resources/)
 Uses unified binary architecture - server and CLI combined into single binary:
@@ -662,7 +670,7 @@ Context to inject when triggered
 ### Analytics Dashboard
 **Comprehensive usage analytics** with breakdowns by project, model, and date.
 
-**Location**: `src/renderer/components/Modals/Analytics/AnalyticsModal.tsx`
+**Location**: `src/renderer/components/Analytics/AnalyticsModal.tsx`
 
 **Metrics**:
 - Total sessions, messages, tokens, cost
@@ -875,9 +883,9 @@ Context to inject when triggered
 ### Configuration Files
 **Location**: `src/renderer/config/`
 
-**themes.ts** (11 built-in themes):
-- yume (violet), void (gray-blue), cobalt (night owl), slate (atom one), arctic (iceberg)
-- synth (synthwave), mint, grove (everforest), ochre (gruvbox), bourbon (zenburn), burnt (coral), rose (dracula)
+**themes.ts** (12 built-in themes):
+- yume (violet), void (gray-blue), cobalt (night owl), slate (atom one), arctic (iceberg), synth (synthwave)
+- mint, grove (everforest), ochre (gruvbox), bourbon (zenburn), burnt (coral), rose (dracula)
 
 **features.ts** (7 feature flags):
 - `USE_VIRTUALIZATION`: true
@@ -1542,7 +1550,7 @@ After running build commands:
 - Timeline & checkpoints for conversation branching
 - Performance monitoring with FPS/memory/metrics export
 - CLAUDE.md in-app editor
-- 11 built-in themes with OLED support
+- 12 built-in themes with OLED support
 - Context compaction with intelligent thresholds
 
 ### Next Features to Implement

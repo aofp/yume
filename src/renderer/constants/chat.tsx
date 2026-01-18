@@ -40,10 +40,15 @@ export const TOOL_ICONS = {
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const PATH_STRIP_REGEX = new RegExp(`^/mnt/c/Users/[^/]+/Desktop/${escapeRegExp(APP_ID)}/`);
 
+// Image extensions that can be previewed
+export const imageExtensions = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif', 'heic', 'heif'
+]);
+
 // Binary/non-text file extensions that shouldn't be previewed
 export const binaryExtensions = new Set([
-  // Images
-  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif', 'psd', 'raw', 'heic', 'heif',
+  // Images (non-previewable: psd, raw)
+  'psd', 'raw',
   // Videos
   'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm', 'm4v', 'mpeg', 'mpg', '3gp',
   // Audio

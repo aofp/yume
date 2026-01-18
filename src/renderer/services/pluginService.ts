@@ -444,6 +444,9 @@ class PluginService {
     pluginId: string;
     pluginName: string;
     filePath: string;
+    id?: string;
+    triggers?: import('../types/skill').SkillTriggers;
+    content?: string;
   }> {
     const skills: Array<{
       name: string;
@@ -451,6 +454,9 @@ class PluginService {
       pluginId: string;
       pluginName: string;
       filePath: string;
+      id?: string;
+      triggers?: import('../types/skill').SkillTriggers;
+      content?: string;
     }> = [];
 
     for (const plugin of Array.from(this.plugins.values())) {

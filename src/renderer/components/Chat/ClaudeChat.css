@@ -564,14 +564,14 @@
 .message.error {
   color: var(--negative-color);
   font-size: var(--text-base);
-  padding: 8px 0;
+  padding: 2px;
 }
 
 /* Thinking indicator at bottom */
 .thinking-indicator-bottom {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   padding: 0;
   color: var(--fg-80);
   font-size: var(--text-sm);
@@ -3418,6 +3418,30 @@ textarea.context-full {
 
 .tool-panel-preview-diff .diff-header {
   display: none;
+}
+
+.tool-panel-preview-image {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 0;
+  background: var(--bg-10);
+}
+
+.tool-panel-preview-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.tool-panel-preview-image .image-loading {
+  color: var(--fg-30);
+  font-size: var(--text-base);
+  font-family: var(--font-mono);
 }
 
 .file-truncated-indicator {

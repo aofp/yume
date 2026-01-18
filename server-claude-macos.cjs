@@ -633,10 +633,17 @@ app.use('/vscode-app', async (req, res, next) => {
   const result = await proxyToVite(req, res, req.url);
   if (result) return;
 
-  // Fallback: serve from dist/renderer if available
-  const distPath = join(__dirname, 'dist', 'renderer');
-  if (existsSync(distPath)) {
-    return express.static(distPath)(req, res, next);
+  // Fallback: serve from dist-renderer in resources (production)
+  // Use process.cwd() since Rust sets current_dir to resources folder
+  const distPathProd = join(process.cwd(), 'dist-renderer');
+  if (existsSync(distPathProd)) {
+    return express.static(distPathProd)(req, res, next);
+  }
+
+  // Dev fallback: try __dirname/dist/renderer
+  const distPathDev = join(__dirname, 'dist', 'renderer');
+  if (existsSync(distPathDev)) {
+    return express.static(distPathDev)(req, res, next);
   }
 
   res.status(503).send('Frontend not available');
@@ -6160,13 +6167,12 @@ io.on('connection', (socket) => {
               // Get wrapper session to get the accurate accumulated token count
               const wrapperSession = getWrapperSession(sessionId);
 
-              // Also add wrapper tokens for enhanced analytics
-              // Use the tracked totalTokens which persists even when Anthropic cache expires
+              // Add wrapper tokens for enhanced analytics
+              // wrapperSession.totalTokens is updated from all messages with usage (including result)
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
-                  // Use accumulated total from wrapper state - this persists across cache expiry
                   total: wrapperSession.totalTokens,
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
@@ -6188,12 +6194,8 @@ io.on('connection', (socket) => {
             console.log(`   - Model in result message: ${resultMessage.model}`);
             console.log(`   - Session ID in result message: ${resultMessage.session_id || '(cleared after compact)'}`);
             if (resultMessage.usage) {
-              console.log(`   - Usage breakdown (CUMULATIVE for session - NOT current context size):`);
-              console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0} (cumulative)`);
-              console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0} (cumulative)`);
-              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0} (cumulative)`);
-              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (cumulative sum across turns)`);
-              console.log(`     • ACTUAL CURRENT CONTEXT: ${resultMessage.wrapper?.tokens?.total || 0} (from last assistant message)`);
+              console.log(`   - Usage: input=${resultMessage.usage.input_tokens || 0}, output=${resultMessage.usage.output_tokens || 0}, cache_read=${resultMessage.usage.cache_read_input_tokens || 0}, cache_creation=${resultMessage.usage.cache_creation_input_tokens || 0}`);
+              console.log(`   - Context total: ${resultMessage.wrapper?.tokens?.total || 0}`);
             }
             
             // Debug log the full resultMessage before emitting

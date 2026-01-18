@@ -1,5 +1,0 @@
-Hello World
-This is LINE 2 - EDITED
-This is LINE 3
-Original content here
-End of file

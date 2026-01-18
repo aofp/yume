@@ -61,6 +61,64 @@ import('@tauri-apps/api/core').then(m => {
 let textareaFocusedOnBlur = false;
 const isMacPlatform = navigator.platform.toLowerCase().includes('mac');
 
+// RELEASE BUILD FIX: Detect and restore WKWebView focus
+// In release builds, WKWebView can silently lose first responder status
+// even though macOS reports the window as focused. This manifests as
+// the textarea appearing focused (has focus ring) but not receiving keystrokes.
+let lastKeyTime = Date.now();
+let focusWatchdogInterval: NodeJS.Timer | null = null;
+
+// Track keyboard activity - if we expect input but don't get it, focus may be lost
+const trackKeyActivity = () => {
+  lastKeyTime = Date.now();
+};
+
+// Watchdog: detect when keyboard input stops working
+const startFocusWatchdog = () => {
+  if (focusWatchdogInterval || !isMacPlatform) return;
+
+  focusWatchdogInterval = setInterval(() => {
+    const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    // Check if textarea has DOM focus but hasn't received keystrokes for a while
+    // This indicates WKWebView may have lost first responder silently
+    const hasDomFocus = document.activeElement === textarea;
+    const timeSinceKey = Date.now() - lastKeyTime;
+
+    // If textarea has focus for >5 seconds with no key activity,
+    // and user is likely typing (window is visible), restore WKWebView focus
+    if (hasDomFocus && timeSinceKey > 5000 && document.hasFocus() && !document.hidden) {
+      // Check if any modal is open
+      if (document.querySelector('.modal-overlay') ||
+          document.querySelector('[role="dialog"]') ||
+          document.querySelector('.settings-modal-overlay')) {
+        return;
+      }
+
+      // Try to restore WKWebView first responder via Tauri command
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('restore_webview_focus').then((restored: unknown) => {
+          if (restored) {
+            console.log('[Focus Watchdog] Restored WKWebView first responder');
+            // Re-focus textarea after WKWebView is restored
+            setTimeout(() => textarea.focus(), 10);
+          }
+        }).catch(() => {});
+      }).catch(() => {});
+    }
+  }, 3000);
+};
+
+// Add keyboard listener to track activity
+document.addEventListener('keydown', trackKeyActivity, true);
+document.addEventListener('keyup', trackKeyActivity, true);
+
+// Start watchdog on page load
+if (isMacPlatform) {
+  setTimeout(startFocusWatchdog, 1000);
+}
+
 import('@tauri-apps/api/event').then(({ listen }) => {
   // Listen for native window focus changes from Tauri
   // This is more reliable than web 'focus' event on macOS
@@ -77,9 +135,17 @@ import('@tauri-apps/api/event').then(({ listen }) => {
       });
       document.dispatchEvent(syntheticMove);
 
+      // RELEASE BUILD FIX: Restore WKWebView first responder on focus gain
+      // In release builds, switching away and back can disrupt first responder chain
+      if (isMacPlatform) {
+        import('@tauri-apps/api/core').then(({ invoke }) => {
+          invoke('restore_webview_focus').catch(() => {});
+        }).catch(() => {});
+      }
+
       // Non-aggressive focus restoration: only restore if textarea was focused when window lost focus
       if (textareaFocusedOnBlur && isMacPlatform) {
-        // Small delay for WKWebView to settle
+        // Longer delay for WKWebView to fully settle in release builds
         setTimeout(() => {
           // Skip if a modal is open
           if (document.querySelector('.modal-overlay') ||
@@ -102,7 +168,7 @@ import('@tauri-apps/api/event').then(({ listen }) => {
           if (textarea) {
             textarea.focus();
           }
-        }, 50);
+        }, 100); // Increased from 50ms to 100ms for release builds
       }
       textareaFocusedOnBlur = false;
     } else {
@@ -111,6 +177,7 @@ import('@tauri-apps/api/event').then(({ listen }) => {
       textareaFocusedOnBlur = activeEl?.classList.contains('chat-input') || false;
     }
   });
+
 }).catch(() => {
   // Not in Tauri environment, fallback to web focus event
 });

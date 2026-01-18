@@ -65,39 +65,96 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ diff }) => {
   );
 };
 
+// Compute longest common subsequence for diff
+const computeLCS = (oldLines: string[], newLines: string[]): number[][] => {
+  const m = oldLines.length;
+  const n = newLines.length;
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  return dp;
+};
+
+// Backtrack LCS to generate diff operations
+const backtrackDiff = (
+  dp: number[][],
+  oldLines: string[],
+  newLines: string[],
+  startLine: number
+): DiffLine[] => {
+  let i = oldLines.length;
+  let j = newLines.length;
+
+  // Collect operations in reverse order
+  const ops: DiffLine[] = [];
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      // Same line - context (use old line number for consistency)
+      ops.push({
+        type: 'context',
+        content: oldLines[i - 1],
+        lineNumber: startLine + i - 1
+      });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      // Line added (no line number - it's new)
+      ops.push({
+        type: 'add',
+        content: newLines[j - 1]
+      });
+      j--;
+    } else if (i > 0) {
+      // Line removed
+      ops.push({
+        type: 'remove',
+        content: oldLines[i - 1],
+        lineNumber: startLine + i - 1
+      });
+      i--;
+    }
+  }
+
+  // Reverse to get correct order
+  return ops.reverse();
+};
+
 export const generateDiff = (
   file: string,
   oldContent: string,
   newContent: string,
-  contextLines: number = 5
+  startLine: number = 1 // 1-based line number where the content starts in the file
 ): DiffDisplay => {
   // Split content into lines
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
-  
-  // Create a single hunk with all the changes
+
+  // Compute LCS-based diff
+  const dp = computeLCS(oldLines, newLines);
+  const diffLines = backtrackDiff(dp, oldLines, newLines, startLine);
+
+  // Filter out pure context lines if content is identical
+  const hasChanges = diffLines.some(l => l.type !== 'context');
+  if (!hasChanges) {
+    return { file, hunks: [], oldContent, newContent };
+  }
+
+  // Create hunk with all changes
   const hunk: DiffHunk = {
-    startLine: 1,
-    endLine: Math.max(oldLines.length, newLines.length),
-    lines: []
+    startLine,
+    endLine: startLine + Math.max(oldLines.length, newLines.length) - 1,
+    lines: diffLines
   };
-  
-  // Add all old lines as removals (no line numbers since we don't know them)
-  oldLines.forEach((line) => {
-    hunk.lines.push({
-      type: 'remove',
-      content: line
-    });
-  });
-  
-  // Add all new lines as additions (no line numbers since we don't know them)
-  newLines.forEach((line) => {
-    hunk.lines.push({
-      type: 'add',
-      content: line
-    });
-  });
-  
+
   return {
     file,
     hunks: [hunk],

@@ -203,11 +203,28 @@ fn is_server_alive() -> bool {
 }
 
 /// Starts the server watchdog thread that monitors and auto-restarts crashed servers
+///
+/// RACE CONDITION FIX: Previously used swap() which has a TOCTOU race where two threads
+/// could both see false, both swap to true, and both spawn watchdogs. Now use
+/// compare_exchange for atomic check-and-set.
 fn start_server_watchdog(port: u16) {
-    // Don't start if already active
-    if WATCHDOG_ACTIVE.swap(true, Ordering::SeqCst) {
-        info!("Watchdog already active, skipping");
-        return;
+    // Atomic compare-exchange: only proceed if we successfully claim ownership
+    // This prevents multiple watchdogs from starting simultaneously
+    match WATCHDOG_ACTIVE.compare_exchange(
+        false,  // expected: not active
+        true,   // new: now active
+        Ordering::SeqCst,
+        Ordering::SeqCst
+    ) {
+        Ok(_) => {
+            // Successfully claimed watchdog ownership
+            info!("Starting watchdog for port {}", port);
+        }
+        Err(_) => {
+            // Another thread already started watchdog
+            info!("Watchdog already active, skipping");
+            return;
+        }
     }
 
     std::thread::spawn(move || {

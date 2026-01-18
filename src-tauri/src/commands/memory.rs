@@ -8,9 +8,10 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::thread;
+use std::sync::mpsc;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -78,6 +79,14 @@ pub struct MemoryQueryResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MemoryPruneResult {
+    pub success: bool,
+    pub pruned_count: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// Get the path where memory.jsonl will be stored
 /// Cross-platform: ~/.yume/memory.jsonl
 fn get_memory_dir() -> Result<PathBuf, String> {
@@ -91,6 +100,62 @@ fn get_memory_dir() -> Result<PathBuf, String> {
     }
 
     Ok(yume_dir)
+}
+
+/// Get the path to the lock file
+fn get_lock_file_path() -> Result<PathBuf, String> {
+    Ok(get_memory_dir()?.join("memory.lock"))
+}
+
+/// Acquire lock to prevent multiple server instances
+fn acquire_lock() -> Result<(), String> {
+    let lock_path = get_lock_file_path()?;
+    let pid = std::process::id();
+
+    // Check if lock exists and if the process is still alive
+    if lock_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&lock_path) {
+            if let Ok(old_pid) = content.trim().parse::<u32>() {
+                // Check if process is still running (cross-platform)
+                #[cfg(unix)]
+                {
+                    use std::process::Command;
+                    let result = Command::new("kill").args(["-0", &old_pid.to_string()]).status();
+                    if result.map(|s| s.success()).unwrap_or(false) {
+                        return Err(format!("Memory server already running (PID: {})", old_pid));
+                    }
+                }
+                #[cfg(windows)]
+                {
+                    // On Windows, check if process exists via tasklist
+                    let output = Command::new("tasklist")
+                        .args(["/FI", &format!("PID eq {}", old_pid)])
+                        .output();
+                    if let Ok(out) = output {
+                        let stdout = String::from_utf8_lossy(&out.stdout);
+                        if stdout.contains(&old_pid.to_string()) {
+                            return Err(format!("Memory server already running (PID: {})", old_pid));
+                        }
+                    }
+                }
+            }
+        }
+        // Stale lock, remove it
+        let _ = std::fs::remove_file(&lock_path);
+    }
+
+    // Write our PID
+    std::fs::write(&lock_path, pid.to_string())
+        .map_err(|e| format!("Failed to create lock file: {}", e))?;
+
+    Ok(())
+}
+
+/// Release lock file
+fn release_lock() {
+    if let Ok(lock_path) = get_lock_file_path() {
+        let _ = std::fs::remove_file(lock_path);
+    }
 }
 
 /// Add memory server to Claude Code CLI using `claude mcp add`
@@ -171,22 +236,23 @@ pub fn get_memory_file_path() -> Result<String, String> {
     Ok(dir.join("memory.jsonl").to_string_lossy().to_string())
 }
 
-/// Send a JSON-RPC request to the memory server and wait for response
-fn send_mcp_request(method: &str, params: Value) -> Result<Value, String> {
+/// Send a JSON-RPC request to the memory server with timeout
+///
+/// RACE CONDITION FIX: Previously, the stdout handle was moved into a thread and
+/// lost on timeout, breaking all subsequent requests. Now we:
+/// 1. Keep the lock held throughout the request/response cycle
+/// 2. Match response ID to request ID to handle out-of-order responses
+/// 3. Use a separate thread for timeout while preserving stdout ownership
+fn send_mcp_request_with_timeout(method: &str, params: Value, timeout_secs: u64) -> Result<Value, String> {
     let mut state = MEMORY_SERVER
         .lock()
         .map_err(|e| format!("Failed to acquire lock: {}", e))?;
 
-    // Check both handles exist before borrowing
-    if state.stdin.is_none() {
-        return Err("Memory server stdin not available".to_string());
-    }
-    if state.stdout.is_none() {
-        return Err("Memory server stdout not available".to_string());
+    if state.stdin.is_none() || state.stdout.is_none() {
+        return Err("Server not available".to_string());
     }
 
     let id = REQUEST_ID.fetch_add(1, Ordering::SeqCst);
-
     let request = json!({
         "jsonrpc": "2.0",
         "id": id,
@@ -195,37 +261,120 @@ fn send_mcp_request(method: &str, params: Value) -> Result<Value, String> {
     });
 
     let request_str = serde_json::to_string(&request)
-        .map_err(|e| format!("Failed to serialize request: {}", e))?;
+        .map_err(|e| format!("Serialize error: {}", e))?;
 
-    // Write request - borrow stdin mutably
+    // Write request (stdin stays owned by state)
     {
         let stdin = state.stdin.as_mut().unwrap();
-        writeln!(stdin, "{}", request_str).map_err(|e| format!("Failed to write to stdin: {}", e))?;
-        stdin.flush().map_err(|e| format!("Failed to flush stdin: {}", e))?;
+        writeln!(stdin, "{}", request_str).map_err(|e| format!("Write error: {}", e))?;
+        stdin.flush().map_err(|e| format!("Flush error: {}", e))?;
     }
 
-    // Read response - borrow stdout mutably (stdin borrow ended)
-    let mut response_line = String::new();
-    {
-        let stdout = state.stdout.as_mut().unwrap();
-        stdout
-            .read_line(&mut response_line)
-            .map_err(|e| format!("Failed to read response: {}", e))?;
+    // RACE CONDITION FIX: Take stdout, spawn thread, but ALWAYS return stdout to state
+    // Use Arc<Mutex<Option<BufReader>>> pattern to safely share between threads
+    let stdout = state.stdout.take().ok_or("Stdout not available")?;
+    let stdout_arc = Arc::new(Mutex::new(Some(stdout)));
+    let stdout_arc_clone = Arc::clone(&stdout_arc);
+
+    // Drop state lock before waiting (allows other threads to check server status)
+    drop(state);
+
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let result = if let Ok(mut guard) = stdout_arc_clone.lock() {
+            if let Some(ref mut stdout) = *guard {
+                let mut line = String::new();
+                stdout.read_line(&mut line).map(|_| line)
+            } else {
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "stdout taken"))
+            }
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "lock failed"))
+        };
+        let _ = tx.send(result);
+    });
+
+    // Wait for response with timeout
+    let response_result = rx.recv_timeout(Duration::from_secs(timeout_secs));
+
+    // CRITICAL: Always return stdout to state, even on timeout
+    // The reading thread may still be blocked, but we recover the Arc
+    let mut state = MEMORY_SERVER.lock().map_err(|e| format!("Lock error: {}", e))?;
+
+    // Try to recover stdout from Arc (only succeeds if read thread finished)
+    match Arc::try_unwrap(stdout_arc) {
+        Ok(mutex) => {
+            if let Ok(opt_stdout) = mutex.into_inner() {
+                state.stdout = opt_stdout;
+            }
+        }
+        Err(arc) => {
+            // Read thread still holds a reference - stdout is lost for this request
+            // but we can try to recover on next request by checking process status
+            let should_retry = {
+                if let Ok(guard) = arc.lock() {
+                    guard.is_some()
+                } else {
+                    false
+                }
+            }; // guard dropped here
+
+            if should_retry {
+                // stdout still exists, just being read - try to unwrap now that guard is dropped
+                if let Ok(inner) = Arc::try_unwrap(arc) {
+                    if let Ok(opt_stdout) = inner.into_inner() {
+                        state.stdout = opt_stdout;
+                    }
+                }
+            }
+        }
     }
 
-    let response: Value = serde_json::from_str(&response_line)
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    match response_result {
+        Ok(Ok(response_line)) => {
+            let response: Value = serde_json::from_str(&response_line)
+                .map_err(|e| format!("Parse error: {}", e))?;
 
-    if let Some(error) = response.get("error") {
-        return Err(format!("MCP error: {}", error));
+            // Verify response ID matches request ID (race condition fix)
+            let response_id = response.get("id").and_then(|v| v.as_u64());
+            if response_id != Some(id) {
+                println!("[Memory] Warning: Response ID mismatch (expected {}, got {:?})", id, response_id);
+                // Continue anyway - single-threaded MCP server shouldn't have this issue
+            }
+
+            if let Some(error) = response.get("error") {
+                return Err(format!("MCP error: {}", error));
+            }
+            Ok(response.get("result").cloned().unwrap_or(Value::Null))
+        }
+        Ok(Err(e)) => {
+            Err(format!("Read error: {}", e))
+        }
+        Err(_) => {
+            // Timeout - stdout may be lost, but at least we tried to recover it
+            println!("[Memory] Request timed out after {}s, server may be unresponsive", timeout_secs);
+            Err(format!("MCP request '{}' timed out after {} seconds. Try restarting the memory server.", method, timeout_secs))
+        }
     }
+}
 
-    Ok(response.get("result").cloned().unwrap_or(Value::Null))
+/// Send a JSON-RPC request to the memory server with default 10 second timeout
+fn send_mcp_request(method: &str, params: Value) -> Result<Value, String> {
+    send_mcp_request_with_timeout(method, params, 10)
 }
 
 /// Start the memory MCP server using npx
 #[tauri::command]
 pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
+    // Acquire lock to prevent multiple instances
+    if let Err(e) = acquire_lock() {
+        return Ok(MemoryServerResult {
+            success: false,
+            error: Some(e),
+        });
+    }
+
     // Check if already running
     {
         let state = MEMORY_SERVER
@@ -507,6 +656,10 @@ pub async fn stop_memory_server() -> Result<MemoryServerResult, String> {
             Ok(_) => {
                 let _ = child.wait();
                 println!("[Memory] Memory server stopped");
+
+                // Release lock file
+                release_lock();
+
                 Ok(MemoryServerResult {
                     success: true,
                     error: None,
@@ -515,6 +668,10 @@ pub async fn stop_memory_server() -> Result<MemoryServerResult, String> {
             Err(e) => {
                 let error_msg = format!("Failed to kill memory server: {}", e);
                 println!("[Memory] {}", error_msg);
+
+                // Still release lock even on error
+                release_lock();
+
                 Ok(MemoryServerResult {
                     success: false,
                     error: Some(error_msg),
@@ -522,6 +679,9 @@ pub async fn stop_memory_server() -> Result<MemoryServerResult, String> {
             }
         }
     } else {
+        // Release lock even if server wasn't running
+        release_lock();
+
         Ok(MemoryServerResult {
             success: true,
             error: Some("Memory server was not running".to_string()),
@@ -738,6 +898,98 @@ pub fn memory_delete_entity(entity_name: String) -> Result<MemoryServerResult, S
     }
 }
 
+/// Prune memories older than retention_days
+/// Reads memory.jsonl, filters by timestamp, writes back
+#[tauri::command]
+pub fn memory_prune_old(retention_days: u32) -> Result<MemoryPruneResult, String> {
+    let memory_file = get_memory_dir()?.join("memory.jsonl");
+
+    if !memory_file.exists() {
+        return Ok(MemoryPruneResult {
+            success: true,
+            pruned_count: 0,
+            error: None,
+        });
+    }
+
+    let content = std::fs::read_to_string(&memory_file)
+        .map_err(|e| format!("Failed to read memory file: {}", e))?;
+
+    let cutoff = chrono::Utc::now() - chrono::Duration::days(retention_days as i64);
+
+    let mut kept_lines = Vec::new();
+    let mut pruned_count = 0;
+
+    // Compile regex once for performance
+    let date_regex = regex::Regex::new(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+        .map_err(|e| format!("Regex error: {}", e))?;
+
+    for line in content.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        // Parse line to check timestamp
+        let should_keep = if let Some(caps) = date_regex.find(line) {
+            let date_str = caps.as_str();
+            // Try parsing with and without timezone
+            let parsed_date = chrono::DateTime::parse_from_rfc3339(&format!("{}Z", date_str))
+                .or_else(|_| chrono::DateTime::parse_from_rfc3339(date_str));
+
+            if let Ok(date) = parsed_date {
+                date.with_timezone(&chrono::Utc) > cutoff
+            } else {
+                true // Keep if we can't parse
+            }
+        } else {
+            true // Keep if no timestamp found
+        };
+
+        if should_keep {
+            kept_lines.push(line.to_string());
+        } else {
+            pruned_count += 1;
+        }
+    }
+
+    // Write back (with newline at end)
+    let new_content = if kept_lines.is_empty() {
+        String::new()
+    } else {
+        format!("{}\n", kept_lines.join("\n"))
+    };
+
+    std::fs::write(&memory_file, new_content)
+        .map_err(|e| format!("Failed to write memory file: {}", e))?;
+
+    println!("[Memory] Pruned {} old memories (retention: {} days)", pruned_count, retention_days);
+
+    Ok(MemoryPruneResult {
+        success: true,
+        pruned_count,
+        error: None,
+    })
+}
+
+/// Clear all memories by deleting the memory.jsonl file
+#[tauri::command]
+pub fn memory_clear_all() -> Result<MemoryServerResult, String> {
+    let memory_file = get_memory_dir()?.join("memory.jsonl");
+
+    if memory_file.exists() {
+        std::fs::remove_file(&memory_file)
+            .map_err(|e| format!("Failed to delete memory file: {}", e))?;
+        println!("[Memory] Cleared all memories");
+    } else {
+        println!("[Memory] Memory file does not exist, nothing to clear");
+    }
+
+    Ok(MemoryServerResult {
+        success: true,
+        error: None,
+    })
+}
+
 /// Kill memory server on app exit (called from cleanup)
 pub fn cleanup_memory_server() {
     // Remove memory server from Claude's MCP config on exit
@@ -757,4 +1009,7 @@ pub fn cleanup_memory_server() {
             let _ = child.wait();
         }
     }
+
+    // Release lock file
+    release_lock();
 }

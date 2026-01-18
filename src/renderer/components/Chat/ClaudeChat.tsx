@@ -51,7 +51,7 @@ import { backgroundAgentService } from '../../services/backgroundAgentService';
 import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
-import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
+import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions, imageExtensions } from '../../constants/chat';
 import { resolveModelId, getProviderForModel, ALL_MODELS } from '../../config/models';
 import { toastService } from '../../services/toastService';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
@@ -397,6 +397,7 @@ export const ClaudeChat: React.FC = () => {
   const [fileLoading, setFileLoading] = useState(false);
   const [fileFullyLoaded, setFileFullyLoaded] = useState(false);
   const [fileTruncated, setFileTruncated] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{ dataUrl: string; mimeType: string } | null>(null);
   // Git panel state
   const [gitBranch, setGitBranch] = useState<string>('');
   const [gitAhead, setGitAhead] = useState<number>(0);
@@ -410,6 +411,7 @@ export const ClaudeChat: React.FC = () => {
   const [previewCollapsed, setPreviewCollapsed] = useState(true); // Start collapsed
   const [focusedFileIndex, setFocusedFileIndex] = useState<number>(-1);
   const [focusedGitIndex, setFocusedGitIndex] = useState<number>(-1);
+  const [focusedSessionIndex, setFocusedSessionIndex] = useState<number>(-1);
   const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
@@ -430,6 +432,7 @@ export const ClaudeChat: React.FC = () => {
   const userScrolledUpRef = useRef<{ [sessionId: string]: number }>({}); // Timestamp when user scrolled up
   const SCROLL_COOLDOWN_MS = 5000; // 5 seconds cooldown after user scrolls up
   const pendingFollowupRef = useRef<{ sessionId: string; content: string; attachments: Attachment[]; timeoutId?: NodeJS.Timeout } | null>(null);
+  const loadGitDiffRef = useRef<((filePath: string) => Promise<void>) | null>(null);
 
   // Use shallow comparison to prevent re-renders when object references change
   // but values remain the same (e.g., when other parts of the store update)
@@ -516,6 +519,21 @@ export const ClaudeChat: React.FC = () => {
     }
     return { fileCount: fileSet.size, linesAdded, linesRemoved, files: fileSet };
   }, [currentSession?.restorePoints, currentSession?.lineChanges]);
+
+  // Compute pending tool counts from pendingToolInfo Map
+  // Depend on pendingToolCounter (primitive) to detect Map changes that React can't see
+  const pendingToolCounts = useMemo(() => {
+    const info = currentSession?.pendingToolInfo;
+    if (!info || info.size === 0) return { agentCount: 0, bashCount: 0 };
+    let agentCount = 0;
+    let bashCount = 0;
+    for (const val of info.values()) {
+      if (val.name === 'Task') agentCount++;
+      else if (val.name === 'Bash') bashCount++;
+    }
+    console.log(`[ContextCenter] 📊 Computed tool counts: bash=${bashCount}, agent=${agentCount}, total=${info.size}, counter=${currentSession?.pendingToolCounter}`);
+    return { agentCount, bashCount };
+  }, [currentSession?.pendingToolInfo, currentSession?.pendingToolCounter]);
 
   // Custom model change handler for cross-agent resumption
   const handleModelChange = useCallback((newModelId: string) => {
@@ -1338,6 +1356,59 @@ export const ClaudeChat: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isMac]);
 
+  // macOS WKWebView focus restoration: Detect when textarea has DOM focus but
+  // WKWebView lost first responder status (keyboard input stops working).
+  // This happens during streaming activity on macOS.
+  useEffect(() => {
+    if (!isMac) return;
+
+    let noInputChangeCount = 0;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only check when textarea has focus
+      if (document.activeElement !== inputRef.current) return;
+
+      // Skip modifier keys, shortcuts, and special keys
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Meta' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Shift') return;
+      if (['Escape', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+           'Home', 'End', 'PageUp', 'PageDown', 'Backspace', 'Delete'].includes(e.key)) return;
+      if (e.key.startsWith('F') && e.key.length > 1) return;
+
+      // Check if this is a printable character that should change input
+      if (e.key.length === 1) {
+        // Store current value, check after a frame
+        const valueBefore = inputRef.current?.value || '';
+        requestAnimationFrame(() => {
+          const valueAfter = inputRef.current?.value || '';
+          // If value didn't change after typing a printable character, WKWebView lost focus
+          if (valueBefore === valueAfter && document.activeElement === inputRef.current) {
+            noInputChangeCount++;
+            // After 2 failed input attempts, try to restore WKWebView focus
+            if (noInputChangeCount >= 2) {
+              noInputChangeCount = 0;
+              import('@tauri-apps/api/core').then(({ invoke }) => {
+                invoke('restore_webview_focus').then((restored: unknown) => {
+                  if (restored) {
+                    console.log('[Focus] Restored WKWebView first responder');
+                    // Re-focus textarea to ensure keyboard works
+                    inputRef.current?.blur();
+                    setTimeout(() => inputRef.current?.focus(), 10);
+                  }
+                }).catch(() => {});
+              }).catch(() => {});
+            }
+          } else {
+            noInputChangeCount = 0;
+          }
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [isMac]);
+
   // Handle bash running timer and dots animation per session
   useEffect(() => {
     if (!currentSessionId) return;
@@ -1801,6 +1872,19 @@ export const ClaudeChat: React.FC = () => {
       window.removeEventListener('request-close-tabs', handleRequestCloseTabs as EventListener);
     };
   }, [requestCloseTabs]);
+
+  // Listen for clear/compact context requests from command palette
+  useEffect(() => {
+    const handleClearRequest = () => handleClearContextRequest();
+    const handleCompactRequest = () => handleCompactContextRequest();
+
+    window.addEventListener('request-clear-context', handleClearRequest);
+    window.addEventListener('trigger-compaction', handleCompactRequest);
+    return () => {
+      window.removeEventListener('request-clear-context', handleClearRequest);
+      window.removeEventListener('trigger-compaction', handleCompactRequest);
+    };
+  }, [handleClearContextRequest, handleCompactContextRequest]);
 
   const confirmRollback = useCallback(async () => {
     if (!currentSessionId || !pendingRollbackData) {
@@ -2393,11 +2477,14 @@ export const ClaudeChat: React.FC = () => {
           setShowFilesPanel(false);
           setSelectedFile(null);
           setFileContent('');
+          setImagePreview(null);
           setSelectedGitFile(null);
           setGitDiff(null);
         }
       } else if (e.key === 'Escape') {
-        // Skip if any modal is open - let modal handle its own escape
+        // Skip if any modal is open at App level - let modal handle its own escape
+        if (document.body.dataset.modalOpen === 'true') return;
+        // Skip if any local modal is open
         if (showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
 
         // Priority: close panels/search first, only interrupt if nothing to close
@@ -2428,9 +2515,18 @@ export const ClaudeChat: React.FC = () => {
         // Ctrl+Up: scroll to top of chat
         e.preventDefault();
         scrollToTopHelper('smooth');
+      } else if (e.key === 'Tab' && showFilesPanel && !e.ctrlKey && !e.metaKey) {
+        // Tab: switch between panel tabs
+        e.preventDefault();
+        const tabs: ('files' | 'git' | 'sessions')[] = ['files', 'sessions', 'git'];
+        const currentIdx = tabs.indexOf(filesSubTab);
+        const nextIdx = e.shiftKey
+          ? (currentIdx - 1 + tabs.length) % tabs.length
+          : (currentIdx + 1) % tabs.length;
+        setFilesSubTab(tabs[nextIdx]);
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
         // Panel keyboard navigation
-        if (showFilesPanel && fileTree.length > 0) {
+        if (showFilesPanel && filesSubTab === 'files' && fileTree.length > 0) {
           e.preventDefault();
           // Inline calculation of visible files count
           const countVisibleFiles = (items: any[]): number => {
@@ -2447,9 +2543,21 @@ export const ClaudeChat: React.FC = () => {
           if (totalFiles === 0) return;
 
           if (e.key === 'ArrowDown') {
-            setFocusedFileIndex(prev => Math.min(prev + 1, totalFiles - 1));
+            const newIndex = focusedFileIndex < 0 ? 0 : Math.min(focusedFileIndex + 1, totalFiles - 1);
+            setFocusedFileIndex(newIndex);
+            // Scroll focused item into view
+            setTimeout(() => {
+              const el = document.querySelector('.file-tree-item.focused');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
           } else if (e.key === 'ArrowUp') {
-            setFocusedFileIndex(prev => Math.max(prev - 1, 0));
+            const newIndex = focusedFileIndex < 0 ? 0 : Math.max(focusedFileIndex - 1, 0);
+            setFocusedFileIndex(newIndex);
+            // Scroll focused item into view
+            setTimeout(() => {
+              const el = document.querySelector('.file-tree-item.focused');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
           } else if (e.key === 'Enter' && focusedFileIndex >= 0) {
             // Find and click the focused element
             const focusedEl = document.querySelector('.file-tree-item.focused');
@@ -2457,17 +2565,77 @@ export const ClaudeChat: React.FC = () => {
               (focusedEl as HTMLElement).click();
             }
           }
-        } else if (showGitPanel && gitStatus) {
+        } else if (showFilesPanel && filesSubTab === 'git' && gitStatus) {
           e.preventDefault();
-          const totalGitFiles = gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length;
+          const allGitFiles = [...gitStatus.modified, ...gitStatus.added, ...gitStatus.deleted];
+          const totalGitFiles = allGitFiles.length;
           if (totalGitFiles === 0) return;
 
           if (e.key === 'ArrowDown') {
-            setFocusedGitIndex(prev => Math.min(prev + 1, totalGitFiles - 1));
+            const newIndex = focusedGitIndex < 0 ? 0 : Math.min(focusedGitIndex + 1, totalGitFiles - 1);
+            setFocusedGitIndex(newIndex);
+            // Auto-load the focused file's diff
+            if (newIndex >= 0 && loadGitDiffRef.current) {
+              loadGitDiffRef.current(allGitFiles[newIndex]);
+            }
+            // Scroll focused item into view
+            setTimeout(() => {
+              const el = document.querySelector('.git-file-item.focused');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
           } else if (e.key === 'ArrowUp') {
-            setFocusedGitIndex(prev => Math.max(prev - 1, 0));
+            const newIndex = focusedGitIndex < 0 ? 0 : Math.max(focusedGitIndex - 1, 0);
+            setFocusedGitIndex(newIndex);
+            // Auto-load the focused file's diff
+            if (newIndex >= 0 && loadGitDiffRef.current) {
+              loadGitDiffRef.current(allGitFiles[newIndex]);
+            }
+            // Scroll focused item into view
+            setTimeout(() => {
+              const el = document.querySelector('.git-file-item.focused');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
           } else if (e.key === 'Enter' && focusedGitIndex >= 0) {
             // Find and click the focused element
+            const focusedEl = document.querySelector('.git-file-item.focused');
+            if (focusedEl) {
+              (focusedEl as HTMLElement).click();
+            }
+          }
+        } else if (showFilesPanel && filesSubTab === 'sessions') {
+          // Sessions tab keyboard navigation
+          const restorePoints = currentSession?.restorePoints || [];
+          const fileMap = new Map<string, any>();
+          restorePoints.forEach(rp => {
+            rp.fileSnapshots.forEach((snap: any) => {
+              fileMap.set(snap.path, snap);
+            });
+          });
+          const sessionFiles = Array.from(fileMap.keys()).sort();
+          const totalSessionFiles = sessionFiles.length;
+          if (totalSessionFiles === 0) return;
+
+          e.preventDefault();
+          if (e.key === 'ArrowDown') {
+            const newIndex = focusedSessionIndex < 0 ? 0 : Math.min(focusedSessionIndex + 1, totalSessionFiles - 1);
+            setFocusedSessionIndex(newIndex);
+            setSelectedSessionFile(sessionFiles[newIndex]);
+            // Scroll focused item into view
+            setTimeout(() => {
+              const el = document.querySelector('.git-file-item.focused');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
+          } else if (e.key === 'ArrowUp') {
+            const newIndex = focusedSessionIndex < 0 ? 0 : Math.max(focusedSessionIndex - 1, 0);
+            setFocusedSessionIndex(newIndex);
+            setSelectedSessionFile(sessionFiles[newIndex]);
+            // Scroll focused item into view
+            setTimeout(() => {
+              const el = document.querySelector('.git-file-item.focused');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 0);
+          } else if (e.key === 'Enter' && focusedSessionIndex >= 0) {
+            // Toggle selection (click behavior)
             const focusedEl = document.querySelector('.git-file-item.focused');
             if (focusedEl) {
               (focusedEl as HTMLElement).click();
@@ -2479,7 +2647,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash, showDictation, forceScrollToBottomHelper, scrollToTopHelper]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, focusedSessionIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash, showDictation, forceScrollToBottomHelper, scrollToTopHelper, toggleModel, forkSession, setShowClaudeMdEditor, setShowModelToolsModal, setModelToolsOpenedViaKeyboard, filesSubTab, setFilesSubTab]);
 
 
 
@@ -2619,7 +2787,31 @@ export const ClaudeChat: React.FC = () => {
     const normalizePaths = (paths: string[]): string[] =>
       paths.map(p => p.replace(/\\/g, '/'));
 
-    // Lightweight refresh - just status for badge count
+    // Helper to fetch and parse line stats for badge
+    const fetchLineStatsLight = async (workingDir: string) => {
+      try {
+        const numstatResult = await invoke('get_git_diff_numstat', {
+          directory: workingDir
+        }) as string;
+        const stats: { [file: string]: { added: number; deleted: number } } = {};
+        for (const rawLine of numstatResult.trim().split('\n')) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          const parts = line.split('\t');
+          if (parts.length >= 3) {
+            const added = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
+            const deleted = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
+            const file = parts[2].replace(/\\/g, '/');
+            stats[file] = { added, deleted };
+          }
+        }
+        return stats;
+      } catch {
+        return {};
+      }
+    };
+
+    // Lightweight refresh - status and line stats for badge
     const refreshGitStatusLight = async () => {
       if (!isGitRepo || !currentSession?.workingDirectory) return;
       try {
@@ -2630,6 +2822,9 @@ export const ClaudeChat: React.FC = () => {
           deleted: normalizePaths(status.deleted || []),
           untracked: []
         });
+        // Also fetch line stats for badge display
+        const lineStats = await fetchLineStatsLight(currentSession.workingDirectory);
+        setGitLineStats(lineStats);
       } catch {
         // Silently fail
       }
@@ -2810,9 +3005,54 @@ export const ClaudeChat: React.FC = () => {
   // Load file content when a file is selected in file browser
   const loadFileContent = useCallback(async (filePath: string, fullFile: boolean = false) => {
     setSelectedFile(filePath);
+    setImagePreview(null);
+
+    // Check file extension
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+
+    // Handle image files
+    if (imageExtensions.has(ext)) {
+      setFileLoading(true);
+      try {
+        // SVG can be loaded as text
+        if (ext === 'svg') {
+          const content = await invoke('execute_bash', {
+            command: `cat "${filePath}"`,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+          setImagePreview({ dataUrl: `data:image/svg+xml;base64,${btoa(content)}`, mimeType: 'image/svg+xml' });
+        } else {
+          // Load as base64 for other image types
+          const base64 = await invoke('read_file_base64', { path: filePath }) as string;
+          const mimeMap: Record<string, string> = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'bmp': 'image/bmp',
+            'ico': 'image/x-icon',
+            'webp': 'image/webp',
+            'tiff': 'image/tiff',
+            'tif': 'image/tiff',
+            'heic': 'image/heic',
+            'heif': 'image/heif'
+          };
+          const mimeType = mimeMap[ext] || 'image/png';
+          setImagePreview({ dataUrl: `data:${mimeType};base64,${base64}`, mimeType });
+        }
+        setFileContent('');
+        setFileFullyLoaded(true);
+        setFileTruncated(false);
+      } catch (error) {
+        setFileContent(`Error loading image: ${error}`);
+        setImagePreview(null);
+      } finally {
+        setFileLoading(false);
+      }
+      return;
+    }
 
     // Check if file is a binary type
-    const ext = filePath.split('.').pop()?.toLowerCase() || '';
     if (binaryExtensions.has(ext)) {
       setFileContent(`[Binary file: .${ext}]\n\nThis file type cannot be previewed.`);
       setFileLoading(false);
@@ -3004,6 +3244,11 @@ export const ClaudeChat: React.FC = () => {
       setGitLoading(false);
     }
   }, [currentSession?.workingDirectory, parseDiffOutput]);
+
+  // Keep ref updated for keyboard handler
+  useEffect(() => {
+    loadGitDiffRef.current = loadGitDiff;
+  }, [loadGitDiff]);
 
   // Add effect to handle Ctrl+Arrow shortcuts at capture phase
   useEffect(() => {
@@ -3798,7 +4043,18 @@ export const ClaudeChat: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const textarea = e.currentTarget;
     const cursorPos = textarea.selectionStart;
-    
+
+    // Ignore keyboard input when actively navigating files panel via keyboard
+    // Allow Ctrl/Cmd combos through for shortcuts like Ctrl+W
+    if (showFilesPanel && !e.ctrlKey && !e.metaKey &&
+        (focusedFileIndex >= 0 || focusedGitIndex >= 0 || focusedSessionIndex >= 0)) {
+      // Don't pass printable characters to textarea when navigating panel
+      if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        return;
+      }
+    }
+
     // Handle Ctrl+W to close current tab (with confirmation if streaming)
     if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
       e.preventDefault();
@@ -4607,6 +4863,11 @@ export const ClaudeChat: React.FC = () => {
                   >
                     <IconFolder size={12} stroke={1.5} />
                     <span>files</span>
+                    {(sessionFileStats.fileCount > 0 || (gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0)) && (
+                      <span className="git-tab-stats">
+                        <span>{sessionFileStats.fileCount}{gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 ? ` / ${gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}` : ''}</span>
+                      </span>
+                    )}
                   </button>
                   <button
                     className={`tool-panel-tab ${filesSubTab === 'sessions' ? 'active' : ''}`}
@@ -4615,13 +4876,15 @@ export const ClaudeChat: React.FC = () => {
                   >
                     <IconPencil size={12} stroke={1.5} />
                     <span>session</span>
-                    {sessionFileStats.fileCount > 0 && (
-                      <span className="git-tab-stats">
-                        <span>{sessionFileStats.fileCount}</span>
-                        <span className="git-added">+{sessionFileStats.linesAdded}</span>
-                        <span className="git-deleted">-{sessionFileStats.linesRemoved}</span>
-                      </span>
-                    )}
+                    <span className="git-tab-stats">
+                      <span>{sessionFileStats.fileCount}</span>
+                      {(sessionFileStats.linesAdded > 0 || sessionFileStats.linesRemoved > 0) && (
+                        <>
+                          <span className="git-added">+{sessionFileStats.linesAdded}</span>
+                          <span className="git-deleted">-{sessionFileStats.linesRemoved}</span>
+                        </>
+                      )}
+                    </span>
                   </button>
                   <button
                     className={`tool-panel-tab ${filesSubTab === 'git' ? 'active' : ''}`}
@@ -4666,6 +4929,7 @@ export const ClaudeChat: React.FC = () => {
                   setShowRollbackPanel(false);
                   setSelectedFile(null);
                   setFileContent('');
+                  setImagePreview(null);
                   setSelectedGitFile(null);
                   setGitDiff(null);
                   setPreviewCollapsed(true);
@@ -4748,6 +5012,7 @@ export const ClaudeChat: React.FC = () => {
                           setPreviewCollapsed(true);
                           setSelectedFile(null);
                           setFileContent('');
+                          setImagePreview(null);
                           setGitDiff(null);
                           setSelectedGitFile(null);
                         }}
@@ -4758,6 +5023,14 @@ export const ClaudeChat: React.FC = () => {
                     {gitDiff ? (
                       <div className="tool-panel-preview-diff">
                         <DiffViewer diff={gitDiff} />
+                      </div>
+                    ) : imagePreview ? (
+                      <div className="tool-panel-preview-image">
+                        {fileLoading ? (
+                          <span className="image-loading">loading...</span>
+                        ) : (
+                          <img src={imagePreview.dataUrl} alt={selectedFile?.split('/').pop() || 'preview'} />
+                        )}
                       </div>
                     ) : (
                       <pre
@@ -4896,16 +5169,44 @@ export const ClaudeChat: React.FC = () => {
                     restorePoints.forEach(rp => {
                       rp.fileSnapshots.forEach((snap: any) => {
                         const existing = fileMap.get(snap.path);
+                        // Calculate line changes for this snapshot
+                        let snapAdded = 0;
+                        let snapRemoved = 0;
+                        if (snap.isNewFile) {
+                          // New file: all lines are added
+                          snapAdded = snap.content ? snap.content.split('\n').length : 0;
+                        } else if (snap.operation === 'delete') {
+                          // Deleted file: all original lines removed
+                          snapRemoved = snap.originalContent ? snap.originalContent.split('\n').length : 0;
+                        } else if (snap.operation === 'edit' || snap.operation === 'multiedit') {
+                          // Edit: oldContent (replaced text) vs content (new text)
+                          const oldLines = snap.oldContent ? snap.oldContent.split('\n').length : 0;
+                          const newLines = snap.content ? snap.content.split('\n').length : 0;
+                          snapAdded = newLines;
+                          snapRemoved = oldLines;
+                        } else {
+                          // Write/other: compare originalContent vs content
+                          const oldLines = snap.originalContent ? snap.originalContent.split('\n').length : 0;
+                          const newLines = snap.content ? snap.content.split('\n').length : 0;
+                          if (newLines > oldLines) {
+                            snapAdded = newLines - oldLines;
+                          } else if (oldLines > newLines) {
+                            snapRemoved = oldLines - newLines;
+                          }
+                        }
+
                         if (existing) {
                           if (!existing.operations.includes(snap.operation)) {
                             existing.operations.push(snap.operation);
                           }
+                          existing.linesAdded += snapAdded;
+                          existing.linesRemoved += snapRemoved;
                           existing.latestSnapshot = snap;
                         } else {
                           fileMap.set(snap.path, {
                             operations: [snap.operation],
-                            linesAdded: 0,
-                            linesRemoved: 0,
+                            linesAdded: snapAdded,
+                            linesRemoved: snapRemoved,
                             latestSnapshot: snap,
                           });
                         }
@@ -4930,16 +5231,36 @@ export const ClaudeChat: React.FC = () => {
                       return 'modified';
                     };
 
+                    // Convert absolute path to relative path (cross-platform)
+                    const toRelativePath = (absPath: string) => {
+                      const normalizedPath = absPath.replace(/\\/g, '/');
+                      const workDir = currentSession?.workingDirectory || '';
+                      const normalizedWorkDir = workDir.replace(/\\/g, '/').replace(/\/$/, '');
+                      // Case-insensitive comparison for Windows
+                      if (normalizedPath.toLowerCase().startsWith(normalizedWorkDir.toLowerCase() + '/')) {
+                        return normalizedPath.slice(normalizedWorkDir.length + 1);
+                      } else if (normalizedPath.toLowerCase() === normalizedWorkDir.toLowerCase()) {
+                        return '';
+                      }
+                      return normalizedPath;
+                    };
+
                     return (
                       <div className="git-file-list">
-                        {files.map((file) => (
+                        {files.map((file, idx) => (
                           <div
                             key={file.path}
-                            className={`git-file-item ${selectedSessionFile === file.path ? 'selected' : ''}`}
+                            className={`git-file-item ${selectedSessionFile === file.path ? 'selected' : ''} ${focusedSessionIndex === idx ? 'focused' : ''}`}
                             onClick={() => setSelectedSessionFile(selectedSessionFile === file.path ? null : file.path)}
                           >
                             <span className={`git-status ${getStatusClass(file.operations)}`}>{getStatusLabel(file.operations)}</span>
-                            <span className="git-file-name">{file.path}</span>
+                            <span className="git-file-name">{toRelativePath(file.path)}</span>
+                            {(file.linesAdded > 0 || file.linesRemoved > 0) && (
+                              <span className="git-line-stats">
+                                <span className="git-lines-added">+{file.linesAdded}</span>
+                                <span className="git-lines-deleted">-{file.linesRemoved}</span>
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -4957,11 +5278,19 @@ export const ClaudeChat: React.FC = () => {
                     }
                   }
                   if (!latestSnap || (!latestSnap.oldContent && !latestSnap.content)) return null;
-                  const diff = generateDiff(selectedSessionFile, latestSnap.oldContent || '', latestSnap.content || '');
+                  // Use startLine from snapshot for accurate line numbers (edit operations)
+                  const diff = generateDiff(selectedSessionFile, latestSnap.oldContent || '', latestSnap.content || '', latestSnap.startLine || 1);
+                  // Convert to relative path for display (cross-platform)
+                  const normalizedPath = selectedSessionFile.replace(/\\/g, '/');
+                  const workDir = currentSession?.workingDirectory || '';
+                  const normalizedWorkDir = workDir.replace(/\\/g, '/').replace(/\/$/, '');
+                  const displayPath = normalizedPath.toLowerCase().startsWith(normalizedWorkDir.toLowerCase() + '/')
+                    ? normalizedPath.slice(normalizedWorkDir.length + 1)
+                    : normalizedPath;
                   return (
                     <div className="tool-panel-preview">
                       <div className="tool-panel-preview-header">
-                        <span className="tool-panel-preview-filename">{selectedSessionFile}</span>
+                        <span className="tool-panel-preview-filename">{displayPath}</span>
                         <button
                           className="tool-panel-preview-close"
                           onClick={() => setSelectedSessionFile(null)}
@@ -5741,9 +6070,11 @@ export const ClaudeChat: React.FC = () => {
               sessionLinesAdded={sessionFileStats.linesAdded}
               sessionLinesRemoved={sessionFileStats.linesRemoved}
               filesSubTab={filesSubTab}
+              setFilesSubTab={setFilesSubTab}
               onOpenCommandPalette={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
               backgroundAgentCount={backgroundAgentCount}
-              pendingToolInfo={currentSession?.pendingToolInfo}
+              pendingAgentCount={pendingToolCounts.agentCount}
+              pendingBashCount={pendingToolCounts.bashCount}
             />
           </InputArea>
         );

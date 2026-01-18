@@ -319,6 +319,31 @@ pub fn read_file_content(path: String) -> Result<Option<String>, String> {
     }
 }
 
+/// Read file as base64 (for image preview)
+#[tauri::command]
+pub fn read_file_base64(path: String) -> Result<String, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use std::fs;
+    use std::path::Path;
+
+    let file_path = Path::new(&path);
+
+    if !file_path.exists() {
+        return Err("File not found".to_string());
+    }
+
+    // Check if file is too large (>20MB for images)
+    let metadata =
+        fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
+    if metadata.len() > 20 * 1024 * 1024 {
+        return Err("File too large to preview (>20MB)".to_string());
+    }
+
+    let bytes = fs::read(file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    Ok(STANDARD.encode(&bytes))
+}
+
 /// Write a skill file to ~/.claude/skills/
 #[tauri::command]
 pub fn write_skill_file(name: String, content: String) -> Result<(), String> {
@@ -2514,6 +2539,100 @@ pub fn get_macos_focus_state(window: tauri::WebviewWindow) -> Result<String, Str
     {
         let _ = window;
         Ok("Not macOS".to_string())
+    }
+}
+
+/// Restore WKWebView as first responder on macOS
+/// Call this when keyboard input stops working but textarea has DOM focus
+/// RELEASE BUILD FIX: In release builds, WKWebView's internal first responder chain
+/// can get disrupted, causing the webview to appear focused but not receive keystrokes.
+/// This function forces WKWebView to reclaim first responder status.
+#[tauri::command]
+pub fn restore_webview_focus(window: tauri::WebviewWindow) -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use cocoa::base::{id, nil, YES};
+        use std::ffi::CStr;
+
+        let ns_window = window.ns_window().map_err(|e| format!("Failed to get NSWindow: {}", e))?;
+        unsafe {
+            let ns_window = ns_window as id;
+
+            // Check if app is active and window is key - only restore if we should have focus
+            let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
+            let is_active: bool = msg_send![ns_app, isActive];
+            let is_key: bool = msg_send![ns_window, isKeyWindow];
+
+            if !is_active || !is_key {
+                return Ok(false);
+            }
+
+            // Find WKWebView in content view
+            let content_view: id = msg_send![ns_window, contentView];
+            let subviews: id = msg_send![content_view, subviews];
+            let count: usize = msg_send![subviews, count];
+
+            for i in 0..count {
+                let subview: id = msg_send![subviews, objectAtIndex:i];
+                let class: id = msg_send![subview, class];
+                let class_name: id = msg_send![class, description];
+                let class_name_str: *const i8 = msg_send![class_name, UTF8String];
+
+                if !class_name_str.is_null() {
+                    let class_name_rust = CStr::from_ptr(class_name_str).to_str().unwrap_or("");
+
+                    if class_name_rust.contains("WKWebView") {
+                        // Get current first responder to check its relationship to WKWebView
+                        let first_responder: id = msg_send![ns_window, firstResponder];
+
+                        // RELEASE BUILD FIX: Check if first responder is WKWebView OR a subview of it
+                        // In release builds, focus can get "stuck" on an internal WKWebView child
+                        // that doesn't properly handle keyboard events
+                        let mut is_webview_chain = first_responder == subview;
+                        if !is_webview_chain && first_responder != nil {
+                            // Check if first responder is a descendant of WKWebView
+                            let mut superview: id = msg_send![first_responder, superview];
+                            while superview != nil {
+                                if superview == subview {
+                                    is_webview_chain = true;
+                                    break;
+                                }
+                                superview = msg_send![superview, superview];
+                            }
+                        }
+
+                        // Even if we're in the webview chain, force a reset in release builds
+                        // This helps recover from stuck states where internal focus is broken
+                        // The key insight: makeFirstResponder:nil followed by makeFirstResponder:webview
+                        // forces the entire responder chain to reset
+                        let _: () = msg_send![subview, setAcceptsTouchEvents: YES];
+
+                        // RELEASE BUILD FIX: Always perform the reset sequence
+                        // Step 1: Resign current first responder to clear any stuck state
+                        let _: bool = msg_send![ns_window, makeFirstResponder: nil];
+
+                        // Step 2: Make WKWebView first responder
+                        let success: bool = msg_send![ns_window, makeFirstResponder: subview];
+
+                        if success {
+                            log::info!("[Focus] Restored WKWebView first responder (was_in_chain: {})", is_webview_chain);
+                        } else {
+                            log::warn!("[Focus] Failed to restore WKWebView first responder");
+                        }
+
+                        return Ok(success);
+                    }
+                }
+            }
+
+            Ok(false)
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+        Ok(true) // Non-macOS platforms don't have this issue
     }
 }
 

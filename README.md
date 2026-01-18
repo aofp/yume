@@ -24,7 +24,7 @@ The most feature-rich Claude Code desktop GUI. Native performance, 15+ unique fe
 - **Stream Timers** - Live thinking/bash/compacting duration
 - **History/Rollback Panel** - Visual message history with undo
 - **Ultrathink Support** - Cmd+K insert + rainbow highlighting
-- **30 Themes** - More than Cursor, Windsurf, Opcode combined
+- **12 Themes** - OLED-optimized color schemes
 - **9 Hook Events** - Most comprehensive hook system
 - **Crash Recovery** - Auto-save with 24hr restoration
 - **Bash Mode** - !/$ prefix for direct terminal commands

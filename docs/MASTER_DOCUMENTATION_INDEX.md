@@ -35,25 +35,29 @@
 ---
 
 ### 2. [FEATURES_COMPLETE.md](FEATURES_COMPLETE.md)
-**Size:** ~9,000 words  
+**Size:** ~11,000 words
 **Depth:** Every feature documented with implementation details
 
 #### Core Feature Categories:
-1. **Claude CLI Integration**: 4 models, streaming JSON, binary detection
+1. **Claude CLI Integration**: 6 models across 3 providers, streaming JSON, binary detection
 2. **Session Management**: 7 states, persistence layers, recovery
-3. **Auto-Compaction**: Unique 97% threshold, 6-step process
+3. **Auto-Compaction**: 55% warn, 60% auto, 65% force thresholds
 4. **Token Tracking**: Real-time counting, accurate cost calculation
 5. **Editor Features**: Syntax highlighting, diff viewer, file references
 6. **Hook System**: 9 triggers, blocking/non-blocking, variables
 7. **MCP Protocol**: Full implementation, server management
 8. **Database**: SQLite schema, checkpoints, full-text search
-9. **UI/UX**: Custom chrome, themes, shortcuts, virtual scrolling
+9. **UI/UX**: Custom chrome, 12 themes, shortcuts, virtual scrolling
 10. **Developer Features**: Debug mode, profiling, extension API
 11. **Security**: CSP, isolation, validation, sanitization
 12. **Performance**: Lazy loading, memory management, monitoring
 13. **Platform Features**: Native integrations for each OS
+14. **Memory MCP System**: Persistent knowledge graph, auto-learning
+15. **Background Agents**: Async execution, git branch isolation (4 concurrent)
 
 #### Exclusive Features:
+- Memory MCP system with auto-learning from conversations
+- Background agents with git branch isolation
 - Only GUI with conservative auto-compaction (60%/65% thresholds, 38% buffer)
 - Compiled server binaries (no Node.js dependency for end users)
 - Crash recovery with session restoration
@@ -254,7 +258,7 @@
    - Advanced analytics & token tracking
    - Complete plugin ecosystem
    - Performance monitoring
-   - Timeline & checkpoints
+   - History & rollback
    - Sustainable pricing ($21 one-time)
    - OLED black theme
 

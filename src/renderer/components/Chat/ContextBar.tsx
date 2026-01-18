@@ -103,6 +103,7 @@ interface ContextBarProps {
 
   // Files panel sub-tab
   filesSubTab: 'files' | 'git' | 'sessions';
+  setFilesSubTab: (tab: 'files' | 'git' | 'sessions') => void;
 
   // Command palette
   onOpenCommandPalette: () => void;
@@ -110,8 +111,9 @@ interface ContextBarProps {
   // Background agents running count
   backgroundAgentCount?: number;
 
-  // Pending tool info for context center
-  pendingToolInfo?: Map<string, { name: string; startTime: number }>;
+  // Pending tool counts for context center (computed from pendingToolInfo)
+  pendingAgentCount?: number;
+  pendingBashCount?: number;
 }
 
 export const ContextBar: React.FC<ContextBarProps> = ({
@@ -156,9 +158,11 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   sessionLinesAdded,
   sessionLinesRemoved,
   filesSubTab,
+  setFilesSubTab,
   onOpenCommandPalette,
   backgroundAgentCount = 0,
-  pendingToolInfo,
+  pendingAgentCount = 0,
+  pendingBashCount = 0,
 }) => {
   // Context menu state
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -191,8 +195,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
   const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
   const percentageNum = rawPercentage;
-  // Only show "?" when pending AND no valid token data
-  const percentage = (isTokensPending && totalContextTokens === 0) ? '?' : percentageNum.toFixed(2);
+  // Always show actual percentage - 0.00% is accurate for new sessions or after compaction
+  const percentage = percentageNum.toFixed(2);
 
   // Determine usage class
   const usageClass = rawPercentage >= 65 ? 'critical' :
@@ -275,46 +279,29 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         )}
       </div>
 
-      {/* CENTER: active status indicators */}
-      {(() => {
-        // Derive counts from pendingToolInfo
-        const taskCount = pendingToolInfo ? Array.from(pendingToolInfo.values()).filter(t => t.name === 'Task').length : 0;
-        const bashCount = pendingToolInfo ? Array.from(pendingToolInfo.values()).filter(t => t.name === 'Bash').length : 0;
-        const showCenter = taskCount > 0 || bashCount > 0 || backgroundAgentCount > 0;
-
-        // Debug: log pendingToolInfo stats
-        console.log('[ContextBar] render - pendingToolInfo:',
-          pendingToolInfo ? `Map(${pendingToolInfo.size})` : 'undefined',
-          'taskCount:', taskCount,
-          'bashCount:', bashCount,
-          'bgAgents:', backgroundAgentCount
-        );
-
-        if (!showCenter) return null;
-
-        return (
-          <div className="context-center">
-            {taskCount > 0 && (
-              <span className="context-status-item agent">
-                <IconRobot size={10} stroke={1.5} />
-                <span className="context-status-label">{taskCount > 1 ? taskCount : ''} agent{taskCount > 1 ? 's' : ''}</span>
-              </span>
-            )}
-            {bashCount > 0 && (
-              <span className="context-status-item bash">
-                <IconTerminal2 size={10} stroke={1.5} />
-                <span className="context-status-label">{bashCount > 1 ? bashCount : ''} bash</span>
-              </span>
-            )}
-            {backgroundAgentCount > 0 && (
-              <span className="context-status-item bg-agent">
-                <IconUsers size={10} stroke={1.5} />
-                <span className="context-status-label">{backgroundAgentCount} bg</span>
-              </span>
-            )}
-          </div>
-        );
-      })()}
+      {/* CENTER: active status indicators - order: bash, agent, bg agent */}
+      {(pendingBashCount > 0 || pendingAgentCount > 0 || backgroundAgentCount > 0) && (
+        <div className="context-center">
+          {pendingBashCount > 0 && (
+            <span className="context-status-item bash">
+              <IconTerminal2 size={10} stroke={1.5} />
+              {pendingBashCount > 1 && <span className="context-status-label">{pendingBashCount}</span>}
+            </span>
+          )}
+          {pendingAgentCount > 0 && (
+            <span className="context-status-item agent">
+              <IconRobot size={10} stroke={1.5} />
+              {pendingAgentCount > 1 && <span className="context-status-label">{pendingAgentCount}</span>}
+            </span>
+          )}
+          {backgroundAgentCount > 0 && (
+            <span className="context-status-item bg-agent">
+              <IconUsers size={10} stroke={1.5} />
+              {backgroundAgentCount > 1 && <span className="context-status-label">{backgroundAgentCount}</span>}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* RIGHT GROUP: combined files button, history, context% */}
       <div className="context-right">
@@ -351,8 +338,19 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               setFocusedFileIndex(-1);
               setFocusedGitIndex(-1);
             }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // cycle: files -> git -> sessions -> files
+              const next = filesSubTab === 'files' ? 'git' : filesSubTab === 'git' ? 'sessions' : 'files';
+              setFilesSubTab(next);
+              // open panel if not already open
+              if (!showFilesPanel) {
+                setShowFilesPanel(true);
+              }
+            }}
             disabled={!workingDirectory}
-            title={buildFilesButtonTitle()}
+            title={buildFilesButtonTitle() + ' • rmb: switch tab'}
           >
             <span className="btn-icon-wrapper">
               {filesSubTab === 'git' ? <IconGitBranch size={12} stroke={1.5} /> : filesSubTab === 'sessions' ? <IconPencil size={12} stroke={1.5} /> : <IconFolder size={12} stroke={1.5} />}
@@ -360,15 +358,32 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
             {/* Stats badges based on selected tab */}
             {(() => {
+              // files tab: show sessionFileCount / gitChangesCount (if git repo)
+              // git tab: show gitChangesCount
+              // sessions tab: show sessionFileCount
+              if (filesSubTab === 'files') {
+                const hasStats = sessionFileCount > 0 || gitChangesCount > 0 || backgroundAgentCount > 0;
+                if (!hasStats) return null;
+                return (
+                  <span className="btn-files-stats">
+                    {(sessionFileCount > 0 || gitChangesCount > 0) && (
+                      <span className="stat-badge git-badge">
+                        {sessionFileCount}{gitChangesCount > 0 ? ` / ${gitChangesCount}` : ''}
+                      </span>
+                    )}
+                    {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
+                  </span>
+                );
+              }
               const showGitStats = filesSubTab === 'git';
               const fileCount = showGitStats ? gitChangesCount : sessionFileCount;
               const linesAdded = showGitStats ? gitLinesAdded : sessionLinesAdded;
               const linesRemoved = showGitStats ? gitLinesRemoved : sessionLinesRemoved;
-              const hasStats = fileCount > 0 || backgroundAgentCount > 0;
-              if (!hasStats) return null;
+              const hasStats = fileCount > 0 || backgroundAgentCount > 0 || linesAdded > 0 || linesRemoved > 0;
+              if (!hasStats && filesSubTab !== 'sessions') return null;
               return (
                 <span className="btn-files-stats">
-                  {fileCount > 0 && <span className="stat-badge git-badge">{fileCount}</span>}
+                  <span className="stat-badge git-badge">{fileCount}</span>
                   {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
                   {(linesAdded > 0 || linesRemoved > 0) && (
                     <span className="stat-badge lines-badge">

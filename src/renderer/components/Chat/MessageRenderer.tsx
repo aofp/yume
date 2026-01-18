@@ -3326,7 +3326,10 @@ const MessageRendererBase: React.FC<{
           }
         }
 
-        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        const elapsedSecondsRaw = Math.floor(elapsedMs / 1000);
+        const elapsedSeconds = elapsedSecondsRaw >= 60
+          ? `${Math.floor(elapsedSecondsRaw / 60)}m ${elapsedSecondsRaw % 60}s`
+          : `${elapsedSecondsRaw}s`;
         const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
         let toolCount = (message as any).tool_count || 0;
         let hasAssistantMessage = false;
@@ -3498,7 +3501,7 @@ const MessageRendererBase: React.FC<{
                 )}
               </div>
               <div className="elapsed-time">
-                {elapsedSeconds}s
+                {elapsedSeconds}
                 {showResultStats && message.model && ` • ${
                   formatModelName(message.model)
                 }`}
@@ -3573,7 +3576,7 @@ const MessageRendererBase: React.FC<{
               </div>
             )}
             <div className="elapsed-time">
-              {elapsedSeconds}s
+              {elapsedSeconds}
               {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
               {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
@@ -3620,7 +3623,10 @@ const MessageRendererBase: React.FC<{
           }
         }
 
-        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        const elapsedSecondsRaw = Math.floor(elapsedMs / 1000);
+        const elapsedSeconds = elapsedSecondsRaw >= 60
+          ? `${Math.floor(elapsedSecondsRaw / 60)}m ${elapsedSecondsRaw % 60}s`
+          : `${elapsedSecondsRaw}s`;
         const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
 
         let toolCount = (message as any).tool_count || 0;
@@ -3641,7 +3647,7 @@ const MessageRendererBase: React.FC<{
         return (
           <div className="message result-success">
             <div className="elapsed-time">
-              {elapsedSeconds}s
+              {elapsedSeconds}
               {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
               {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}

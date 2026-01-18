@@ -851,7 +851,7 @@ line-height: var(--leading-normal);
 .tool-use.standalone {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 4px;
+  gap: 0 5px;
   line-height: var(--leading-relaxed);
   width: 100%;
   background: transparent !important;
@@ -2254,7 +2254,7 @@ hr {
 .todo-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 5px;
   padding: 0;
   border-radius: 4px;
   font-size: var(--text-base);

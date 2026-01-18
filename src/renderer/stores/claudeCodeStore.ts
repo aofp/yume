@@ -8,6 +8,7 @@ import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { invoke } from '@tauri-apps/api/core';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
+import { toastService } from '../services/toastService';
 import { isBashPrefix } from '../utils/helpers';
 import { appEventName, appStorageKey } from '../config/app';
 import { loadEnabledTools, DEFAULT_ENABLED_TOOLS, ALL_TOOLS, expandMcpTools, getAllMcpToolIds } from '../config/tools';
@@ -42,6 +43,7 @@ const SHOW_SKILLS_SETTINGS_KEY = appStorageKey('show-skills-settings');
 const SHOW_DICTATION_KEY = appStorageKey('show-dictation');
 const CONTEXT_BAR_VISIBILITY_KEY = appStorageKey('context-bar-visibility');
 const MEMORY_ENABLED_KEY = appStorageKey('memory_enabled');
+const MEMORY_RETENTION_DAYS_KEY = appStorageKey('memory_retention_days');
 const VSCODE_EXTENSION_ENABLED_KEY = appStorageKey('vscode-extension-enabled');
 const AGENTS_KEY = appStorageKey('agents');
 const CURRENT_AGENT_KEY = appStorageKey('current-agent');
@@ -84,7 +86,9 @@ function getMessageHash(message: any): string {
 const messageHashCache = new WeakMap<any, string>();
 
 // Streaming end debounce timers - prevent premature streaming=false when Claude continues working
-// Maps sessionId -> timeoutId
+// RACE CONDITION FIX: Maps "sessionId:source" -> timeoutId where source is "temp" or "main"
+// This prevents timer leaks when both temp channel and main listener fire stream_end
+// Previously: only one timer ID was stored, causing the other to leak
 const streamingEndTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 // Platform-aware debounce: Windows has longer delays between Claude CLI turns
@@ -96,14 +100,42 @@ const STREAMING_END_DEBOUNCE_MS = IS_WINDOWS ? 3500 : 1500;
 // Maps sessionId -> Set of parent_tool_use_ids that have active subagents
 const activeSubagentParents = new Map<string, Set<string>>();
 
-// Cancel any pending streaming end timer for a session (called when new work messages arrive)
+// Cancel any pending streaming end timers for a session (called when new work messages arrive)
+// RACE CONDITION FIX: Cancel ALL timers for this session (both temp and main channel sources)
 function cancelStreamingEndTimer(sessionId: string) {
-  const timerId = streamingEndTimers.get(sessionId);
-  if (timerId) {
-    clearTimeout(timerId);
-    streamingEndTimers.delete(sessionId);
-    console.log(`🔄 [STREAMING-DEBOUNCE] Cancelled streaming_end timer for ${sessionId} - more work incoming`);
+  const sources = ['temp', 'main', '']; // Empty string for legacy keys without source
+  let cancelled = 0;
+  for (const source of sources) {
+    const key = source ? `${sessionId}:${source}` : sessionId;
+    const timerId = streamingEndTimers.get(key);
+    if (timerId) {
+      clearTimeout(timerId);
+      streamingEndTimers.delete(key);
+      cancelled++;
+    }
   }
+  if (cancelled > 0) {
+    console.log(`🔄 [STREAMING-DEBOUNCE] Cancelled ${cancelled} streaming_end timer(s) for ${sessionId} - more work incoming`);
+  }
+}
+
+// Set streaming end timer with source tracking to prevent leaks
+// source: "temp" for temporary channel, "main" for main listener
+function setStreamingEndTimer(sessionId: string, source: 'temp' | 'main', callback: () => void) {
+  const key = `${sessionId}:${source}`;
+
+  // Cancel existing timer for this specific source
+  const existingTimer = streamingEndTimers.get(key);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  const timerId = setTimeout(() => {
+    streamingEndTimers.delete(key);
+    callback();
+  }, STREAMING_END_DEBOUNCE_MS);
+
+  streamingEndTimers.set(key, timerId);
 }
 
 // Track subagent activity - keeps parent tool ID active while subagent messages arrive
@@ -288,6 +320,7 @@ export interface FileSnapshot {
   isNewFile?: boolean; // True if file didn't exist before this operation
   mtime?: number; // File modification time when snapshot was taken (for conflict detection)
   sessionId?: string; // Session that made this edit (for cross-session conflict detection)
+  startLine?: number; // 1-based line number where the edit starts (for accurate diff line numbers)
 }
 
 export interface RestorePoint {
@@ -392,6 +425,7 @@ export interface Session {
   watermarkImage?: string; // Base64 or URL for watermark image
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
   pendingToolInfo?: Map<string, { name: string; startTime: number }>; // Track pending tool names for context center
+  pendingToolCounter?: number; // Counter to force React re-render when pending tools change
   thinkingStartTime?: number; // Track when thinking started for this session
   lastMessageTime?: number; // Track last message received time (for streaming state protection)
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
@@ -471,6 +505,7 @@ interface ClaudeCodeStore {
   showDictation: boolean; // Whether to show dictation button and enable keybind
   memoryEnabled: boolean; // Whether built-in MCP memory server is enabled
   memoryServerRunning: boolean; // Whether memory server process is currently running
+  memoryRetentionDays: number; // Days to retain memories before pruning (default 30)
 
   // VSCode extension
   vscodeExtensionEnabled: boolean; // Whether vscode extension is enabled (auto-installs when on)
@@ -605,6 +640,7 @@ interface ClaudeCodeStore {
   setContextBarVisibility: (visibility: { showCommandPalette: boolean; showDictation: boolean; showFilesPanel: boolean; showHistory: boolean }) => void;
   setMemoryEnabled: (enabled: boolean) => void;
   setMemoryServerRunning: (running: boolean) => void;
+  setMemoryRetentionDays: (days: number) => void;
 
   // VSCode extension
   setVscodeExtensionEnabled: (enabled: boolean) => void;
@@ -881,6 +917,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         return stored !== null ? JSON.parse(stored) : true; // Default to enabled
       })(),
       memoryServerRunning: false, // Not running initially
+      memoryRetentionDays: (() => {
+        const stored = localStorage.getItem(MEMORY_RETENTION_DAYS_KEY);
+        return stored !== null ? JSON.parse(stored) : 30; // Default 30 days
+      })(),
       vscodeExtensionEnabled: false, // Default to disabled
       vscodeConnected: false, // Not connected initially
       vscodeConnectionCount: 0, // No connections initially
@@ -906,25 +946,29 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       setSelectedModel: (modelId: string) => {
         const state = get();
         const currentSession = state.sessions.find(s => s.id === state.currentSessionId);
-
-        // Update global selected model
-        set({ selectedModel: modelId });
+        const currentSessionId = state.currentSessionId;
 
         // Also update current session's model if same provider (allows opus <-> sonnet switching)
         if (currentSession?.model) {
           const oldProvider = getProviderForModel(currentSession.model);
           const newProvider = getProviderForModel(modelId);
           if (oldProvider === newProvider) {
-            set({
+            // Update both global and session model in single set to avoid stale state
+            set(state => ({
+              selectedModel: modelId,
               sessions: state.sessions.map(s =>
-                s.id === state.currentSessionId ? { ...s, model: modelId } : s
+                s.id === currentSessionId ? { ...s, model: modelId } : s
               )
-            });
+            }));
             console.log(`Model changed to: ${modelId} (session updated)`);
           } else {
+            // Different provider - only update global, session stays locked
+            set({ selectedModel: modelId });
             console.log(`Model changed to: ${modelId} (session not updated - different provider)`);
           }
         } else {
+          // No session model set yet - just update global
+          set({ selectedModel: modelId });
           console.log('Model changed to:', modelId);
         }
 
@@ -1408,12 +1452,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 if (message.type === 'system' && message.subtype === 'stream_end') {
                   console.log(`⏱️ [STREAMING-DEBOUNCE] Stream end on temp channel - starting debounce for ${sessionId}`);
 
-                  // Cancel any existing timer
+                  // Cancel any existing timers (from any source)
                   cancelStreamingEndTimer(sessionId);
 
-                  // Start debounced timer
-                  const timerId = setTimeout(() => {
-                    streamingEndTimers.delete(sessionId);
+                  // RACE CONDITION FIX: Use setStreamingEndTimer with source='temp' to prevent timer leaks
+                  // Previously both temp and main channel would overwrite the same timer key
+                  setStreamingEndTimer(sessionId, 'temp', () => {
                     const currentState = get();
                     const currentSession = currentState.sessions.find(s => s.id === sessionId);
 
@@ -1461,9 +1505,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         return s;
                       })
                     }));
-                  }, STREAMING_END_DEBOUNCE_MS);
-
-                  streamingEndTimers.set(sessionId, timerId);
+                  });
                 }
                 // Special handling for streaming_resumed to set streaming state after interruption
                 else if (message.type === 'system' && message.subtype === 'streaming_resumed') {
@@ -2652,12 +2694,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // This fixes the bug where Claude continues working after streaming_end
                     console.log(`⏱️ [STREAMING-DEBOUNCE] streaming_end received - starting ${STREAMING_END_DEBOUNCE_MS}ms debounce timer for ${sessionId}`);
 
-                    // Cancel any existing timer for this session
+                    // Cancel any existing timers for this session (from any source)
                     cancelStreamingEndTimer(sessionId);
 
-                    // Start a new debounced timer
-                    const timerId = setTimeout(() => {
-                      streamingEndTimers.delete(sessionId);
+                    // RACE CONDITION FIX: Use setStreamingEndTimer with source='main' to prevent timer leaks
+                    setStreamingEndTimer(sessionId, 'main', () => {
                       console.log(`🏁 [STREAMING-DEBOUNCE] Timer fired for ${sessionId} - now clearing streaming state`);
 
                       // Check again if we should clear (in case state changed during debounce)
@@ -2744,9 +2785,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           return s;
                         })
                       }));
-                    }, STREAMING_END_DEBOUNCE_MS);
-
-                    streamingEndTimers.set(sessionId, timerId);
+                    });
 
                     // Don't modify sessions here - the timer callback will handle it
                     return { sessions };
@@ -2977,7 +3016,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // DEBOUNCE: For stream_end, use debounced approach to handle Claude continuing work
                         console.log(`⏱️ [STREAMING-DEBOUNCE] stream_end system message - starting debounce timer for ${sessionId}`);
 
-                        // Cancel any existing timer
+                        // Cancel any existing timers (from any source)
                         cancelStreamingEndTimer(sessionId);
 
                         // Clear bash state immediately but debounce streaming state
@@ -2985,9 +3024,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                         );
 
-                        // Start debounced timer for streaming state
-                        const timerId = setTimeout(() => {
-                          streamingEndTimers.delete(sessionId);
+                        // RACE CONDITION FIX: Use setStreamingEndTimer with source='main' to prevent timer leaks
+                        setStreamingEndTimer(sessionId, 'main', () => {
                           const currentState = get();
                           const currentSession = currentState.sessions.find(s => s.id === sessionId);
 
@@ -3050,9 +3088,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                               return s;
                             })
                           }));
-                        }, STREAMING_END_DEBOUNCE_MS);
-
-                        streamingEndTimers.set(sessionId, timerId);
+                        });
                       } else {
                         // interrupted or error - immediately clear streaming (user action or error)
                         console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
@@ -3183,17 +3219,31 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           const newLines = newContent ? newContent.split('\n').length : 0;
                           const oldLines = oldContent ? oldContent.split('\n').length : 0;
 
+                          // For edit operations, capture the snippet being replaced
+                          let editOldStr = '';
+                          let editStartLine: number | undefined;
+
                           if (snapshot.isNewFile) {
                             // New file: all lines are added
                             lineChanges.added += newLines;
-                          } else if (operation === 'edit') {
+                          } else if (operation === 'edit' || operation === 'multiedit') {
                             // Edit: use old_string/new_string from input
                             const oldStr = message.message?.input?.old_string || '';
                             const newStr = message.message?.input?.new_string || '';
+                            editOldStr = oldStr;
                             const removedLines = oldStr ? oldStr.split('\n').length : 0;
                             const addedLines = newStr ? newStr.split('\n').length : 0;
                             lineChanges.added += addedLines;
                             lineChanges.removed += removedLines;
+
+                            // Calculate start line by finding old_string in original content
+                            if (oldStr && oldContent) {
+                              const idx = oldContent.indexOf(oldStr);
+                              if (idx !== -1) {
+                                // Count newlines before the match to get 1-based line number
+                                editStartLine = oldContent.substring(0, idx).split('\n').length;
+                              }
+                            }
                           } else {
                             // Write: diff the whole file
                             if (newLines > oldLines) {
@@ -3210,6 +3260,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             timestamp: editTimestamp,
                             messageIndex: s.messages.length, // Current position
                             originalContent: snapshot.originalContent,
+                            oldContent: editOldStr || undefined, // The snippet being replaced (for edit ops)
+                            startLine: editStartLine, // 1-based line number where edit starts
                             isNewFile: snapshot.isNewFile || false,
                             mtime: snapshot.mtime, // For conflict detection
                             sessionId: editSessionId // Session that made this edit
@@ -3251,6 +3303,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           runningBash: isBash ? true : s.runningBash,
                           pendingToolIds: pendingTools,
                           pendingToolInfo,
+                          pendingToolCounter: (s.pendingToolCounter || 0) + 1,
                           restorePoints,
                           modifiedFiles,
                           lineChanges,
@@ -3277,7 +3330,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           ...s,
                           runningBash: false,
                           pendingToolIds: pendingTools,
-                          pendingToolInfo
+                          pendingToolInfo,
+                          pendingToolCounter: (s.pendingToolCounter || 0) + 1
                         };
                       }
                       return s;
@@ -4895,10 +4949,10 @@ ${content}`;
         const newModel = currentModel.includes('opus')
           ? (sonnetModel?.id || DEFAULT_MODEL_ID)
           : (opusModel?.id || DEFAULT_MODEL_ID);
-        set({ selectedModel: newModel });
-        // Sync yume agents with new model
+        // Use setSelectedModel to also update session model
+        get().setSelectedModel(newModel);
         const modelName = newModel.includes('opus') ? 'opus' : 'sonnet';
-        systemPromptService.syncAgentsToFilesystem(modelName);
+        toastService.info(`switched to ${modelName}`);
         console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus' : 'Sonnet'}`);
       },
 
@@ -5939,6 +5993,11 @@ ${content}`;
         set({ memoryServerRunning: running });
       },
 
+      setMemoryRetentionDays: (days: number) => {
+        set({ memoryRetentionDays: days });
+        localStorage.setItem(MEMORY_RETENTION_DAYS_KEY, JSON.stringify(days));
+      },
+
       setVscodeExtensionEnabled: (enabled: boolean) => {
         set({ vscodeExtensionEnabled: enabled });
         localStorage.setItem(VSCODE_EXTENSION_ENABLED_KEY, JSON.stringify(enabled));
@@ -6246,6 +6305,7 @@ ${content}`;
         showDictation: state.showDictation,
         contextBarVisibility: state.contextBarVisibility,
         memoryEnabled: state.memoryEnabled,
+        memoryRetentionDays: state.memoryRetentionDays,
         vscodeExtensionEnabled: state.vscodeExtensionEnabled,
         agents: state.agents,
         currentAgentId: state.currentAgentId

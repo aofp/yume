@@ -1,0 +1,358 @@
+/* MemoryTab - Memory system management UI */
+
+.memory-tab {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Notification */
+.memory-notification {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: var(--text-base);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 100;
+}
+
+.memory-notification.success {
+  border-color: rgba(var(--positive-rgb), 0.3);
+  color: var(--positive-color);
+}
+
+.memory-notification.error {
+  border-color: rgba(var(--negative-rgb), 0.3);
+  color: var(--negative-color);
+}
+
+.memory-notification.info {
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+}
+
+/* Header */
+.memory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.memory-header h4 {
+  color: var(--accent-color);
+  font-size: var(--text-base);
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+}
+
+.memory-description {
+  color: var(--fg-50);
+  font-size: var(--text-sm);
+  margin-bottom: 12px;
+}
+
+/* Section */
+.memory-section {
+  margin-bottom: 12px;
+}
+
+.memory-section-header {
+  color: #999;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  text-transform: lowercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.memory-section-header svg {
+  opacity: 0.7;
+}
+
+/* Status indicator inline with section header */
+.memory-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.memory-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.memory-status-dot.running {
+  background-color: var(--positive-color);
+}
+
+.memory-status-dot.stopped {
+  background-color: var(--fg-30);
+}
+
+.memory-status-text {
+  font-size: var(--text-sm);
+  color: var(--fg-70);
+}
+
+/* Settings row */
+.memory-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.memory-settings-label {
+  font-size: var(--text-sm);
+  color: var(--fg-70);
+}
+
+.memory-settings-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Input field */
+.memory-input {
+  width: 50px;
+  padding: 3px 6px;
+  font-size: var(--text-sm);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
+  border-radius: 3px;
+  color: var(--fg-80);
+  text-align: center;
+  outline: none;
+}
+
+.memory-input:focus {
+  border-color: var(--accent-color);
+  background: var(--fg-08);
+}
+
+/* File path */
+.memory-file-path {
+  font-size: var(--text-xs);
+  color: var(--fg-50);
+  font-family: var(--mono-font);
+  padding: 6px 8px;
+  background: var(--fg-05);
+  border-radius: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 8px;
+}
+
+/* Action buttons - compact, not full width */
+.memory-action-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: var(--text-sm);
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.memory-action-btn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.memory-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.memory-action-btn.danger {
+  color: var(--fg-40);
+}
+
+.memory-action-btn.danger:hover:not(:disabled) {
+  border-color: var(--negative-color);
+  color: var(--negative-color);
+}
+
+/* Stats display */
+.memory-stats {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  background: var(--fg-05);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.memory-stat {
+  flex: 1;
+  text-align: center;
+}
+
+.memory-stat-value {
+  font-size: var(--text-lg);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.memory-stat-label {
+  font-size: var(--text-xs);
+  color: var(--fg-50);
+}
+
+/* Entity type list */
+.memory-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Type header */
+.memory-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  cursor: default;
+}
+
+.memory-type-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--accent-color);
+}
+
+.memory-type-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.memory-type-name {
+  font-size: var(--text-sm);
+  color: var(--fg-80);
+  font-weight: 500;
+}
+
+.memory-type-count {
+  font-size: var(--text-xs);
+  color: var(--fg-50);
+  background: var(--fg-08);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* Entity list */
+.memory-entity-list {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Entity item */
+.memory-entity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--fg-03);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: default;
+}
+
+.memory-entity-item:hover {
+  background: var(--fg-05);
+  border-color: var(--accent-color);
+}
+
+.memory-entity-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.memory-entity-name {
+  font-size: var(--text-sm);
+  color: var(--fg-70);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memory-entity-obs-count {
+  font-size: var(--text-xs);
+  color: var(--fg-40);
+  flex-shrink: 0;
+}
+
+.memory-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--fg-30);
+  cursor: default;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.memory-delete-btn:hover {
+  color: var(--negative-color);
+}
+
+/* Observations */
+.memory-observations {
+  padding-left: 24px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.memory-observation {
+  font-size: var(--text-xs);
+  color: var(--fg-60);
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid var(--fg-15);
+  margin-bottom: 2px;
+}
+
+/* Actions section */
+.memory-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Spin animation */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

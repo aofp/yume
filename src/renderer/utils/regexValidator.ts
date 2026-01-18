@@ -11,8 +11,8 @@ const REDOS_PATTERNS = [
   /\([^)]*\|[^)]*\)[+*]/,
   // Quantified groups with wildcards: .*.*
   /\.\*\.\*/,
-  // Repeated alternations with quantifiers
-  /\([^)]+\)[+*]\1/,
+  // Repeated alternations with quantifiers - detect patterns like (a)+\1 or similar
+  /(\([^)]+\))[+*]\\1/,
   // Exponential patterns: .*a.*a.*a
   /(\.\*[a-zA-Z]){3,}/,
   // Nested groups with quantifiers

@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
 **Version:** 0.1.0
-**Last Updated:** January 15, 2026
+**Last Updated:** January 18, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -23,8 +23,10 @@
 15. [Plugin System](#15-plugin-system)
 16. [Skills System](#16-skills-system)
 17. [Analytics & Reporting](#17-analytics--reporting)
-18. [Timeline & Checkpoints](#18-timeline--checkpoints)
+18. [History & Rollback](#18-history--rollback)
 19. [VSCode Extension Integration](#19-vscode-extension-integration)
+20. [Memory MCP System](#20-memory-mcp-system)
+21. [Background Agents](#21-background-agents)
 
 ## 1. Core Features
 
@@ -680,7 +682,7 @@ ORDER BY rank;
 | `Cmd/Ctrl+/` | Focus input |
 | `Cmd/Ctrl+,` | Settings |
 | `Cmd/Ctrl+Shift+C` | Clear context |
-| `Cmd/Ctrl+K` | Command palette |
+| `Cmd/Ctrl+P` | Command palette |
 
 ### 9.4 Virtual Scrolling
 
@@ -1267,108 +1269,80 @@ interface AnalyticsData {
 - Per-model comparison
 - Export to CSV/JSON
 
-## 18. Timeline & Checkpoints
+## 18. History & Rollback
 
 ### 18.1 Overview
 
-**Description**: Visual timeline of conversation checkpoints for state management and restoration.
+**Description**: Linear message history with file restoration for undoing conversation changes.
 
-**Location**: `src/renderer/components/Timeline/TimelineNavigator.tsx`
+**Location**: `src/renderer/components/Chat/ClaudeChat.tsx` (rollback panel)
 
-**Feature Flag**: `FEATURE_FLAGS.SHOW_TIMELINE`
+**Data**: `restorePoints` in session state tracks file changes per message
 
-### 18.2 Checkpoint System
+### 18.2 Restore Points System
 
-**Checkpoint Structure**:
+**RestorePoint Structure**:
 ```typescript
-interface Checkpoint {
-  id: string
-  sessionId: string
+interface RestorePoint {
+  messageIndex: number
   timestamp: number
-  title?: string
-  messageCount: number
-  tokenCount: number
-  metadata?: {
-    model: string
-    workingDirectory: string
-    createdBy: 'user' | 'auto'
-  }
+  fileSnapshots: FileSnapshot[]
+}
+
+interface FileSnapshot {
+  path: string
+  content: string
+  originalContent: string | null
+  isNewFile: boolean
+  mtime?: number
+  operation?: 'edit' | 'write'
+  oldContent?: string  // For edits: the replaced snippet
 }
 ```
 
-**Auto-Checkpoints**:
-- Created every N messages (configurable)
-- Created before compaction
-- Created on significant state changes
-- Automatic cleanup after 30 days
+**Automatic Tracking**:
+- Captures file state before each tool use (Edit, Write)
+- Stores original content for restoration
+- Tracks modification timestamps for conflict detection
+- Maximum 50 restore points per session
 
-**Manual Checkpoints**:
-- User-created via UI
-- Custom titles/descriptions
-- Persisted indefinitely
-- Exportable
+### 18.3 Rollback Panel UI
 
-### 18.3 Timeline API
+**Access**: Click history button in context bar
 
-**Load Timeline**:
-```typescript
-async function getTimeline(sessionId: string): Promise<Checkpoint[]>
-```
+**Features**:
+- Lists all user messages (newest first)
+- Shows line changes per message (+added / -removed)
+- Keyboard navigation (arrow keys, Enter to select, Esc to close)
+- Hover/selection highlighting
+- Disabled during streaming
 
-**Restore Checkpoint**:
-```typescript
-async function restoreCheckpoint(
-  sessionId: string,
-  checkpointId: string
-): Promise<void>
-```
+### 18.4 Rollback Process
 
-**Events**:
-- `checkpoint-created`: Emitted when new checkpoint saved
-- `checkpoint-restored`: Emitted when checkpoint restored
+**When clicking a message to rollback**:
+1. Collects all file snapshots after that message
+2. Checks for conflicts (external modifications, other sessions)
+3. Shows confirmation with files to restore
+4. Restores files to original content
+5. Truncates conversation to selected message
+6. Places the message text back in input field
 
-### 18.4 UI Features
+**Conflict Detection**:
+- Compares stored mtime vs current mtime
+- Checks cross-session edit registry
+- Warns if file modified externally or by another tab
 
-**TimelineNavigator Component**:
-- Visual timeline with date markers
-- Checkpoint nodes with metadata
-- Hover preview with message count, tokens, cost
-- Click to restore conversation state
-- Collapse/expand timeline view
-- Keyboard navigation (arrow keys)
-- Selection state tracking
+### 18.5 Use Cases
 
-**Checkpoint Actions**:
-- Create manual checkpoint
-- Restore to checkpoint
-- Delete checkpoint
-- Export checkpoint
-- View checkpoint diff (before/after messages)
+**Rollback Scenarios**:
+1. **Undo Bad Edit**: Claude made unwanted changes, restore files
+2. **Try Different Approach**: Roll back and re-prompt differently
+3. **Recover from Errors**: Restore after a failed refactoring
+4. **Clean Slate**: Return to earlier conversation state
 
-### 18.5 Storage
+### 18.6 Future: Timeline Branching (Planned)
 
-**Database Table**: `checkpoints` (SQLite)
-```sql
-CREATE TABLE checkpoints (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    title TEXT,
-    messages TEXT NOT NULL,  -- JSON
-    token_stats TEXT,        -- JSON
-    metadata TEXT,           -- JSON
-    FOREIGN KEY (session_id) REFERENCES sessions(id)
-);
-```
-
-### 18.6 Use Cases
-
-**Checkpoint Scenarios**:
-1. **Before Refactoring**: Save state before major code changes
-2. **Pre-Compaction**: Auto-saved before context compaction
-3. **Branch Exploration**: Create checkpoint before exploring alternative approaches
-4. **Session Milestones**: Mark completion of major tasks
-5. **Undo/Redo**: Restore to previous conversation state
+**Note**: A more advanced timeline/checkpoint system with conversation branching is planned but not yet active. The current rollback system provides linear undo functionality.
 
 ## 19. VSCode Extension Integration
 
@@ -1425,12 +1399,12 @@ CREATE TABLE checkpoints (
 | MCP support | ✅ | ✅ | ❌ | ❌ |
 | Virtual scrolling | ✅ | ⚠️ | ❌ | ✅ |
 | Git diff viewer | ✅ | ✅ | ❌ | ✅ |
-| 30 themes | ✅ | ❌ | ❌ | ❌ |
+| 12 themes | ✅ | ❌ | ❌ | ❌ |
 | 5 built-in agents | ✅ | ❌ | ❌ | ❌ |
-| 12 custom commands | ✅ | ❌ | ❌ | ❌ |
+| 5 custom commands | ✅ | ❌ | ❌ | ❌ |
 | 30+ keyboard shortcuts | ✅ | ❌ | ❌ | ✅ |
 | Drag & drop tabs | ✅ | ❌ | ❌ | ❌ |
-| Checkpoints + timeline | ✅ | ✅ | ❌ | ❌ |
+| History + rollback | ✅ | ✅ | ❌ | ❌ |
 | CLAUDE.md editor | ✅ | ✅ | ❌ | ❌ |
 | No telemetry | ✅ | ✅ | ❌ | ❌ |
 | Compiled server | ✅ | ❌ | ❌ | ❌ |
@@ -1450,11 +1424,139 @@ CREATE TABLE checkpoints (
 | Search 10K messages | 120ms | +10MB | 15% |
 | Export session | 200ms | +5MB | 10% |
 
+## 20. Memory MCP System
+
+### 20.1 Overview
+
+**Description**: Persistent knowledge graph for remembering patterns, error fixes, and project context across sessions.
+
+**Location**: `src-tauri/src/commands/memory.rs`, `src/renderer/services/memoryService.ts`
+
+**Storage**: `~/.yume/memory.jsonl` (JSONL format)
+
+### 20.2 Architecture
+
+**MCP Server**: Spawned via `npx -y @modelcontextprotocol/server-memory`
+- Protocol version: `2024-11-05`
+- Communication: JSON-RPC 2.0 over stdin/stdout
+- Auto-start when `memoryEnabled` is true on app startup
+- Cleanup on app exit via `cleanup_memory_server()`
+
+**Knowledge Graph Model**:
+- **Entities**: Named nodes with type and observations
+- **Relations**: Connections between entities with relation type
+- **Observations**: Facts attached to entities
+
+### 20.3 Tauri Commands (10)
+
+| Command | Description |
+|---------|-------------|
+| `start_memory_server` | Start MCP server process with handshake |
+| `stop_memory_server` | Stop server process |
+| `check_memory_server` | Check if running |
+| `get_memory_file_path` | Get storage path |
+| `memory_create_entities` | Create entities via `tools/call` |
+| `memory_create_relations` | Create relations |
+| `memory_add_observations` | Add observations to entity |
+| `memory_search_nodes` | Search knowledge graph |
+| `memory_read_graph` | Read entire graph |
+| `memory_delete_entity` | Delete entity and relations |
+
+### 20.4 Frontend Service Methods
+
+**High-Level API**:
+- `remember(projectPath, fact, category)` - Store project fact
+- `rememberPattern(pattern, context)` - Store coding pattern
+- `rememberErrorFix(error, solution)` - Store error/fix pair
+- `getRelevantMemories(context, maxResults)` - Get memories for prompt injection
+- `extractLearnings(projectPath, userMessage, response)` - Auto-extract patterns
+
+**Auto-Learning Triggers**:
+- Error/fix patterns: Detects `/error|bug|fix|issue|problem|crash|fail/i`
+- Architecture decisions: Detects `/should (use|prefer|avoid)|best practice|pattern|architecture|design/i`
+
+### 20.5 Entity Naming Conventions
+
+- Projects: `project:{path-with-dashes}` (e.g., `project:Users-yuru-myapp`)
+- Patterns: `pattern:{name-slug}` (max 50 chars)
+- Errors: `error:{first-30-chars-slug}`
+- System: `yume:startup-test` (initialization marker)
+
+## 21. Background Agents
+
+### 21.1 Overview
+
+**Description**: Async agent execution with queue management and git branch isolation for parallel AI-assisted development.
+
+**Location**: `src-tauri/src/background_agents.rs`, `src/renderer/services/backgroundAgentService.ts`
+
+### 21.2 Architecture
+
+- `AgentQueueManager` - Thread-safe manager for background agent lifecycle
+- `MAX_CONCURRENT_AGENTS`: 4 (parallel execution limit)
+- `AGENT_TIMEOUT_SECS`: 600 (10 minute timeout)
+- Output directory: `~/.yume/agent-output/`
+- Event emission: `background-agent-status` (Tauri event)
+
+### 21.3 Agent Types
+
+Maps to yume core agents:
+- `Architect` - Plans, designs, decomposes tasks
+- `Explorer` - Finds, reads, understands codebase
+- `Implementer` - Codes, edits, builds
+- `Guardian` - Reviews, audits, verifies
+- `Specialist` - Domain-specific tasks
+- `Custom(String)` - User-defined agents
+
+### 21.4 Agent Status Flow
+
+`Queued` → `Running` → `Completed`/`Failed`/`Cancelled`
+
+### 21.5 Git Branch Isolation
+
+- Branch prefix: `yume-async-{agent-type}-{agent-id}`
+- Auto-stash uncommitted changes before branch creation
+- Functions: `create_agent_branch`, `merge_agent_branch`, `delete_agent_branch`
+- Conflict detection: `check_merge_conflicts`
+- Cleanup: `cleanup_old_branches` removes merged branches
+
+### 21.6 Tauri Commands (13)
+
+| Command | Description |
+|---------|-------------|
+| `queue_background_agent` | Queue new agent with optional git branch |
+| `get_agent_queue` | Get all agents (queued, running, completed) |
+| `get_background_agent` | Get specific agent by ID |
+| `cancel_background_agent` | Cancel running/queued agent |
+| `remove_background_agent` | Remove completed agent |
+| `get_agent_output` | Load agent session file |
+| `create_agent_branch` | Create git branch for agent |
+| `get_agent_branch_diff` | Get diff vs main branch |
+| `merge_agent_branch` | Merge agent work into main |
+| `delete_agent_branch` | Delete agent branch |
+| `check_agent_merge_conflicts` | Pre-merge conflict check |
+| `cleanup_old_agents` | Remove agents >24hrs old |
+| `update_agent_progress` | Update progress from monitor |
+
+### 21.7 UI Components
+
+- `AgentQueuePanel.tsx` - Sliding panel with agent cards
+- `ProgressIndicator.tsx` - Real-time progress display
+
+### 21.8 yume-cli Integration
+
+Supports flags for background execution:
+- `--async` - Run in background mode
+- `--output-file` - Output file path
+- `--git-branch` - Create isolated git branch
+
 ## Conclusion
 
 Yume offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
 
 1. **Unique Features**:
+   - **Memory MCP system** - persistent knowledge graph for patterns, error fixes, context
+   - **Background agents** - async execution with git branch isolation (4 concurrent)
    - **License system** with trial/pro tiers ($21 one-time)
    - **Plugin system** - complete extensibility framework (commands, agents, hooks, skills, MCP)
    - **Skills system** - auto-inject context based on triggers (file extensions, keywords, regex)
@@ -1490,7 +1592,7 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
    - Custom commands with template variables
 
 5. **Polish**:
-   - 30 themes
+   - 12 themes (OLED-optimized)
    - 30+ keyboard shortcuts
    - Drag & drop tabs
    - Git diff viewer
@@ -1502,7 +1604,7 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
    - Window transparency control
 
 **Yume vs Opcode**: Opcode is YC-backed but yume is technically superior in almost every category:
-- **Yume has**: License system, plugins, skills, performance monitoring, analytics, timeline/checkpoints, CLAUDE.md editor, 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
+- **Yume has**: License system, plugins, skills, performance monitoring, analytics, history/rollback, CLAUDE.md editor, 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
 - **Opcode has**: Multi-session tabs, basic token tracking (but missing most advanced features above)
 
 **Key Differentiators**:
@@ -1511,7 +1613,7 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
 3. **Performance Monitoring** - Only Yume has real-time metrics with export
 4. **Analytics Dashboard** - Most comprehensive usage tracking and reporting
 5. **License Management** - Commercial licensing system with trial/pro tiers
-6. **Timeline & Checkpoints** - Visual conversation state management and restoration
+6. **History & Rollback** - File-aware undo with conflict detection
 
 The combination of advanced features with a focus on performance, privacy, and extensibility makes Yume the most capable Claude GUI available.
 

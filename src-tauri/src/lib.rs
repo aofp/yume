@@ -890,6 +890,49 @@ pub fn run() {
                             // Emit focus change event to frontend for hover state fix
                             // macOS webview doesn't reliably update CSS :hover states on focus change
                             let _ = window_clone.emit("window-focus-change", focused);
+
+                            // RELEASE BUILD FIX: Restore WKWebView first responder when window gains focus
+                            // In release builds, the WKWebView can lose first responder status when
+                            // switching between apps, causing keyboard input to stop working even though
+                            // macOS reports the window as focused.
+                            #[cfg(target_os = "macos")]
+                            if *focused {
+                                use cocoa::base::{id, nil, YES};
+                                use std::ffi::CStr;
+
+                                if let Ok(ns_window) = window_clone.ns_window() {
+                                    let ns_window = ns_window as id;
+                                    unsafe {
+                                        // Small delay to let the window fully settle
+                                        // Must run on main thread since NSWindow/WKWebView are not Send
+                                        let content_view: id = msg_send![ns_window, contentView];
+                                        let subviews: id = msg_send![content_view, subviews];
+                                        let count: usize = msg_send![subviews, count];
+
+                                        for i in 0..count {
+                                            let subview: id = msg_send![subviews, objectAtIndex:i];
+                                            let class: id = msg_send![subview, class];
+                                            let class_name: id = msg_send![class, description];
+                                            let class_name_str: *const i8 = msg_send![class_name, UTF8String];
+
+                                            if !class_name_str.is_null() {
+                                                let class_name_rust = CStr::from_ptr(class_name_str).to_str().unwrap_or("");
+
+                                                if class_name_rust.contains("WKWebView") {
+                                                    // Force reset first responder chain
+                                                    let _: () = msg_send![subview, setAcceptsTouchEvents: YES];
+                                                    let _: bool = msg_send![ns_window, makeFirstResponder: nil];
+                                                    let success: bool = msg_send![ns_window, makeFirstResponder: subview];
+                                                    if success {
+                                                        info!("[Focus] Auto-restored WKWebView on window focus");
+                                                    }
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                         _ => {}
                     }
@@ -1018,6 +1061,7 @@ pub fn run() {
             commands::write_file_content,
             commands::delete_file,
             commands::read_file_content,
+            commands::read_file_base64,
             commands::list_directory,
             commands::detect_provider_support,
             commands::write_skill_file,
@@ -1076,6 +1120,7 @@ pub fn run() {
             commands::show_context_menu,
             commands::restore_window_focus,
             commands::get_macos_focus_state,
+            commands::restore_webview_focus,
             // Settings and state
             commands::save_settings,
             commands::load_settings,
@@ -1144,6 +1189,8 @@ pub fn run() {
             commands::memory::memory_search_nodes,
             commands::memory::memory_read_graph,
             commands::memory::memory_delete_entity,
+            commands::memory::memory_prune_old,
+            commands::memory::memory_clear_all,
             // Agent operations
             agents::list_agents,
             agents::load_default_agents,

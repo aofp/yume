@@ -44,6 +44,7 @@ export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected, checkVscodeInstallation, fetchClaudeVersion /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
+  const [settingsInitialFontPicker, setSettingsInitialFontPicker] = useState<'monospace' | 'sans-serif' | undefined>(undefined);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
@@ -137,6 +138,8 @@ export const App: React.FC = () => {
       saveFocusState();
     }
     prevModalOpenRef.current = anyModalOpen;
+    // Set data attribute for ClaudeChat to check (prevents Escape from interrupting streaming when modal is open)
+    document.body.dataset.modalOpen = anyModalOpen ? 'true' : 'false';
   }, [anyModalOpen, saveFocusState]);
 
   // Load session mappings and initialize fonts on startup
@@ -369,6 +372,17 @@ export const App: React.FC = () => {
     };
     window.addEventListener('open-analytics-tab', handleOpenAnalyticsTab as EventListener);
     return () => window.removeEventListener('open-analytics-tab', handleOpenAnalyticsTab as EventListener);
+  }, []);
+
+  // Listen for open-font-picker events (from CommandPalette)
+  useEffect(() => {
+    const handleOpenFontPicker = (e: CustomEvent<{ fontType: 'monospace' | 'sans-serif' }>) => {
+      setSettingsInitialTab('appearance');
+      setSettingsInitialFontPicker(e.detail?.fontType);
+      setShowSettings(true);
+    };
+    window.addEventListener('open-font-picker', handleOpenFontPicker as EventListener);
+    return () => window.removeEventListener('open-font-picker', handleOpenFontPicker as EventListener);
   }, []);
 
   // Listen for demo instance blocked event from Rust backend
@@ -1243,7 +1257,7 @@ export const App: React.FC = () => {
       {showSettings && (
         <ErrorBoundary name="SettingsModal">
           <Suspense fallback={null}>
-            <SettingsModalTabbed onClose={() => { setShowSettings(false); setSettingsInitialTab(undefined); restoreFocusToChat(); }} initialTab={settingsInitialTab} />
+            <SettingsModalTabbed onClose={() => { setShowSettings(false); setSettingsInitialTab(undefined); setSettingsInitialFontPicker(undefined); restoreFocusToChat(); }} initialTab={settingsInitialTab} initialFontPicker={settingsInitialFontPicker} />
           </Suspense>
         </ErrorBoundary>
       )}

@@ -49,6 +49,7 @@ reqwest = { version = "0.12", features = ["json"] }
 walkdir = "2.5"
 rand = "0.9"
 rusqlite = { version = "0.38", features = ["bundled", "serde_json", "chrono"] }
+base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"

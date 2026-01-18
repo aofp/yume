@@ -37,18 +37,49 @@ interface MemoryQueryResult {
   error?: string;
 }
 
+// Simple hash function for entity naming (djb2 algorithm)
+function simpleHash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  // Convert to positive 8-char hex
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+// Get basename from path (cross-platform)
+function getBasename(path: string): string {
+  const parts = path.replace(/\\/g, '/').split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'root';
+}
+
+// Create safe entity name from path
+function pathToEntityName(path: string): string {
+  const hash = simpleHash(path);
+  const basename = getBasename(path).substring(0, 20);
+  return `project:${hash}-${basename}`;
+}
+
 class MemoryService {
-  private isStarting = false;
-  private isStopping = false;
+  // RACE CONDITION FIX: Use Promise-based guards instead of boolean flags
+  // This ensures multiple concurrent calls wait for the same operation to complete
+  // rather than returning early with stale results
+  private startPromise: Promise<boolean> | null = null;
+  private stopPromise: Promise<boolean> | null = null;
 
   /**
    * Start the memory MCP server
+   *
+   * RACE CONDITION FIX: If multiple calls happen before first completes,
+   * they all wait for the same Promise instead of each starting their own.
    */
   async start(): Promise<boolean> {
     console.log('[MemoryService] start() called');
-    if (this.isStarting) {
-      console.log('[MemoryService] Already starting...');
-      return false;
+
+    // If already starting, return the existing promise (deduplicate concurrent calls)
+    if (this.startPromise) {
+      console.log('[MemoryService] Already starting, waiting for existing operation...');
+      return this.startPromise;
     }
 
     const store = useClaudeCodeStore.getState();
@@ -57,37 +88,45 @@ class MemoryService {
       return true;
     }
 
-    this.isStarting = true;
     console.log('[MemoryService] Starting memory server via tauri...');
 
-    try {
-      console.log('[MemoryService] Invoking start_memory_server command...');
-      const result = await invoke<MemoryServerResult>('start_memory_server');
-      console.log('[MemoryService] Tauri start_memory_server result:', JSON.stringify(result));
+    // Create and store the promise for concurrent callers to share
+    this.startPromise = (async () => {
+      try {
+        console.log('[MemoryService] Invoking start_memory_server command...');
+        const result = await invoke<MemoryServerResult>('start_memory_server');
+        console.log('[MemoryService] Tauri start_memory_server result:', JSON.stringify(result));
 
-      if (result.success) {
-        console.log('[MemoryService] Memory server started successfully');
-        useClaudeCodeStore.getState().setMemoryServerRunning(true);
-        return true;
-      } else {
-        console.error('[MemoryService] Failed to start:', result.error);
+        if (result.success) {
+          console.log('[MemoryService] Memory server started successfully');
+          useClaudeCodeStore.getState().setMemoryServerRunning(true);
+          return true;
+        } else {
+          console.error('[MemoryService] Failed to start:', result.error);
+          return false;
+        }
+      } catch (error) {
+        console.error('[MemoryService] Error starting server:', error);
         return false;
+      } finally {
+        // Clear promise after completion so next call can start fresh
+        this.startPromise = null;
       }
-    } catch (error) {
-      console.error('[MemoryService] Error starting server:', error);
-      return false;
-    } finally {
-      this.isStarting = false;
-    }
+    })();
+
+    return this.startPromise;
   }
 
   /**
    * Stop the memory MCP server
+   *
+   * RACE CONDITION FIX: Same pattern as start() - deduplicate concurrent calls
    */
   async stop(): Promise<boolean> {
-    if (this.isStopping) {
-      console.log('[MemoryService] Already stopping...');
-      return false;
+    // If already stopping, return the existing promise
+    if (this.stopPromise) {
+      console.log('[MemoryService] Already stopping, waiting for existing operation...');
+      return this.stopPromise;
     }
 
     const store = useClaudeCodeStore.getState();
@@ -96,26 +135,29 @@ class MemoryService {
       return true;
     }
 
-    this.isStopping = true;
     console.log('[MemoryService] Stopping memory server...');
 
-    try {
-      const result = await invoke<MemoryServerResult>('stop_memory_server');
+    this.stopPromise = (async () => {
+      try {
+        const result = await invoke<MemoryServerResult>('stop_memory_server');
 
-      if (result.success) {
-        console.log('[MemoryService] Memory server stopped successfully');
-        useClaudeCodeStore.getState().setMemoryServerRunning(false);
-        return true;
-      } else {
-        console.error('[MemoryService] Failed to stop:', result.error);
+        if (result.success) {
+          console.log('[MemoryService] Memory server stopped successfully');
+          useClaudeCodeStore.getState().setMemoryServerRunning(false);
+          return true;
+        } else {
+          console.error('[MemoryService] Failed to stop:', result.error);
+          return false;
+        }
+      } catch (error) {
+        console.error('[MemoryService] Error stopping server:', error);
         return false;
+      } finally {
+        this.stopPromise = null;
       }
-    } catch (error) {
-      console.error('[MemoryService] Error stopping server:', error);
-      return false;
-    } finally {
-      this.isStopping = false;
-    }
+    })();
+
+    return this.stopPromise;
   }
 
   /**
@@ -328,7 +370,8 @@ class MemoryService {
    */
   async remember(projectPath: string, fact: string, category: string = 'observation'): Promise<boolean> {
     // Create project entity if needed, then add observation
-    const entityName = `project:${projectPath.replace(/\//g, '-').replace(/^-/, '')}`;
+    // Use hash-based naming to avoid collisions
+    const entityName = pathToEntityName(projectPath);
 
     // Try to add observation to existing entity
     const result = await this.addObservations(entityName, [fact]);

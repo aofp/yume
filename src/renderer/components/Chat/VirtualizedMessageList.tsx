@@ -408,14 +408,20 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     const scrollDelta = Math.abs(currentScrollTop - lastScrollTopRef.current);
     lastScrollTopRef.current = currentScrollTop;
 
-    // CRITICAL: Detect user scroll BEFORE checking isAutoScrollingRef
-    // This ensures any scroll up is detected even during auto-scroll periods
+    // FIRST: Skip ALL processing during programmatic auto-scroll
+    // This prevents false "user scrolled up" detection from layout shifts
+    if (isAutoScrollingRef.current) return;
+
+    // Minimum delta threshold - ignore tiny scroll changes from layout/virtualizer adjustments
+    // Real user scrolls are typically >5px, programmatic micro-adjustments are <3px
+    const MIN_USER_SCROLL_DELTA = 5;
+
     // Use 1px threshold for unstick - ANY scroll up should unstick immediately
     const atBottomForUnstick = checkIfAtBottom(1);
 
-    // If scrolling UP by any amount and not at very bottom, mark as user scroll
-    // This takes priority over auto-scroll detection
-    if (scrollingUp && scrollDelta > 0 && !atBottomForUnstick) {
+    // If scrolling UP by meaningful amount and not at very bottom, mark as user scroll
+    // Requires MIN_USER_SCROLL_DELTA to filter out virtualizer remeasurement noise
+    if (scrollingUp && scrollDelta >= MIN_USER_SCROLL_DELTA && !atBottomForUnstick) {
       userHasScrolledRef.current = true;
       userScrolledAtRef.current = Date.now();
       // Capture which item we're looking at for scroll anchoring
@@ -428,9 +434,6 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     if (userHasScrolledRef.current && scrollDelta > 0) {
       captureScrollAnchor();
     }
-
-    // For auto-scroll events, skip the rest of processing
-    if (isAutoScrollingRef.current) return;
 
     // Use larger threshold (50px) for "at bottom" state reporting
     const atBottomForState = checkIfAtBottom(50);
@@ -631,10 +634,11 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
         if (distanceFromBottom > 5) {
           isAutoScrollingRef.current = true;
           parentRef.current.scrollTop = scrollHeight - clientHeight;
-          // Reset flag on next frame
-          requestAnimationFrame(() => {
+          // Keep flag true for 100ms to cover browser scroll events and virtualizer remeasurements
+          // Using setTimeout instead of requestAnimationFrame for more reliable timing
+          setTimeout(() => {
             isAutoScrollingRef.current = false;
-          });
+          }, 100);
         }
 
         // Continue the loop while streaming
