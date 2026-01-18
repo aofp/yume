@@ -1461,6 +1461,7 @@ pre.bash-content,
 /* Bash command output styling */
 .bash-output {
   background: rgba(var(--foreground-rgb), 0.03);
+  color: color-mix(in srgb, var(--foreground-color) 80%, var(--negative-color) 20%);
   margin-bottom: 4px;
 }
 
