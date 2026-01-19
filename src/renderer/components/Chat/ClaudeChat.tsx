@@ -4928,7 +4928,7 @@ export const ClaudeChat: React.FC = () => {
                   >
                     <IconFolder size={12} stroke={1.5} />
                     <span>files</span>
-                    {(sessionFileStats.fileCount > 0 || (gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0)) && (
+                    {(sessionFileStats.fileCount >= 0 || (gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0)) && (
                       <span className="git-tab-stats">
                         <span>{sessionFileStats.fileCount}{gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 ? `/${gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}` : ''}</span>
                       </span>
@@ -4962,7 +4962,7 @@ export const ClaudeChat: React.FC = () => {
                     {gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 && (
                       <span className="git-tab-stats">
                         <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
-                        {gitAhead > 0 && <span>↑{gitAhead}</span>}
+                        {gitAhead >= 0 && <span>{gitAhead}</span>}
                         <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
                         <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
                       </span>
