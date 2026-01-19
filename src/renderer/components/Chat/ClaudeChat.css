@@ -949,6 +949,11 @@
   contain: layout style;
 }
 
+/* Remove border-top when attachments are shown (attachments already have border-top) */
+.attachments-container + .chat-input-container {
+  border-top: none;
+}
+
 /* macOS-specific padding */
 .platform-darwin .chat-input-container {
   padding: 2px 3px 2px 3px; /* macOS only: top right bottom left */
@@ -2001,8 +2006,10 @@ textarea.context-full {
 /* New Attachments System */
 .attachments-container {
   display: flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 2px;
+  padding: 2px;
+  padding-left: 3px;
+  padding-bottom: 0px;
   background: var(--background-color, #000000);
   flex-wrap: wrap;
   border-top: 1px solid var(--fg-10);
@@ -2016,14 +2023,13 @@ textarea.context-full {
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  background: var(--background-color, #000000);
   border: 1px solid var(--fg-15);
   border-radius: 3px;
   user-select: none;
 }
 
-.attachment-item:hover {
-  background: rgba(var(--accent-rgb), 0.15);
+.attachment-item:hover, .attachment-item:hover .attachment-text {
+  color: var(--accent-color) !important;
   border-color: rgba(var(--accent-rgb), 0.4);
 }
 

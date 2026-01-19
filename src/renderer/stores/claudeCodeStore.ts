@@ -92,9 +92,9 @@ const messageHashCache = new WeakMap<any, string>();
 const streamingEndTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 // Platform-aware debounce: Windows has longer delays between Claude CLI turns
-// macOS: 1.5s is sufficient, Windows: needs 3.5s due to slower IPC/process timing
+// macOS: 700ms is sufficient, Windows: needs 2s due to slower IPC/process timing
 const IS_WINDOWS = navigator.platform.toLowerCase().includes('win');
-const STREAMING_END_DEBOUNCE_MS = IS_WINDOWS ? 3500 : 1500;
+const STREAMING_END_DEBOUNCE_MS = IS_WINDOWS ? 2000 : 700;
 
 // Track active subagent parent tool IDs - prevents streaming=false while subagent is working
 // Maps sessionId -> Set of parent_tool_use_ids that have active subagents
@@ -3397,12 +3397,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
 
               // Update session analytics with real-time context usage
+              // Only update if new value >= current to prevent UI flickering
+              // (first assistant message may have stale usage from previous turn)
               set(state => ({
                 sessions: state.sessions.map(s => {
                   if (s.id !== sessionId) return s;
 
                   const analytics = { ...(s.analytics || {}) } as any;
                   const contextWindow = analytics.contextWindow || { used: 0, limit: 200000, percentage: 0, remaining: 200000 };
+
+                  // Skip update if new total is lower than current (stale data)
+                  if (usage.totalContextTokens < contextWindow.used) {
+                    console.log('[Store] 📊 Skipping stale mid-stream update:', {
+                      current: contextWindow.used,
+                      incoming: usage.totalContextTokens
+                    });
+                    return s;
+                  }
 
                   // Update context window with mid-stream data
                   const rawPercentage = (usage.totalContextTokens / 200000) * 100;
@@ -4383,6 +4394,7 @@ ${content}`;
           });
 
           // Set up mid-stream context update listener for resumed session
+          // Only update if new value >= current to prevent UI flickering
           const contextUpdateCleanup = persistedClient.onContextUpdate(sessionId, (usage) => {
             console.log('[Store] 📊 Mid-stream context update (resumed):', {
               sessionId,
@@ -4395,6 +4407,17 @@ ${content}`;
                 if (s.id !== sessionId) return s;
 
                 const analytics = { ...(s.analytics || {}) } as any;
+                const contextWindow = analytics.contextWindow || { used: 0, limit: 200000, percentage: 0, remaining: 200000 };
+
+                // Skip update if new total is lower than current (stale data)
+                if (usage.totalContextTokens < contextWindow.used) {
+                  console.log('[Store] 📊 Skipping stale mid-stream update (resumed):', {
+                    current: contextWindow.used,
+                    incoming: usage.totalContextTokens
+                  });
+                  return s;
+                }
+
                 const rawPercentage = (usage.totalContextTokens / 200000) * 100;
 
                 analytics.contextWindow = {
