@@ -24,7 +24,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 7px var(--space-3);
-  border-bottom: 1px solid var(--fg-10);
+  border-bottom: 1px solid var(--fg-20);
   background: var(--background-color);
   flex-shrink: 0;
 }
@@ -137,7 +137,7 @@
 
 .claude-md-modal-footer {
   padding: var(--space-1-5);
-  border-top: 1px solid var(--fg-10);
+  border-top: 1px solid var(--fg-20);
 }
 
 .claude-md-path {

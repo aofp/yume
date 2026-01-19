@@ -101,7 +101,7 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-3);
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--fg-20);
   padding: var(--space-1-5);
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -485,7 +485,7 @@
 
 .model-bar {
   height: 3px;
-  background: #1a1a1a;
+  background: var(--fg-10);
   position: relative;
   overflow: hidden;
 }

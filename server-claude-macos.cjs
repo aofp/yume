@@ -192,9 +192,11 @@ function processWrapperLine(line, sessionId) {
       // input = new input not in cache
       const reportedTotal = cacheRead + cacheCreation + input;
 
-      // Keep the higher value - prevents counter from resetting when cache expires
-      // The actual conversation history is still there even if cache_read is 0
-      session.totalTokens = Math.max(session.totalTokens, reportedTotal);
+      // Use SNAPSHOT value - the API reports the actual context window size for THIS request
+      // Previous code used Math.max which caused inflation over multiple turns
+      // If cache expires, cache_read may drop but that reflects reality - the model
+      // is now re-processing that content as new input_tokens instead
+      session.totalTokens = reportedTotal;
 
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;

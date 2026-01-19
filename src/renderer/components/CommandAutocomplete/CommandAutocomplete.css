@@ -108,15 +108,15 @@
   display: flex;
   gap: 6px;;
   padding: 5px 10px;
-  border-top: 1px solid #222;
-  background: #000;
+  border-top: 1px solid var(--fg-20);
+  background: var(--bg-100);
   font-size: var(--text-xs);
   justify-content: flex-start;
   align-items: center;
 }
 
 .command-hint {
-  color: #555;
+  color: var(--fg-35);
   white-space: nowrap;
 }
 

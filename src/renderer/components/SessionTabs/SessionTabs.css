@@ -1,6 +1,6 @@
 .session-tabs {
   background: var(--background-color);
-  border-bottom: 1px solid var(--fg-10);
+  border-bottom: 1px solid var(--fg-20);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;
   align-items: center;
@@ -506,8 +506,8 @@
 /* Context menu */
 .tab-context-menu {
   position: fixed;
-  background: #1a1a1a; /* Keep specific dark background */
-  border: 1px solid var(--fg-20);
+  background: var(--bg-100);
+  border: 1px solid var(--fg-25);
   border-radius: var(--radius-md);
   padding: var(--space-1);
   z-index: 1000;

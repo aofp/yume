@@ -72,17 +72,17 @@
 
 .diff-add .line-number,
 .diff-remove .line-number {
-  color: #444;
+  color: var(--fg-30);
 }
 
 .line-divider {
-  color: #333;
+  color: var(--fg-25);
   padding: 0 6px;
   user-select: none;
 }
 
 .line-marker {
-  color: #666;
+  color: var(--fg-40);
   width: 14px;
   text-align: center;
   user-select: none;

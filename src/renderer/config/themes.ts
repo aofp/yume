@@ -35,11 +35,11 @@ export const BUILT_IN_THEMES = [
   {
     id: 'void',
     name: 'void',
-    backgroundColor: '#000000',
-    foregroundColor: '#d4d4d4',
-    accentColor: '#a0a0b0',
-    positiveColor: '#e0f5e4',
-    negativeColor: '#d09b9b',
+    backgroundColor: '#020202',
+    foregroundColor: '#e0dbdb',
+    accentColor: '#b6b6de',
+    positiveColor: '#c7f2cf',
+    negativeColor: '#f09f9f',
     opacity: 1.0,
     isBuiltIn: true
   },

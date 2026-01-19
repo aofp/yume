@@ -3,8 +3,8 @@
   top: 35px;
   left: 50%;
   transform: translateX(-50%);
-  background: #111;
-  border: 1px solid #333;
+  background: var(--bg-100);
+  border: 1px solid var(--fg-25);
   border-radius: 4px;
   padding: 8px 16px;
   display: flex;
@@ -12,7 +12,7 @@
   gap: 8px;
   z-index: 9999;
   font-size: var(--text-base);
-  color: #999;
+  color: var(--fg-60);
   cursor: default;
 }
 
@@ -33,7 +33,7 @@
 }
 
 .connection-status-disconnected .connection-status-dot {
-  background: #666;
+  background: var(--fg-40);
 }
 
 .connection-status-text {
@@ -43,16 +43,16 @@
 .connection-status-help {
   margin-left: 8px;
   padding-left: 8px;
-  border-left: 1px solid #333;
+  border-left: 1px solid var(--fg-25);
   font-size: var(--text-base);
-  color: #666;
+  color: var(--fg-40);
 }
 
 .connection-status-help code {
-  background: #1a1a1a;
+  background: var(--fg-10);
   padding: 2px 4px;
   border-radius: 2px;
-  color: #ff9999;
+  color: var(--negative-color);
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
 }
 

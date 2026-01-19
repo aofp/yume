@@ -422,7 +422,7 @@
   gap: var(--space-2);
   padding-top: 16px;
   margin-top: auto;
-  border-top: 1px solid #222;
+  border-top: 1px solid var(--fg-20);
 }
 
 .editor-actions button {

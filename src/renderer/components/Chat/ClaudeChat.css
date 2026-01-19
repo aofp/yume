@@ -539,7 +539,6 @@
   font-size: var(--text-base);
   padding: var(--space-2) 0;
   opacity: 0.6;
-  animation: fadeIn 0.5s ease;
 }
 
 .message.result {
@@ -1460,7 +1459,8 @@ textarea.context-full {
   display: flex;
   gap: var(--space-1-5);
   align-items: center;
-  margin-left: var(--space-2);
+  margin-left: var(--space-0-5);
+  padding-top: 2px;
   font-size: var(--text-xs);
   font-family: var(--font-mono);
   opacity: 0.7;
@@ -1470,9 +1470,6 @@ textarea.context-full {
   display: inline-flex;
   align-items: center;
   gap: var(--space-0-5);
-  padding: var(--space-0-5) var(--space-1);
-  border-radius: var(--radius-xs);
-  background: rgba(var(--foreground-rgb), 0.05);
 }
 
 .context-status-item.bash {
@@ -1489,6 +1486,8 @@ textarea.context-full {
 
 .context-status-label {
   white-space: nowrap;
+  position: relative;
+  top: 1px;
 }
 
 .context-git-stats {
@@ -2677,7 +2676,6 @@ textarea.context-full {
   justify-content: center;
   z-index: 10001;
   cursor: default;
-  animation: fadeIn 0.15s ease;
 }
 
 .recent-modal {
@@ -3239,9 +3237,9 @@ textarea.context-full {
   gap: var(--space-1);
   padding: var(--space-0-5) var(--space-1-5);
   background: none;
-  border: 1px solid #333;
+  border: 1px solid var(--fg-25);
   border-radius: var(--radius-xs);
-  color: #666;
+  color: var(--fg-40);
   font-size: var(--text-sm);
   font-family: inherit;
   cursor: default;

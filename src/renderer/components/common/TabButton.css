@@ -3,8 +3,8 @@
 .tab-btn {
   padding: 4px 4px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #666;
+  border: 1px solid var(--fg-15);
+  color: var(--fg-40);
   font-size: var(--text-base);
   cursor: default;
   border-radius: 2px;

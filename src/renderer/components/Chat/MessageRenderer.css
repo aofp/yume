@@ -1265,6 +1265,7 @@ pre.edit-diff {
 .tool-detail {
   color: var(--fg-60);
   font-family: var(--font-mono);
+  line-height: var(--leading-normal);
   opacity: 1;
   max-width: 100%;
   overflow-x: visible;
@@ -1300,7 +1301,6 @@ body.platform-win32 .tool-detail {
   border-radius: 0;
   font-size: var(--text-xs);
   margin: 0;
-  /* animation removed - conflicts with virtualizer */
 }
 
 /* Result completion time */

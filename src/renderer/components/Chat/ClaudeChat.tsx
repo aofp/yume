@@ -4761,11 +4761,16 @@ export const ClaudeChat: React.FC = () => {
       textarea.style.height = newHeight + 'px';
       textarea.style.overflow = newScrollHeight > maxHeight ? 'auto' : 'hidden';
 
-      // Immediately adjust scroll to compensate for height change (sync, no rAF)
+      // Adjust scroll to compensate for height change
       if (container) {
         if (wasAtBottom) {
-          // Stay at bottom
-          container.scrollTop = container.scrollHeight;
+          // Stay at bottom - use rAF to wait for layout recalculation
+          // The container's scrollHeight needs to update after textarea resize
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          });
         } else if (heightDiff > 0) {
           // Textarea grew - container shrank by same amount
           // Scroll down to maintain the same visual bottom edge
