@@ -48,7 +48,7 @@
 .agent-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;;
   color: var(--accent-color);
   font-size: var(--text-xl);
   font-weight: 500;
@@ -151,7 +151,7 @@
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.5);
-  padding: 8px 12px;
+  padding: 6px;
   border-radius: 4px;
   font-size: var(--text-base);
   font-family: var(--font-mono);

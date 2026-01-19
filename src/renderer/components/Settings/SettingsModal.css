@@ -39,7 +39,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px;
   border-bottom: 1px solid var(--fg-15);
   flex-shrink: 0;
   position: sticky;
@@ -546,7 +546,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px;
   border-bottom: 1px solid var(--fg-15);
 }
 
@@ -595,7 +595,7 @@
 }
 
 .color-picker-content {
-  padding: 12px;
+  padding: 6px;
   overflow: visible;
 }
 
@@ -718,7 +718,7 @@
 }
 
 .color-picker-enhanced .color-picker-content {
-  padding: 12px;
+  padding: 6px;
 }
 
 .color-picker-presets {

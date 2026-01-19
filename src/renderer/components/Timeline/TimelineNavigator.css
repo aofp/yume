@@ -68,7 +68,7 @@
 }
 
 .timeline-error {
-  padding: 8px 12px;
+  padding: 6px;
   color: rgba(255, 100, 100, 0.9);
   font-size: var(--text-base);
   font-family: var(--font-mono);
@@ -247,7 +247,7 @@
 
 .timeline-details {
   margin-top: 20px;
-  padding: 12px;
+  padding: 6px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 4px;
@@ -296,7 +296,7 @@
   background: #000;
   border: 1px solid rgba(255, 0, 255, 0.3);
   color: rgba(255, 0, 255, 0.8);
-  padding: 8px 12px;
+  padding: 6px;
   border-radius: 20px;
   cursor: default;
   display: flex;

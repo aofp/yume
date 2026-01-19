@@ -1212,7 +1212,7 @@ app.get('/vscode-ui-minimal', (req, res) => {
       flex-direction: column;
     }
     .header {
-      padding: 8px 12px;
+      padding: 6px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -1227,7 +1227,7 @@ app.get('/vscode-ui-minimal', (req, res) => {
     .messages {
       flex: 1;
       overflow-y: auto;
-      padding: 12px;
+      padding: 6px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -1268,7 +1268,7 @@ app.get('/vscode-ui-minimal', (req, res) => {
       color: #a0a0c0;
     }
     .input-area {
-      padding: 12px;
+      padding: 6px;
       border-top: 1px solid var(--border);
       display: flex;
       gap: 8px;

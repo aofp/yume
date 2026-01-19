@@ -197,7 +197,7 @@ ul {
   justify-content: flex-start;
   gap: 8px;
   width: 100%;
-  padding: 6px 12px;
+  padding: 6px;
   background: transparent;
   border: none;
   color: var(--fg-70);

@@ -320,7 +320,7 @@
 }
 
 .stats-content {
-  padding: 12px;
+  padding: 6px;
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   row-gap: 0px;

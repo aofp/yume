@@ -891,48 +891,17 @@ pub fn run() {
                             // macOS webview doesn't reliably update CSS :hover states on focus change
                             let _ = window_clone.emit("window-focus-change", focused);
 
-                            // RELEASE BUILD FIX: Restore WKWebView first responder when window gains focus
-                            // In release builds, the WKWebView can lose first responder status when
-                            // switching between apps, causing keyboard input to stop working even though
-                            // macOS reports the window as focused.
-                            #[cfg(target_os = "macos")]
-                            if *focused {
-                                use cocoa::base::{id, nil, YES};
-                                use std::ffi::CStr;
-
-                                if let Ok(ns_window) = window_clone.ns_window() {
-                                    let ns_window = ns_window as id;
-                                    unsafe {
-                                        // Small delay to let the window fully settle
-                                        // Must run on main thread since NSWindow/WKWebView are not Send
-                                        let content_view: id = msg_send![ns_window, contentView];
-                                        let subviews: id = msg_send![content_view, subviews];
-                                        let count: usize = msg_send![subviews, count];
-
-                                        for i in 0..count {
-                                            let subview: id = msg_send![subviews, objectAtIndex:i];
-                                            let class: id = msg_send![subview, class];
-                                            let class_name: id = msg_send![class, description];
-                                            let class_name_str: *const i8 = msg_send![class_name, UTF8String];
-
-                                            if !class_name_str.is_null() {
-                                                let class_name_rust = CStr::from_ptr(class_name_str).to_str().unwrap_or("");
-
-                                                if class_name_rust.contains("WKWebView") {
-                                                    // Force reset first responder chain
-                                                    let _: () = msg_send![subview, setAcceptsTouchEvents: YES];
-                                                    let _: bool = msg_send![ns_window, makeFirstResponder: nil];
-                                                    let success: bool = msg_send![ns_window, makeFirstResponder: subview];
-                                                    if success {
-                                                        info!("[Focus] Auto-restored WKWebView on window focus");
-                                                    }
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            // NOTE: Automatic WKWebView first responder restoration DISABLED
+                            // The previous code that ran on every window focus gain was too aggressive
+                            // and could interfere with normal focus flow, potentially causing focus
+                            // to be stolen from other apps when yume is brought to foreground.
+                            //
+                            // WKWebView focus restoration is now handled on-demand via:
+                            // - restore_webview_focus command (invoked only when keyboard stops working)
+                            // - ClaudeChat.tsx handleGlobalTyping (redirects typing to textarea)
+                            //
+                            // The frontend tracks textareaFocusedOnBlur and restores textarea focus
+                            // only when the user explicitly returns to the window after typing.
                         }
                         _ => {}
                     }

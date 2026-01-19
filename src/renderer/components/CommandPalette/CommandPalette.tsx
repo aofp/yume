@@ -498,21 +498,32 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       label: 'zoom in',
       category: 'zoom',
       shortcut: [modKey, '+'],
-      action: () => platformBridge.zoom.in(),
+      action: async () => {
+        const level = await platformBridge.zoom.in();
+        const percent = 100 + (level * 5);
+        toastService.info(`zoom: ${percent}%`);
+      },
     });
     cmds.push({
       id: 'zoom-out',
       label: 'zoom out',
       category: 'zoom',
       shortcut: [modKey, '-'],
-      action: () => platformBridge.zoom.out(),
+      action: async () => {
+        const level = await platformBridge.zoom.out();
+        const percent = 100 + (level * 5);
+        toastService.info(`zoom: ${percent}%`);
+      },
     });
     cmds.push({
       id: 'zoom-reset',
       label: 'reset zoom',
       category: 'zoom',
       shortcut: [modKey, '0'],
-      action: () => platformBridge.zoom.reset(),
+      action: async () => {
+        await platformBridge.zoom.reset();
+        toastService.info('zoom: 100%');
+      },
     });
 
     // Appearance with submenus

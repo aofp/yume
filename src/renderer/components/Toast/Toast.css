@@ -8,7 +8,7 @@
   background: #111;
   border: 1px solid var(--fg-20);
   border-radius: 4px;
-  padding: 6px 12px;
+  padding: 6px;
   font-size: var(--text-sm);
   z-index: 99999;
   pointer-events: none;

@@ -94,7 +94,7 @@
 .content-textarea {
   width: 100%;
   height: 100%;
-  padding: 12px;
+  padding: 6px;
   background: transparent;
   border: none;
   outline: none;
@@ -111,7 +111,7 @@
 }
 
 .content-preview {
-  padding: 12px;
+  padding: 6px;
   color: var(--text-primary);
   font-size: 12px;
   line-height: 1.6;

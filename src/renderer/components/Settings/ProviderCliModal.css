@@ -134,7 +134,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 6px;
   background: transparent;
   border: 1px solid var(--fg-15);
   border-radius: 4px;

@@ -878,20 +878,20 @@ export const App: React.FC = () => {
       
       // Zoom controls
       if (e.ctrlKey || e.metaKey) {
-        // Debug log
-        console.log('Zoom key detected:', e.key, 'ctrlKey:', e.ctrlKey, 'metaKey:', e.metaKey);
         if (e.key === '=' || e.key === '+') {
           e.preventDefault();
-          console.log('Zooming in...');
-          await platformBridge.zoom.in();
+          const level = await platformBridge.zoom.in();
+          const percent = 100 + (level * 5);
+          toastService.info(`zoom: ${percent}%`);
         } else if (e.key === '-' || e.key === '_') {
           e.preventDefault();
-          console.log('Zooming out...');
-          await platformBridge.zoom.out();
+          const level = await platformBridge.zoom.out();
+          const percent = 100 + (level * 5);
+          toastService.info(`zoom: ${percent}%`);
         } else if (e.key === '0') {
           e.preventDefault();
-          console.log('Resetting zoom...');
           await platformBridge.zoom.reset();
+          toastService.info('zoom: 100%');
         }
       }
       

@@ -62,7 +62,7 @@
 .provider-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;;
   width: 100%;
   padding: 10px 12px;
   background: transparent;

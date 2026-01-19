@@ -400,7 +400,7 @@ export const WelcomeScreen: React.FC = () => {
               ) : (
                 <span className="btn-stats-auto">user</span>
               )}
-              <span>context</span>
+              <span>ctx%</span>
             </span>
           </button>
           {/* 5h/7d limit bars - only shown for Claude provider */}

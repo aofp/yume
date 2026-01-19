@@ -358,37 +358,29 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
             {/* Stats badges based on selected tab */}
             {(() => {
-              // files tab: show sessionFileCount / gitChangesCount (if git repo)
-              // git tab: show gitChangesCount
-              // sessions tab: show sessionFileCount
+              // files tab: combined count "session/git", no line stats
+              // git tab: "gitCount +added -removed"
+              // sessions tab: "sessionCount +added -removed"
               if (filesSubTab === 'files') {
-                const hasStats = sessionFileCount > 0 || gitChangesCount > 0 || backgroundAgentCount > 0;
-                if (!hasStats) return null;
                 return (
                   <span className="btn-files-stats">
-                    {(sessionFileCount > 0 || gitChangesCount > 0) && (
-                      <span className="stat-badge git-badge">
-                        {sessionFileCount}{gitChangesCount > 0 ? ` / ${gitChangesCount}` : ''}
-                      </span>
-                    )}
+                    <span className="stat-badge git-badge">{sessionFileCount}/{gitChangesCount}</span>
                     {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
                   </span>
                 );
               }
-              const showGitStats = filesSubTab === 'git';
-              const fileCount = showGitStats ? gitChangesCount : sessionFileCount;
-              const linesAdded = showGitStats ? gitLinesAdded : sessionLinesAdded;
-              const linesRemoved = showGitStats ? gitLinesRemoved : sessionLinesRemoved;
-              const hasStats = fileCount > 0 || backgroundAgentCount > 0 || linesAdded > 0 || linesRemoved > 0;
-              if (!hasStats && filesSubTab !== 'sessions') return null;
+              const isGit = filesSubTab === 'git';
+              const count = isGit ? gitChangesCount : sessionFileCount;
+              const added = isGit ? gitLinesAdded : sessionLinesAdded;
+              const removed = isGit ? gitLinesRemoved : sessionLinesRemoved;
               return (
                 <span className="btn-files-stats">
-                  <span className="stat-badge git-badge">{fileCount}</span>
+                  <span className="stat-badge git-badge">{count}</span>
                   {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
-                  {(linesAdded > 0 || linesRemoved > 0) && (
+                  {(added > 0 || removed > 0) && (
                     <span className="stat-badge lines-badge">
-                      <span className="line-added">+{linesAdded}</span>
-                      <span className="line-removed">-{linesRemoved}</span>
+                      <span className="line-added">+{added}</span>
+                      <span className="line-removed">-{removed}</span>
                     </span>
                   )}
                 </span>

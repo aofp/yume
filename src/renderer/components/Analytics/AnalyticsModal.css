@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 6px;
   border-bottom: 1px solid #222;
   user-select: none;
   cursor: default;
@@ -104,8 +104,7 @@
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid #222;
-  padding: 8px 12px;
-  min-height: 40px;
+  padding: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
 }
@@ -200,7 +199,7 @@
 .analytics-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 6px;
   scrollbar-width: thin;
   scrollbar-color: var(--fg-10) transparent;
 }
@@ -326,7 +325,7 @@
 .analytics-overview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 6px;;
   margin-bottom: 18px;
 }
 
@@ -411,7 +410,7 @@
 .model-breakdown {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+  gap: 6px;;
 }
 
 .model-breakdown.compact {
@@ -422,7 +421,7 @@
 
 .model-stat {
   background: var(--fg-5);
-  padding: 12px;
+  padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-left: 3px solid var(--accent-color);
 }
@@ -773,7 +772,7 @@
 .usage-heatmap-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.45);
   margin-top: 6px;
@@ -844,7 +843,7 @@
 
 .analytics-project-stats {
   display: flex;
-  gap: 10px;
+  gap: 6px;;
   font-size: var(--text-sm);
   color: #666;
   margin-left: auto;
@@ -864,7 +863,7 @@
 .provider-breakdown {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  gap: 6px;;
 }
 
 /* Empty/No Data States */

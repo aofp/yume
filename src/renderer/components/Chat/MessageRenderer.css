@@ -170,8 +170,8 @@
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: var(--fg-100);
-  padding: 8px 12px;
-  border-radius: 12px 12px 4px 12px;
+  padding: 6px 10px;
+  border-radius: 6px 6px 2px 6px;
   min-width: 60px;
   font-size: var(--text-base);
   line-height: var(--leading-normal);
@@ -201,8 +201,8 @@
   background: var(--bg-brighter-alpha);
   border: none;
   color: var(--fg-100);
-  padding: 8px 12px;
-  border-radius: 12px 12px 12px 4px;
+  padding: 6px 10px;
+  border-radius: 6px 6px 2px 6px;
   min-width: 60px;
   max-width: 100%;
   font-size: var(--text-base);
@@ -517,7 +517,7 @@ ol {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px;
   color: var(--accent-color);
   font-size: var(--text-base);
   font-weight: bold;
@@ -535,7 +535,7 @@ ol {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px;
   margin-top: 8px;
   color: var(--accent-color);
   font-size: var(--text-base);
@@ -2065,7 +2065,7 @@ hr {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px;
   background: rgba(255, 153, 153, 0.05);
   border: none;
   border-radius: 8px;
@@ -2080,7 +2080,7 @@ hr {
 
 .result-summary {
   margin-top: 4px;
-  padding: 8px 12px;
+  padding: 6px;
   background: rgba(255, 153, 204, 0.05);
   border-radius: 8px;
   font-size: var(--text-base);
@@ -2092,7 +2092,7 @@ hr {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px;
   background: rgba(255, 153, 153, 0.05);
   border: none;
   border-radius: 8px;

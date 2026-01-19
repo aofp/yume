@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 6px;
   border-bottom: 1px solid #222;
   -webkit-app-region: drag;
   user-select: none;
@@ -75,7 +75,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px;
   border-bottom: 1px solid #222;
   color: #666;
 }
@@ -113,7 +113,7 @@
 .projects-error {
   color: #ff6666;
   text-align: center;
-  padding: 12px;
+  padding: 6px;
   font-size: var(--text-base);
 }
 
@@ -379,7 +379,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px;
+  padding: 6px;
   color: rgba(255, 255, 255, 0.5);
   font-size: var(--text-base);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -397,7 +397,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px;
+  padding: 6px;
   color: rgba(255, 255, 255, 0.5);
   font-size: var(--text-base);
 }
@@ -409,7 +409,7 @@
 
 /* Session count info */
 .sessions-count-info {
-  padding: 6px 12px;
+  padding: 6px;
   color: rgba(255, 255, 255, 0.4);
   font-size: var(--text-sm);
   text-align: right;

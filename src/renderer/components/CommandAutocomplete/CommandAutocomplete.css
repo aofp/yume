@@ -106,7 +106,7 @@
 
 .command-footer {
   display: flex;
-  gap: 10px;
+  gap: 6px;;
   padding: 5px 10px;
   border-top: 1px solid #222;
   background: #000;

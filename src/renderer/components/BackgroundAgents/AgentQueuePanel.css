@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px;
   background: rgba(248, 113, 113, 0.1);
   border-bottom: 1px solid rgba(248, 113, 113, 0.3);
   color: #f87171;
@@ -116,7 +116,7 @@
 .agent-queue-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 6px;
 }
 
 .agent-queue-loading,

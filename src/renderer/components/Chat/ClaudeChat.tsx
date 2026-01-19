@@ -4930,7 +4930,7 @@ export const ClaudeChat: React.FC = () => {
                     <span>files</span>
                     {(sessionFileStats.fileCount > 0 || (gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0)) && (
                       <span className="git-tab-stats">
-                        <span>{sessionFileStats.fileCount}{gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 ? ` / ${gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}` : ''}</span>
+                        <span>{sessionFileStats.fileCount}{gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 ? `/${gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}` : ''}</span>
                       </span>
                     )}
                   </button>
@@ -6011,7 +6011,12 @@ export const ClaudeChat: React.FC = () => {
         {currentSessionId && isAtBottom[currentSessionId] === false && (
           <button
             className="scroll-to-bottom-btn"
-            onClick={() => forceScrollToBottomHelper('smooth')}
+            onClick={() => {
+              forceScrollToBottomHelper('smooth');
+              if (currentSessionId) {
+                setIsAtBottom(prev => ({ ...prev, [currentSessionId]: true }));
+              }
+            }}
             title={`scroll to bottom (ctrl+↓) • ctrl+↑ for top`}
           >
             <IconChevronDown size={16} />

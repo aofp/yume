@@ -50,7 +50,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px;
   border-bottom: 1px solid var(--fg-05);
   flex-shrink: 0;
   background: var(--background-color);
@@ -89,7 +89,7 @@
 }
 
 .confirm-modal-body {
-  padding: 12px;
+  padding: 6px;
   color: var(--fg-80);
 }
 
@@ -102,7 +102,7 @@
 .confirm-modal-footer {
   display: flex;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px;
   border-top: 1px solid var(--fg-05);
   justify-content: flex-end;
 }

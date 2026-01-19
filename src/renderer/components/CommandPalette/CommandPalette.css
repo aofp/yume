@@ -84,7 +84,7 @@
 }
 
 .cp-empty {
-  padding: 12px;
+  padding: 6px;
   text-align: center;
   color: var(--fg-30);
   font-size: var(--text-xs);

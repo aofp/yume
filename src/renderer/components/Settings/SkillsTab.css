@@ -349,7 +349,7 @@
 
 .skill-cancel-btn,
 .skill-save-btn {
-  padding: 6px 12px;
+  padding: 6px;
   border-radius: 4px;
   font-size: var(--text-sm);
   cursor: default;
