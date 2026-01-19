@@ -12,4 +12,9 @@ Thumbs.db
 # Temporary
 *.tmp
 *.log
-releases/*.dmg
+
+# Release binaries (too large for git)
+releases/**/*.dmg
+releases/**/*.exe
+releases/**/*.msi
+releases/**/*.AppImage
