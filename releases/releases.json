@@ -9,11 +9,13 @@
       "notes": "initial release - native gui for claude code with limits tracking, 21 features, 5 agents, plugin system, crash recovery, and 570+ themes.",
       "downloads": {
         "mac": "yume-0.1.0-macos-x64.dmg",
-        "mac_arm": "yume-0.1.0-macos-arm64.dmg"
+        "mac_arm": "yume-0.1.0-macos-arm64.dmg",
+        "windows": "yume_0.1.0_x64-setup.exe"
       },
       "checksums": {
         "mac": "dab13824a8a75243e2dd8a3d72a7375055bd2739107e2258e16e88afca73cb75",
-        "mac_arm": "8bc4324671d358faedeb157a0637a62cb6ab7a14ef04a60125d758c1304699d5"
+        "mac_arm": "8bc4324671d358faedeb157a0637a62cb6ab7a14ef04a60125d758c1304699d5",
+        "windows": "d0b29d1e75801c35d3decaafd858e712810ecf3b836876302e0a0b419dc38196"
       }
     }
   ]
