@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>yume - claude code, unchained</title>
-    <meta name="description" content="native gui for claude code. zero flickering. zero lag. keyboard-first. 30+ shortcuts. full customization. 5 agents. $21 once, forever.">
+    <meta name="description" content="native gui for claude code. zero flickering. zero lag. keyboard-first. 30+ shortcuts. full customization. 5 agents.">
     <link rel="icon" type="image/png" href="assets/yume.png">
     <style>
         @font-face {
@@ -19,19 +19,9 @@
             font-weight: 700;
             font-style: normal;
         }
-        @font-face {
-            font-family: 'Comic Neue';
-            src: url('fonts/ComicNeue-Regular.woff2') format('woff2');
-            font-weight: 400;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Comic Neue';
-            src: url('fonts/ComicNeue-Bold.woff2') format('woff2');
-            font-weight: 700;
-            font-style: normal;
-        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
             --accent: #bb99ff;
             --accent-rgb: 187, 153, 255;
@@ -44,25 +34,30 @@
             --green: #4a4;
             --red: #a44;
         }
+
         html { scroll-behavior: smooth; }
+
         body {
-            font-family: 'Comic Neue', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Agave', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
             color: var(--text);
             line-height: 1.6;
             font-size: 15px;
         }
+
         .container {
-            max-width: 800px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 0 24px;
         }
+
+        /* header */
         header {
             padding: 20px 0;
             border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
-            background: rgba(0,0,0,0.95);
+            background: rgba(0,0,0,0.9);
             backdrop-filter: blur(10px);
             z-index: 100;
         }
@@ -78,15 +73,22 @@
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            transition: all 0.2s ease;
         }
-        .logo img { height: 32px; }
-        .nav-links { display: flex; gap: 24px; }
+        .logo:hover {
+            opacity: 0.85;
+            transform: translateY(-1px);
+        }
+        .nav-links {
+            display: flex;
+            gap: 32px;
+        }
         .nav-links a {
             color: var(--text-dim);
             text-decoration: none;
             font-size: 14px;
-            transition: color 0.2s;
+            transition: color 0.2s ease;
         }
         .nav-links a:hover { color: var(--accent); }
         .btn {
@@ -97,13 +99,14 @@
             text-decoration: none;
             font-weight: 600;
             font-size: 14px;
-            transition: all 0.2s;
-            border: none;
-            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid var(--accent);
         }
         .btn:hover {
             background: #d4bbff;
+            border-color: #d4bbff;
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(187, 153, 255, 0.3);
         }
         .btn-outline {
             background: transparent;
@@ -115,25 +118,49 @@
             border-color: var(--accent);
             color: var(--accent);
         }
+
+        /* hero */
         .hero {
-            padding: 80px 0 60px;
+            padding: 100px 0 80px;
             text-align: center;
         }
-        .hero-logo {
-            width: 100px;
-            height: 100px;
+        .hero-badge {
+            display: inline-block;
+            background: rgba(187, 153, 255, 0.1);
+            border: 1px solid rgba(187, 153, 255, 0.3);
+            color: var(--accent);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
             margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+        .hero-badge:hover {
+            background: rgba(187, 153, 255, 0.15);
+            border-color: rgba(187, 153, 255, 0.5);
+        }
+        .hero-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 32px;
+            transition: all 0.3s ease;
+        }
+        .hero-logo:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 20px rgba(var(--accent-rgb), 0.4));
         }
         .hero h1 {
-            font-size: 2.5rem;
-            margin-bottom: 16px;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
         }
         .hero h1 span { color: var(--accent); }
         .hero-sub {
-            font-size: 1.1rem;
+            font-size: 1.25rem;
             color: var(--text-dim);
-            max-width: 500px;
-            margin: 0 auto 32px;
+            max-width: 600px;
+            margin: 0 auto 40px;
         }
         .hero-ctas {
             display: flex;
@@ -141,153 +168,293 @@
             justify-content: center;
             flex-wrap: wrap;
         }
+        .hero-ctas .btn { padding: 14px 32px; font-size: 16px; }
         .download-btn { display: none; }
         .download-btn.active { display: inline-block; }
-        .other-platforms {
-            margin-top: 16px;
-            font-size: 13px;
-            color: var(--text-dimmer);
+        .other-platforms a { color: var(--text-dim); text-decoration: underline; transition: color 0.2s ease; }
+        .other-platforms a:hover { color: var(--accent); }
+
+        /* stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            padding: 40px 0;
+            flex-wrap: wrap;
         }
-        .other-platforms a {
-            color: var(--text-dim);
-            text-decoration: underline;
-        }
-        .section {
-            padding: 60px 0;
-            border-top: 1px solid var(--border);
-        }
-        .section h2 {
-            font-size: 1.5rem;
-            margin-bottom: 24px;
+        .stat {
             text-align: center;
+            transition: transform 0.2s ease;
         }
-        .features {
+        .stat:hover {
+            transform: translateY(-2px);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            transition: color 0.2s ease;
+        }
+        .stat:hover .stat-value {
+            text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.4);
+        }
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* features grid */
+        .section {
+            padding: 80px 0;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .section-header h2 {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+        .section-header p {
+            color: var(--text-dim);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
         }
-        .feature {
+        .feature-card {
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 28px;
+            transition: all 0.2s ease;
         }
-        .feature h3 {
-            font-size: 0.9rem;
-            margin-bottom: 8px;
+        .feature-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            background: rgba(var(--accent-rgb), 0.03);
+            transform: translateY(-2px);
+        }
+        .feature-card:hover h3 {
             color: var(--accent);
         }
-        .feature p {
-            font-size: 0.85rem;
-            color: var(--text-dim);
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            transition: color 0.2s ease;
         }
-        .pricing-card {
-            max-width: 400px;
-            margin: 0 auto;
+        .feature-card p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        /* tech */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .tech-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .tech-card {
             background: var(--card);
-            border: 2px solid var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .tech-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            background: rgba(var(--accent-rgb), 0.03);
+            transform: translateY(-2px);
+        }
+        .tech-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'Agave', monospace;
+            margin-bottom: 4px;
+        }
+        .tech-label {
+            font-size: 12px;
+            color: var(--text-dimmer);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .tech-detail {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        /* agents */
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+        @media (max-width: 900px) {
+            .agents-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .agents-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .agent-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .agent-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            background: rgba(var(--accent-rgb), 0.05);
+            transform: translateY(-2px);
+        }
+        .agent-name {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .agent-desc {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        /* themes showcase */
+        .themes-showcase {
+            background: var(--card);
+            border: 1px solid var(--border);
             border-radius: 16px;
             padding: 40px;
             text-align: center;
+            transition: all 0.3s ease;
         }
-        .pricing-badge {
-            display: inline-block;
-            background: var(--accent);
-            color: #000;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 16px;
+        .themes-showcase:hover {
+            border-color: rgba(var(--accent-rgb), 0.4);
+            box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.1);
         }
-        .pricing-title { font-size: 1.3rem; margin-bottom: 8px; }
-        .pricing-price {
-            font-size: 3rem;
-            font-weight: 700;
-            margin: 16px 0 8px;
+
+        /* keyboard shortcuts */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
         }
-        .pricing-note {
-            color: var(--text-dim);
-            margin-bottom: 24px;
-            font-size: 0.9rem;
-        }
-        .pricing-features {
-            list-style: none;
-            text-align: left;
-            margin-bottom: 24px;
-        }
-        .pricing-features li {
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.9rem;
-        }
-        .pricing-features li:last-child { border-bottom: none; }
-        .email-form { margin-bottom: 16px; }
-        .email-form label {
-            display: block;
-            text-align: left;
-            font-size: 12px;
-            color: var(--text-dim);
-            margin-bottom: 6px;
-        }
-        .email-form input {
-            width: 100%;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            margin-bottom: 6px;
-        }
-        .email-form input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-        .email-note {
-            font-size: 11px;
-            color: var(--text-dimmer);
-            text-align: left;
-        }
-        #paypal-button-container { min-height: 50px; }
-        .success-msg {
-            background: rgba(68, 170, 68, 0.1);
-            border: 1px solid var(--green);
-            color: var(--green);
-            padding: 16px;
-            border-radius: 8px;
-            display: none;
-        }
-        .success-msg.show { display: block; }
-        .license-key {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: 6px;
-            font-family: 'Agave', monospace;
-            font-size: 0.9rem;
-            word-break: break-all;
-            margin: 12px 0;
-        }
-        .error-msg {
-            background: rgba(170, 68, 68, 0.1);
-            border: 1px solid var(--red);
-            color: #f44;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            font-size: 13px;
-            display: none;
-        }
-        .error-msg.show { display: block; }
-        .releases {
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .shortcut-item:hover {
+            border-color: rgba(var(--accent-rgb), 0.4);
+            background: rgba(var(--accent-rgb), 0.03);
+        }
+        .shortcut-item:hover .key {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .shortcut-action { color: var(--text-dim); font-size: 14px; }
+        .shortcut-keys {
+            display: flex;
+            gap: 4px;
+        }
+        .key {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Agave', monospace;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        /* comparison */
+        .comparison {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
             overflow: hidden;
         }
+        .comparison-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+            background: #0f0f0f;
+            border-bottom: 1px solid var(--border);
+        }
+        .comparison-header div {
+            padding: 16px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .comparison-header div:first-child { text-align: left; padding-left: 16px; }
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+        .comparison-row:last-child { border-bottom: none; }
+        .comparison-row {
+            transition: background 0.15s ease;
+        }
+        .comparison-row:hover {
+            background: rgba(var(--accent-rgb), 0.03);
+        }
+        .comparison-row div {
+            padding: 12px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .comparison-row div:first-child { justify-content: flex-start; color: var(--text-dim); padding-left: 16px; }
+        .check { color: var(--green); font-size: 18px; }
+        .cross { color: var(--red); font-size: 18px; }
+        .comparison-row div:last-child,
+        .comparison-header div:last-child {
+            background: rgba(187, 153, 255, 0.05);
+        }
+        .comparison-simple .comparison-header,
+        .comparison-simple .comparison-row {
+            grid-template-columns: 2fr 1fr 1fr;
+        }
+
+        /* releases */
+        .releases {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 700px;
+            margin: 0 auto;
+        }
         .release {
-            padding: 16px 20px;
+            padding: 20px 24px;
             border-bottom: 1px solid var(--border);
         }
         .release:last-child { border-bottom: none; }
@@ -306,7 +473,7 @@
             color: var(--text-dimmer);
         }
         .release-notes {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: var(--text-dim);
             margin-bottom: 12px;
         }
@@ -316,176 +483,502 @@
             flex-wrap: wrap;
         }
         .release-downloads a {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-dim);
             text-decoration: none;
-            padding: 4px 10px;
+            padding: 6px 12px;
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
         }
         .release-downloads a:hover {
             border-color: var(--accent);
             color: var(--accent);
         }
+
+        /* pricing */
+        .pricing-section {
+            background: linear-gradient(180deg, var(--bg) 0%, #050510 100%);
+            padding: 100px 0;
+        }
+        .pricing-card {
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--card);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            padding: 48px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+            box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.15);
+            transform: translateY(-2px);
+        }
+        .pricing-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .pricing-title {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        .pricing-price {
+            font-size: 4rem;
+            font-weight: 700;
+            margin: 24px 0 8px;
+        }
+        .pricing-note {
+            color: var(--text-dim);
+            margin-bottom: 32px;
+        }
+        .pricing-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 32px;
+        }
+        .pricing-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .pricing-features li:last-child { border-bottom: none; }
+        .pricing-features .check { font-size: 14px; }
+
+        /* footer */
         footer {
             border-top: 1px solid var(--border);
-            padding: 32px 0;
+            padding: 40px 0;
             text-align: center;
-            font-size: 0.85rem;
-            color: var(--text-dim);
         }
-        footer a { color: var(--text-dim); }
+        footer p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+        footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
         footer a:hover { color: var(--accent); }
-        @media (max-width: 600px) {
+
+        /* responsive */
+        @media (max-width: 768px) {
             .nav-links { display: none; }
-            .hero h1 { font-size: 2rem; }
-            .pricing-card { padding: 24px; }
+            .stats { gap: 24px; }
+            .comparison-header, .comparison-row {
+                grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+                font-size: 0.75rem;
+            }
+            .comparison-header div, .comparison-row div {
+                padding: 10px 4px;
+            }
+            .pricing-card { padding: 32px 24px; }
         }
     </style>
 </head>
 <body>
     <header>
         <div class="container">
-            <a href="/" class="logo">
-                <img src="assets/yume.png" alt="yume">
-                yume
-            </a>
+            <a href="/" class="logo"><img src="assets/yume.png" alt="yume" style="height: 32px; vertical-align: middle;"> yume</a>
             <nav class="nav-links">
                 <a href="#features">features</a>
-                <a href="#pricing">pricing</a>
+                <a href="#tech">tech</a>
+                <a href="#agents">agents</a>
+                <a href="#themes">themes</a>
                 <a href="#releases">releases</a>
             </nav>
-            <a href="#pricing" class="btn">get license</a>
+            <a href="#releases" class="btn">download</a>
         </div>
     </header>
 
     <section class="hero">
         <div class="container">
             <img src="assets/yume.png" alt="yume" class="hero-logo">
-            <h1>claude code, <span>unchained</span></h1>
-            <p class="hero-sub">the fastest, most intuitive way to use claude code. limits always visible. keyboard-first. native speed.</p>
+            <h1>claude code,<br><span>unchained</span></h1>
+            <p class="hero-sub">the fastest, most intuitive way to use claude code.<br>limits always visible. keyboard-first. native speed.</p>
             <div class="hero-ctas">
                 <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac</a>
                 <a href="#" class="btn download-btn" id="dl-win" data-os="win">download for windows</a>
                 <a href="#" class="btn download-btn" id="dl-linux" data-os="linux">download for linux</a>
-                <a href="#pricing" class="btn btn-outline">go pro - $21</a>
             </div>
-            <p class="other-platforms">
-                also available for <a href="#releases">mac</a> · <a href="#releases">windows</a> · <a href="#releases">linux</a>
+            <p class="other-platforms" style="margin-top: 16px; font-size: 13px; color: var(--text-dimmer);">
+                also available for <a href="#releases" class="alt-dl" data-os="mac">mac</a> · <a href="#releases" class="alt-dl" data-os="win">windows</a> · <a href="#releases" class="alt-dl" data-os="linux">linux</a>
             </p>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-value">always</div>
+            <div class="stat-label">limits visible</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">5</div>
+            <div class="stat-label">built-in agents</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">plugins</div>
+            <div class="stat-label">extensible</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">32+</div>
+            <div class="stat-label">shortcuts</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">zero</div>
+            <div class="stat-label">telemetry</div>
         </div>
     </section>
 
     <section class="section" id="features">
         <div class="container">
-            <h2>why yume?</h2>
-            <div class="features">
-                <div class="feature">
+            <div class="section-header">
+                <h2>why switch from cli?</h2>
+                <p>claude code is amazing. the terminal experience isn't.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
                     <h3>limits always visible</h3>
-                    <p>5h and 7-day limits shown permanently. no commands to check.</p>
+                    <p>5h and 7-day limits shown permanently in the ui. no commands to check. no surprises. always know exactly where you stand.</p>
                 </div>
-                <div class="feature">
-                    <h3>no flickering</h3>
-                    <p>native rendering eliminates terminal flickering completely.</p>
+                <div class="feature-card">
+                    <h3>no more flickering</h3>
+                    <p>cli has 700+ upvotes on the flickering issue. we eliminate it completely with native rendering. zero terminal artifacts.</p>
                 </div>
-                <div class="feature">
-                    <h3>keyboard-first</h3>
-                    <p>30+ shortcuts. cmd+t tab, cmd+o model, cmd+k ultrathink.</p>
+                <div class="feature-card">
+                    <h3>keyboard-first design</h3>
+                    <p>30+ shortcuts. cmd+t tab, cmd+o model, cmd+k ultrathink, cmd+l clear, cmd+m compact. never touch the mouse.</p>
                 </div>
-                <div class="feature">
-                    <h3>no input lag</h3>
-                    <p>stays under 50ms even in long sessions. always responsive.</p>
+                <div class="feature-card">
+                    <h3>no more input lag</h3>
+                    <p>cli slows to 10+ seconds in long sessions. yume stays under 50ms. always. your thoughts don't wait for the ui.</p>
                 </div>
-                <div class="feature">
-                    <h3>5 built-in agents</h3>
-                    <p>architect, explorer, implementer, guardian, specialist.</p>
+                <div class="feature-card">
+                    <h3>no more vs code crashes</h3>
+                    <p>cli in ide terminals crashes after 10-20 minutes. yume is a standalone native app. crash-proof by design.</p>
                 </div>
-                <div class="feature">
-                    <h3>plugin system</h3>
-                    <p>custom commands, agents, hooks, skills. fully extensible.</p>
+                <div class="feature-card">
+                    <h3>smart auto-compaction</h3>
+                    <p>auto-compacts at 60%, forces at 65%. disable or adjust in settings. visual indicator shows when it triggers.</p>
                 </div>
-                <div class="feature">
-                    <h3>skills system</h3>
-                    <p>auto-inject context based on triggers. file extensions, keywords, regex.</p>
-                </div>
-                <div class="feature">
-                    <h3>crash recovery</h3>
-                    <p>auto-saves every 5 min. recover sessions after crashes.</p>
-                </div>
-                <div class="feature">
-                    <h3>smart compaction</h3>
-                    <p>auto-compacts at 60%, forces at 65%. visual indicator.</p>
-                </div>
-                <div class="feature">
+                <div class="feature-card">
                     <h3>visual checkpoints</h3>
-                    <p>timeline navigator for code state. rewind, restore, compare.</p>
+                    <p>timeline navigator for code state. rewind, restore, compare. see every change claude made.</p>
                 </div>
-                <div class="feature">
-                    <h3>@ mention system</h3>
-                    <p>@r for recent files. @m for modified files. folder navigation.</p>
+                <div class="feature-card">
+                    <h3>fully customizable</h3>
+                    <p>oled black default. 31 themes. 189 accent colors. 189 backgrounds. 189 foregrounds. 570+ combinations.</p>
                 </div>
-                <div class="feature">
-                    <h3>stream timers</h3>
-                    <p>live duration for thinking, bash, compacting.</p>
+                <div class="feature-card">
+                    <h3>full cli compatibility</h3>
+                    <p>subagents, mcp, hooks, skills, claude.md, @mentions, /commands. everything works. we just fix the pain points.</p>
                 </div>
-                <div class="feature">
+                <div class="feature-card">
+                    <h3>plugin system</h3>
+                    <p>install custom commands, agents, hooks, skills, mcp servers. extend yume without touching code. complete extensibility.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>skills system</h3>
+                    <p>auto-inject context based on triggers. file extensions, keywords, regex patterns. your knowledge, automatically applied.</p>
+                </div>
+                <div class="feature-card">
                     <h3>yume guard</h3>
-                    <p>built-in security hook. blocks dangerous commands.</p>
+                    <p>built-in security hook. blocks dangerous commands before they run. rm -rf protection. configurable rules.</p>
                 </div>
-                <div class="feature">
+                <div class="feature-card">
                     <h3>voice dictation</h3>
-                    <p>native speech-to-text. hands-free coding.</p>
+                    <p>speak instead of type. native speech-to-text. hands-free coding when you need it.</p>
                 </div>
-                <div class="feature">
+                <div class="feature-card">
                     <h3>message rollback</h3>
-                    <p>history panel with undo. branching conversations.</p>
+                    <p>history panel with undo. roll back to any previous message. branching conversations.</p>
                 </div>
-                <div class="feature">
-                    <h3>570+ themes</h3>
-                    <p>oled black default. 31 themes. 189 accent colors.</p>
+                <div class="feature-card">
+                    <h3>claude.md editor</h3>
+                    <p>edit project instructions in-app. live preview. no switching to text editor.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>analytics dashboard</h3>
+                    <p>usage by project, model, date. token breakdown. cost tracking. know exactly what you spend.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>stream timers</h3>
+                    <p>live duration for thinking, bash, compacting. see exactly how long each step takes.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>@ mention system</h3>
+                    <p>@r for recent files. @m for modified files. folder navigation. fast file references.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>memory system</h3>
+                    <p>persistent knowledge graph. remembers patterns, fixes, context across sessions. your codebase wisdom, preserved.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>background agents</h3>
+                    <p>4 concurrent async agents. git branch isolation per task. parallel workflows without blocking your main session.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>multi-provider</h3>
+                    <p>claude, gemini, openai. switch models via yume-cli. use any llm provider with the same interface.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="section" id="pricing">
+    <section class="section" id="tech" style="background: #050505;">
         <div class="container">
-            <div class="pricing-card" id="purchase-card">
-                <div class="pricing-badge">lifetime license</div>
-                <h3 class="pricing-title">yume pro</h3>
-                <div class="pricing-price">$21</div>
-                <p class="pricing-note">one-time payment · no subscription</p>
-                <ul class="pricing-features">
-                    <li>unlimited tabs (vs 2 in free)</li>
-                    <li>uses your existing claude subscription</li>
-                    <li>lifetime updates, no recurring fees</li>
-                    <li>support indie development</li>
-                </ul>
-                <div class="email-form">
-                    <label>email address</label>
-                    <input type="email" id="customer-email" placeholder="your@email.com">
-                    <p class="email-note">license key will be sent to this email</p>
-                </div>
-                <div class="error-msg" id="error-msg"></div>
-                <div id="paypal-button-container"></div>
-                <p style="margin-top: 16px; font-size: 12px; color: var(--text-dimmer);">
-                    or pay via <a href="https://yuru.be/yume" style="color: var(--accent);">yuru.be/yume</a>
-                </p>
+            <div class="section-header">
+                <h2>built for speed</h2>
+                <p>native tauri + rust app. optimized for long coding sessions.</p>
             </div>
-            <div class="success-msg" id="success-msg">
-                <h3 style="margin-bottom: 8px;">purchase complete!</h3>
-                <p>your license key:</p>
-                <div class="license-key" id="license-key-display"></div>
-                <p style="font-size: 12px;">also sent to your email. enter this in yume settings.</p>
-                <button class="btn" onclick="copyLicense()" style="margin-top: 12px;">copy license key</button>
+
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <div class="tech-value">&lt;50ms</div>
+                    <div class="tech-label">response time</div>
+                    <div class="tech-detail">type and the ui responds instantly. cli slows to 10+ seconds in long sessions.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">10k+</div>
+                    <div class="tech-label">messages</div>
+                    <div class="tech-detail">virtualized rendering. scroll through hours of conversation without lag.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">auto</div>
+                    <div class="tech-label">compaction</div>
+                    <div class="tech-detail">smart context management at 60%/65%. never hit limits unexpectedly.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">24hr</div>
+                    <div class="tech-label">crash recovery</div>
+                    <div class="tech-detail">auto-saves every 5 min. recover sessions even after crashes.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">real-time</div>
+                    <div class="tech-label">streaming</div>
+                    <div class="tech-detail">see claude's response as it's generated. no waiting for complete replies.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">zero</div>
+                    <div class="tech-label">telemetry</div>
+                    <div class="tech-detail">your code stays on your machine. we don't track anything.</div>
+                </div>
             </div>
         </div>
     </section>
+
+    <section class="section" id="agents">
+        <div class="container">
+            <div class="section-header">
+                <h2>5 built-in agents</h2>
+                <p>task-specific agents, ready to use. follows your selected model.</p>
+            </div>
+
+            <div class="agents-grid">
+                <div class="agent-card">
+                    <div class="agent-name">architect</div>
+                    <div class="agent-desc">plans and decomposes. runs before complex tasks.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">explorer</div>
+                    <div class="agent-desc">read-only search. understands without editing.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">implementer</div>
+                    <div class="agent-desc">focused edits. minimal diffs.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">guardian</div>
+                    <div class="agent-desc">reviews for bugs and security issues.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">specialist</div>
+                    <div class="agent-desc">tests, docs, devops, data.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="themes">
+        <div class="container">
+            <div class="themes-showcase">
+                <h2>570+ color combinations. oled-first.</h2>
+                <p style="color: var(--text-dim); margin-top: 12px;">pure black default for oled displays. 31 themes. 189 accent colors, 189 backgrounds, 189 foregrounds. fully yours.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" style="background: #050505;">
+        <div class="container">
+            <div class="section-header">
+                <h2>30+ keyboard shortcuts</h2>
+                <p>keyboard-first means never touching the mouse. every action has a shortcut.</p>
+            </div>
+
+            <div class="shortcuts-grid">
+                <div class="shortcut-item">
+                    <span class="shortcut-action">new tab</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">T</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">close tab</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">W</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">toggle model</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">O</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">ultrathink</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">K</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">settings</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">,</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">search messages</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">F</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">files panel</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">E</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">git panel</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">G</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">analytics</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">Y</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">agents</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">N</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">clear context</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">L</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">compact context</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">M</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>yume vs the competition</h2>
+                <p>same claude power. better everything else.</p>
+            </div>
+
+            <div class="comparison">
+                <div class="comparison-header">
+                    <div>feature</div>
+                    <div>cli</div>
+                    <div>cursor</div>
+                    <div>opcode</div>
+                    <div>crystal</div>
+                    <div style="color: var(--accent);">yume</div>
+                </div>
+                <div class="comparison-row">
+                    <div>limits always visible</div>
+                    <div>/usage</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> always</div>
+                </div>
+                <div class="comparison-row">
+                    <div>plugin/skills system</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> unique</div>
+                </div>
+                <div class="comparison-row">
+                    <div>5 built-in agents</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span></div>
+                </div>
+                <div class="comparison-row">
+                    <div>crash recovery</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span></div>
+                </div>
+                <div class="comparison-row">
+                    <div>@ mentions</div>
+                    <div>partial</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> @r @m</div>
+                </div>
+                <div class="comparison-row">
+                    <div>stream timers</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> live</div>
+                </div>
+                <div class="comparison-row">
+                    <div>native app</div>
+                    <div>terminal</div>
+                    <div>electron</div>
+                    <div>tauri</div>
+                    <div>electron</div>
+                    <div><span class="check">✓</span> tauri</div>
+                </div>
+                <div class="comparison-row">
+                    <div>full customization</div>
+                    <div><span class="cross">✗</span></div>
+                    <div>~5 themes</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> 570+</div>
+                </div>
+                <div class="comparison-row">
+                    <div>price</div>
+                    <div>pro/max</div>
+                    <div>$20-200/mo</div>
+                    <div><span class="check">✓</span> free</div>
+                    <div><span class="check">✓</span> free</div>
+                    <div><span class="check">✓</span> free</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
 
     <section class="section" id="releases">
         <div class="container">
-            <h2>releases</h2>
+            <div class="section-header">
+                <h2>releases</h2>
+                <p>download the latest version for your platform</p>
+            </div>
+
             <div class="releases" id="releases-list">
                 <div class="release">
                     <div class="release-header">
@@ -499,21 +992,24 @@
 
     <footer>
         <div class="container">
-            <p>
-                <a href="https://yuru.be">yuru.be</a> ·
-                <a href="mailto:support@yuru.be">support@yuru.be</a> ·
-                <a href="https://github.com/anthropics/claude-code">claude code cli</a>
+            <p style="margin-bottom: 12px;">
+                <a href="https://yuru.be">yuru.be</a> &bull;
+                <a href="mailto:support@yuru.be">support@yuru.be</a> &bull;
+                <a href="https://github.com/anthropics/claude-code" target="_blank">claude code cli</a>
             </p>
-            <p style="margin-top: 8px;">© 2026 yuruko. made with claude code + yume.</p>
+            <p>© 2026 yuruko. made with claude code + yume.</p>
         </div>
     </footer>
 
     <script>
+        let baseUrl = 'releases';
+
         // Load releases from releases.json
         async function loadReleases() {
             try {
                 const response = await fetch('releases/releases.json');
                 const data = await response.json();
+                baseUrl = data.baseUrl || 'releases';
                 renderReleases(data.releases);
                 updateDownloadButtons(data.releases[0]);
             } catch (err) {
@@ -523,6 +1019,11 @@
                     </div>
                 `;
             }
+        }
+
+        function getDownloadUrl(filename) {
+            if (!filename) return '#';
+            return `${baseUrl}/${filename}`;
         }
 
         function renderReleases(releases) {
@@ -535,20 +1036,22 @@
                     </div>
                     <p class="release-notes">${r.notes}</p>
                     <div class="release-downloads">
-                        ${r.downloads.mac ? `<a href="${r.downloads.mac}">mac</a>` : ''}
-                        ${r.downloads.mac_arm ? `<a href="${r.downloads.mac_arm}">mac (arm64)</a>` : ''}
-                        ${r.downloads.win ? `<a href="${r.downloads.win}">windows</a>` : ''}
-                        ${r.downloads.linux ? `<a href="${r.downloads.linux}">linux</a>` : ''}
+                        ${r.downloads.mac ? `<a href="${getDownloadUrl(r.downloads.mac)}">mac (intel)</a>` : ''}
+                        ${r.downloads.mac_arm ? `<a href="${getDownloadUrl(r.downloads.mac_arm)}">mac (apple silicon)</a>` : ''}
+                        ${r.downloads.win ? `<a href="${getDownloadUrl(r.downloads.win)}">windows</a>` : ''}
+                        ${r.downloads.linux ? `<a href="${getDownloadUrl(r.downloads.linux)}">linux</a>` : ''}
                     </div>
                 </div>
             `).join('');
         }
 
         function updateDownloadButtons(latestRelease) {
+            if (!latestRelease) return;
+
             const urls = {
-                mac: latestRelease.downloads.mac_arm || latestRelease.downloads.mac || '#',
-                win: latestRelease.downloads.win || '#',
-                linux: latestRelease.downloads.linux || '#'
+                mac: getDownloadUrl(latestRelease.downloads.mac_arm || latestRelease.downloads.mac),
+                win: getDownloadUrl(latestRelease.downloads.win),
+                linux: getDownloadUrl(latestRelease.downloads.linux)
             };
 
             // Detect OS
@@ -572,25 +1075,6 @@
         }
 
         loadReleases();
-
-        // License copy
-        let generatedLicense = '';
-        function copyLicense() {
-            navigator.clipboard.writeText(generatedLicense).then(() => {
-                const btn = event.target;
-                btn.textContent = 'copied!';
-                setTimeout(() => btn.textContent = 'copy license key', 2000);
-            });
-        }
-
-        // PayPal integration placeholder
-        // For GitHub Pages, we redirect to yuru.be for payment processing
-        // The paypal-button-container will show a "buy on yuru.be" link
-        document.getElementById('paypal-button-container').innerHTML = `
-            <a href="https://yuru.be/yume#pricing" class="btn" style="width: 100%; display: block; text-align: center;">
-                buy license on yuru.be
-            </a>
-        `;
     </script>
 </body>
 </html>
