@@ -2860,10 +2860,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
                     // Check if we still have pending tools
                     const session = sessions.find(s => s.id === sessionId);
+                    // CRITICAL: If result has duration_ms, this is the FINAL authoritative signal
+                    const hasDurationMs = typeof message.duration_ms === 'number' && message.duration_ms > 0;
+                    const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
 
-                    if (session?.pendingToolIds && session.pendingToolIds.size > 0) {
-                      // Still have pending tools - keep streaming active
-                      console.log(`Result message received but ${session.pendingToolIds.size} tools still pending - keeping streaming state`);
+                    if (hasPendingTools && !hasDurationMs) {
+                      // Still have pending tools and no duration_ms - keep streaming active
+                      console.log(`Result message received but ${session?.pendingToolIds?.size} tools still pending - keeping streaming state`);
                       sessions = sessions.map(s =>
                         s.id === sessionId
                           ? {
@@ -2881,6 +2884,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         sessionId,
                         subtype: message.subtype,
                         is_error: message.is_error,
+                        hasDurationMs,
                         result: message.result?.substring?.(0, 50),
                         sessionMessages: session?.messages.length || 0,
                         currentStreaming: session?.streaming
@@ -2888,6 +2892,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
                       // Cancel any pending debounce timer - result is authoritative
                       cancelStreamingEndTimer(sessionId);
+
+                      // Force-clear all pending state if we have duration_ms (authoritative end signal)
+                      if (hasDurationMs && session?.pendingToolIds) {
+                        session.pendingToolIds.clear();
+                        session.pendingToolInfo?.clear();
+                        console.log(`🧹 [STREAMING-FIX] Force-cleared pending tools due to duration_ms`);
+                      }
 
                       // Clear subagent tracking since we're actually done
                       clearSubagentTracking(sessionId);
@@ -5525,19 +5536,26 @@ ${content}`;
               // because lastMessageTime was updated too recently (< 2000ms debounce window)
               let shouldClearStreaming = false;
               if (message.type === 'result' && !message.is_error) {
-                // Check if we have pending tools - if so, don't clear streaming yet
+                // CRITICAL: If result has duration_ms, this is the FINAL authoritative signal
+                // Force-clear streaming regardless of pending tools (they should be done)
+                const hasDurationMs = typeof message.duration_ms === 'number' && message.duration_ms > 0;
                 const hasPendingTools = pendingToolIds.size > 0;
                 const hasSubagents = hasActiveSubagents(sessionId);
 
-                if (!hasPendingTools && !hasSubagents) {
+                if (hasDurationMs || (!hasPendingTools && !hasSubagents)) {
                   shouldClearStreaming = true;
                   // Cancel any pending streaming_end debounce timers - result is authoritative
                   cancelStreamingEndTimer(sessionId);
+                  // Force-clear all pending state since result with duration is authoritative
+                  if (hasDurationMs) {
+                    pendingToolIds.clear();
+                    pendingToolInfo.clear();
+                  }
                   // Clear subagent tracking
                   clearSubagentTracking(sessionId);
                   // Play completion sound
                   get().playCompletionSound();
-                  console.log(`🎯 [STREAMING-FIX] Result in addMessageToSession - clearing streaming for ${sessionId}`);
+                  console.log(`🎯 [STREAMING-FIX] Result in addMessageToSession - clearing streaming for ${sessionId} (hasDurationMs: ${hasDurationMs})`);
                 } else {
                   console.log(`🔄 [STREAMING-FIX] Result in addMessageToSession but work pending - keeping streaming (tools: ${pendingToolIds.size}, subagents: ${hasSubagents})`);
                 }

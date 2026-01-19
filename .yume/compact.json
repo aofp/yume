@@ -19,7 +19,7 @@
   "showSavings": true,
   "exportEnabled": false,
   "exportFormat": "markdown",
-  "exportPath": "~/.yurucode/compacts",
+  "exportPath": "~/.yume/compacts",
   "customPrompts": {
     "technical": "Please provide a concise technical summary preserving all code, commands, errors, and implementation details.",
     "creative": "Summarize our creative work maintaining character details, plot points, and narrative elements.",

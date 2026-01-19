@@ -40,7 +40,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 6px;
-  border-bottom: 1px solid var(--fg-15);
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--fg-10);
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -547,7 +548,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 6px;
-  border-bottom: 1px solid var(--fg-15);
+  border-bottom: 1px solid var(--fg-10);
 }
 
 .color-picker-header h4 {

@@ -956,7 +956,7 @@
 
 /* macOS-specific padding */
 .platform-darwin .chat-input-container {
-  padding: var(--space-0-5) var(--space-0-5) 2px 3px; /* macOS only: top right bottom left */
+  padding: var(--space-0-5) 3px 1px 3px; /* macOS only: top right bottom left */
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
@@ -1421,7 +1421,7 @@ textarea.context-full {
   display: flex;
   align-items: center;
   padding: 0;
-  margin-top: var(--space-0-5);
+  /* margin-top: var(--space-0-5); */
   margin-bottom: var(--space-0-5);
   background: var(--background-color);
   flex-shrink: 0; /* Prevent shrinking */
@@ -1578,6 +1578,8 @@ textarea.context-full {
   text-transform: lowercase;
   cursor: default;
   line-height: 9pt;
+  height: 20px;
+  box-sizing: border-box;
 }
 
 .btn-icon-wrapper {
@@ -1602,7 +1604,8 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: var(--space-0-5) 7px;
-  min-height: 20px;
+  height: 20px;
+  box-sizing: border-box;
 }
 
 
@@ -2105,7 +2108,7 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: var(--space-1-5);
-  border-bottom: 1px solid var(--fg-15);
+  border-bottom: 1px solid var(--fg-10);
 }
 
 .help-header h3 {

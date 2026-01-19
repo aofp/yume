@@ -644,6 +644,7 @@
 .welcome-toolbar .welcome-version-badge {
   position: absolute;
   left: 50%;
+  bottom: 7px;
   transform: translateX(-50%);
   font-size: 9px;
   font-family: var(--font-mono);
@@ -651,7 +652,7 @@
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
-  opacity: .4;
+  opacity: .5;
 }
 
 .platform-win32 .welcome-toolbar .welcome-version-badge {
@@ -666,7 +667,7 @@
 .welcome-toolbar .welcome-version-badge strong {
   color: var(--accent-color);
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .welcome-toolbar .welcome-version-badge:hover strong {

@@ -24,7 +24,7 @@
 .confirm-modal {
   background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-15);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   width: 90%;
   max-width: 400px;
   display: flex;
@@ -50,7 +50,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
+  padding: var(--space-1-5);
   border-bottom: 1px solid var(--fg-05);
   flex-shrink: 0;
   background: var(--background-color);
@@ -59,7 +59,7 @@
 .confirm-modal-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--accent-color);
@@ -76,11 +76,11 @@
   border: none;
   color: var(--fg-30);
   cursor: default;
-  padding: 4px;
+  padding: var(--space-1);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .confirm-modal-close:hover {
@@ -89,7 +89,7 @@
 }
 
 .confirm-modal-body {
-  padding: 6px;
+  padding: var(--space-1-5);
   color: var(--fg-80);
 }
 
@@ -101,15 +101,15 @@
 
 .confirm-modal-footer {
   display: flex;
-  gap: 6px;
-  padding: 6px;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5);
   border-top: 1px solid var(--fg-05);
   justify-content: flex-end;
 }
 
 .confirm-modal-btn {
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: var(--space-1) 10px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-base);
   font-weight: 500;
   cursor: default;
@@ -153,7 +153,7 @@
 /* Keyboard focus styles */
 .confirm-modal-btn:focus-visible {
   outline: 2px solid rgba(var(--accent-rgb), 0.5);
-  outline-offset: 2px;
+  outline-offset: var(--space-0-5);
 }
 
 /* Key hint styling */

@@ -343,14 +343,14 @@
 .skill-edit-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .skill-cancel-btn,
 .skill-save-btn {
-  padding: 6px;
-  border-radius: 4px;
+  padding: var(--space-1-5);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   cursor: default;
 }
@@ -369,7 +369,7 @@
 .skill-save-btn {
   background: var(--accent-color);
   border: 1px solid var(--accent-color);
-  color: #000;
+  color: var(--bg-100);
 }
 
 .skill-save-btn:hover {
@@ -384,20 +384,20 @@
 /* Modal Tabs */
 .skill-modal-tabs {
   display: flex;
-  gap: 2px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--fg-15);
-  padding-bottom: 8px;
+  gap: var(--space-0-5);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--fg-10);
+  padding-bottom: var(--space-2);
 }
 
 .skill-modal-tab {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: var(--space-1);
+  padding: var(--space-1-5) 10px;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--fg-50);
   font-size: var(--text-sm);
   cursor: default;
@@ -432,17 +432,17 @@
 .skill-plugin-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   font-size: var(--text-sm);
   color: var(--fg-50);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 /* Trigger Count Badge */
 .skill-trigger-count {
   font-size: var(--text-xs);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: var(--fg-08);
   color: var(--fg-50);
 }
@@ -451,7 +451,7 @@
 .skill-trigger-warning {
   font-size: var(--text-xs);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 180, 100, 0.15);
   color: #ffb464;
 }

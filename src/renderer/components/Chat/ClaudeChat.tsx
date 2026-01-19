@@ -4706,7 +4706,10 @@ export const ClaudeChat: React.FC = () => {
     const minHeight = 44; // Match CSS min-height exactly
     const maxHeight = 106; // 5 lines * 18px + 16px padding (match CSS max-height)
 
-    const container = chatContainerRef.current;
+    // Get the correct scroll container based on whether virtualization is enabled
+    const container = FEATURE_FLAGS.USE_VIRTUALIZATION
+      ? virtualizedMessageListRef.current?.getScrollContainer()
+      : chatContainerRef.current;
     const currentHeight = textarea.offsetHeight;
 
     // Measure content height without visual reset by using a hidden clone

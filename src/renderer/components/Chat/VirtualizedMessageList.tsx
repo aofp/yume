@@ -168,6 +168,7 @@ export interface VirtualizedMessageListRef {
   isAtBottom: () => boolean;
   forceScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   scrollToIndex: (index: number, behavior?: 'auto' | 'smooth') => void;
+  getScrollContainer: () => HTMLDivElement | null;
 }
 
 export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, VirtualizedMessageListProps>(({
@@ -485,6 +486,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       // Use virtualizer's scrollToIndex for proper virtualized scrolling
       virtualizer.scrollToIndex(index, { align: 'center', behavior });
     },
+    getScrollContainer: () => parentRef.current,
   }), [displayMessages.length, checkIfAtBottom, SCROLL_COOLDOWN_MS, scrollToTrueBottom, virtualizer]);
 
   // Reset user scroll flag when starting a new chat or message count increases from 0
