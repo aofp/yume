@@ -3,6 +3,7 @@ import { IconX } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
 import { UpgradeModal } from '../Upgrade/UpgradeModal';
 import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_WEBSITE } from '../../config/app';
+import { checkForUpdates, getVersionInfo } from '../../services/versionCheck';
 import './AboutModal.css';
 
 interface AboutModalProps {
@@ -13,6 +14,16 @@ interface AboutModalProps {
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowUpgrade }) => {
   const { isLicensed, clearLicense } = useLicenseStore();
+  const [updateInfo, setUpdateInfo] = useState<{ hasUpdate: boolean; latest: string | null }>({ hasUpdate: false, latest: null });
+
+  // Check for updates when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      checkForUpdates().then(state => {
+        setUpdateInfo({ hasUpdate: state.hasUpdate, latest: state.latestVersion });
+      });
+    }
+  }, [isOpen]);
 
   // Handle Escape key
   useEffect(() => {
@@ -79,6 +90,28 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
               }}
               title={isLicensed ? 'rmb to forget license' : 'click to upgrade'}
             >[{isLicensed ? 'pro' : 'demo'}]</span>
+            {updateInfo.hasUpdate && updateInfo.latest && (
+              <div
+                style={{
+                  marginTop: '8px',
+                  fontSize: '12px',
+                  color: 'var(--accent-color)',
+                  cursor: 'pointer'
+                }}
+                onClick={async () => {
+                  const url = 'https://github.com/forkgatherer/yume/releases';
+                  if (window.__TAURI__) {
+                    const { invoke } = await import('@tauri-apps/api/core');
+                    await invoke('open_external', { url }).catch(() => window.open(url, '_blank'));
+                  } else {
+                    window.open(url, '_blank');
+                  }
+                }}
+                title="click to view releases"
+              >
+                update available: v{updateInfo.latest}
+              </div>
+            )}
           </div>
           
           <div className="about-credits" style={{display: 'none'}}>
