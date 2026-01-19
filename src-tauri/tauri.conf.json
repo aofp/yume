@@ -5,7 +5,7 @@
   "identifier": "be.yuru.yume",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:51837",
+    "devUrl": "http://localhost:54281",
     "beforeDevCommand": "npm run dev:frontend",
     "beforeBuildCommand": "npm run build"
   },

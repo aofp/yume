@@ -1433,7 +1433,6 @@ textarea.context-full {
 /* Windows release build specific adjustment - buttons need to go down 1px */
 .platform-win32 .context-bar {
   position: relative;
-  margin-top: var(--space-0-5);
   margin-bottom: 0;
 }
 
