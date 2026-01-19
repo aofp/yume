@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   IconX, IconPlus, IconMinus, IconSettings, IconPalette,
-  IconPhoto, IconRotateClockwise, IconCrown, IconInfoCircle,
+  IconPhoto, IconRotateClockwise, IconCrown,
   IconWebhook, IconCommand, IconDatabase, IconBrain,
   IconTrash, IconDownload, IconUpload, IconAlertTriangle,
   IconCheck, IconEdit, IconSparkles, IconBolt, IconPuzzle
@@ -12,7 +12,6 @@ import './SettingsModalTabbed.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { FontPickerModal } from '../FontPicker/FontPickerModal';
-import { AboutModal } from '../About/AboutModal';
 import { HooksTab } from './HooksTab';
 import { MCPTab } from './MCPTab';
 import { PluginsTab } from './PluginsTab';
@@ -28,6 +27,7 @@ import { ColorPicker } from './ColorPicker';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { appStorageKey } from '../../config/app';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { toastService } from '../../services/toastService';
 
 // electronAPI type is declared globally elsewhere
 
@@ -73,11 +73,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
   const [hoveredColorType, setHoveredColorType] = useState<string | null>(null);
   const [previewColor, setPreviewColor] = useState<string | null>(null);
   const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(initialFontPicker || null);
-  const [showAboutModal, setShowAboutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Focus trap for accessibility (only when no sub-modals open)
-  useFocusTrap(!showColorPicker && !showFontPicker && !showAboutModal, modalRef);
+  useFocusTrap(!showColorPicker && !showFontPicker, modalRef);
 
   // Theme system state
   const [customThemes, setCustomThemes] = useState<Theme[]>([]);
@@ -170,8 +169,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
           setShowColorPicker(null);
         } else if (showFontPicker) {
           setShowFontPicker(null);
-        } else if (showAboutModal) {
-          setShowAboutModal(false);
         } else {
           onClose();
         }
@@ -180,7 +177,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, showColorPicker, showFontPicker, showAboutModal, showHooksSettings, showCommandsSettings, showMcpSettings, showPluginsSettings, showSkillsSettings, memoryEnabled]);
+  }, [onClose, showColorPicker, showFontPicker, showHooksSettings, showCommandsSettings, showMcpSettings, showPluginsSettings, showSkillsSettings, memoryEnabled]);
 
   // Handle drag cursor on settings header
   useEffect(() => {
@@ -1002,6 +999,52 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                     </div>
                   </div>
 
+                  <div
+                    className="checkbox-setting compact"
+                    style={{
+                      opacity: isVscodeInstalled ? 1 : 0.5,
+                      pointerEvents: isVscodeInstalled ? 'auto' : 'none'
+                    }}
+                  >
+                    <span className="checkbox-label">vscode extension</span>
+                    <div
+                      className={`toggle-switch compact ${vscodeExtensionEnabled ? 'active' : ''}`}
+                      style={{
+                        opacity: vscodeInstalling ? 0.5 : 1,
+                        pointerEvents: vscodeInstalling ? 'none' : 'auto',
+                        cursor: vscodeInstalling ? 'default' : 'pointer'
+                      }}
+                      onClick={() => {
+                        if (!isVscodeInstalled || vscodeInstalling) return;
+
+                        const newEnabled = !vscodeExtensionEnabled;
+                        setVscodeExtensionEnabled(newEnabled);
+
+                        if (newEnabled) {
+                          if (!vscodeConnected) {
+                            setVscodeInstalling(true);
+                            invoke('install_vscode_extension')
+                              .then(() => console.log('VSCode extension installed'))
+                              .catch((err) => console.error('Failed to install vscode extension:', err))
+                              .finally(() => setVscodeInstalling(false));
+                          }
+                        } else {
+                          claudeCodeClient.disconnectVscodeClients();
+                          invoke('uninstall_vscode_extension')
+                            .then(() => {
+                              console.log('VSCode extension uninstalled');
+                              toastService.info('vscode extension uninstalled - restart vscode to complete');
+                            })
+                            .catch((err) => console.error('Failed to uninstall vscode extension:', err));
+                        }
+                      }}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
                   <h4 style={{ marginTop: '16px' }}>settings tabs</h4>
 
                   <div className="checkbox-setting compact">
@@ -1772,60 +1815,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
             {renderTabContent()}
           </div>
 
-          {/* Bottom controls - show upgrade/about on general, zoom/watermark on appearance */}
-          {(activeTab === 'general' || activeTab === 'appearance') && (
+          {/* Bottom controls - zoom/watermark on appearance */}
+          {activeTab === 'appearance' && (
             <div className="settings-bottom-controls">
               <div className="settings-bottom-left">
-                {activeTab === 'general' && (
-                  <div
-                    style={{
-                      margin: 0,
-                      opacity: isVscodeInstalled ? 1 : 0.5,
-                      pointerEvents: isVscodeInstalled ? 'auto' : 'none'
-                    }}
-                  >
-                    <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      vscode extension
-                      {vscodeConnected && <span style={{ fontSize: '8px', color: 'var(--positive-color)' }}>●</span>}
-                      {vscodeInstalling && <span style={{ fontSize: '8px', color: 'var(--accent-color)' }}>...</span>}
-                    </span>
-                    <div
-                      className={`toggle-switch compact ${vscodeExtensionEnabled ? 'active' : ''}`}
-                      onClick={() => {
-                        if (!isVscodeInstalled) return;
-
-                        const newEnabled = !vscodeExtensionEnabled;
-                        setVscodeExtensionEnabled(newEnabled);
-
-                        // Handle install/uninstall manually
-                        if (newEnabled) {
-                          if (!vscodeConnected) {
-                            setVscodeInstalling(true);
-                            invoke('install_vscode_extension')
-                              .then(() => console.log('VSCode extension installed'))
-                              .catch((err) => console.error('Failed to install vscode extension:', err))
-                              .finally(() => setVscodeInstalling(false));
-                          }
-                        } else {
-                          // First disconnect all vscode clients via server
-                          claudeCodeClient.disconnectVscodeClients();
-                          // Then uninstall the extension
-                          invoke('uninstall_vscode_extension')
-                            .then(() => console.log('VSCode extension uninstalled'))
-                            .catch((err) => console.error('Failed to uninstall vscode extension:', err));
-                        }
-                      }}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-                )}
-                {activeTab === 'appearance' && (
-                  <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                    <div>
-                      <h4>zoom</h4>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                  <div>
+                    <h4>zoom</h4>
                       <div className="zoom-controls compact">
                         <button
                           className="zoom-btn small"
@@ -1890,43 +1886,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                         </span>
                       </div>
                     </div> */}
-                  </div>
-                )}
+                </div>
               </div>
 
               <div className="settings-bottom-right">
-                {activeTab === 'general' && (
-                  <button
-                    className="settings-action-btn about"
-                    onClick={() => setShowAboutModal(true)}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#666',
-                      padding: '4px 12px',
-                      fontSize: '11px',
-                      borderRadius: '2px',
-                      cursor: 'default',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--accent-color)';
-                      e.currentTarget.style.color = 'var(--accent-color)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                      e.currentTarget.style.color = '#666';
-                    }}
-                  >
-                    <IconInfoCircle size={12} />
-                    <span>about</span>
-                  </button>
-                )}
-                {activeTab === 'appearance' && (
-                  <div>
-                    <h4>watermark image</h4>
+                <div>
+                  <h4>watermark image</h4>
                     <div className="watermark-controls">
                       <input
                         ref={fileInputRef}
@@ -1967,8 +1932,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                         </>
                       )}
                     </div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           )}
@@ -2017,23 +1981,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
         />
       )}
 
-      {/* About modal */}
-      {showAboutModal && (
-        <AboutModal
-          isOpen={true}
-          onClose={() => setShowAboutModal(false)}
-          onShowUpgrade={() => {
-            // Close AboutModal first, then show UpgradeModal
-            setShowAboutModal(false);
-            // Small delay to ensure AboutModal closes before UpgradeModal opens
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                detail: { reason: 'demo' }
-              }));
-            }, 100);
-          }}
-        />
-      )}
     </>
   );
 };

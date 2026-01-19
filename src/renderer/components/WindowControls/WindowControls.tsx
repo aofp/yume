@@ -25,6 +25,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const showAgentsMenu = useClaudeCodeStore(state => state.showAgentsMenu);
   const showAnalyticsMenu = useClaudeCodeStore(state => state.showAnalyticsMenu);
   const vscodeConnected = useClaudeCodeStore(state => state.vscodeConnected);
+  const vscodeExtensionEnabled = useClaudeCodeStore(state => state.vscodeExtensionEnabled);
   
   // Removed spammy platform detection log
   
@@ -166,7 +167,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </button>
         </div>
         {/* VSCode indicator right after traffic lights on mac (left side) */}
-        {vscodeConnected && (
+        {vscodeExtensionEnabled && vscodeConnected && (
           <span className="vscode-indicator" title="vscode extension connected">
             [vscode connected]
           </span>
@@ -267,7 +268,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
         </button>
       </div>
       {/* VSCode indicator after traffic lights on windows (right side) */}
-      {vscodeConnected && (
+      {vscodeExtensionEnabled && vscodeConnected && (
         <span className="vscode-indicator" title="vscode extension connected">
           [vscode connected]
         </span>
