@@ -345,13 +345,10 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              // cycle: files -> git -> sessions -> files
-              const next = filesSubTab === 'files' ? 'git' : filesSubTab === 'git' ? 'sessions' : 'files';
-              setFilesSubTab(next);
-              // open panel if not already open
-              if (!showFilesPanel) {
-                setShowFilesPanel(true);
-              }
+              // cycle backwards: files -> sessions -> git -> files (opposite of left-click tab order)
+              const prev = filesSubTab === 'files' ? 'sessions' : filesSubTab === 'sessions' ? 'git' : 'files';
+              setFilesSubTab(prev);
+              // don't open panel on right-click, just switch tab silently
             }}
             disabled={!workingDirectory}
             title={buildFilesButtonTitle() + ' • rmb: switch tab'}
