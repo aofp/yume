@@ -261,12 +261,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
       {/* CENTER: active status indicators - order: bash, agent, bg agent */}
       {(pendingBashCount > 0 || pendingAgentCount > 0 || backgroundAgentCount > 0) && (
         <div className="context-center">
-          {pendingBashCount > 0 && (
-            <span className="context-status-item bash">
-              <IconTerminal2 size={10} stroke={1.5} />
-              <span className="context-status-label">{pendingBashCount}</span>
-            </span>
-          )}
           {pendingAgentCount > 0 && (
             <span className="context-status-item agent">
               <IconRobot size={10} stroke={1.5} />
@@ -277,6 +271,12 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <span className="context-status-item bg-agent">
               <IconUsers size={10} stroke={1.5} />
               <span className="context-status-label">{backgroundAgentCount}</span>
+            </span>
+          )}
+          {pendingBashCount > 0 && (
+            <span className="context-status-item bash">
+              <IconTerminal2 size={10} stroke={1.5} />
+              <span className="context-status-label">{pendingBashCount}</span>
             </span>
           )}
         </div>

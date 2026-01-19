@@ -1459,7 +1459,7 @@ textarea.context-full {
   display: flex;
   gap: var(--space-1-5);
   align-items: center;
-  margin-left: var(--space-0-5);
+  margin-left: var(--space-1-5);
   padding-top: 2px;
   font-size: var(--text-xs);
   font-family: var(--font-mono);
