@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 /* Notification toast - top center, small, opaque */
@@ -14,25 +14,25 @@
   top: 48px;
   left: 50%;
   transform: translateX(-50%);
-  background: #111;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-  padding: 4px 8px;
+  background: var(--bg-90);
+  border: 1px solid var(--fg-15);
+  border-radius: var(--radius-xs);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   z-index: 10000;
 }
 
 .plugins-notification.success {
   border-color: rgba(153, 255, 153, 0.4);
-  color: #99ff99;
+  color: var(--positive-color);
 }
 
 .plugins-notification.error {
   border-color: rgba(255, 153, 153, 0.4);
-  color: #ff9999;
+  color: var(--negative-color);
 }
 
 .plugins-notification.info {
@@ -56,7 +56,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .plugins-header h4 {
@@ -69,20 +69,20 @@
 
 .plugins-actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .plugins-action-btn {
   background: transparent;
   border: 1px solid var(--fg-20);
   color: var(--fg-60);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   cursor: default;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .plugins-action-btn:hover {
@@ -95,7 +95,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 20px;
   color: var(--fg-50);
   font-size: var(--text-base);
@@ -116,33 +116,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 24px;
   color: var(--fg-50);
   font-size: var(--text-base);
   background: var(--fg-05);
   border: 1px solid var(--fg-15);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   text-align: center;
 }
 
 .no-plugins-hint {
   color: var(--fg-40);
   font-size: var(--text-sm);
-  margin: 4px 0 0 0;
+  margin: var(--space-1) 0 0 0;
 }
 
 /* Plugin List */
 .plugins-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 /* Plugin Item */
 .plugin-item {
   border: 1px solid var(--fg-15);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .plugin-item.enabled {
@@ -153,8 +153,8 @@
 .plugin-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2);
 }
 
 .plugin-expand {
@@ -162,7 +162,7 @@
   border: none;
   color: var(--fg-50);
   cursor: default;
-  padding: 2px;
+  padding: var(--space-0-5);
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -178,13 +178,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .plugin-name-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .plugin-name {
@@ -210,20 +210,20 @@
 /* Component count badges */
 .plugin-components {
   display: flex;
-  gap: 4px;
-  margin-right: 8px;
+  gap: var(--space-1);
+  margin-right: var(--space-2);
   flex-shrink: 0;
 }
 
 .component-count {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   color: var(--fg-60);
   font-size: var(--text-xs);
-  padding: 2px 4px;
+  padding: var(--space-0-5) var(--space-1);
   background: var(--fg-08);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .component-count svg {
@@ -234,7 +234,7 @@
 .plugin-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -249,28 +249,28 @@
   border: none;
   color: var(--fg-40);
   cursor: default;
-  padding: 4px;
+  padding: var(--space-1);
   display: flex;
   align-items: center;
 }
 
 .plugin-remove:hover {
-  color: #ff9999;
+  color: var(--negative-color);
 }
 
 /* Expanded Details */
 .plugin-details {
-  padding: 8px 12px 12px 28px;
+  padding: var(--space-2) var(--space-3) var(--space-3) 28px;
   border-top: 1px solid var(--fg-10);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .plugin-detail-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .detail-label {
@@ -279,7 +279,7 @@
   text-transform: lowercase;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .detail-label svg {
@@ -290,7 +290,7 @@
 .detail-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
   padding-left: 14px;
 }
 
@@ -298,16 +298,16 @@
   color: var(--fg-70);
   font-size: var(--text-sm);
   font-family: var(--font-mono, monospace);
-  padding: 2px 6px;
+  padding: var(--space-0-5) var(--space-1-5);
   background: var(--fg-08);
   border: 1px solid var(--fg-12);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .plugin-author {
   color: var(--fg-40);
   font-size: var(--text-xs);
   font-style: italic;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 

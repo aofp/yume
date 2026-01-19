@@ -344,31 +344,31 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  padding: var(--space-2);
+  background: var(--fg-02);
+  border: 1px solid var(--fg-08);
+  border-radius: var(--radius-sm);
 }
 
 .server-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--fg-03);
+  border-color: var(--fg-10);
 }
 
 .server-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   flex: 1;
 }
 
 .server-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--fg-90);
   font-size: var(--text-base);
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -380,7 +380,7 @@
 }
 
 .server-details {
-  color: #666;
+  color: var(--fg-50);
   font-size: var(--text-xs);
   font-family: var(--font-mono);
   overflow: hidden;
@@ -391,19 +391,19 @@
 
 .server-actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .server-action-btn {
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--fg-50);
   font-size: var(--text-sm);
   cursor: default;
-  padding: 2px 4px;
+  padding: var(--space-0-5) var(--space-1);
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .server-action-btn:hover {
@@ -411,7 +411,7 @@
 }
 
 .server-action-btn.remove:hover {
-  color: #ff9999;
+  color: var(--negative-color);
 }
 
 .server-action-btn:disabled {
@@ -422,8 +422,8 @@
 /* Built-in servers section */
 .mcp-builtin {
   margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--fg-08);
 }
 
 .memory-server.enabled {
@@ -438,7 +438,7 @@
 .server-status {
   font-size: var(--text-xs);
   padding: 1px 5px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   font-weight: 500;
   text-transform: lowercase;
 }
@@ -450,29 +450,29 @@
 }
 
 .server-status.stopped {
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--fg-40);
+  background: var(--fg-03);
+  border: 1px solid var(--fg-10);
 }
 
 .memory-toggle-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--fg-15);
+  color: var(--fg-50);
   font-size: var(--text-sm);
   padding: 3px 10px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   cursor: default;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 48px;
   justify-content: center;
 }
 
 .memory-toggle-btn:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--fg-30);
+  background: var(--fg-03);
 }
 
 .memory-toggle-btn.on {

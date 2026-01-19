@@ -5,10 +5,10 @@
   top: 64px;
   left: 50%;
   transform: translateX(-50%);
-  background: #111;
+  background: var(--bg-90);
   border: 1px solid var(--fg-20);
-  border-radius: 4px;
-  padding: 6px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5);
   font-size: var(--text-sm);
   z-index: 99999;
   pointer-events: none;

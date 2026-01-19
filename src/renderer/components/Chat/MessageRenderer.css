@@ -1460,7 +1460,7 @@ pre.bash-content,
 
 /* Bash command output styling */
 .bash-output {
-  background: var(--fg-03);
+  background: rgba(var(--negative-rgb), 0.05) !important;
   color: color-mix(in srgb, var(--foreground-color) 80%, var(--negative-color) 20%) !important;
   margin-bottom: var(--space-0-5);
 }

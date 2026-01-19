@@ -6,7 +6,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4); /* Slightly transparent to show settings modal underneath */
+  background: var(--bg-40); /* Slightly transparent to show settings modal underneath */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,7 +19,7 @@
 .upgrade-modal {
   background: var(--background-color);
   border: 1px solid var(--fg-10);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   width: 90%;
   max-width: 314px;
   overflow-y: auto;
@@ -31,7 +31,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
+  padding: var(--space-1-5);
   border-bottom: 1px solid var(--fg-10);
 }
 
@@ -52,7 +52,7 @@
   border: none;
   color: var(--fg-40);
   cursor: default;
-  padding: 2px;
+  padding: var(--space-0-5);
 }
 
 .upgrade-close:hover {
@@ -60,7 +60,7 @@
 }
 
 .upgrade-content {
-  padding: 6px;
+  padding: var(--space-1-5);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -68,9 +68,9 @@
 .upgrade-reason {
   background: var(--fg-05);
   border: 1px solid var(--fg-10);
-  border-radius: 4px;
-  padding: 6px 8px;
-  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5) var(--space-2);
+  margin-bottom: var(--space-3);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -85,13 +85,13 @@
 
 .upgrade-price {
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   user-select: none;
   -webkit-user-select: none;
 }
 
 .upgrade-price p {
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--space-2) 0;
   font-size: var(--text-base);
   color: var(--fg-50);
   text-transform: lowercase;
@@ -106,17 +106,17 @@
 }
 
 .upgrade-price .price-subtitle {
-  margin: 4px 0 12px 0;
+  margin: var(--space-1) 0 var(--space-3) 0;
   font-size: var(--text-sm);
   color: var(--fg-40);
 }
 
 .upgrade-button {
-  padding: 6px 20px;
+  padding: var(--space-1-5) 20px;
   background: transparent;
   border: 1px solid var(--accent-color);
   color: var(--accent-color);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: 500;
   text-transform: lowercase;
@@ -131,12 +131,12 @@
 .license-input-section {
   background: var(--fg-03);
   border: 1px solid var(--fg-10);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 10px;
 }
 
 .license-input-section p {
-  margin: 0 0 8px 0;
+  margin: 0 0 var(--space-2) 0;
   font-size: var(--text-sm);
   color: var(--fg-40);
   text-transform: lowercase;
@@ -145,19 +145,19 @@
 
 .license-input-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .license-input {
   flex: 1;
-  padding: 6px 8px;
+  padding: var(--space-1-5) var(--space-2);
   background: var(--fg-05);
   border: 1px solid var(--fg-10);
   color: var(--accent-color);
   font-size: var(--text-xs);
   font-family: var(--font-mono);
   text-transform: uppercase;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   outline: none;
 }
 
@@ -173,11 +173,11 @@
 }
 
 .activate-button {
-  padding: 6px 16px;
+  padding: var(--space-1-5) var(--space-4);
   background: transparent;
   border: 1px solid var(--fg-30);
   color: var(--fg-60);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: 500;
   text-transform: lowercase;
