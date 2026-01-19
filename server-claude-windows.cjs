@@ -499,7 +499,7 @@ function createWslClaudeCommand(args, workingDir, message) {
     }
     
     // For title generation, use direct WSL with full path
-    const script = `cat | ${claudePath} --print --output-format json --model claude-sonnet-4-5-20250929 2>&1`;
+    const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-haiku-20241022 2>&1`;
     
     console.log(`🔍 WSL script (title gen)`);
     return [wslPath, ['-e', 'bash', '-c', script], false];
@@ -911,7 +911,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       '-p', titlePrompt,  // Pass prompt via -p flag
       '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-sonnet-4-5-20250929'
+      '--model', 'claude-3-5-haiku-20241022'
     ];
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);

@@ -1993,7 +1993,7 @@ textarea.context-full {
   display: flex;
   gap: var(--space-0-5);
   padding: var(--space-0-5);
-  padding-left: var(--space-0-5);
+  padding-left: 3px;
   padding-bottom: 0px;
   background: var(--background-color, #000000);
   flex-wrap: wrap;
@@ -2009,7 +2009,7 @@ textarea.context-full {
   gap: var(--space-1);
   padding: var(--space-0-5) var(--space-1-5);
   border: 1px solid var(--fg-15);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   user-select: none;
 }
 

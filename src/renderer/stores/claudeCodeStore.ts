@@ -91,6 +91,11 @@ const messageHashCache = new WeakMap<any, string>();
 // Previously: only one timer ID was stored, causing the other to leak
 const streamingEndTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+// Completion sound debounce - prevent double-play when both result message and stream_end fire
+// Also prevents sound playing for background tasks like title generation
+let lastCompletionSoundTime = 0;
+const COMPLETION_SOUND_DEBOUNCE_MS = 2000; // 2 seconds between sounds
+
 // Platform-aware debounce: Windows has longer delays between Claude CLI turns
 // macOS: 700ms is sufficient, Windows: needs 2s due to slower IPC/process timing
 const IS_WINDOWS = navigator.platform.toLowerCase().includes('win');
@@ -6013,6 +6018,14 @@ ${content}`;
           console.log('[Store] Sound disabled, skipping');
           return;
         }
+
+        // Debounce: prevent double-play when multiple completion signals fire close together
+        const now = Date.now();
+        if (now - lastCompletionSoundTime < COMPLETION_SOUND_DEBOUNCE_MS) {
+          console.log('[Store] Sound debounced - too soon since last play');
+          return;
+        }
+        lastCompletionSoundTime = now;
 
         console.log('[Store] Playing completion sound...');
 

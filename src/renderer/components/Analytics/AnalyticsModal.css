@@ -23,7 +23,6 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-1-5);
-  padding-bottom: 2px;
   border-bottom: 1px solid var(--bg-15);
   user-select: none;
   cursor: default;
@@ -55,8 +54,7 @@
 }
 
 .analytics-modal .header-tabs .tab-btn {
-  padding: var(--space-1) var(--space-1-5);
-  font-size: 11px;
+  font-size: var(--text-sm)
 }
 
 /* Provider Filter Pills */
@@ -284,7 +282,7 @@
   gap: 20px;
   padding: 10px 0;
   margin-bottom: 12px;
-  border-bottom: 1px solid var(--fg-06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .stat-item {
@@ -337,7 +335,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-1-5);
-  border: 1px solid var(--fg-04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .stat-icon {
@@ -386,7 +384,7 @@
 
 .token-breakdown-table th {
   text-align: left;
-  padding: var(--space-1-5) var(--space-2);
+  padding: 6px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--accent-color);
   font-weight: 500;
@@ -395,9 +393,9 @@
 }
 
 .token-breakdown-table td {
-  padding: var(--space-1-5) var(--space-2);
-  color: var(--fg-80);
-  border-bottom: 1px solid var(--fg-05);
+  padding: 6px 8px;
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .token-breakdown-table tr.total-row td {
@@ -423,7 +421,7 @@
 .model-stat {
   background: var(--fg-5);
   padding: var(--space-1-5);
-  border: 1px solid var(--fg-04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-left: 3px solid var(--accent-color);
 }
 
@@ -444,7 +442,7 @@
 
 .model-stat.compact .model-name {
   font-size: 11px;
-  color: var(--fg-80);
+  color: #ccc;
   margin: 0;
 }
 
@@ -457,7 +455,7 @@
 .model-stat.compact .model-bar {
   width: 100%;
   height: 4px;
-  background: var(--fg-06);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-xs);
 }
 
@@ -478,7 +476,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: var(--text-sm);
-  color: var(--fg-80);
+  color: #ccc;
   margin-bottom: 6px;
 }
 
@@ -488,7 +486,7 @@
 
 .model-bar {
   height: 3px;
-  background: var(--bg-10);
+  background: #1a1a1a;
   position: relative;
   overflow: hidden;
 }
@@ -521,7 +519,7 @@
 
 .provider-stat.compact .provider-name {
   font-size: 11px;
-  color: var(--fg-80);
+  color: #ccc;
   text-transform: capitalize;
 }
 
@@ -533,7 +531,7 @@
 .provider-stat.compact .provider-bar {
   width: 100%;
   height: 4px;
-  background: var(--fg-06);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-xs);
   overflow: hidden;
 }
@@ -573,11 +571,11 @@
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: var(--fg-55);
+  color: #888;
 }
 
 .token-row span:last-child {
-  color: var(--fg-80);
+  color: #ccc;
 }
 
 /* Daily Usage Heatmap - Interactive */
@@ -588,7 +586,7 @@
 .usage-heatmap-container {
   background: var(--fg-5);
   padding: 14px;
-  border: 1px solid var(--fg-04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: var(--radius-sm);
 }
 
@@ -659,7 +657,7 @@
 .heatmap-cell {
   width: 20px;
   height: 20px;
-  background: var(--fg-04);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: var(--radius-xs);
   cursor: default;
   position: relative;
@@ -678,11 +676,11 @@
   top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--bg-08);
-  padding: 3px var(--space-1-5);
+  background: #111;
+  padding: 3px 6px;
   border-radius: 3px;
   font-size: 9px;
-  color: var(--fg-67);
+  color: #aaa;
   z-index: 100;
   pointer-events: none;
   border: 1px solid color-mix(
@@ -775,7 +773,7 @@
   flex-wrap: wrap;
   gap: var(--space-1-5);;
   font-size: 10px;
-  color: var(--fg-45);
+  color: rgba(255, 255, 255, 0.45);
   margin-top: 6px;
 }
 
@@ -784,7 +782,7 @@
   justify-content: center;
   align-items: center;
   height: 100px;
-  color: var(--fg-30);
+  color: rgba(255, 255, 255, 0.3);
   font-size: 11px;
 }
 
@@ -800,9 +798,9 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 10px var(--space-3);
+  padding: 10px 12px;
   background: var(--fg-5);
-  border: 1px solid var(--fg-04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .analytics-project-item.clickable {
@@ -835,7 +833,7 @@
 .analytics-project-name {
   text-align: left;
   font-size: var(--text-base);
-  color: var(--fg-80);
+  color: #ccc;
   letter-spacing: 0.2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -873,7 +871,7 @@
   justify-content: center;
   align-items: center;
   padding: 20px;
-  color: var(--fg-30);
+  color: rgba(255, 255, 255, 0.3);
   font-size: 11px;
 }
 
@@ -883,7 +881,7 @@
   justify-content: center;
   align-items: center;
   padding: 60px 20px;
-  color: var(--fg-30);
+  color: rgba(255, 255, 255, 0.3);
   font-size: 12px;
   gap: 20px;
 }

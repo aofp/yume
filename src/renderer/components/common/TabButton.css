@@ -19,7 +19,7 @@
 
 /* Active state */
 .tab-btn.active {
-  background: rgba(var(--accent-rgb), 0.05);
+  background: rgba(var(--accent-rgb), 0.1);
   border-color: rgba(var(--accent-rgb), 0.8);
   color: var(--accent-color);
   cursor: default;

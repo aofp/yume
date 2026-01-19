@@ -186,12 +186,13 @@
 }
 
 .mt-model-btn.selected {
-  background: var(--accent-05);
+  background: var(--accent-10);
   border-color: var(--accent-80);
   color: var(--accent-color);
 }
 
 .mt-model-btn.selected:hover {
+  background: var(--accent-10);
   border-color: var(--accent-color);
 }
 
