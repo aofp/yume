@@ -9,6 +9,7 @@ import {
 } from '../../config/tools';
 import { useEnabledProviders } from '../../hooks/useEnabledProviders';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './ModelToolsModal.css';
 
 interface ModelToolsModalProps {
@@ -34,6 +35,10 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
 }) => {
   const memoryEnabled = useClaudeCodeStore(state => state.memoryEnabled);
   const allToolsByCategory = getToolsByCategory();
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap for accessibility
+  useFocusTrap(isOpen, modalRef);
 
   // Filter MCP tools based on memory enabled state
   const toolsByCategory = useMemo(() => {
@@ -388,6 +393,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   return (
     <div className="mt-modal-overlay" onClick={onClose} onContextMenu={(e) => e.preventDefault()}>
       <div
+        ref={modalRef}
         className={`mt-modal ${isKeyboardNav ? 'keyboard-nav' : ''}`}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={handleMouseDown}

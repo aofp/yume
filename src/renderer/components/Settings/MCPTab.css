@@ -11,25 +11,25 @@
   position: absolute;
   top: -8px;
   right: 0;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  padding: 6px 10px;
+  background: var(--fg-05);
+  border: 1px solid var(--fg-10);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5) 10px;
   font-size: var(--text-base);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   z-index: 100;
 }
 
 .mcp-notification.success {
   border-color: rgba(153, 255, 153, 0.3);
-  color: #99ff99;
+  color: var(--positive-color);
 }
 
 .mcp-notification.error {
   border-color: rgba(255, 153, 153, 0.3);
-  color: #ff9999;
+  color: var(--negative-color);
 }
 
 .mcp-notification.info {
@@ -53,7 +53,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .mcp-header h4 {
@@ -66,20 +66,20 @@
 
 .mcp-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .mcp-action-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
-  padding: 2px 6px;
-  border-radius: 4px;
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   cursor: default;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .mcp-action-btn:hover {
@@ -92,9 +92,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 20px;
-  color: #666;
+  color: var(--fg-50);
   font-size: var(--text-base);
 }
 
@@ -109,36 +109,36 @@
 
 /* Add form */
 .mcp-add-form {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  padding: 6px;
-  margin-bottom: 12px;
+  background: var(--fg-02);
+  border: 1px solid var(--fg-10);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1-5);
+  margin-bottom: var(--space-3);
 }
 
 .form-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .form-tab {
   flex: 1;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
-  padding: 4px 8px;
-  border-radius: 4px;
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .form-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
 }
 
 .form-tab.active {
@@ -150,17 +150,17 @@
 .form-fields {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .form-field label {
-  color: #999;
+  color: var(--fg-50);
   font-size: var(--text-sm);
   text-transform: lowercase;
   display: flex;
@@ -169,44 +169,44 @@
 }
 
 .form-field input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  color: rgba(255, 255, 255, 0.9);
-  padding: 6px 8px;
+  background: var(--fg-05);
+  border: 1px solid var(--fg-10);
+  border-radius: var(--radius-xs);
+  color: var(--fg-90);
+  padding: var(--space-1-5) var(--space-2);
   font-size: var(--text-base);
   font-family: var(--font-mono);
   outline: none;
 }
 
 .form-field input:focus {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--fg-08);
   border-color: var(--accent-color);
 }
 
 /* Scope selector */
 .scope-selector {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .scope-btn {
   flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
-  padding: 4px 8px;
-  border-radius: 2px;
+  background: var(--fg-05);
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
   font-size: var(--text-sm);
   cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .scope-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--fg-08);
 }
 
 .scope-btn.active {
@@ -221,7 +221,7 @@
   border: none;
   color: var(--accent-color);
   cursor: default;
-  padding: 2px;
+  padding: var(--space-0-5);
 }
 
 .add-env-btn:hover {
@@ -230,7 +230,7 @@
 
 .env-var-row {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
@@ -247,9 +247,9 @@
 .remove-env-btn {
   background: transparent;
   border: none;
-  color: #ff9999;
+  color: var(--negative-color);
   cursor: default;
-  padding: 4px;
+  padding: var(--space-1);
 }
 
 .remove-env-btn:hover {
@@ -259,20 +259,20 @@
 /* Form actions */
 .form-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .form-btn {
   flex: 1;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: var(--text-base);
   cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .form-btn.save {
@@ -288,51 +288,51 @@
 
 .form-btn.cancel {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
 }
 
 .form-btn.cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--fg-05);
+  border-color: var(--fg-30);
 }
 
 /* Server list */
 .mcp-servers {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .no-servers {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 20px;
-  color: #666;
+  color: var(--fg-50);
   font-size: var(--text-base);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  background: var(--fg-02);
+  border: 1px solid var(--fg-08);
+  border-radius: var(--radius-sm);
 }
 
 /* Server group */
 .server-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .group-title {
-  color: #999;
+  color: var(--fg-50);
   font-size: var(--text-sm);
   font-weight: 500;
-  margin: 8px 0 4px 0;
+  margin: var(--space-2) 0 var(--space-1) 0;
   text-transform: lowercase;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .group-title svg {

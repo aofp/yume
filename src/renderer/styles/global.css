@@ -17,6 +17,7 @@
   --fg-60: rgba(var(--foreground-rgb), 0.6);     /* Tertiary text */
   --fg-50: rgba(var(--foreground-rgb), 0.5);     /* Muted text */
   --fg-40: rgba(var(--foreground-rgb), 0.4);     /* Disabled/hint text */
+  --fg-35: rgba(var(--foreground-rgb), 0.35);    /* Between hint and border */
   --fg-30: rgba(var(--foreground-rgb), 0.3);     /* Strong borders */
   --fg-25: rgba(var(--foreground-rgb), 0.25);    /* Default borders */
   --fg-20: rgba(var(--foreground-rgb), 0.20);     /* Subtle borders */
@@ -35,6 +36,9 @@
   --bg-50: rgba(var(--background-rgb), 0.5);     /* Half overlay */
   --bg-30: rgba(var(--background-rgb), 0.3);     /* Light overlay */
   --bg-20: rgba(var(--background-rgb), 0.2);     /* Subtle overlay */
+  --bg-08: rgba(var(--background-rgb), 0.08);    /* Very subtle hover */
+  --bg-05: rgba(var(--background-rgb), 0.05);    /* Subtle background */
+  --bg-02: rgba(var(--background-rgb), 0.02);    /* Very subtle background */
 
   /* Brightened background variants - mix background with white, then apply opacity */
   --bg-brighter: color-mix(in srgb, var(--background-color) 90%, var(--foreground-color) 10%);
@@ -122,7 +126,9 @@
   --font-bold: 700;
   
   /* Spacing */
+  --space-0-5: 2px;
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
@@ -134,6 +140,7 @@
   --space-16: 64px;
   
   /* Border Radius */
+  --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;

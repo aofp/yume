@@ -24,6 +24,13 @@ interface GraphStats {
   entitiesByType: Record<string, MemoryEntity[]>;
 }
 
+// Navigation item for flat index
+interface NavItem {
+  type: 'type' | 'entity';
+  typeKey: string;
+  entityName?: string;
+}
+
 export const MemoryTab: React.FC = () => {
   const { memoryEnabled, memoryServerRunning, memoryRetentionDays, setMemoryRetentionDays } = useClaudeCodeStore();
   const [pruning, setPruning] = useState(false);
@@ -32,6 +39,10 @@ export const MemoryTab: React.FC = () => {
   const [graphStats, setGraphStats] = useState<GraphStats | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
+
+  // Keyboard navigation state
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -201,6 +212,106 @@ export const MemoryTab: React.FC = () => {
     });
   };
 
+  // Build flat navigation index from current visible items
+  const buildNavItems = useCallback((): NavItem[] => {
+    if (!graphStats) return [];
+    const items: NavItem[] = [];
+    const types = Object.keys(graphStats.entitiesByType).sort();
+
+    for (const typeKey of types) {
+      items.push({ type: 'type', typeKey });
+      if (expandedTypes.has(typeKey)) {
+        const entities = graphStats.entitiesByType[typeKey] || [];
+        for (const entity of entities) {
+          items.push({ type: 'entity', typeKey, entityName: entity.name });
+        }
+      }
+    }
+    return items;
+  }, [graphStats, expandedTypes]);
+
+  const navItems = buildNavItems();
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!graphStats || navItems.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault();
+        setSelectedIndex(prev => Math.min(prev + 1, navItems.length - 1));
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        setSelectedIndex(prev => Math.max(prev - 1, 0));
+        break;
+      }
+      case 'ArrowRight':
+      case 'Enter': {
+        e.preventDefault();
+        if (selectedIndex < 0 || selectedIndex >= navItems.length) return;
+        const item = navItems[selectedIndex];
+        if (item.type === 'type') {
+          if (!expandedTypes.has(item.typeKey)) {
+            toggleTypeExpansion(item.typeKey);
+          } else if (e.key === 'Enter' && item.entityName) {
+            toggleEntityExpansion(item.entityName);
+          }
+        } else if (item.type === 'entity' && item.entityName) {
+          toggleEntityExpansion(item.entityName);
+        }
+        break;
+      }
+      case 'ArrowLeft': {
+        e.preventDefault();
+        if (selectedIndex < 0 || selectedIndex >= navItems.length) return;
+        const item = navItems[selectedIndex];
+        if (item.type === 'type') {
+          if (expandedTypes.has(item.typeKey)) {
+            toggleTypeExpansion(item.typeKey);
+          }
+        } else if (item.type === 'entity' && item.entityName) {
+          if (expandedEntities.has(item.entityName)) {
+            toggleEntityExpansion(item.entityName);
+          } else {
+            // go back to parent type
+            const typeIdx = navItems.findIndex(n => n.type === 'type' && n.typeKey === item.typeKey);
+            if (typeIdx >= 0) setSelectedIndex(typeIdx);
+          }
+        }
+        break;
+      }
+      case 'Backspace':
+      case 'Delete': {
+        e.preventDefault();
+        if (selectedIndex < 0 || selectedIndex >= navItems.length) return;
+        const item = navItems[selectedIndex];
+        if (item.type === 'entity' && item.entityName) {
+          deleteEntity(item.entityName);
+        }
+        break;
+      }
+    }
+  }, [graphStats, navItems, selectedIndex, expandedTypes, expandedEntities, toggleTypeExpansion, toggleEntityExpansion, deleteEntity]);
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (selectedIndex >= 0 && listRef.current) {
+      const selected = listRef.current.querySelector('.memory-nav-selected');
+      if (selected) {
+        selected.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [selectedIndex]);
+
+  // Helper to check if item is selected
+  const isSelected = (item: NavItem) => {
+    if (selectedIndex < 0 || selectedIndex >= navItems.length) return false;
+    const sel = navItems[selectedIndex];
+    return sel.type === item.type && sel.typeKey === item.typeKey && sel.entityName === item.entityName;
+  };
+
   return (
     <div className="memory-tab">
       {/* Confirmation Modal */}
@@ -314,12 +425,18 @@ export const MemoryTab: React.FC = () => {
               </div>
 
               {/* Entities by Type */}
-              <div className="memory-type-list">
-                {Object.entries(graphStats.entitiesByType).map(([type, entities]) => (
+              <div
+                className="memory-type-list"
+                ref={listRef}
+                tabIndex={0}
+                onKeyDown={handleKeyDown}
+                onFocus={() => { if (selectedIndex < 0 && navItems.length > 0) setSelectedIndex(0); }}
+              >
+                {Object.entries(graphStats.entitiesByType).sort(([a], [b]) => a.localeCompare(b)).map(([type, entities]) => (
                   <div key={type}>
                     {/* Type Header */}
                     <div
-                      className="memory-type-header"
+                      className={`memory-type-header ${isSelected({ type: 'type', typeKey: type }) ? 'memory-nav-selected' : ''}`}
                       onClick={() => toggleTypeExpansion(type)}
                     >
                       <div className="memory-type-info">
@@ -340,7 +457,7 @@ export const MemoryTab: React.FC = () => {
                           <div key={entity.name}>
                             {/* Entity Item */}
                             <div
-                              className="memory-entity-item"
+                              className={`memory-entity-item ${isSelected({ type: 'entity', typeKey: type, entityName: entity.name }) ? 'memory-nav-selected' : ''}`}
                               onClick={() => toggleEntityExpansion(entity.name)}
                             >
                               <div className="memory-entity-info">

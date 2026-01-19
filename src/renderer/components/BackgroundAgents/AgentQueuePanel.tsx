@@ -2,7 +2,7 @@
  * AgentQueuePanel - Panel showing background agent queue and status
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   IconX,
   IconPlayerStop,
@@ -41,6 +41,9 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Subscribe to agent updates
   useEffect(() => {
@@ -98,6 +101,96 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
     });
   }, []);
 
+  // Get flat list of all agents for keyboard navigation
+  const allAgents = [...agents.filter(a => a.status === 'running'),
+                     ...agents.filter(a => a.status === 'queued'),
+                     ...agents.filter(a => a.status === 'completed' || a.status === 'failed' || a.status === 'cancelled')];
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (allAgents.length === 0) return;
+
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+        break;
+      case 'ArrowDown':
+      case 'j':
+        e.preventDefault();
+        setFocusedIndex(prev => Math.min(prev + 1, allAgents.length - 1));
+        break;
+      case 'ArrowUp':
+      case 'k':
+        e.preventDefault();
+        setFocusedIndex(prev => Math.max(prev - 1, 0));
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < allAgents.length) {
+          toggleExpand(allAgents[focusedIndex].id);
+        }
+        break;
+      case 'Home':
+        e.preventDefault();
+        setFocusedIndex(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setFocusedIndex(allAgents.length - 1);
+        break;
+      case 'Delete':
+      case 'Backspace':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < allAgents.length) {
+          const agent = allAgents[focusedIndex];
+          if (agent.status === 'running' || agent.status === 'queued') {
+            handleCancel(agent.id);
+          } else {
+            handleRemove(agent.id);
+          }
+        }
+        break;
+      case 'v':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < allAgents.length) {
+          const agent = allAgents[focusedIndex];
+          if (agent.status === 'completed') {
+            onViewOutput?.(agent.id);
+          }
+        }
+        break;
+      case 'm':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < allAgents.length) {
+          const agent = allAgents[focusedIndex];
+          if (agent.status === 'completed' && agent.git_branch) {
+            handleMerge(agent.id);
+          }
+        }
+        break;
+    }
+  }, [allAgents, focusedIndex, onClose, toggleExpand, handleCancel, handleRemove, handleMerge, onViewOutput]);
+
+  // Scroll focused card into view
+  useEffect(() => {
+    if (focusedIndex >= 0 && focusedIndex < allAgents.length) {
+      const agentId = allAgents[focusedIndex].id;
+      const cardEl = cardRefs.current.get(agentId);
+      cardEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [focusedIndex, allAgents]);
+
+  // Focus panel when opened
+  useEffect(() => {
+    if (isOpen) {
+      panelRef.current?.focus();
+      setFocusedIndex(allAgents.length > 0 ? 0 : -1);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const runningAgents = agents.filter((a) => a.status === 'running');
@@ -106,8 +199,19 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
     (a) => a.status === 'completed' || a.status === 'failed' || a.status === 'cancelled'
   );
 
+  // Helper to check if agent at index is focused
+  const isAgentFocused = (agentId: string) => {
+    const idx = allAgents.findIndex(a => a.id === agentId);
+    return idx === focusedIndex;
+  };
+
   return (
-    <div className="agent-queue-panel">
+    <div
+      className="agent-queue-panel"
+      ref={panelRef}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <div className="agent-queue-header">
         <div className="agent-queue-title">
           <span>background agents</span>
@@ -164,6 +268,8 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
                     key={agent.id}
                     agent={agent}
                     expanded={expandedAgents.has(agent.id)}
+                    focused={isAgentFocused(agent.id)}
+                    cardRef={(el) => { if (el) cardRefs.current.set(agent.id, el); else cardRefs.current.delete(agent.id); }}
                     onToggle={() => toggleExpand(agent.id)}
                     onCancel={() => handleCancel(agent.id)}
                     onRemove={() => handleRemove(agent.id)}
@@ -183,6 +289,8 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
                     key={agent.id}
                     agent={agent}
                     expanded={expandedAgents.has(agent.id)}
+                    focused={isAgentFocused(agent.id)}
+                    cardRef={(el) => { if (el) cardRefs.current.set(agent.id, el); else cardRefs.current.delete(agent.id); }}
                     onToggle={() => toggleExpand(agent.id)}
                     onCancel={() => handleCancel(agent.id)}
                     onRemove={() => handleRemove(agent.id)}
@@ -202,6 +310,8 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
                     key={agent.id}
                     agent={agent}
                     expanded={expandedAgents.has(agent.id)}
+                    focused={isAgentFocused(agent.id)}
+                    cardRef={(el) => { if (el) cardRefs.current.set(agent.id, el); else cardRefs.current.delete(agent.id); }}
                     onToggle={() => toggleExpand(agent.id)}
                     onCancel={() => handleCancel(agent.id)}
                     onRemove={() => handleRemove(agent.id)}
@@ -221,6 +331,8 @@ export const AgentQueuePanel: React.FC<AgentQueuePanelProps> = ({
 interface AgentCardProps {
   agent: BackgroundAgent;
   expanded: boolean;
+  focused: boolean;
+  cardRef: (el: HTMLDivElement | null) => void;
   onToggle: () => void;
   onCancel: () => void;
   onRemove: () => void;
@@ -231,6 +343,8 @@ interface AgentCardProps {
 const AgentCard: React.FC<AgentCardProps> = ({
   agent,
   expanded,
+  focused,
+  cardRef,
   onToggle,
   onCancel,
   onRemove,
@@ -244,7 +358,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
   const hasBranch = !!agent.git_branch;
 
   return (
-    <div className={`agent-card ${agent.status}`}>
+    <div className={`agent-card ${agent.status}${focused ? ' focused' : ''}`} ref={cardRef}>
       <div className="agent-card-header" onClick={onToggle}>
         <button className="agent-expand-btn">
           {expanded ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}

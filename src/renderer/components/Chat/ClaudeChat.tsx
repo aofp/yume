@@ -2589,6 +2589,39 @@ export const ClaudeChat: React.FC = () => {
           ? (currentIdx - 1 + tabs.length) % tabs.length
           : (currentIdx + 1) % tabs.length;
         setFilesSubTab(tabs[nextIdx]);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        // Arrow left/right for folder expand/collapse in files panel
+        if (showFilesPanel && filesSubTab === 'files' && fileTree.length > 0 && focusedFileIndex >= 0) {
+          e.preventDefault();
+          // Find focused file path
+          const getFocusedPath = (items: any[], idx: number): { path: string; isDir: boolean } | null => {
+            let count = 0;
+            const traverse = (nodes: any[]): { path: string; isDir: boolean } | null => {
+              for (const item of nodes) {
+                if (count === idx) return { path: item.path, isDir: item.type === 'directory' };
+                count++;
+                if (item.type === 'directory' && expandedFolders.has(item.path) && item.children) {
+                  const found = traverse(item.children);
+                  if (found) return found;
+                }
+              }
+              return null;
+            };
+            return traverse(items);
+          };
+          const focusedItem = getFocusedPath(fileTree, focusedFileIndex);
+          if (focusedItem?.isDir) {
+            if (e.key === 'ArrowRight' && !expandedFolders.has(focusedItem.path)) {
+              setExpandedFolders(prev => new Set([...prev, focusedItem.path]));
+            } else if (e.key === 'ArrowLeft' && expandedFolders.has(focusedItem.path)) {
+              setExpandedFolders(prev => {
+                const next = new Set(prev);
+                next.delete(focusedItem.path);
+                return next;
+              });
+            }
+          }
+        }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
         // Panel keyboard navigation
         if (showFilesPanel && filesSubTab === 'files' && fileTree.length > 0) {
@@ -4969,8 +5002,7 @@ export const ClaudeChat: React.FC = () => {
                     <span>git</span>
                     {gitStatus && (
                       <span className="git-tab-stats">
-                        <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
-                        {gitAhead >= 0 && <span>{gitAhead}</span>}
+                        <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}{gitAhead > 0 ? `,${gitAhead}` : ''}</span>
                         <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
                         <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
                       </span>
@@ -6141,6 +6173,7 @@ export const ClaudeChat: React.FC = () => {
               showDictationSetting={showDictation}
               visibility={contextBarVisibility}
               gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
+              gitAheadCount={gitAhead}
               gitLinesAdded={Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}
               gitLinesRemoved={Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}
               sessionFileCount={sessionFileStats.fileCount}

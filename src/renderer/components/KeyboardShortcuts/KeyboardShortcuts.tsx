@@ -157,6 +157,15 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <div className="shortcut-keys">
                 <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
+                <span className="key-btn">h</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">history panel</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
                 <span className="key-btn">n</span>
               </div>
               <span className="shortcut-dots"></span>
@@ -251,6 +260,15 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <div className="shortcut-keys">
                 <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
+                <span className="key-btn">k</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">insert ultrathink</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
                 <span className="key-btn">f</span>
               </div>
               <span className="shortcut-dots"></span>
@@ -294,6 +312,31 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               </div>
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">zoom</span>
+            </div>
+
+            <div className="shortcut-category">navigation</div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">↑</span>
+                <span className="key-btn">↓</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">panel list nav</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">←</span>
+                <span className="key-btn">→</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">folder expand</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">esc</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">close/interrupt</span>
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">

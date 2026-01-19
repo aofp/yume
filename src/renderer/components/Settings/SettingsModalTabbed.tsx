@@ -27,6 +27,7 @@ import { pluginService } from '../../services/pluginService';
 import { ColorPicker } from './ColorPicker';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { appStorageKey } from '../../config/app';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 // electronAPI type is declared globally elsewhere
 
@@ -60,6 +61,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
   });
   const [isDragging, setIsDragging] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
   const [backgroundColor, setBackgroundColor] = useState(DEFAULT_COLORS.background);
   const [foregroundColor, setForegroundColor] = useState(DEFAULT_COLORS.foreground);
@@ -73,6 +75,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
   const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(initialFontPicker || null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus trap for accessibility (only when no sub-modals open)
+  useFocusTrap(!showColorPicker && !showFontPicker && !showAboutModal, modalRef);
 
   // Theme system state
   const [customThemes, setCustomThemes] = useState<Theme[]>([]);
@@ -133,9 +138,32 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
     }
   }, [showPluginsSettings, showCommandsSettings, showHooksSettings, showSkillsSettings, showMcpSettings, memoryEnabled]);
 
-  // Handle escape key to close modal
+  // Build list of visible tabs for keyboard navigation
+  const getVisibleTabs = (): SettingsTab[] => {
+    const tabs: SettingsTab[] = ['general', 'appearance', 'providers'];
+    if (showHooksSettings) tabs.push('hooks');
+    if (showCommandsSettings) tabs.push('commands');
+    if (showMcpSettings) tabs.push('mcp');
+    if (showPluginsSettings) tabs.push('plugins');
+    if (showSkillsSettings) tabs.push('skills');
+    if (memoryEnabled) tabs.push('memory');
+    return tabs;
+  };
+
+  // Handle escape key and tab switching shortcuts
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl+1-9 for tab switching
+      if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
+        const tabIndex = parseInt(e.key) - 1;
+        const visibleTabs = getVisibleTabs();
+        if (tabIndex < visibleTabs.length) {
+          e.preventDefault();
+          setActiveTab(visibleTabs[tabIndex]);
+        }
+        return;
+      }
+
       if (e.key === 'Escape') {
         // Close any sub-modals first
         if (showColorPicker) {
@@ -150,9 +178,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose, showColorPicker, showFontPicker, showAboutModal]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, showColorPicker, showFontPicker, showAboutModal, showHooksSettings, showCommandsSettings, showMcpSettings, showPluginsSettings, showSkillsSettings, memoryEnabled]);
 
   // Handle drag cursor on settings header
   useEffect(() => {
@@ -1669,7 +1697,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
   return (
     <>
       <div className="settings-modal-overlay" onContextMenu={(e) => e.preventDefault()}>
-        <div className="settings-modal">
+        <div className="settings-modal" ref={modalRef}>
           <div className={`settings-header${isDragging ? ' is-dragging' : ''}`} ref={headerRef} data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
             <div className="settings-header-left" data-tauri-drag-region>
               <IconSettings size={16} stroke={1.5} style={{ color: 'var(--accent-color)', pointerEvents: 'none', userSelect: 'none' }} />

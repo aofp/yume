@@ -3,14 +3,14 @@
 .progress-indicator {
   display: flex;
   align-items: center;
-  gap: 6px;;
-  padding: 6px;
-  background: rgba(74, 158, 255, 0.08);
-  border-top: 1px solid rgba(74, 158, 255, 0.15);
+  gap: var(--space-1-5);
+  padding: var(--space-1-5);
+  background: var(--fg-08);
+  border-top: 1px solid var(--fg-15);
 }
 
 .progress-spinner {
-  color: #4a9eff;
+  color: var(--fg-80);
   flex-shrink: 0;
 }
 
@@ -29,8 +29,8 @@
 
 .progress-stats {
   display: flex;
-  gap: 6px;;
-  margin-top: 2px;
+  gap: var(--space-1-5);
+  margin-top: var(--space-0-5);
 }
 
 .progress-stat {

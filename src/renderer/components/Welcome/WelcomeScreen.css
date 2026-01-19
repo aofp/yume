@@ -29,7 +29,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin-top: 60px;
 }
 
@@ -67,14 +67,14 @@
 
 .welcome-buttons {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
 }
 
 .welcome-new-button {
   width: 60px;
   height: 60px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: rgba(var(--accent-rgb), 0.20);
   border: none;
   color: var(--accent-color);
@@ -130,11 +130,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-1);
   padding: 0;
   background: var(--fg-08);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--fg-50);
   font-size: var(--text-base);
   cursor: default;
@@ -202,12 +202,12 @@
 }
 
 .recent-modal {
-  background: var(--background-color, #0f0f0f);
+  background: var(--background-color);
   border: 1px solid var(--fg-15);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 var(--space-2) var(--space-8) var(--bg-50);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -232,7 +232,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
+  padding: var(--space-1);
   border-bottom: 1px solid var(--fg-05);
   margin-bottom: 0;
   flex-shrink: 0;
@@ -245,7 +245,7 @@
 .modal-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .modal-icon {
@@ -266,11 +266,11 @@
   background: none;
   border: none;
   color: var(--fg-30);
-  padding: 4px;
+  padding: var(--space-1);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: default;
 }
 
@@ -288,18 +288,18 @@
 .modal-header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .modal-close-btn {
   background: none;
   border: none;
   color: var(--fg-30);
-  padding: 4px;
+  padding: var(--space-1);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: default;
 }
 
@@ -311,12 +311,12 @@
   background: none;
   border: none;
   color: var(--fg-30);
-  width: 20px;
-  height: 20px;
+  width: var(--space-5);
+  height: var(--space-5);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: default;
 }
 
@@ -328,7 +328,7 @@
 .modal-title-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .modal-hint {
@@ -354,13 +354,13 @@
 .recent-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px;
+  gap: var(--space-2);
+  padding: var(--space-1);
   background: transparent;
   border: none;
   flex: 1;
   text-align: left;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: default;
   color: var(--fg-80);
 }
@@ -383,8 +383,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: var(--space-5);
+  height: var(--space-5);
   background: transparent;
   border: none;
   border-radius: 3px;
@@ -414,7 +414,7 @@
   font-weight: 500;
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .recent-item-path {
@@ -429,7 +429,7 @@
 
 
 .no-recent {
-  padding: 20px;
+  padding: var(--space-5);
   font-size: var(--text-sm);
   color: var(--fg-30);
   text-align: center;
@@ -448,7 +448,7 @@
 
 .modal-content::-webkit-scrollbar-thumb {
   background: var(--fg-10);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .modal-content::-webkit-scrollbar-thumb:hover {
@@ -468,31 +468,31 @@
   font-size: var(--text-lg);
   font-weight: 400;
   color: var(--fg-50);
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
   text-transform: lowercase;
 }
 
 .project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .project-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   background: var(--fg-02);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   cursor: default;
 }
 
 @keyframes cardFadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(var(--space-2));
   }
   to {
     opacity: 1;
@@ -506,13 +506,13 @@
 }
 
 .project-icon {
-  width: 48px;
-  height: 48px;
+  width: var(--space-12);
+  height: var(--space-12);
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(var(--accent-rgb), 0.1);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: var(--accent-color);
 }
 
@@ -525,7 +525,7 @@
   font-size: var(--text-lg);
   font-weight: 500;
   color: var(--foreground-color);
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   text-transform: lowercase;
   white-space: nowrap;
   overflow: hidden;
@@ -535,7 +535,7 @@
 .project-path {
   font-size: var(--text-base);
   color: var(--fg-30);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -545,7 +545,7 @@
 .project-time {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: var(--text-base);
   color: var(--fg-40);
 }
@@ -553,14 +553,14 @@
 /* Help button container - positioned like in chat */
 .welcome-help-container {
   position: fixed;
-  bottom: 4px;
-  right: 4px;
+  bottom: var(--space-1);
+  right: var(--space-1);
   z-index: 100;
 }
 
 /* macOS-specific adjustment for keyboard shortcuts button */
 .platform-darwin .welcome-help-container {
-  bottom: 4px;
+  bottom: var(--space-1);
 }
 
 /* Import btn-help styles from ClaudeChat.css */
@@ -568,8 +568,8 @@
   background: transparent;
   border: 1px solid var(--fg-15);
   color: var(--fg-40);
-  padding: 3px 8px;
-  border-radius: 4px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-family: var(--font-mono);
   text-transform: lowercase;
@@ -622,7 +622,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 /* Quick nav link to recent projects */

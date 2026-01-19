@@ -92,6 +92,7 @@ interface ContextBarProps {
 
   // Git stats
   gitChangesCount: number;
+  gitAheadCount: number;
   gitLinesAdded: number;
   gitLinesRemoved: number;
 
@@ -150,6 +151,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   showDictationSetting,
   visibility,
   gitChangesCount,
+  gitAheadCount,
   gitLinesAdded,
   gitLinesRemoved,
   sessionFileCount,
@@ -225,6 +227,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           <button
             className="btn-context-icon"
             onClick={onOpenCommandPalette}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenCommandPalette(); } }}
+            tabIndex={0}
             title={`command palette (${modKey}+p)`}
           >
             <span className="btn-icon-wrapper">
@@ -238,6 +242,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           <button
             className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
             onClick={onToggleDictation}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleDictation(); } }}
+            tabIndex={0}
             disabled={isReadOnly}
             title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
           >
@@ -290,6 +296,18 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               setSelectedGitFile(null);
               setGitDiff(null);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setShowRollbackPanel(!showRollbackPanel);
+                setShowFilesPanel(false);
+                setSelectedFile(null);
+                setFileContent('');
+                setSelectedGitFile(null);
+                setGitDiff(null);
+              }
+            }}
+            tabIndex={0}
             disabled={historyCount === 0}
             title={`history (${modKey}+h)`}
           >
@@ -311,6 +329,19 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               setFocusedFileIndex(-1);
               setFocusedGitIndex(-1);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setShowFilesPanel(!showFilesPanel);
+                setSelectedFile(null);
+                setFileContent('');
+                setSelectedGitFile(null);
+                setGitDiff(null);
+                setFocusedFileIndex(-1);
+                setFocusedGitIndex(-1);
+              }
+            }}
+            tabIndex={0}
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -348,7 +379,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               const removed = isGit ? gitLinesRemoved : sessionLinesRemoved;
               return (
                 <span className="btn-files-stats">
-                  <span className="stat-badge git-badge">{count}</span>
+                  <span className="stat-badge git-badge">{isGit ? (gitAheadCount > 0 ? `${count},${gitAheadCount}` : count) : count}</span>
                   {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
                   {(added > 0 || removed > 0) && (
                     <span className="stat-badge lines-badge">
@@ -367,6 +398,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           <button
             className={`btn-stats ${usageClass}`}
             onClick={onOpenStatsModal}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenStatsModal(); } }}
+            tabIndex={0}
             disabled={false}
             title={hasActivity ?
               `${totalContextTokens.toLocaleString()} tokens • ${modKey}+. stats • ${modKey}+shift+./rmb: toggle auto-compact` :

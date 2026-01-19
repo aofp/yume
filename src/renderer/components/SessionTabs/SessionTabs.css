@@ -1,6 +1,6 @@
 .session-tabs {
   background: var(--background-color);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--fg-10);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;
   align-items: center;
@@ -44,7 +44,7 @@
 .tabs-scrollable {
   display: flex;
   align-items: center;
-  gap: 2px; /* Reduced from 6px */
+  gap: 2px; /* Intentionally 2px for compact spacing */
   flex-wrap: nowrap; /* Prevent wrapping - force horizontal scroll */
   overflow-x: auto; /* Auto scrollbar */
   overflow-y: hidden;
@@ -62,7 +62,7 @@
 .tabs-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 2px; /* Intentionally 2px for compact spacing */
   flex-shrink: 0;
   position: relative;
   top: -2px;
@@ -75,7 +75,7 @@
 /* When overflow, add background to cover scrolling tabs behind */
 .tabs-actions.sticky {
   background: var(--background-color);
-  padding-left: 4px;
+  padding-left: var(--space-1);
 }
 
 .tabs-actions.no-tabs {
@@ -124,10 +124,10 @@
   display: flex;
   align-items: center;
   gap: 0px;
-  padding: 2px 2px 2px 4px; /* Reduced padding by half */
+  padding: 2px 2px 2px var(--space-1);
   background: var(--background-color);
   border: none;
-  border-radius: 3px; /* Uniform radius */
+  border-radius: 3px; /* Intentionally 3px, between --radius-sm (4px) and 2px */
   cursor: default;
   height: 26px;
   white-space: nowrap;
@@ -187,7 +187,7 @@
 }
 
 .session-tab:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--fg-05);
 }
 
 .session-tab.active {
@@ -220,7 +220,7 @@
 .tab-content {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   /* No overflow hidden - show everything */
   user-select: none;
   -webkit-user-select: none;
@@ -230,7 +230,7 @@
 .tab-context-bar {
   width: 2px;
   height: 16px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--fg-15);
   border-radius: 0;
   position: relative;
   overflow: hidden;
@@ -250,7 +250,7 @@
 }
 
 .session-tab.active .tab-name {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
 }
 
 .tab-folder {
@@ -268,12 +268,12 @@
 }
 
 .tab-folder svg {
-  color: rgba(255, 230, 153, 0.7);
+  color: rgba(255, 230, 153, 0.7); /* Keep specific folder icon color */
 }
 
 .tab-title {
   font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--fg-80);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -285,7 +285,7 @@
 }
 
 .session-tab.active .tab-title {
-  color: #ffffff;
+  color: var(--fg-100);
 }
 
 .tab-rename-input {
@@ -359,13 +359,13 @@
 .tab-close {
   background: transparent !important;
   border: none;
-  color: rgba(255, 255, 255, 0.4); /* Dimmer default color */
+  color: var(--fg-40);
   cursor: default !important;
   padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: 3px; /* Intentionally 3px, between --radius-sm (4px) and 2px */
   opacity: 1;
   width: 18px;
   height: 18px;
@@ -390,7 +390,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px; /* Uniform radius */
+  border-radius: 3px; /* Intentionally 3px, between --radius-sm (4px) and 2px */
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -442,14 +442,14 @@
 .tab-recent {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   cursor: default;
   width: 26px;
   height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
+  border-radius: 3px; /* Intentionally 3px, between --radius-sm (4px) and 2px */
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -466,7 +466,7 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--fg-20);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -482,7 +482,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   text-transform: lowercase;
   pointer-events: none;
   animation: fade-in 0.2s ease-in;
@@ -506,10 +506,10 @@
 /* Context menu */
 .tab-context-menu {
   position: fixed;
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  padding: 4px;
+  background: #1a1a1a; /* Keep specific dark background */
+  border: 1px solid var(--fg-20);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
   z-index: 1000;
   min-width: 150px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
@@ -522,10 +522,10 @@
   padding: 6px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   font-size: var(--text-base);
   cursor: default;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   text-transform: lowercase;
 }
 
@@ -536,7 +536,7 @@
 
 .tab-context-menu .separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--fg-15);
   margin: 2px;
 }
 
@@ -544,8 +544,8 @@
 .yume-start {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
 }
 
 .yuru-logo {
@@ -553,7 +553,7 @@
   font-weight: 300;
   color: var(--accent-color);
   letter-spacing: 0.5px;
-  margin-right: 8px;
+  margin-right: var(--space-2);
   text-transform: lowercase;
 }
 
@@ -561,12 +561,12 @@
 .btn-quick-start {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  gap: var(--space-1);
+  background: var(--fg-08);
   border: none;
-  color: rgba(255, 255, 255, 0.6);
-  padding: 4px 8px;
-  border-radius: 3px;
+  color: var(--fg-60);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 3px; /* Intentionally 3px, between --radius-sm (4px) and 2px */
   font-size: var(--text-sm);
   text-transform: lowercase;
   cursor: default;
@@ -576,20 +576,20 @@
 
 .btn-open-folder svg,
 .btn-quick-start svg {
-  color: rgba(255, 230, 153, 0.7);
+  color: rgba(255, 230, 153, 0.7); /* Keep specific folder icon color */
 }
 
 .btn-open-folder:hover,
 .btn-quick-start:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(var(--foreground-rgb), 0.12);
+  color: var(--fg-80);
 }
 
 /* Recent projects modal styles */
 .recent-item-number {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   min-width: 12px;
   text-align: center;
 }

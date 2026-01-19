@@ -177,6 +177,11 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  outline: none;
+}
+
+.memory-type-list:focus {
+  outline: none;
 }
 
 /* Type header */
@@ -193,6 +198,11 @@
 
 .memory-type-header:hover {
   background: rgba(255, 255, 255, 0.03);
+  border-color: var(--accent-color);
+}
+
+.memory-type-header.memory-nav-selected {
+  background: rgba(var(--accent-color-rgb), 0.15);
   border-color: var(--accent-color);
 }
 
@@ -239,6 +249,11 @@
 
 .memory-entity-item:hover {
   background: var(--fg-05);
+  border-color: var(--accent-color);
+}
+
+.memory-entity-item.memory-nav-selected {
+  background: rgba(var(--accent-color-rgb), 0.12);
   border-color: var(--accent-color);
 }
 

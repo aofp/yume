@@ -6,7 +6,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-20);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +22,7 @@
 .cp-modal {
   background: var(--background-color);
   border: 1px solid rgba(var(--accent-rgb), .3);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   width: 90%;
   max-width: 380px;
   max-height: 50vh;
@@ -30,7 +30,7 @@
   flex-direction: column;
   overflow: hidden;
   user-select: none;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px var(--bg-50);
   -webkit-user-select: none;
 }
 
@@ -60,13 +60,13 @@
   flex: 1;
   background: transparent;
   border: 1px solid var(--accent-color);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   outline: none;
   color: var(--foreground-color);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   caret-color: var(--accent-color);
-  padding: 6px 8px;
+  padding: var(--space-1-5) var(--space-2);
 }
 
 .cp-input::placeholder {
@@ -84,7 +84,7 @@
 }
 
 .cp-empty {
-  padding: 6px;
+  padding: var(--space-1-5);
   text-align: center;
   color: var(--fg-30);
   font-size: var(--text-xs);
@@ -95,7 +95,7 @@
 }
 
 .cp-category-label {
-  padding: 4px 10px 2px;
+  padding: var(--space-1) 10px var(--space-0-5);
   font-size: 9px;
   color: var(--fg-25);
   text-transform: lowercase;
@@ -106,9 +106,9 @@
 .cp-item {
   display: flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: var(--space-1) 10px;
   cursor: default;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .cp-item.hover-enabled:hover {
@@ -143,8 +143,8 @@
 
 .cp-toggle {
   font-size: 8px;
-  padding: 1px 4px;
-  border-radius: 2px;
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-xs);
   width: 22px;
   text-align: center;
   text-transform: lowercase;
@@ -173,7 +173,7 @@
   background: var(--fg-05);
   color: var(--fg-40);
   padding: 0px 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 500;
@@ -187,7 +187,7 @@
 
 /* Scrollbar styling */
 .cp-list::-webkit-scrollbar {
-  width: 4px;
+  width: var(--space-1);
 }
 
 .cp-list::-webkit-scrollbar-track {
@@ -196,7 +196,7 @@
 
 .cp-list::-webkit-scrollbar-thumb {
   background: var(--fg-10);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .cp-list::-webkit-scrollbar-thumb:hover {
@@ -208,8 +208,8 @@
   background: transparent;
   border: none;
   color: var(--fg-40);
-  padding: 4px;
-  margin-right: 4px;
+  padding: var(--space-1);
+  margin-right: var(--space-1);
   cursor: default;
   display: flex;
   align-items: center;
@@ -227,7 +227,7 @@
   color: var(--fg-30);
   font-size: 12px;
   margin-left: auto;
-  padding-left: 4px;
+  padding-left: var(--space-1);
 }
 
 .cp-item.selected .cp-submenu-arrow {
@@ -237,14 +237,14 @@
 /* Theme color swatches */
 .cp-theme-colors {
   display: flex;
-  gap: 2px;
+  gap: var(--space-0-5);
   margin-left: auto;
 }
 
 .cp-theme-colors span {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
 }
 

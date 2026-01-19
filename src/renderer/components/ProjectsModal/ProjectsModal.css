@@ -4,13 +4,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #000;
+  background: var(--background-color);
   z-index: 999999;
   cursor: default;
 }
 
 .projects-modal {
-  background: #000;
+  background: var(--background-color);
   width: 100%;
   height: 100%;
   display: flex;
@@ -22,8 +22,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px;
-  border-bottom: 1px solid #222;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--fg-10);
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -31,7 +31,7 @@
 .projects-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--accent-color);
   font-size: var(--text-lg);
   pointer-events: none;
@@ -41,7 +41,7 @@
 .projects-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .projects-refresh,
@@ -49,9 +49,9 @@
   background: none;
   border: none;
   -webkit-app-region: no-drag;
-  color: #666;
+  color: var(--fg-40);
   cursor: default;
-  padding: 2px;
+  padding: var(--space-1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,74 +74,74 @@
 .projects-search {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border-bottom: 1px solid #222;
-  color: #666;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--fg-10);
+  color: var(--fg-40);
 }
 
 .projects-search input {
   flex: 1;
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text-color);
   font-size: var(--text-lg);
   outline: none;
   font-family: inherit;
 }
 
 .projects-search input::placeholder {
-  color: #444;
+  color: var(--fg-30);
 }
 
 .projects-content {
   flex: 1;
   overflow-y: auto;
-  padding: 4px;
+  padding: var(--space-1);
 }
 
 .projects-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: #666;
-  padding: 20px;
+  gap: var(--space-2);
+  color: var(--fg-40);
+  padding: var(--space-5);
   font-size: var(--text-base);
 }
 
 .projects-error {
-  color: #ff6666;
+  color: var(--negative-color);
   text-align: center;
-  padding: 6px;
+  padding: var(--space-2);
   font-size: var(--text-base);
 }
 
 .projects-empty {
-  color: #666;
+  color: var(--fg-40);
   text-align: center;
-  padding: 20px;
+  padding: var(--space-5);
   font-size: var(--text-base);
 }
 
 .projects-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .project-item {
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  border: 1px solid #222;
-  border-radius: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--fg-10);
+  border-radius: var(--radius-sm);
   cursor: default;
 }
 
 .project-item:hover {
   border-color: var(--accent-color);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fg-02);
 }
 
 .project-item.focused {
@@ -167,8 +167,8 @@
 .project-name {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #999;
+  gap: var(--space-2);
+  color: var(--fg-60);
   font-size: var(--text-base);
   flex: 1;
 }
@@ -176,7 +176,7 @@
 .project-name-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   flex: 1;
   min-width: 0;
 }
@@ -187,20 +187,20 @@
 
 .project-full-path {
   font-size: var(--text-sm);
-  color: #555;
+  color: var(--fg-35);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .project-index {
-  color: #666;
+  color: var(--fg-40);
   font-weight: bold;
   min-width: 20px;
 }
 
 .project-arrow {
-  color: #444;
+  color: var(--fg-30);
 }
 
 .project-item:hover .project-arrow {
@@ -210,12 +210,12 @@
 .project-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  color: rgba(255, 255, 255, 0.5);
+  gap: var(--space-1);
+  color: var(--fg-50);
   font-size: var(--text-xs);
   margin-left: auto;
-  margin-right: 4px;
-  padding-left: 12px;
+  margin-right: var(--space-1);
+  padding-left: var(--space-3);
   flex-shrink: 0;
   align-items: flex-end;
 }
@@ -223,33 +223,33 @@
 .project-meta span {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   white-space: nowrap;
 }
 
 .project-item:hover .project-meta {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
 }
 
 .sessions-view {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .sessions-back-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   font-size: var(--text-base);
   cursor: default;
   margin: 0;
-  margin-right: 8px;
+  margin-right: var(--space-2);
   padding: 0;
   font-family: inherit;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   -webkit-app-region: no-drag;
   pointer-events: auto;
 }
@@ -259,8 +259,8 @@
 }
 
 .header-separator {
-  color: rgba(255, 255, 255, 0.1);
-  margin: 0 8px;
+  color: var(--fg-10);
+  margin: 0 var(--space-2);
   font-size: var(--text-base);
   pointer-events: none;
 }
@@ -268,29 +268,29 @@
 .sessions-project-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--accent-color);
   font-size: var(--text-lg);
-  padding-bottom: 6px;
-  border-bottom: 1px solid #222;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--fg-10);
 }
 
 .sessions-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .session-item {
-  padding: 6px 8px;
-  border: 1px solid #222;
-  border-radius: 2px;
+  padding: var(--space-2) var(--space-2);
+  border: 1px solid var(--fg-10);
+  border-radius: var(--radius-sm);
   cursor: default;
 }
 
 .session-item:hover {
   border-color: var(--accent-color);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fg-02);
 }
 
 .session-item.focused {
@@ -313,14 +313,14 @@
 }
 
 .session-index {
-  color: #666;
+  color: var(--fg-40);
   font-weight: normal;
   min-width: 16px;
   font-size: var(--text-base);
 }
 
 .session-summary {
-  color: #999;
+  color: var(--fg-60);
   font-size: var(--text-base);
   flex: 1;
   overflow: hidden;
@@ -331,12 +331,12 @@
 .session-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  color: rgba(255, 255, 255, 0.5);
+  gap: var(--space-1);
+  color: var(--fg-50);
   font-size: var(--text-sm);
   margin-left: auto;
-  margin-right: 4px;
-  padding-left: 12px;
+  margin-right: var(--space-1);
+  padding-left: var(--space-3);
   flex-shrink: 0;
   align-items: flex-end;
 }
@@ -344,33 +344,17 @@
 .session-meta span {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   white-space: nowrap;
 }
 
 .session-item:hover .session-meta {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
 }
 
 /* Context menu uses global-context-menu styles from index.css */
 
-/* Scrollbar styling - thin, minimal */
-.projects-content::-webkit-scrollbar {
-  width: 3px;
-}
-
-.projects-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.projects-content::-webkit-scrollbar-thumb {
-  background: var(--fg-10);
-  border-radius: 4px;
-}
-
-.projects-content::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-20);
-}
+/* Scrollbar styling - handled by global.css */
 
 /* Infinite scroll indicators */
 .projects-loading-more,
@@ -378,15 +362,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 6px;
-  color: rgba(255, 255, 255, 0.5);
+  gap: var(--space-2);
+  padding: var(--space-2);
+  color: var(--fg-50);
   font-size: var(--text-base);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--fg-10);
 }
 
 .projects-load-more-hint {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   font-style: italic;
 }
 
@@ -396,22 +380,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 6px;
-  color: rgba(255, 255, 255, 0.5);
+  gap: var(--space-2);
+  padding: var(--space-2);
+  color: var(--fg-50);
   font-size: var(--text-base);
 }
 
 .load-more-hint {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   font-style: italic;
 }
 
 /* Session count info */
 .sessions-count-info {
-  padding: 6px;
-  color: rgba(255, 255, 255, 0.4);
+  padding: var(--space-2);
+  color: var(--fg-40);
   font-size: var(--text-sm);
   text-align: right;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--fg-10);
 }

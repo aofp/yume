@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './ConfirmModal.css';
 
 interface ConfirmModalProps {
@@ -23,6 +24,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap for accessibility
+  useFocusTrap(isOpen, modalRef);
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,7 +59,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   return (
     <div className="confirm-modal-overlay" onClick={onCancel} onContextMenu={(e) => e.preventDefault()}>
-      <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="confirm-modal-header" onContextMenu={(e) => e.preventDefault()}>
           <div className="confirm-modal-title">
             {isDangerous && <IconAlertTriangle size={18} className="confirm-modal-warning-icon" />}

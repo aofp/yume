@@ -6,7 +6,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-50);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -16,9 +16,9 @@
 .mt-modal {
   background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-20);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   width: 90%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 var(--space-2) 32px var(--bg-50);
   max-width: 320px;
   max-height: 80vh;
   overflow-y: auto;
@@ -28,7 +28,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
+  padding: var(--space-1-5);
   border-bottom: 1px solid var(--fg-20);
   cursor: default;
 }
@@ -48,7 +48,7 @@
   border: none;
   color: var(--fg-40);
   cursor: default;
-  padding: 2px;
+  padding: var(--space-0-5);
 }
 
 .mt-close:hover {
@@ -56,12 +56,12 @@
 }
 
 .mt-content {
-  padding: 6px;
+  padding: var(--space-1-5);
 }
 
 /* Provider sections */
 .mt-provider-block {
-  margin-bottom: 2px;
+  margin-bottom: var(--space-0-5);
 }
 
 .mt-provider-text {
@@ -99,16 +99,16 @@
 .mt-provider-models {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-top: 2px;
+  gap: var(--space-1);
+  margin-top: var(--space-0-5);
 }
 
 /* Provider tabs */
 .mt-provider-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--fg-20);
   overflow-x: auto;
   scrollbar-width: none;
@@ -119,8 +119,8 @@
   border: 1px solid var(--fg-20);
   color: var(--fg-40);
   font-size: var(--text-xs);
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
@@ -130,13 +130,13 @@
 .mt-provider-tab:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.1);
+  background: var(--accent-10);
 }
 
 .mt-provider-tab.active {
-  background: rgba(var(--accent-rgb), 0.05);
+  background: var(--accent-05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.8);
+  border-color: var(--accent-80);
 }
 
 .mt-provider-tab.active:hover {
@@ -147,7 +147,7 @@
 .mt-models-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin-bottom: 0;
 }
 
@@ -156,8 +156,8 @@
   border: 1px solid var(--fg-20);
   color: var(--fg-50);
   font-size: var(--text-sm);
-  padding: 5px 8px;
-  border-radius: 4px;
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-sm);
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
@@ -182,12 +182,12 @@
 .mt-model-btn:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.1);
+  background: var(--accent-10);
 }
 
 .mt-model-btn.selected {
-  background: rgba(var(--accent-rgb), 0.05);
-  border-color: rgba(var(--accent-rgb), 0.8);
+  background: var(--accent-05);
+  border-color: var(--accent-80);
   color: var(--accent-color);
 }
 
@@ -223,7 +223,7 @@
 
 .mt-section {
   margin-bottom: 0;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .mt-divider {
@@ -247,12 +247,12 @@
   cursor: default;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .mt-label svg {
   margin-top: -1px;
-  margin-left: -2px;
+  margin-left: calc(-1 * var(--space-0-5));
 }
 
 .mt-toggle-all {
@@ -269,21 +269,21 @@
 }
 
 .mt-category {
-  margin-top: 6px;
+  margin-top: var(--space-1-5);
 }
 
 .mt-category-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  margin-top: 2px;
+  gap: var(--space-0-5);
+  margin-top: var(--space-0-5);
 }
 
 .mt-tools-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 3px;
+  gap: var(--space-0-5);
+  margin-top: var(--space-0-5);
 }
 
 .mt-category-half {
@@ -322,8 +322,8 @@
   border: 1px solid var(--fg-20);
   color: var(--fg-40);
   font-size: var(--text-xs);
-  padding: 2px 5px;
-  border-radius: 3px;
+  padding: var(--space-0-5) 5px;
+  border-radius: var(--radius-xs);
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
@@ -332,12 +332,12 @@
 .mt-tool:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.1);
+  background: var(--accent-10);
 }
 
 .mt-tool.enabled {
-  background: rgba(var(--accent-rgb), 0.05);
-  border-color: rgba(var(--accent-rgb), 0.8);
+  background: var(--accent-05);
+  border-color: var(--accent-80);
   color: var(--accent-color);
 }
 
