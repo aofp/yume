@@ -8,6 +8,7 @@ import {
   ToolDefinition
 } from '../../config/tools';
 import { useEnabledProviders } from '../../hooks/useEnabledProviders';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './ModelToolsModal.css';
 
 interface ModelToolsModalProps {
@@ -31,7 +32,16 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   openedViaKeyboard = false,
   lockedProvider = null,
 }) => {
-  const toolsByCategory = getToolsByCategory();
+  const memoryEnabled = useClaudeCodeStore(state => state.memoryEnabled);
+  const allToolsByCategory = getToolsByCategory();
+
+  // Filter MCP tools based on memory enabled state
+  const toolsByCategory = useMemo(() => {
+    const filtered = { ...allToolsByCategory };
+    filtered.mcp = memoryEnabled ? allToolsByCategory.mcp : [];
+    return filtered;
+  }, [allToolsByCategory, memoryEnabled]);
+
   const modelRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const toggleAllRef = useRef<HTMLButtonElement | null>(null);
   const toolRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
@@ -664,8 +674,8 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
               </div>
             </div>}
 
-            {/* MCP (full width row) */}
-            {toolsExpanded && <div className="mt-category-row">
+            {/* MCP (full width row) - only show if mcp tools are available */}
+            {toolsExpanded && toolsByCategory.mcp.length > 0 && <div className="mt-category-row">
               <div className="mt-category mt-category-full">
                 <span
                   className={`mt-category-text ${isCategoryAllActive('mcp') ? 'active' : ''}`}

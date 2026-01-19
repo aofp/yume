@@ -1199,6 +1199,24 @@ export class TauriClaudeClient {
     };
   }
 
+  /**
+   * Listen for mid-stream context usage updates (Tauri path)
+   * Note: For Tauri/yume-cli path, context updates are emitted via result messages
+   * This is a no-op for now - yume-cli doesn't emit mid-stream context updates yet
+   */
+  onContextUpdate(sessionId: string, handler: (usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
+    totalContextTokens: number;
+    timestamp: number;
+  }) => void): () => void {
+    // TODO: Implement Tauri event listener for context-update if yume-cli adds support
+    // For now, context updates come through result messages
+    return () => {};
+  }
+
   async setWorkingDirectory(sessionId: string, directory: string): Promise<void> {
     // Not needed with Tauri - working directory set at session creation
   }

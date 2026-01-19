@@ -254,13 +254,42 @@ interface CompactionSettings {
 
 ### 4.1 Real-Time Token Counting
 
-**Description**: Accurate token counting with cost calculation.
+**Description**: Accurate token counting with cost calculation and mid-stream context updates.
 
 **Display Format**:
 ```
 Tokens: 15,234 / 200,000 (7.6%)
 Cost: $0.46 ($0.03 input + $0.43 output)
 ```
+
+### 4.1.1 Mid-Stream Context Updates
+
+**Description**: Real-time context usage updates during streaming responses.
+
+**Location**: `server-claude-macos.cjs:5630`, `claudeCodeClient.ts:825`
+
+**How It Works**:
+1. Server detects `usage` data in assistant messages during streaming
+2. Emits `context-update:{sessionId}` Socket.IO event with token breakdown
+3. Frontend updates session analytics in real-time without waiting for stream end
+4. Context bar reflects accurate usage during long responses
+
+**Event Payload**:
+```typescript
+interface ContextUpdatePayload {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  totalContextTokens: number;
+  timestamp: number;
+}
+```
+
+**Benefits**:
+- Users see accurate context percentage during streaming
+- Auto-compact thresholds can trigger mid-stream if needed
+- Better visibility into token consumption patterns
 
 ### 4.2 Token Statistics
 

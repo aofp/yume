@@ -822,6 +822,36 @@ export class ClaudeCodeClient {
     };
   }
 
+  /**
+   * Listen for mid-stream context usage updates
+   * These are emitted whenever an assistant message with usage data arrives during streaming
+   */
+  onContextUpdate(sessionId: string, handler: (usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
+    totalContextTokens: number;
+    timestamp: number;
+  }) => void): () => void {
+    const channel = `context-update:${sessionId}`;
+
+    if (!this.socket) {
+      debugLog('[Client] Socket not ready for context-update listener');
+      return () => {};
+    }
+
+    this.socket.on(channel, handler);
+    debugLog(`[Client] Listening for context updates on ${channel}`);
+
+    return () => {
+      if (this.socket) {
+        this.socket.off(channel, handler);
+        debugLog(`[Client] Stopped listening on ${channel}`);
+      }
+    };
+  }
+
   async setWorkingDirectory(sessionId: string, directory: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {

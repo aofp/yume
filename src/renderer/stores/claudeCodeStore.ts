@@ -162,6 +162,15 @@ function clearSubagentTracking(sessionId: string) {
     console.log(`🤖 [SUBAGENT-TRACK] Cleared subagent tracking for session ${sessionId}`);
   }
 }
+
+// Clear a specific subagent parent (called when tool_result received for a Task tool)
+function clearSubagentParent(sessionId: string, parentToolUseId: string) {
+  const parents = activeSubagentParents.get(sessionId);
+  if (parents && parents.has(parentToolUseId)) {
+    parents.delete(parentToolUseId);
+    console.log(`🤖 [SUBAGENT-TRACK] Cleared parent ${parentToolUseId.substring(0, 20)}... - remaining: ${parents.size}`);
+  }
+}
 function getCachedHash(message: any): string {
   let hash = messageHashCache.get(message);
   if (!hash) {
@@ -1432,6 +1441,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             let messageCleanup: (() => void) | null = null;
             let tempMessageCleanup: (() => void) | null = null;
             let focusCleanup: (() => void) | null = null;
+            let contextUpdateCleanup: (() => void) | null = null;
 
             // For yume-cli providers, we already set up the early listener above
             // Skip the temp listener to avoid duplicate message handling
@@ -3317,6 +3327,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // Remove tool ID from pending set
                     // streaming will be managed by assistant/result/stream_end messages
                     const toolUseId = message.message?.tool_use_id;
+                    // Also clear from subagent tracking (in case this was a Task tool result)
+                    if (toolUseId) {
+                      clearSubagentParent(sessionId, toolUseId);
+                    }
                     sessions = sessions.map(s => {
                       if (s.id === sessionId) {
                         const pendingTools = new Set(s.pendingToolIds || []);
@@ -3374,11 +3388,53 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               console.log('[Store] No claudeSessionId yet - will set up listener after spawn');
             }
 
+            // Set up mid-stream context update listener
+            contextUpdateCleanup = sessionClient.onContextUpdate(sessionId, (usage) => {
+              console.log('[Store] 📊 Mid-stream context update:', {
+                sessionId,
+                total: usage.totalContextTokens,
+                percentage: Math.round(usage.totalContextTokens / 2000) + '%'
+              });
+
+              // Update session analytics with real-time context usage
+              set(state => ({
+                sessions: state.sessions.map(s => {
+                  if (s.id !== sessionId) return s;
+
+                  const analytics = { ...(s.analytics || {}) } as any;
+                  const contextWindow = analytics.contextWindow || { used: 0, limit: 200000, percentage: 0, remaining: 200000 };
+
+                  // Update context window with mid-stream data
+                  const rawPercentage = (usage.totalContextTokens / 200000) * 100;
+                  analytics.contextWindow = {
+                    used: usage.totalContextTokens,
+                    limit: 200000,
+                    percentage: rawPercentage,
+                    remaining: Math.max(0, 200000 - usage.totalContextTokens)
+                  };
+
+                  // Update token breakdown
+                  analytics.tokens = {
+                    ...(analytics.tokens || {}),
+                    total: usage.totalContextTokens,
+                    input: usage.inputTokens,
+                    output: usage.outputTokens,
+                    cacheRead: usage.cacheReadTokens,
+                    cacheCreation: usage.cacheCreationTokens,
+                    cacheSize: usage.cacheReadTokens
+                  };
+
+                  return { ...s, analytics };
+                })
+              }));
+            });
+
             // Combined cleanup function
             const cleanup = () => {
               if (messageCleanup) messageCleanup();
               if (focusCleanup) focusCleanup();
               if (tempMessageCleanup) tempMessageCleanup();
+              if (contextUpdateCleanup) contextUpdateCleanup();
               titleCleanup();
               errorCleanup();
             };
@@ -4326,11 +4382,49 @@ ${content}`;
             });
           });
 
+          // Set up mid-stream context update listener for resumed session
+          const contextUpdateCleanup = persistedClient.onContextUpdate(sessionId, (usage) => {
+            console.log('[Store] 📊 Mid-stream context update (resumed):', {
+              sessionId,
+              total: usage.totalContextTokens,
+              percentage: Math.round(usage.totalContextTokens / 2000) + '%'
+            });
+
+            set(state => ({
+              sessions: state.sessions.map(s => {
+                if (s.id !== sessionId) return s;
+
+                const analytics = { ...(s.analytics || {}) } as any;
+                const rawPercentage = (usage.totalContextTokens / 200000) * 100;
+
+                analytics.contextWindow = {
+                  used: usage.totalContextTokens,
+                  limit: 200000,
+                  percentage: rawPercentage,
+                  remaining: Math.max(0, 200000 - usage.totalContextTokens)
+                };
+
+                analytics.tokens = {
+                  ...(analytics.tokens || {}),
+                  total: usage.totalContextTokens,
+                  input: usage.inputTokens,
+                  output: usage.outputTokens,
+                  cacheRead: usage.cacheReadTokens,
+                  cacheCreation: usage.cacheCreationTokens,
+                  cacheSize: usage.cacheReadTokens
+                };
+
+                return { ...s, analytics };
+              })
+            }));
+          });
+
           // Combined cleanup function
           const cleanup = () => {
             messageCleanup();
             titleCleanup();
             errorCleanup();
+            contextUpdateCleanup();
           };
 
           session.cleanup = cleanup;
@@ -5391,6 +5485,10 @@ ${content}`;
                 }
               } else if (message.type === 'tool_result') {
                 const toolUseId = (message as any).message?.tool_use_id;
+                // Clear from subagent tracking (in case this was a Task tool result)
+                if (toolUseId) {
+                  clearSubagentParent(sessionId, toolUseId);
+                }
                 if (toolUseId && pendingToolIds.has(toolUseId)) {
                   pendingToolIds.delete(toolUseId);
                   pendingToolInfo.delete(toolUseId);

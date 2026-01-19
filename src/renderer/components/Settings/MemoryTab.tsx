@@ -25,11 +25,10 @@ interface GraphStats {
 }
 
 export const MemoryTab: React.FC = () => {
-  const { memoryEnabled, memoryServerRunning, memoryRetentionDays, setMemoryEnabled, setMemoryRetentionDays } = useClaudeCodeStore();
+  const { memoryEnabled, memoryServerRunning, memoryRetentionDays, setMemoryRetentionDays } = useClaudeCodeStore();
   const [pruning, setPruning] = useState(false);
   const [memoryFilePath, setMemoryFilePath] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [toggling, setToggling] = useState(false);
   const [graphStats, setGraphStats] = useState<GraphStats | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
@@ -71,36 +70,6 @@ export const MemoryTab: React.FC = () => {
       setMemoryFilePath(path);
     } catch (error) {
       console.error('Failed to get memory file path:', error);
-    }
-  };
-
-  const toggleMemory = async (enabled: boolean) => {
-    if (toggling) return;
-    setToggling(true);
-    try {
-      setMemoryEnabled(enabled);
-
-      if (enabled) {
-        const started = await memoryService.start();
-        if (started) {
-          showNotification('memory server started', 'success');
-        } else {
-          showNotification('failed to start memory server', 'error');
-          setMemoryEnabled(false);
-        }
-      } else {
-        const stopped = await memoryService.stop();
-        if (stopped) {
-          showNotification('memory server stopped', 'success');
-        } else {
-          showNotification('failed to stop memory server', 'error');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to toggle memory:', error);
-      showNotification('failed to toggle memory', 'error');
-    } finally {
-      setToggling(false);
     }
   };
 
@@ -251,49 +220,50 @@ export const MemoryTab: React.FC = () => {
         <h4>memory system</h4>
       </div>
 
-      {/* Memory Toggle Section */}
-      <div className="memory-section">
-        <div className="memory-section-header">
-          <IconBrain size={12} />
-          <span>memory</span>
-          <div
-            className={`toggle-switch compact ${memoryServerRunning ? 'active' : ''} ${toggling ? 'loading' : ''}`}
-            onClick={() => !toggling && toggleMemory(!memoryEnabled)}
-          >
-            <span className="toggle-switch-label off">off</span>
-            <span className="toggle-switch-label on">on</span>
-            <div className="toggle-switch-slider" />
+      {/* Settings Section - only show when memory is enabled */}
+      {memoryEnabled && (
+        <div className="memory-section">
+          <div className="memory-section-header">
+            <IconBrain size={12} />
+            <span>settings</span>
           </div>
-        </div>
 
-        {/* Retention Days */}
-        <div className="memory-settings-row">
-          <span className="memory-settings-label">retention days</span>
-          <div className="memory-settings-controls">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={memoryRetentionDays}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1 && val <= 365) {
-                  setMemoryRetentionDays(val);
-                }
-              }}
-              className="memory-input"
-            />
-            <button
-              className="memory-action-btn"
-              onClick={pruneOldMemories}
-              disabled={pruning}
-            >
-              {pruning ? <IconLoader2 size={10} className="spin" /> : <IconTrash size={10} />}
-              prune
-            </button>
+          {/* Retention Days */}
+          <div className="memory-settings-row">
+            <span className="memory-settings-label">retention days</span>
+            <div className="memory-settings-controls">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={memoryRetentionDays}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1 && val <= 365) {
+                    setMemoryRetentionDays(val);
+                  }
+                }}
+                className="memory-input"
+              />
+              <button
+                className="memory-action-btn"
+                onClick={pruneOldMemories}
+                disabled={pruning}
+              >
+                {pruning ? <IconLoader2 size={10} className="spin" /> : <IconTrash size={10} />}
+                prune
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Disabled State */}
+      {!memoryEnabled && (
+        <div className="memory-disabled-message">
+          enable memory in general tab to use this feature
+        </div>
+      )}
 
       {/* Memory Inspector Section */}
       {memoryServerRunning && (
