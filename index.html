@@ -143,11 +143,16 @@
             width: 120px;
             height: 120px;
             margin-bottom: 32px;
-            transition: all 0.3s ease;
+            animation: float 3s ease-in-out infinite;
         }
         .hero-logo:hover {
+            animation-play-state: paused;
             transform: scale(1.05);
             filter: drop-shadow(0 0 20px rgba(var(--accent-rgb), 0.4));
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
         }
         .hero h1 {
             font-size: clamp(2.5rem, 6vw, 4rem);
@@ -997,7 +1002,7 @@
                 <a href="mailto:support@yuru.be">support@yuru.be</a> &bull;
                 <a href="https://github.com/anthropics/claude-code" target="_blank">claude code cli</a>
             </p>
-            <p>© 2026 yuruko. made with claude code + yume.</p>
+            <p>© 2026 aofp. made with claude code + yume.</p>
         </div>
     </footer>
 
