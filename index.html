@@ -144,11 +144,11 @@
             height: 120px;
             margin-bottom: 32px;
             animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 12px rgba(var(--accent-rgb), 0.25));
+            transition: filter 0.3s ease;
         }
         .hero-logo:hover {
-            animation-play-state: paused;
-            transform: scale(1.05);
-            filter: drop-shadow(0 0 20px rgba(var(--accent-rgb), 0.4));
+            filter: drop-shadow(0 0 24px rgba(var(--accent-rgb), 0.5));
         }
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
