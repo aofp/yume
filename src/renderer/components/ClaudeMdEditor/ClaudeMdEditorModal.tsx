@@ -14,12 +14,14 @@ interface ClaudeMdEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   workingDirectory: string;
+  onFileCreated?: () => void;
 }
 
 export const ClaudeMdEditorModal: React.FC<ClaudeMdEditorModalProps> = ({
   isOpen,
   onClose,
-  workingDirectory
+  workingDirectory,
+  onFileCreated
 }) => {
   const [content, setContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');
@@ -74,12 +76,18 @@ export const ClaudeMdEditorModal: React.FC<ClaudeMdEditorModalProps> = ({
 
     setSaving(true);
     setError(null);
+    const wasNewFile = !fileExists;
 
     try {
       await invoke('write_file_content', { path: claudeMdPath, content });
 
       setOriginalContent(content);
       setFileExists(true);
+
+      // Notify parent to refresh file tree if this was a new file
+      if (wasNewFile && onFileCreated) {
+        onFileCreated();
+      }
 
       // Show saved toast (clear any existing timeout)
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -91,7 +99,7 @@ export const ClaudeMdEditorModal: React.FC<ClaudeMdEditorModalProps> = ({
     } finally {
       setSaving(false);
     }
-  }, [workingDirectory, claudeMdPath, content]);
+  }, [workingDirectory, claudeMdPath, content, fileExists, onFileCreated]);
 
   // Cleanup toast timeout on unmount
   useEffect(() => {

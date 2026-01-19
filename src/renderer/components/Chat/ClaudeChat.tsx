@@ -2792,6 +2792,10 @@ export const ClaudeChat: React.FC = () => {
     const checkGitRepo = async () => {
       if (!currentSession?.workingDirectory) {
         setIsGitRepo(false);
+        setGitStatus(null);
+        setGitBranch('');
+        setGitLineStats({});
+        setGitAhead(0);
         return;
       }
       try {
@@ -2803,6 +2807,11 @@ export const ClaudeChat: React.FC = () => {
         const errorStr = String(error);
         if (errorStr.includes('Not a git repository') || errorStr.includes('Directory does not exist')) {
           setIsGitRepo(false);
+          // Clear git state when not a git repo
+          setGitStatus(null);
+          setGitBranch('');
+          setGitLineStats({});
+          setGitAhead(0);
         }
         // For other errors (like git lock), keep the previous state
       }
@@ -4954,19 +4963,18 @@ export const ClaudeChat: React.FC = () => {
                   <button
                     className={`tool-panel-tab ${filesSubTab === 'git' ? 'active' : ''}`}
                     onClick={() => setFilesSubTab('git')}
-                    disabled={!isGitRepo}
                     title={isGitRepo ? `git (${modKey}+g)` : 'not a git repo'}
                   >
                     <IconGitBranch size={12} stroke={1.5} />
                     <span>git</span>
-                    {gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 && (
+                    {gitStatus && (
                       <span className="git-tab-stats">
                         <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
                         {gitAhead >= 0 && <span>{gitAhead}</span>}
                         <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
                         <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
                       </span>
-                    )}
+                    ) || 'n/a'}
                   </button>
                 </div>
               </>
@@ -6553,6 +6561,20 @@ export const ClaudeChat: React.FC = () => {
             isOpen={showClaudeMdEditor}
             onClose={() => { setShowClaudeMdEditor(false); resetHoverStates(); }}
             workingDirectory={currentSession.workingDirectory}
+            onFileCreated={async () => {
+              // Refresh file tree to show newly created CLAUDE.md
+              if (currentSession?.workingDirectory) {
+                try {
+                  const files = await invoke('get_folder_contents', {
+                    folderPath: currentSession.workingDirectory,
+                    maxResults: 100
+                  }) as any[];
+                  setFileTree(files);
+                } catch {
+                  // Silently fail
+                }
+              }
+            }}
           />
         </React.Suspense>
       )}
