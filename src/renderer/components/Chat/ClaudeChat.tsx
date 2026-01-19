@@ -19,9 +19,10 @@ import {
   IconTool,
   IconChevronRight,
   IconHistory,
-  IconPencil,
+  IconFilePencil,
   IconArrowsMinimize,
   IconCancel,
+  IconPencil,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine, generateDiff } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
@@ -5026,7 +5027,7 @@ export const ClaudeChat: React.FC = () => {
                   onClick={() => setShowClaudeMdEditor(true)}
                   title={`edit CLAUDE.md (${modKey}+shift+e)`}
                 >
-                  <IconPencil size={12} stroke={1.5} />
+                  <IconFilePencil size={12} stroke={1.5} />
                   <span>CLAUDE.md</span>
                 </button>
               )}
