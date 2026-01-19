@@ -1,7 +1,7 @@
 {
   "product": "yume",
   "latest": "0.1.0",
-  "baseUrl": "https://forkgatherer.github.io/yume-io/releases",
+  "baseUrl": "https://forkgatherer.github.io/yume/releases",
   "releases": [
     {
       "version": "0.1.0",
