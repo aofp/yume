@@ -1,16 +1,17 @@
 {
   "product": "yume",
   "latest": "0.1.0",
+  "baseUrl": "https://forkgatherer.github.io/yume-io/releases",
   "releases": [
     {
       "version": "0.1.0",
       "date": "2026-01-19",
-      "notes": "initial release - native gui for claude code with limits tracking, 5 agents, plugin system, crash recovery, and 570+ themes.",
+      "notes": "initial release - native gui for claude code with limits tracking, 21 features, 5 agents, plugin system, crash recovery, and 570+ themes.",
       "downloads": {
-        "mac": "releases/yume-0.1.0-macos-x64.dmg",
-        "mac_arm": "releases/yume-0.1.0-macos-arm64.dmg",
-        "win": "releases/yume-0.1.0-windows-x64.msi",
-        "linux": "releases/yume-0.1.0-linux-x64.AppImage"
+        "mac": "yume-0.1.0-macos-x64.dmg",
+        "mac_arm": "yume-0.1.0-macos-arm64.dmg",
+        "win": "yume-0.1.0-windows-x64.msi",
+        "linux": "yume-0.1.0-linux-x64.AppImage"
       },
       "checksums": {
         "mac": "",
