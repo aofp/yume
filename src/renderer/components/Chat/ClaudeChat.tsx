@@ -6132,7 +6132,6 @@ export const ClaudeChat: React.FC = () => {
               modKey={modKey}
               showDictationSetting={showDictation}
               visibility={contextBarVisibility}
-              onVisibilityChange={setContextBarVisibility}
               gitChangesCount={gitStatus ? (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) : 0}
               gitLinesAdded={Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}
               gitLinesRemoved={Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}

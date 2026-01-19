@@ -840,6 +840,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                           ))}
                           <span className="thinking-dots"></span>
                         </span>
+                        {thinkingStartTime && <ThinkingTimer startTime={thinkingStartTime} />}
                       </span>
                     </div>
                   </div>

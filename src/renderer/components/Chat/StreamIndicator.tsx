@@ -64,6 +64,7 @@ export const StreamIndicator = React.memo(function StreamIndicator({
                   ))}
                   <span className="thinking-dots"></span>
                 </span>
+                {thinkingStartTime && <ThinkingTimer startTime={thinkingStartTime} />}
               </span>
             </div>
           )}

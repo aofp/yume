@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   IconFolder,
   IconGitBranch,
@@ -87,9 +87,8 @@ interface ContextBarProps {
   // Feature toggles (from settings)
   showDictationSetting: boolean;
 
-  // Visibility toggles (from context menu)
+  // Visibility toggles
   visibility: ContextBarVisibility;
-  onVisibilityChange: (visibility: ContextBarVisibility) => void;
 
   // Git stats
   gitChangesCount: number;
@@ -150,7 +149,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   modKey,
   showDictationSetting,
   visibility,
-  onVisibilityChange,
   gitChangesCount,
   gitLinesAdded,
   gitLinesRemoved,
@@ -164,31 +162,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   pendingAgentCount = 0,
   pendingBashCount = 0,
 }) => {
-  // Context menu state
-  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close context menu on outside click
-  useEffect(() => {
-    if (!contextMenuPos) return;
-    const handleClick = (e: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
-        setContextMenuPos(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [contextMenuPos]);
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenuPos({ x: e.clientX, y: e.clientY });
-  };
-
-  const toggleVisibility = (key: keyof ContextBarVisibility) => {
-    onVisibilityChange({ ...visibility, [key]: !visibility[key] });
-    setContextMenuPos(null);
-  };
   // Get context window from selected model
   const currentModel = getModelById(selectedModel);
   const contextWindowTokens = currentModel?.contextWindow || 200000;
@@ -237,7 +210,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   };
 
   return (
-    <div className="context-bar" onContextMenu={handleContextMenu}>
+    <div className="context-bar">
       {/* LEFT GROUP: model, palette, dictation */}
       <div className="context-left">
         <ModelSelector
@@ -445,39 +418,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         </div>
       </div>
 
-      {/* Context menu for toggling button visibility */}
-      {contextMenuPos && (
-        <div
-          ref={contextMenuRef}
-          className="context-bar-menu"
-          style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
-        >
-          <div className="context-menu-header">Show/Hide Buttons</div>
-          <button
-            className={`context-menu-item ${visibility.showCommandPalette ? 'checked' : ''}`}
-            onClick={() => toggleVisibility('showCommandPalette')}
-          >
-            <span className="context-menu-check">{visibility.showCommandPalette ? '✓' : ''}</span>
-            Command Palette
-          </button>
-          {showDictationSetting && (
-            <button
-              className={`context-menu-item ${visibility.showDictation ? 'checked' : ''}`}
-              onClick={() => toggleVisibility('showDictation')}
-            >
-              <span className="context-menu-check">{visibility.showDictation ? '✓' : ''}</span>
-              Dictation
-            </button>
-          )}
-          <button
-            className={`context-menu-item ${visibility.showFilesPanel ? 'checked' : ''}`}
-            onClick={() => toggleVisibility('showFilesPanel')}
-          >
-            <span className="context-menu-check">{visibility.showFilesPanel ? '✓' : ''}</span>
-            Files Panel
-          </button>
-        </div>
-      )}
     </div>
   );
 };

@@ -5520,6 +5520,29 @@ ${content}`;
                 }
               }
 
+              // CRITICAL FIX: When result message arrives, clear streaming state immediately
+              // This fixes the Windows bug where streaming_end debounce timer doesn't clear streaming
+              // because lastMessageTime was updated too recently (< 2000ms debounce window)
+              let shouldClearStreaming = false;
+              if (message.type === 'result' && !message.is_error) {
+                // Check if we have pending tools - if so, don't clear streaming yet
+                const hasPendingTools = pendingToolIds.size > 0;
+                const hasSubagents = hasActiveSubagents(sessionId);
+
+                if (!hasPendingTools && !hasSubagents) {
+                  shouldClearStreaming = true;
+                  // Cancel any pending streaming_end debounce timers - result is authoritative
+                  cancelStreamingEndTimer(sessionId);
+                  // Clear subagent tracking
+                  clearSubagentTracking(sessionId);
+                  // Play completion sound
+                  get().playCompletionSound();
+                  console.log(`🎯 [STREAMING-FIX] Result in addMessageToSession - clearing streaming for ${sessionId}`);
+                } else {
+                  console.log(`🔄 [STREAMING-FIX] Result in addMessageToSession but work pending - keeping streaming (tools: ${pendingToolIds.size}, subagents: ${hasSubagents})`);
+                }
+              }
+
               const newCounter = (s.messageUpdateCounter || 0) + 1;
               // DEBUG: Log bash message update
               if (message.id?.startsWith?.('bash-')) {
@@ -5539,7 +5562,9 @@ ${content}`;
                 // Force React re-render by updating a counter (fixes bash output not showing)
                 messageUpdateCounter: newCounter,
                 // Clear thinkingStartTime after we've used it for result
-                ...(shouldClearThinkingTime ? { thinkingStartTime: undefined } : {})
+                ...(shouldClearThinkingTime ? { thinkingStartTime: undefined } : {}),
+                // CRITICAL: Clear streaming state when result message arrives (fixes Windows streaming bug)
+                ...(shouldClearStreaming ? { streaming: false, runningBash: false, userBashRunning: false } : {})
               };
             })
           };

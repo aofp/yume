@@ -5952,7 +5952,41 @@ io.on('connection', (socket) => {
           } else if (jsonData.type === 'assistant') {
             // Each assistant message should be separate to preserve all content
             const messageId = `assistant-${sessionId}-${Date.now()}-${Math.random()}`;
-            
+
+            // Emit mid-stream context update if usage data is present
+            // Skip subagent messages - they have their own context window
+            if (jsonData.message?.usage && !jsonData.parent_tool_use_id) {
+              const usage = jsonData.message.usage;
+              const input = usage.input_tokens || 0;
+              const output = usage.output_tokens || 0;
+              const cacheRead = usage.cache_read_input_tokens || 0;
+              const cacheCreation = usage.cache_creation_input_tokens || 0;
+
+              // CRITICAL: Context window = input tokens only (NOT output)
+              // Formula: cache_read + cache_creation + input
+              // See: https://docs.anthropic.com/en/api/messages
+              const total = cacheRead + cacheCreation + input;
+
+              console.log(`📊 [${sessionId}] Mid-stream context update:`);
+              console.log(`   input_tokens: ${input}`);
+              console.log(`   cache_read: ${cacheRead}`);
+              console.log(`   cache_creation: ${cacheCreation}`);
+              console.log(`   TOTAL: ${total}/200000 (${Math.round(total/2000)}%)`);
+              console.log(`   (output_tokens: ${output} - NOT counted in context)`);
+
+              // Emit context-update event for real-time UI updates
+              socket.emit(`context-update:${sessionId}`, {
+                inputTokens: input,
+                outputTokens: output,
+                cacheReadTokens: cacheRead,
+                cacheCreationTokens: cacheCreation,
+                totalContextTokens: total,
+                timestamp: Date.now()
+              });
+            } else if (jsonData.message?.usage && jsonData.parent_tool_use_id) {
+              console.log(`📊 [${sessionId}] Skipping context update from subagent (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+            }
+
             // Extract content from assistant message
             if (jsonData.message?.content) {
               let hasContent = false;
