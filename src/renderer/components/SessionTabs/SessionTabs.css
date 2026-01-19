@@ -1,6 +1,6 @@
 .session-tabs {
   background: var(--background-color);
-  border-bottom: 1px solid var(--fg-20);
+  border-bottom: 1px solid var(--fg-10);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;
   align-items: center;

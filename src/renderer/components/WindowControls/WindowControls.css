@@ -291,11 +291,6 @@
 
 /* Old Windows-specific .window-control button styles removed - now using traffic lights */
 
-/* Make room for window controls in the layout */
-.session-tabs {
-  /* No padding needed */
-}
-
 /* Draggable title bar area */
 .app-header {
   -webkit-app-region: drag;
