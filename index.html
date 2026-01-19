@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yume - claude code, unchained</title>
+    <meta name="description" content="native gui for claude code. zero flickering. zero lag. keyboard-first. 30+ shortcuts. full customization. 5 agents. $21 once, forever.">
+    <link rel="icon" type="image/png" href="assets/yume.png">
+    <style>
+        @font-face {
+            font-family: 'Agave';
+            src: url('fonts/Agave-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Agave';
+            src: url('fonts/Agave-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Comic Neue';
+            src: url('fonts/ComicNeue-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Comic Neue';
+            src: url('fonts/ComicNeue-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --accent: #bb99ff;
+            --accent-rgb: 187, 153, 255;
+            --bg: #000;
+            --card: #0a0a0a;
+            --border: #1a1a1a;
+            --text: #fff;
+            --text-dim: #888;
+            --text-dimmer: #555;
+            --green: #4a4;
+            --red: #a44;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Comic Neue', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo img { height: 32px; }
+        .nav-links { display: flex; gap: 24px; }
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--accent); }
+        .btn {
+            background: var(--accent);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #d4bbff;
+            transform: translateY(-1px);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover {
+            background: rgba(var(--accent-rgb), 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+        .hero-logo {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 24px;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+        .hero h1 span { color: var(--accent); }
+        .hero-sub {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            max-width: 500px;
+            margin: 0 auto 32px;
+        }
+        .hero-ctas {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .download-btn { display: none; }
+        .download-btn.active { display: inline-block; }
+        .other-platforms {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-dimmer);
+        }
+        .other-platforms a {
+            color: var(--text-dim);
+            text-decoration: underline;
+        }
+        .section {
+            padding: 60px 0;
+            border-top: 1px solid var(--border);
+        }
+        .section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .feature {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .feature h3 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+        .feature p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        .pricing-card {
+            max-width: 400px;
+            margin: 0 auto;
+            background: var(--card);
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+        }
+        .pricing-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .pricing-title { font-size: 1.3rem; margin-bottom: 8px; }
+        .pricing-price {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 16px 0 8px;
+        }
+        .pricing-note {
+            color: var(--text-dim);
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .pricing-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .pricing-features li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        .pricing-features li:last-child { border-bottom: none; }
+        .email-form { margin-bottom: 16px; }
+        .email-form label {
+            display: block;
+            text-align: left;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+        .email-form input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .email-form input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .email-note {
+            font-size: 11px;
+            color: var(--text-dimmer);
+            text-align: left;
+        }
+        #paypal-button-container { min-height: 50px; }
+        .success-msg {
+            background: rgba(68, 170, 68, 0.1);
+            border: 1px solid var(--green);
+            color: var(--green);
+            padding: 16px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success-msg.show { display: block; }
+        .license-key {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Agave', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin: 12px 0;
+        }
+        .error-msg {
+            background: rgba(170, 68, 68, 0.1);
+            border: 1px solid var(--red);
+            color: #f44;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+        .releases {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .release {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .release:last-child { border-bottom: none; }
+        .release-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .release-version {
+            font-weight: 600;
+            color: var(--accent);
+        }
+        .release-date {
+            font-size: 0.8rem;
+            color: var(--text-dimmer);
+        }
+        .release-notes {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+        .release-downloads {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .release-downloads a {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            padding: 4px 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        .release-downloads a:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 32px 0;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        footer a { color: var(--text-dim); }
+        footer a:hover { color: var(--accent); }
+        @media (max-width: 600px) {
+            .nav-links { display: none; }
+            .hero h1 { font-size: 2rem; }
+            .pricing-card { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo">
+                <img src="assets/yume.png" alt="yume">
+                yume
+            </a>
+            <nav class="nav-links">
+                <a href="#features">features</a>
+                <a href="#pricing">pricing</a>
+                <a href="#releases">releases</a>
+            </nav>
+            <a href="#pricing" class="btn">get license</a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <img src="assets/yume.png" alt="yume" class="hero-logo">
+            <h1>claude code, <span>unchained</span></h1>
+            <p class="hero-sub">the fastest, most intuitive way to use claude code. limits always visible. keyboard-first. native speed.</p>
+            <div class="hero-ctas">
+                <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac</a>
+                <a href="#" class="btn download-btn" id="dl-win" data-os="win">download for windows</a>
+                <a href="#" class="btn download-btn" id="dl-linux" data-os="linux">download for linux</a>
+                <a href="#pricing" class="btn btn-outline">go pro - $21</a>
+            </div>
+            <p class="other-platforms">
+                also available for <a href="#releases">mac</a> · <a href="#releases">windows</a> · <a href="#releases">linux</a>
+            </p>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="container">
+            <h2>why yume?</h2>
+            <div class="features">
+                <div class="feature">
+                    <h3>limits always visible</h3>
+                    <p>5h and 7-day limits shown permanently. no commands to check.</p>
+                </div>
+                <div class="feature">
+                    <h3>no flickering</h3>
+                    <p>native rendering eliminates terminal flickering completely.</p>
+                </div>
+                <div class="feature">
+                    <h3>keyboard-first</h3>
+                    <p>30+ shortcuts. cmd+t tab, cmd+o model, cmd+k ultrathink.</p>
+                </div>
+                <div class="feature">
+                    <h3>no input lag</h3>
+                    <p>stays under 50ms even in long sessions. always responsive.</p>
+                </div>
+                <div class="feature">
+                    <h3>5 built-in agents</h3>
+                    <p>architect, explorer, implementer, guardian, specialist.</p>
+                </div>
+                <div class="feature">
+                    <h3>plugin system</h3>
+                    <p>custom commands, agents, hooks, skills. fully extensible.</p>
+                </div>
+                <div class="feature">
+                    <h3>skills system</h3>
+                    <p>auto-inject context based on triggers. file extensions, keywords, regex.</p>
+                </div>
+                <div class="feature">
+                    <h3>crash recovery</h3>
+                    <p>auto-saves every 5 min. recover sessions after crashes.</p>
+                </div>
+                <div class="feature">
+                    <h3>smart compaction</h3>
+                    <p>auto-compacts at 60%, forces at 65%. visual indicator.</p>
+                </div>
+                <div class="feature">
+                    <h3>visual checkpoints</h3>
+                    <p>timeline navigator for code state. rewind, restore, compare.</p>
+                </div>
+                <div class="feature">
+                    <h3>@ mention system</h3>
+                    <p>@r for recent files. @m for modified files. folder navigation.</p>
+                </div>
+                <div class="feature">
+                    <h3>stream timers</h3>
+                    <p>live duration for thinking, bash, compacting.</p>
+                </div>
+                <div class="feature">
+                    <h3>yume guard</h3>
+                    <p>built-in security hook. blocks dangerous commands.</p>
+                </div>
+                <div class="feature">
+                    <h3>voice dictation</h3>
+                    <p>native speech-to-text. hands-free coding.</p>
+                </div>
+                <div class="feature">
+                    <h3>message rollback</h3>
+                    <p>history panel with undo. branching conversations.</p>
+                </div>
+                <div class="feature">
+                    <h3>570+ themes</h3>
+                    <p>oled black default. 31 themes. 189 accent colors.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="pricing">
+        <div class="container">
+            <div class="pricing-card" id="purchase-card">
+                <div class="pricing-badge">lifetime license</div>
+                <h3 class="pricing-title">yume pro</h3>
+                <div class="pricing-price">$21</div>
+                <p class="pricing-note">one-time payment · no subscription</p>
+                <ul class="pricing-features">
+                    <li>unlimited tabs (vs 2 in free)</li>
+                    <li>uses your existing claude subscription</li>
+                    <li>lifetime updates, no recurring fees</li>
+                    <li>support indie development</li>
+                </ul>
+                <div class="email-form">
+                    <label>email address</label>
+                    <input type="email" id="customer-email" placeholder="your@email.com">
+                    <p class="email-note">license key will be sent to this email</p>
+                </div>
+                <div class="error-msg" id="error-msg"></div>
+                <div id="paypal-button-container"></div>
+                <p style="margin-top: 16px; font-size: 12px; color: var(--text-dimmer);">
+                    or pay via <a href="https://yuru.be/yume" style="color: var(--accent);">yuru.be/yume</a>
+                </p>
+            </div>
+            <div class="success-msg" id="success-msg">
+                <h3 style="margin-bottom: 8px;">purchase complete!</h3>
+                <p>your license key:</p>
+                <div class="license-key" id="license-key-display"></div>
+                <p style="font-size: 12px;">also sent to your email. enter this in yume settings.</p>
+                <button class="btn" onclick="copyLicense()" style="margin-top: 12px;">copy license key</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="releases">
+        <div class="container">
+            <h2>releases</h2>
+            <div class="releases" id="releases-list">
+                <div class="release">
+                    <div class="release-header">
+                        <span class="release-version">loading...</span>
+                    </div>
+                    <p class="release-notes">fetching latest releases...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>
+                <a href="https://yuru.be">yuru.be</a> ·
+                <a href="mailto:support@yuru.be">support@yuru.be</a> ·
+                <a href="https://github.com/anthropics/claude-code">claude code cli</a>
+            </p>
+            <p style="margin-top: 8px;">© 2026 yuruko. made with claude code + yume.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Load releases from releases.json
+        async function loadReleases() {
+            try {
+                const response = await fetch('releases/releases.json');
+                const data = await response.json();
+                renderReleases(data.releases);
+                updateDownloadButtons(data.releases[0]);
+            } catch (err) {
+                document.getElementById('releases-list').innerHTML = `
+                    <div class="release">
+                        <p class="release-notes">releases coming soon. check back later!</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderReleases(releases) {
+            const container = document.getElementById('releases-list');
+            container.innerHTML = releases.map(r => `
+                <div class="release">
+                    <div class="release-header">
+                        <span class="release-version">v${r.version}</span>
+                        <span class="release-date">${r.date}</span>
+                    </div>
+                    <p class="release-notes">${r.notes}</p>
+                    <div class="release-downloads">
+                        ${r.downloads.mac ? `<a href="${r.downloads.mac}">mac</a>` : ''}
+                        ${r.downloads.mac_arm ? `<a href="${r.downloads.mac_arm}">mac (arm64)</a>` : ''}
+                        ${r.downloads.win ? `<a href="${r.downloads.win}">windows</a>` : ''}
+                        ${r.downloads.linux ? `<a href="${r.downloads.linux}">linux</a>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateDownloadButtons(latestRelease) {
+            const urls = {
+                mac: latestRelease.downloads.mac_arm || latestRelease.downloads.mac || '#',
+                win: latestRelease.downloads.win || '#',
+                linux: latestRelease.downloads.linux || '#'
+            };
+
+            // Detect OS
+            const ua = navigator.userAgent.toLowerCase();
+            const platform = navigator.platform.toLowerCase();
+            let os = 'mac';
+            if (platform.includes('win') || ua.includes('win')) os = 'win';
+            else if (platform.includes('linux') || ua.includes('linux')) os = 'linux';
+
+            // Show detected OS button
+            const btn = document.getElementById('dl-' + os);
+            if (btn) {
+                btn.classList.add('active');
+                btn.href = urls[os];
+            }
+
+            // Update all download buttons
+            document.querySelectorAll('.download-btn').forEach(b => {
+                b.href = urls[b.dataset.os];
+            });
+        }
+
+        loadReleases();
+
+        // License copy
+        let generatedLicense = '';
+        function copyLicense() {
+            navigator.clipboard.writeText(generatedLicense).then(() => {
+                const btn = event.target;
+                btn.textContent = 'copied!';
+                setTimeout(() => btn.textContent = 'copy license key', 2000);
+            });
+        }
+
+        // PayPal integration placeholder
+        // For GitHub Pages, we redirect to yuru.be for payment processing
+        // The paypal-button-container will show a "buy on yuru.be" link
+        document.getElementById('paypal-button-container').innerHTML = `
+            <a href="https://yuru.be/yume#pricing" class="btn" style="width: 100%; display: block; text-align: center;">
+                buy license on yuru.be
+            </a>
+        `;
+    </script>
+</body>
+</html>
