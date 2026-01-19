@@ -54,6 +54,7 @@ import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions, imageExtensions } from '../../constants/chat';
 import { resolveModelId, getProviderForModel, ALL_MODELS } from '../../config/models';
+import { getEffectiveEnabledTools } from '../../config/tools';
 import { toastService } from '../../services/toastService';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
@@ -464,7 +465,8 @@ export const ClaudeChat: React.FC = () => {
     showDictation,
     contextBarVisibility,
     setContextBarVisibility,
-    showConfirmDialogs
+    showConfirmDialogs,
+    memoryEnabled
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -492,7 +494,8 @@ export const ClaudeChat: React.FC = () => {
     showDictation: state.showDictation,
     contextBarVisibility: state.contextBarVisibility,
     setContextBarVisibility: state.setContextBarVisibility,
-    showConfirmDialogs: state.showConfirmDialogs
+    showConfirmDialogs: state.showConfirmDialogs,
+    memoryEnabled: state.memoryEnabled
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -501,6 +504,11 @@ export const ClaudeChat: React.FC = () => {
   const currentSession = useClaudeCodeStore(state =>
     state.sessions.find(s => s.id === currentSessionId)
   );
+
+  // Compute effective enabled tools count (excludes mcp when memory disabled)
+  const effectiveEnabledToolsCount = useMemo(() => {
+    return getEffectiveEnabledTools(enabledTools, memoryEnabled).length;
+  }, [enabledTools, memoryEnabled]);
 
   // Compute session file stats from restore points
   const sessionFileStats = useMemo(() => {
@@ -6147,7 +6155,7 @@ export const ClaudeChat: React.FC = () => {
             <ContextBar
               selectedModel={currentSession?.model || selectedModel}
               onModelChange={handleModelChange}
-              enabledToolsCount={enabledTools.length}
+              enabledToolsCount={effectiveEnabledToolsCount}
               onOpenModelModal={() => {
                 setModelToolsOpenedViaKeyboard(false);
                 setShowModelToolsModal(true);

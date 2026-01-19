@@ -99,7 +99,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
                   cursor: 'pointer'
                 }}
                 onClick={async () => {
-                  const url = 'https://github.com/forkgatherer/yume/releases';
+                  const url = 'https://github.com/aofp/yume/releases';
                   if (window.__TAURI__) {
                     const { invoke } = await import('@tauri-apps/api/core');
                     await invoke('open_external', { url }).catch(() => window.open(url, '_blank'));

@@ -47,6 +47,18 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     return filtered;
   }, [allToolsByCategory, memoryEnabled]);
 
+  // Available tools count (excluding disabled mcp)
+  const availableToolsCount = useMemo(() => {
+    return ALL_TOOLS.length - (memoryEnabled ? 0 : allToolsByCategory.mcp.length);
+  }, [allToolsByCategory.mcp.length, memoryEnabled]);
+
+  // Filter enabled tools to exclude disabled mcp tools
+  const effectiveEnabledTools = useMemo(() => {
+    if (memoryEnabled) return enabledTools;
+    const mcpToolIds = allToolsByCategory.mcp.map(t => t.id);
+    return enabledTools.filter(id => !mcpToolIds.includes(id));
+  }, [enabledTools, memoryEnabled, allToolsByCategory.mcp]);
+
   const modelRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const toggleAllRef = useRef<HTMLButtonElement | null>(null);
   const toolRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
@@ -212,11 +224,15 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   }, [onModelChange, onClose, displayModels]);
 
   const toggleAll = useCallback(() => {
-    const allToolIds = ALL_TOOLS.map(t => t.id);
-    const newTools = enabledTools.length === allToolIds.length ? [] : allToolIds;
+    // Get available tool ids (exclude mcp if memory disabled)
+    const mcpToolIds = allToolsByCategory.mcp.map(t => t.id);
+    const availableToolIds = memoryEnabled
+      ? ALL_TOOLS.map(t => t.id)
+      : ALL_TOOLS.filter(t => !mcpToolIds.includes(t.id)).map(t => t.id);
+    const newTools = effectiveEnabledTools.length === availableToolIds.length ? [] : availableToolIds;
     onToolsChange(newTools);
     saveEnabledTools(newTools);
-  }, [enabledTools, onToolsChange]);
+  }, [effectiveEnabledTools.length, onToolsChange, memoryEnabled, allToolsByCategory.mcp]);
 
   // Handle keyboard navigation for toggle-all button
   const handleToggleAllKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -515,7 +531,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
             >
               <span className="mt-label">
                 {toolsExpanded ? <IconChevronDown size={12} stroke={1.5} /> : <IconChevronRight size={12} stroke={1.5} />}
-                tools ({enabledTools.length}/{ALL_TOOLS.length})
+                tools ({effectiveEnabledTools.length}/{availableToolsCount})
               </span>
               {toolsExpanded && (
                 <button
@@ -525,7 +541,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                   onKeyDown={handleToggleAllKeyDown}
                   tabIndex={focusedToggleAll ? 0 : -1}
                 >
-                  {enabledTools.length === ALL_TOOLS.length ? 'none' : 'all'}
+                  {effectiveEnabledTools.length === availableToolsCount ? 'none' : 'all'}
                 </button>
               )}
             </div>

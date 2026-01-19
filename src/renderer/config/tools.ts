@@ -136,3 +136,21 @@ export function expandMcpTools(enabledTools: string[]): string[] {
 export function getAllMcpToolIds(): string[] {
   return Object.values(MCP_SERVER_TOOLS).flat();
 }
+
+// Get MCP toggle IDs (the toggle buttons, not expanded tools)
+export function getMcpToggleIds(): string[] {
+  return Object.keys(MCP_SERVER_TOOLS);
+}
+
+// Get available tools count (excludes mcp if memory disabled)
+export function getAvailableToolsCount(memoryEnabled: boolean): number {
+  const mcpToggles = getMcpToggleIds();
+  return memoryEnabled ? ALL_TOOLS.length : ALL_TOOLS.length - mcpToggles.length;
+}
+
+// Get effective enabled tools (excludes mcp tools if memory disabled)
+export function getEffectiveEnabledTools(enabledTools: string[], memoryEnabled: boolean): string[] {
+  if (memoryEnabled) return enabledTools;
+  const mcpToggles = getMcpToggleIds();
+  return enabledTools.filter(id => !mcpToggles.includes(id));
+}

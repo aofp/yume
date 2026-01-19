@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  min-width: 110px;
+  min-width: 90px; /* make bigger for gemini when adding, ~110 */
   justify-content: center;
   -webkit-touch-callout: none;
   -webkit-user-select: none;

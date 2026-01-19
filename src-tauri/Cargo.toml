@@ -2,7 +2,7 @@
 name = "yume"
 version = "0.1.0"
 description = "yume - Minimal UI for Claude CLI"
-authors = ["forkgatherer"]
+authors = ["aofp"]
 license = "MIT"
 repository = ""
 edition = "2021"

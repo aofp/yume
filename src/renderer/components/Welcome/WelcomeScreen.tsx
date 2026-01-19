@@ -8,6 +8,7 @@ import { ModelToolsModal } from '../ModelSelector/ModelToolsModal';
 import { invoke } from '@tauri-apps/api/core';
 import { APP_NAME, APP_VERSION, appStorageKey } from '../../config/app';
 import { getProviderForModel } from '../../config/models';
+import { getEffectiveEnabledTools } from '../../config/tools';
 import './WelcomeScreen.css';
 import '../Chat/ClaudeChat.css'; // for stats modal styles
 
@@ -40,7 +41,7 @@ const USAGE_LIMITS_CACHE_KEY = appStorageKey('usage_limits_cache');
 const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
 
 export const WelcomeScreen: React.FC = () => {
-  const { createSession, autoCompactEnabled, setAutoCompactEnabled, selectedModel, setSelectedModel, enabledTools } = useClaudeCodeStore();
+  const { createSession, autoCompactEnabled, setAutoCompactEnabled, selectedModel, setSelectedModel, enabledTools, memoryEnabled } = useClaudeCodeStore();
   const { isLicensed } = useLicenseStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -354,7 +355,7 @@ export const WelcomeScreen: React.FC = () => {
         <ModelSelector
           value={selectedModel}
           onChange={setSelectedModel}
-          toolCount={enabledTools.length}
+          toolCount={getEffectiveEnabledTools(enabledTools, memoryEnabled).length}
           onOpenModal={() => setShowModelModal(true)}
         />
         <span

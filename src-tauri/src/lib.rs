@@ -640,7 +640,7 @@ pub fn run() {
                 unsafe {
                     // Enable first mouse click to both activate window AND process the click
                     // This makes the app feel more responsive
-                    ns_window.setAcceptsMouseMovedEvents_(true);
+                    ns_window.setAcceptsMouseMovedEvents_(YES);
 
                     // CRITICAL: Disable window restoration which can interfere with focus state
                     // This prevents macOS from trying to restore previous window state on app launch

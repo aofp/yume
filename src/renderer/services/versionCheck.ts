@@ -1,11 +1,11 @@
 /**
  * Version check service - checks for updates once every 24 hours
- * Fetches version.txt from github repo (forkgatherer/yume)
+ * Fetches version.txt from github repo (aofp/yume)
  */
 
 import { APP_VERSION } from '../config/app';
 
-const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/forkgatherer/yume/main/version.txt';
+const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/aofp/yume/main/version.txt';
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const STORAGE_KEY = 'yume-version-check';
 
