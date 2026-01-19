@@ -578,8 +578,8 @@
   font-family: var(--font-sans);
 }
 
-.platform-win32 .thinking-indicator-bottom {
-  gap: 2px !important;
+.platform-win32 .thinking-indicator-bottom, .platform-win32 .thinking-indicator-bottom .thinking-text-wrapper {
+  gap: 3px !important;
 }
 
 .thinking-indicator-bottom .thinking-text-wrapper {
