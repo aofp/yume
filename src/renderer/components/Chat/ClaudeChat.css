@@ -2071,7 +2071,7 @@ textarea.context-full {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--bg-60);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2085,7 +2085,7 @@ textarea.context-full {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--bg-80);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2222,7 +2222,7 @@ textarea.context-full {
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--bg-80);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2671,7 +2671,7 @@ textarea.context-full {
   left: 0;
   width: 100%;
   height: calc(100% - 60px);
-  background: var(--bg-80);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;

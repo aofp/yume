@@ -47,6 +47,31 @@ function simpleHash(str: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+// Timestamp prefix format: [ISO_DATE] content
+const TIMESTAMP_REGEX = /^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)\]\s*/;
+
+// Add timestamp prefix to observation
+function timestampObservation(content: string): string {
+  // Don't double-timestamp
+  if (TIMESTAMP_REGEX.test(content)) {
+    return content;
+  }
+  return `[${new Date().toISOString()}] ${content}`;
+}
+
+// Parse timestamp from observation
+export function parseObservationTimestamp(observation: string): { date: Date | null; content: string } {
+  const match = observation.match(TIMESTAMP_REGEX);
+  if (match) {
+    const dateStr = match[1].endsWith('Z') ? match[1] : match[1] + 'Z';
+    return {
+      date: new Date(dateStr),
+      content: observation.slice(match[0].length)
+    };
+  }
+  return { date: null, content: observation };
+}
+
 // Get basename from path (cross-platform)
 function getBasename(path: string): string {
   const parts = path.replace(/\\/g, '/').split('/').filter(Boolean);
@@ -224,6 +249,7 @@ class MemoryService {
 
   /**
    * Create entities in the knowledge graph
+   * Automatically adds timestamps to observations
    */
   async createEntities(entities: MemoryEntity[]): Promise<boolean> {
     console.log('[MemoryService] createEntities called with:', JSON.stringify(entities));
@@ -232,9 +258,15 @@ class MemoryService {
       return false;
     }
 
+    // Add timestamps to all observations
+    const timestampedEntities = entities.map(entity => ({
+      ...entity,
+      observations: entity.observations.map(obs => timestampObservation(obs))
+    }));
+
     try {
       console.log('[MemoryService] Invoking memory_create_entities...');
-      const result = await invoke<MemoryServerResult>('memory_create_entities', { entities });
+      const result = await invoke<MemoryServerResult>('memory_create_entities', { entities: timestampedEntities });
       console.log('[MemoryService] memory_create_entities result:', JSON.stringify(result));
       if (!result.success) {
         console.error('[MemoryService] Failed to create entities:', result.error);
@@ -269,6 +301,7 @@ class MemoryService {
 
   /**
    * Add observations to an existing entity
+   * Automatically adds timestamps to observations
    */
   async addObservations(entityName: string, observations: string[]): Promise<boolean> {
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
@@ -276,10 +309,13 @@ class MemoryService {
       return false;
     }
 
+    // Add timestamps to observations
+    const timestampedObservations = observations.map(obs => timestampObservation(obs));
+
     try {
       const result = await invoke<MemoryServerResult>('memory_add_observations', {
         entityName,
-        observations
+        observations: timestampedObservations
       });
       if (!result.success) {
         console.error('[MemoryService] Failed to add observations:', result.error);

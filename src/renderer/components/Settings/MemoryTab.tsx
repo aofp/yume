@@ -14,7 +14,7 @@ import {
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { invoke } from '@tauri-apps/api/core';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
-import { memoryService, MemoryEntity } from '../../services/memoryService';
+import { memoryService, MemoryEntity, parseObservationTimestamp } from '../../services/memoryService';
 import { toastService } from '../../services/toastService';
 import './MemoryTab.css';
 
@@ -29,6 +29,34 @@ interface NavItem {
   type: 'type' | 'entity';
   typeKey: string;
   entityName?: string;
+}
+
+// Format relative date
+function formatRelativeDate(date: Date | null): string {
+  if (!date) return '';
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+// Get most recent date from entity observations
+function getEntityMostRecentDate(entity: MemoryEntity): Date | null {
+  let mostRecent: Date | null = null;
+  for (const obs of entity.observations) {
+    const { date } = parseObservationTimestamp(obs);
+    if (date && (!mostRecent || date > mostRecent)) {
+      mostRecent = date;
+    }
+  }
+  return mostRecent;
 }
 
 export const MemoryTab: React.FC = () => {
@@ -453,48 +481,64 @@ export const MemoryTab: React.FC = () => {
                     {/* Entities List */}
                     {expandedTypes.has(type) && (
                       <div className="memory-entity-list">
-                        {entities.map(entity => (
-                          <div key={entity.name}>
-                            {/* Entity Item */}
-                            <div
-                              className={`memory-entity-item ${isSelected({ type: 'entity', typeKey: type, entityName: entity.name }) ? 'memory-nav-selected' : ''}`}
-                              onClick={() => toggleEntityExpansion(entity.name)}
-                            >
-                              <div className="memory-entity-info">
-                                {expandedEntities.has(entity.name) ? (
-                                  <IconChevronDown size={10} />
-                                ) : (
-                                  <IconChevronRight size={10} />
-                                )}
-                                <span className="memory-entity-name">{entity.name}</span>
-                                <span className="memory-entity-obs-count">
-                                  {entity.observations.length}
-                                </span>
-                              </div>
-                              <button
-                                className="memory-delete-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteEntity(entity.name);
-                                }}
-                                title="delete"
+                        {entities.map(entity => {
+                          const mostRecentDate = getEntityMostRecentDate(entity);
+                          return (
+                            <div key={entity.name}>
+                              {/* Entity Item */}
+                              <div
+                                className={`memory-entity-item ${isSelected({ type: 'entity', typeKey: type, entityName: entity.name }) ? 'memory-nav-selected' : ''}`}
+                                onClick={() => toggleEntityExpansion(entity.name)}
                               >
-                                <IconTrash size={10} />
-                              </button>
-                            </div>
-
-                            {/* Observations */}
-                            {expandedEntities.has(entity.name) && (
-                              <div className="memory-observations">
-                                {entity.observations.map((obs, idx) => (
-                                  <div key={idx} className="memory-observation">
-                                    {obs}
-                                  </div>
-                                ))}
+                                <div className="memory-entity-info">
+                                  {expandedEntities.has(entity.name) ? (
+                                    <IconChevronDown size={10} />
+                                  ) : (
+                                    <IconChevronRight size={10} />
+                                  )}
+                                  <span className="memory-entity-name">{entity.name}</span>
+                                  <span className="memory-entity-obs-count">
+                                    {entity.observations.length}
+                                  </span>
+                                  {mostRecentDate && (
+                                    <span className="memory-entity-date" title={mostRecentDate.toLocaleString()}>
+                                      {formatRelativeDate(mostRecentDate)}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  className="memory-delete-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteEntity(entity.name);
+                                  }}
+                                  title="delete"
+                                >
+                                  <IconTrash size={10} />
+                                </button>
                               </div>
-                            )}
-                          </div>
-                        ))}
+
+                              {/* Observations */}
+                              {expandedEntities.has(entity.name) && (
+                                <div className="memory-observations">
+                                  {entity.observations.map((obs, idx) => {
+                                    const { date, content } = parseObservationTimestamp(obs);
+                                    return (
+                                      <div key={idx} className="memory-observation">
+                                        {date && (
+                                          <span className="memory-observation-date" title={date.toLocaleString()}>
+                                            {formatRelativeDate(date)}
+                                          </span>
+                                        )}
+                                        <span className="memory-observation-content">{content}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

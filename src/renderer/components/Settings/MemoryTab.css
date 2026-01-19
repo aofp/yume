@@ -279,6 +279,14 @@
   flex-shrink: 0;
 }
 
+.memory-entity-date {
+  font-size: var(--text-xs);
+  color: var(--fg-40);
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--mono-font);
+}
+
 .memory-delete-btn {
   background: transparent;
   border: none;
@@ -306,6 +314,21 @@
   padding: var(--space-0-5) 0 var(--space-0-5) var(--space-2);
   border-left: 2px solid var(--fg-15);
   margin-bottom: var(--space-0-5);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+}
+
+.memory-observation-date {
+  color: var(--fg-40);
+  font-family: var(--mono-font);
+  flex-shrink: 0;
+  min-width: 55px;
+}
+
+.memory-observation-content {
+  flex: 1;
+  word-break: break-word;
 }
 
 /* Actions section */
