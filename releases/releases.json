@@ -13,8 +13,8 @@
         "windows": "yume_0.1.0_x64-setup.exe"
       },
       "checksums": {
-        "mac": "dab13824a8a75243e2dd8a3d72a7375055bd2739107e2258e16e88afca73cb75",
-        "mac_arm": "8bc4324671d358faedeb157a0637a62cb6ab7a14ef04a60125d758c1304699d5",
+        "mac": "ba4a470078a6bcf0a5e0a480d4a0e5b8eb1b92f36e1c990704ff2a67a528a2a8",
+        "mac_arm": "a520a086ae8560a5eae3d7bb362721cda50808aec01aadbc32a59eff5b08b0bc",
         "windows": "d0b29d1e75801c35d3decaafd858e712810ecf3b836876302e0a0b419dc38196"
       }
     }
