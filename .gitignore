@@ -16,3 +16,4 @@ Thumbs.db
 # Old release archives (keep releases.json, release notes, and current release files only)
 releases/0.*/
 releases/*.dmg
+CLAUDE.md
