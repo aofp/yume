@@ -5399,9 +5399,13 @@ export const ClaudeChat: React.FC = () => {
                       }
                     }
                   }
-                  if (!latestSnap || (!latestSnap.oldContent && !latestSnap.content)) return null;
+                  // For edit operations: oldContent is the snippet, content is the new snippet
+                  // For write operations: originalContent is the full file before, content is the new content
+                  const oldText = latestSnap.oldContent ?? latestSnap.originalContent ?? '';
+                  const newText = latestSnap.content ?? '';
+                  if (!latestSnap || (!oldText && !newText)) return null;
                   // Use startLine from snapshot for accurate line numbers (edit operations)
-                  const diff = generateDiff(selectedSessionFile, latestSnap.oldContent || '', latestSnap.content || '', latestSnap.startLine || 1);
+                  const diff = generateDiff(selectedSessionFile, oldText, newText, latestSnap.startLine || 1);
                   // Convert to relative path for display (cross-platform)
                   const normalizedPath = selectedSessionFile.replace(/\\/g, '/');
                   const workDir = currentSession?.workingDirectory || '';

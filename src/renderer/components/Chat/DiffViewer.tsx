@@ -98,23 +98,24 @@ const backtrackDiff = (
 
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      // Same line - context (use old line number for consistency)
+      // Same line - context (use new line number since that's the current state)
       ops.push({
         type: 'context',
         content: oldLines[i - 1],
-        lineNumber: startLine + i - 1
+        lineNumber: startLine + j - 1
       });
       i--;
       j--;
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      // Line added (no line number - it's new)
+      // Line added - show line number in new file
       ops.push({
         type: 'add',
-        content: newLines[j - 1]
+        content: newLines[j - 1],
+        lineNumber: startLine + j - 1
       });
       j--;
     } else if (i > 0) {
-      // Line removed
+      // Line removed - show line number from old file
       ops.push({
         type: 'remove',
         content: oldLines[i - 1],
@@ -134,9 +135,9 @@ export const generateDiff = (
   newContent: string,
   startLine: number = 1 // 1-based line number where the content starts in the file
 ): DiffDisplay => {
-  // Split content into lines
-  const oldLines = oldContent.split('\n');
-  const newLines = newContent.split('\n');
+  // Split content into lines (normalize CRLF to LF for windows compatibility)
+  const oldLines = oldContent.replace(/\r\n/g, '\n').split('\n');
+  const newLines = newContent.replace(/\r\n/g, '\n').split('\n');
 
   // Compute LCS-based diff
   const dp = computeLCS(oldLines, newLines);
