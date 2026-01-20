@@ -61,15 +61,6 @@ import('@tauri-apps/api/core').then(m => {
 let textareaFocusedOnBlur = false;
 const isMacPlatform = navigator.platform.toLowerCase().includes('mac');
 
-// DISABLED: Focus watchdog was causing random focus stealing when app is idle
-// The watchdog assumed "no keystrokes for 5s = stuck focus" but user may just be reading/thinking
-// This caused the app to steal focus from other apps every 3 seconds when idle
-// See: https://github.com/anthropics/claude-code/issues/XXXX
-//
-// Focus restoration is now handled ONLY by:
-// 1. Rust side on WindowEvent::Focused (lib.rs)
-// 2. ClaudeChat.tsx for explicit user-triggered input detection
-
 import('@tauri-apps/api/event').then(({ listen }) => {
   // Listen for native window focus changes from Tauri
   // This is more reliable than web 'focus' event on macOS
@@ -598,7 +589,7 @@ const keyboardHandler = (e: KeyboardEvent) => {
           }
           // User cancelled - do nothing
         } catch (err) {
-          console.error('Folder selection failed:', err);
+          log.error('Folder selection failed:', err);
         }
       }
       // No fallback - require folder selection

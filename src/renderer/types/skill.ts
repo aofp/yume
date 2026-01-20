@@ -2,6 +2,8 @@
  * Skill Types - Enhanced skill interface with triggers support
  */
 
+import { log } from '../utils/logger';
+
 export interface SkillTriggers {
   // File extension patterns (e.g., "*.py", "*.tsx", "test_*.py")
   extensions: string[];
@@ -202,7 +204,7 @@ export function parseSkillYaml(content: string, filePath?: string): Partial<Skil
 
     return skill;
   } catch (e) {
-    console.error('Failed to parse skill YAML:', e);
+    log.error('Failed to parse skill YAML:', e);
     return null;
   }
 }

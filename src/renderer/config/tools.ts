@@ -4,6 +4,7 @@
  */
 
 import { appStorageKey } from './app';
+import { log } from '../utils/logger';
 
 export interface ToolDefinition {
   id: string;
@@ -91,7 +92,7 @@ export function loadEnabledTools(): string[] {
       return parsed.filter((id: string) => ALL_TOOLS.some(t => t.id === id));
     }
   } catch (e) {
-    console.warn('Failed to load tool settings:', e);
+    log.warn('Failed to load tool settings:', e);
   }
   return DEFAULT_ENABLED_TOOLS;
 }
@@ -101,7 +102,7 @@ export function saveEnabledTools(tools: string[]): void {
   try {
     localStorage.setItem(TOOLS_STORAGE_KEY, JSON.stringify(tools));
   } catch (e) {
-    console.warn('Failed to save tool settings:', e);
+    log.warn('Failed to save tool settings:', e);
   }
 }
 

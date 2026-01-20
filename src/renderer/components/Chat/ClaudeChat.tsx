@@ -6092,21 +6092,6 @@ export const ClaudeChat: React.FC = () => {
       </div>
       )}
 
-      {/* Timeline Navigator - REMOVED: Unnecessary complexity */}
-      {/* {showTimeline && currentSessionId && FEATURE_FLAGS.SHOW_TIMELINE && (
-        <React.Suspense fallback={<div>Loading timeline...</div>}>
-          <TimelineNavigator
-            sessionId={currentSessionId}
-            currentMessageCount={currentSession?.messages?.length || 0}
-            onRestoreCheckpoint={(checkpointId) => {
-              console.log('Restoring checkpoint:', checkpointId);
-              // TODO: Implement actual restoration
-            }}
-            onClose={() => setShowTimeline(false)}
-          />
-        </React.Suspense>
-      )} */}
-      
       {/* Agent Executor */}
       {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
         <React.Suspense fallback={<div>&nbsp;</div>}>
