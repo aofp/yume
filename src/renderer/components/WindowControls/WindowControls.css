@@ -323,7 +323,6 @@
   -webkit-app-region: no-drag;
   z-index: 10002;
   opacity: 0.5;
-  transition: opacity 150ms ease;
 }
 
 .vscode-indicator:hover {
