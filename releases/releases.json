@@ -1,22 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.1.4",
+  "latest": "0.1.5",
   "baseUrl": "https://aofp.github.io/yume/releases",
   "releases": [
     {
-      "version": "0.1.4",
-      "date": "2026-01-19",
-      "notes": "fixes update notification",
+      "version": "0.1.5",
+      "date": "2026-01-20",
+      "notes": "fixes releases page and readme links",
       "downloads": {
-        "mac_arm": "0.1.4/yume-0.1.4-macos-arm64.dmg",
-        "mac": "0.1.4/yume-0.1.4-macos-x64.dmg",
-        "windows": "0.1.4/yume_0.1.4_x64-setup.exe"
+        "mac_arm": "0.1.5/yume-0.1.5-macos-arm64.dmg",
+        "mac": "0.1.5/yume-0.1.5-macos-x64.dmg",
+        "windows": "0.1.5/yume_0.1.5_x64-setup.exe"
       },
       "checksums": {
-        "mac_arm": "252b6366e912359f71b9a60b7743d3bcd831f02aa097160a9d4e6c81657af71b",
-        "mac": "1dbe8a4d556d3b8a30680b408c5d825c1a136baef3bd889442c4e6b5c37b2316",
-        "windows": "c3b3257d73d6b49833220f503271c417505b8791a30faa5bba54da0823644074"
+        "mac_arm": "76dfe11e22fde43da92da15542233beec60c9774b8ecc986fbedc07dbf73c536",
+        "mac": "76b3b664e3cc76c915efac43a6f31d87dcc0c28b575cd1a2c0901d367cf12856",
+        "windows": "486f586375e392767e9873d82805c4b45b7e1021e0dccfe03157c1bf0a58e96d"
       }
+    },
+    {
+      "version": "0.1.4",
+      "date": "2026-01-19",
+      "notes": "fixes update notification"
     },
     {
       "version": "0.1.3",
