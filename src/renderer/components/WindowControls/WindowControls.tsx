@@ -189,17 +189,20 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
         </div>
         {/* VSCode indicator right after traffic lights on mac (left side) */}
         {vscodeExtensionEnabled && vscodeConnected && (
-          <span className="vscode-indicator" title="vscode extension connected">
+          <span
+            className="vscode-indicator clickable"
+            title="vscode extension connected (click to open settings)"
+            onClick={onSettingsClick}
+          >
             [vscode connected]
           </span>
         )}
         {/* Update indicator */}
         {hasUpdateAvailable && (
           <span
-            className="vscode-indicator update-indicator"
+            className="vscode-indicator update-indicator clickable"
             title={`update available: ${latestVersion || 'unknown'} (click to download)`}
             onClick={handleUpdateClick}
-            style={{ cursor: 'pointer' }}
           >
             [update available]
           </span>
@@ -301,17 +304,20 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       </div>
       {/* VSCode indicator after traffic lights on windows (right side) */}
       {vscodeExtensionEnabled && vscodeConnected && (
-        <span className="vscode-indicator" title="vscode extension connected">
+        <span
+          className="vscode-indicator clickable"
+          title="vscode extension connected (click to open settings)"
+          onClick={onSettingsClick}
+        >
           [vscode connected]
         </span>
       )}
       {/* Update indicator */}
       {hasUpdateAvailable && (
         <span
-          className="vscode-indicator update-indicator"
+          className="vscode-indicator update-indicator clickable"
           title={`update available: ${latestVersion || 'unknown'} (click to download)`}
           onClick={handleUpdateClick}
-          style={{ cursor: 'pointer' }}
         >
           [update available]
         </span>

@@ -1043,7 +1043,10 @@ export const App: React.FC = () => {
         </span>
       )}
       <ErrorBoundary name="WindowControls">
-        <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAgentsClick={() => setShowAgentsModal(true)} onAnalyticsClick={() => {
+        <WindowControls onSettingsClick={() => {
+          setSettingsInitialTab('general');
+          setShowSettings(true);
+        }} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAgentsClick={() => setShowAgentsModal(true)} onAnalyticsClick={() => {
           setAnalyticsProject(undefined);
           setShowAnalytics(true);
         }} />
