@@ -4,6 +4,17 @@ The most feature-rich Claude Code desktop GUI. Native performance, 15+ unique fe
 
 ![Yume Screenshot](public/assets/yume.png)
 
+## 📦 Installation
+
+**macOS:** Download the `.pkg` installer for automatic setup (no commands needed!)
+
+- ARM64 (M1/M2/M3): `yume_[version]_arm64.pkg`
+- Intel x64: `yume_[version]_x64.pkg`
+
+**Windows/Linux:** See [releases](https://github.com/aofp/yume/releases)
+
+Having issues? See [INSTALL.md](./INSTALL.md)
+
 ## Why Yume?
 
 | vs Claude CLI | vs Opcode/Claudia | vs Cursor/Windsurf |

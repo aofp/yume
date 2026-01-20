@@ -1,0 +1,20 @@
+#!/bin/bash
+# Postinstall script for yume.pkg
+# Automatically removes quarantine flags after installation
+# Runs with elevated privileges during pkg installation
+
+set -e
+
+APP_PATH="/Applications/yume.app"
+
+echo "Running yume postinstall script..."
+
+if [ -d "$APP_PATH" ]; then
+    echo "Removing quarantine flags from $APP_PATH..."
+    xattr -cr "$APP_PATH" 2>/dev/null || true
+    echo "✅ Quarantine flags removed"
+else
+    echo "⚠️ App not found at $APP_PATH"
+fi
+
+exit 0
