@@ -1,11 +1,11 @@
 /**
  * Version check service - checks for updates on app start
- * Fetches version.txt from github repo (aofp/yume)
+ * Fetches version.txt from GitHub Pages (aofp/yume-io)
  */
 
 import { APP_VERSION } from '../config/app';
 
-const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/aofp/yume/main/version.txt';
+const VERSION_CHECK_URL = 'https://aofp.github.io/yume/version.txt';
 const STORAGE_KEY = 'yume-version-check';
 
 interface VersionCheckState {
