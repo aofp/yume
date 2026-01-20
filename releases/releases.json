@@ -1,8 +1,23 @@
 {
   "product": "yume",
-  "latest": "0.1.7",
+  "latest": "0.2.0",
   "baseUrl": "https://aofp.github.io/yume/releases",
   "releases": [
+    {
+      "version": "0.2.0",
+      "date": "2026-01-20",
+      "notes": "Font bundling fix - Agave font now properly embedded in Windows builds",
+      "downloads": {
+        "mac_arm": "0.2.0/yume_0.2.0_arm64.pkg",
+        "mac": "0.2.0/yume_0.2.0_x64.pkg",
+        "windows": "0.2.0/yume_0.2.0_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "1201d8dc54c6195ca46f2c09602f74f33f92a7badec88ca46f96a7db283ff956",
+        "mac": "edb13ade091dbd9470f059ebe570d0334a8f9b30c3942aa07560bafd51e2d68f",
+        "windows": "9b2d009b872a554cf1ad3a78ef495ad149e24d2b20884143fea44c7f6dbd3a67"
+      }
+    },
     {
       "version": "0.1.7",
       "date": "2026-01-20",
