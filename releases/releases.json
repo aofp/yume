@@ -1,20 +1,35 @@
 {
   "product": "yume",
-  "latest": "0.1.2",
+  "latest": "0.1.3",
   "baseUrl": "https://aofp.github.io/yume/releases",
   "releases": [
+    {
+      "version": "0.1.3",
+      "date": "2026-01-19",
+      "notes": "adds docs navigation and improves download button ordering",
+      "downloads": {
+        "mac_arm": "0.1.3/yume-0.1.3-macos-arm64.dmg",
+        "mac": "0.1.3/yume-0.1.3-macos-x64.dmg",
+        "windows": "0.1.3/yume_0.1.3_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "69113ba00169dbaed597c5711764a9bd5786ac130ebbaa2d5f11cd5f0683a080",
+        "mac": "3eacd20c4ef5966ed032dbaed983b17cd2454ab949083fafd11d9bcd890509e4",
+        "windows": "8a1f591a2e71c99817acb44b940d590f08d4b82da19b14a0ff9385c5d0a0aa4c"
+      }
+    },
     {
       "version": "0.1.2",
       "date": "2026-01-19",
       "notes": "adds update indicator and clickable status badges",
       "downloads": {
-        "mac": "0.1.2/yume-0.1.2-macos-x64.dmg",
         "mac_arm": "0.1.2/yume-0.1.2-macos-arm64.dmg",
+        "mac": "0.1.2/yume-0.1.2-macos-x64.dmg",
         "windows": "0.1.2/yume_0.1.2_x64-setup.exe"
       },
       "checksums": {
-        "mac": "f3e07802e370e3cb3cdca420be390592db2d789a4664f295560e0cb08f29cfb0",
         "mac_arm": "76f55e16264e8f714bf1dbead7793bcc9693fb8377074ef8d3375db957f1607f",
+        "mac": "f3e07802e370e3cb3cdca420be390592db2d789a4664f295560e0cb08f29cfb0",
         "windows": "58d7160ce84b28237adcb474db166de3901b28eee1ce3f16ad1f511dbb2f4bef"
       }
     },
@@ -23,13 +38,13 @@
       "date": "2026-01-19",
       "notes": "improving ui consistency between macos and windows",
       "downloads": {
-        "mac": "0.1.1/yume-0.1.1-macos-x64.dmg",
         "mac_arm": "0.1.1/yume-0.1.1-macos-arm64.dmg",
+        "mac": "0.1.1/yume-0.1.1-macos-x64.dmg",
         "windows": "0.1.1/yume_0.1.1_x64-setup.exe"
       },
       "checksums": {
-        "mac": "578500175225f50e2012aaa41e3e1130c5fcb8203ed4198e357bdbf62ef17f85",
         "mac_arm": "3c9b48632692bd859edae4edfebb79bed52d88435341221861a549a4dc89cdb3",
+        "mac": "578500175225f50e2012aaa41e3e1130c5fcb8203ed4198e357bdbf62ef17f85",
         "windows": "5c17dae31092b0840146630ee3bbb4873db204c01ce6ca8c2cc1d9f4a56aded2"
       }
     },
@@ -38,13 +53,13 @@
       "date": "2026-01-19",
       "notes": "initial release - native gui for claude code with limits tracking, 21 features, 5 agents, plugin system, crash recovery, and 570+ themes.",
       "downloads": {
-        "mac": "0.1.0/yume-0.1.0-macos-x64.dmg",
         "mac_arm": "0.1.0/yume-0.1.0-macos-arm64.dmg",
+        "mac": "0.1.0/yume-0.1.0-macos-x64.dmg",
         "windows": "0.1.0/yume_0.1.0_x64-setup.exe"
       },
       "checksums": {
-        "mac": "ba4a470078a6bcf0a5e0a480d4a0e5b8eb1b92f36e1c990704ff2a67a528a2a8",
         "mac_arm": "a520a086ae8560a5eae3d7bb362721cda50808aec01aadbc32a59eff5b08b0bc",
+        "mac": "ba4a470078a6bcf0a5e0a480d4a0e5b8eb1b92f36e1c990704ff2a67a528a2a8",
         "windows": "d0b29d1e75801c35d3decaafd858e712810ecf3b836876302e0a0b419dc38196"
       }
     }

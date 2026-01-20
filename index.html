@@ -600,6 +600,7 @@
                 <a href="#tech">tech</a>
                 <a href="#agents">agents</a>
                 <a href="#themes">themes</a>
+                <a href="docs/release/viewer.html">docs</a>
                 <a href="#releases">releases</a>
             </nav>
             <a href="#releases" class="btn">download</a>
@@ -999,6 +1000,7 @@
         <div class="container">
             <p style="margin-bottom: 12px;">
                 <a href="https://yuru.be">yuru.be</a> &bull;
+                <a href="docs/release/viewer.html">docs</a> &bull;
                 <a href="mailto:support@yuru.be">support@yuru.be</a> &bull;
                 <a href="https://github.com/anthropics/claude-code" target="_blank">claude code cli</a>
             </p>
@@ -1033,21 +1035,64 @@
 
         function renderReleases(releases) {
             const container = document.getElementById('releases-list');
-            container.innerHTML = releases.map(r => `
-                <div class="release">
-                    <div class="release-header">
-                        <span class="release-version">v${r.version}</span>
-                        <span class="release-date">${r.date}</span>
+
+            // Detect user's platform
+            const ua = navigator.userAgent.toLowerCase();
+            const platform = navigator.platform.toLowerCase();
+            let userPlatform = 'mac_arm'; // default to Apple Silicon
+
+            if (platform.includes('win') || ua.includes('win')) {
+                userPlatform = 'win';
+            } else if (platform.includes('linux') || ua.includes('linux')) {
+                userPlatform = 'linux';
+            } else if (platform.includes('mac') || platform.includes('darwin')) {
+                // Check if Apple Silicon or Intel
+                // Navigator.platform doesn't distinguish, so check userAgent
+                if (ua.includes('arm') || ua.includes('aarch64')) {
+                    userPlatform = 'mac_arm';
+                } else {
+                    // Default to showing Apple Silicon first on macOS
+                    userPlatform = 'mac_arm';
+                }
+            }
+
+            container.innerHTML = releases.map(r => {
+                // Define all platform buttons with labels
+                const platformButtons = [
+                    { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
+                    { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
+                    { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
+                    { key: 'linux', label: 'linux', url: r.downloads.linux }
+                ];
+
+                // Filter out platforms without downloads
+                const availableButtons = platformButtons.filter(p => p.url);
+
+                // Sort: user's platform first, then others in defined order
+                availableButtons.sort((a, b) => {
+                    if (a.key === userPlatform) return -1;
+                    if (b.key === userPlatform) return 1;
+                    return 0;
+                });
+
+                // Generate button HTML
+                const downloadLinks = availableButtons
+                    .map(p => `<a href="${getDownloadUrl(p.url)}">${p.label}</a>`)
+                    .join('');
+
+                return `
+                    <div class="release">
+                        <div class="release-header">
+                            <span class="release-version">v${r.version}</span>
+                            <span class="release-date">${r.date}</span>
+                        </div>
+                        <p class="release-notes">${r.notes}</p>
+                        <div class="release-downloads">
+                            ${downloadLinks}
+                        </div>
                     </div>
-                    <p class="release-notes">${r.notes}</p>
-                    <div class="release-downloads">
-                        ${r.downloads.mac ? `<a href="${getDownloadUrl(r.downloads.mac)}">mac (intel)</a>` : ''}
-                        ${r.downloads.mac_arm ? `<a href="${getDownloadUrl(r.downloads.mac_arm)}">mac (apple silicon)</a>` : ''}
-                        ${r.downloads.win ? `<a href="${getDownloadUrl(r.downloads.win)}">windows</a>` : ''}
-                        ${r.downloads.linux ? `<a href="${getDownloadUrl(r.downloads.linux)}">linux</a>` : ''}
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function updateDownloadButtons(latestRelease) {
