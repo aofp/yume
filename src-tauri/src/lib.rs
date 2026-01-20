@@ -733,8 +733,46 @@ pub fn run() {
                 let _ = window_for_webview.with_webview(|webview| {
                     use webview2_com::Microsoft::Web::WebView2::Win32::{
                         ICoreWebView2Controller2, COREWEBVIEW2_COLOR,
+                        ICoreWebView2, ICoreWebView2PermissionRequestedEventHandler,
+                        ICoreWebView2PermissionRequestedEventHandler_Impl,
+                        ICoreWebView2PermissionRequestedEventArgs,
+                        COREWEBVIEW2_PERMISSION_KIND_MICROPHONE,
+                        COREWEBVIEW2_PERMISSION_KIND_CAMERA,
+                        COREWEBVIEW2_PERMISSION_STATE_ALLOW,
                     };
-                    use windows::core::Interface;
+                    use windows::core::{Interface, implement};
+
+                    // CRITICAL: Create permission request handler to auto-allow microphone/camera
+                    // WebView2 requires explicit permission handling - unlike macOS WKWebView which
+                    // uses Info.plist entitlements, WebView2 needs the PermissionRequested event
+                    // to be handled programmatically to grant permissions
+                    #[implement(ICoreWebView2PermissionRequestedEventHandler)]
+                    struct PermissionHandler;
+
+                    impl ICoreWebView2PermissionRequestedEventHandler_Impl for PermissionHandler {
+                        fn Invoke(
+                            &self,
+                            _sender: Option<&ICoreWebView2>,
+                            args: Option<&ICoreWebView2PermissionRequestedEventArgs>,
+                        ) -> windows::core::Result<()> {
+                            if let Some(args) = args {
+                                unsafe {
+                                    // Get the permission type being requested
+                                    let mut kind = COREWEBVIEW2_PERMISSION_KIND_MICROPHONE;
+                                    let _ = args.PermissionKind(&mut kind);
+
+                                    // Auto-allow microphone and camera for dictation feature
+                                    if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE
+                                        || kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA {
+                                        let _ = args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                                        info!("WebView2: Auto-granted {:?} permission for dictation",
+                                            if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE { "microphone" } else { "camera" });
+                                    }
+                                }
+                            }
+                            Ok(())
+                        }
+                    }
 
                     unsafe {
                         let controller = webview.controller();
@@ -762,6 +800,21 @@ pub fn run() {
                             }
                             Err(e) => {
                                 error!("Failed to cast to ICoreWebView2Controller2: {:?}", e);
+                            }
+                        }
+
+                        // Register permission handler to auto-grant microphone access
+                        // This is required for SpeechRecognition/getUserMedia to work on Windows
+                        if let Ok(core_webview) = controller.CoreWebView2() {
+                            let handler: ICoreWebView2PermissionRequestedEventHandler = PermissionHandler.into();
+                            let mut token: i64 = 0;
+                            match core_webview.add_PermissionRequested(&handler, &mut token) {
+                                Ok(_) => {
+                                    info!("WebView2: Registered permission handler for microphone auto-grant (token: {})", token);
+                                }
+                                Err(e) => {
+                                    error!("WebView2: Failed to register permission handler: {:?}", e);
+                                }
                             }
                         }
                     }
