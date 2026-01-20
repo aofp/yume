@@ -11,6 +11,11 @@
 #[macro_use]
 extern crate objc;
 
+// Windows-specific: windows_core must be available at crate root for #[implement] macro expansion
+// The implement macro generates code that references windows_core:: directly
+#[cfg(target_os = "windows")]
+extern crate windows_core;
+
 // Module declarations for the application's core functionality
 mod agents;
 mod app; // App metadata constants derived from package.json
