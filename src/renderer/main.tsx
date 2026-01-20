@@ -36,6 +36,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import { log } from './utils/logger';
 import './utils/consoleOverride'; // Initialize console override for production
 import { perfMonitor } from './services/performanceMonitor'; // Initialize performance monitoring
+import './styles/embedded-fonts.css'; // Embedded Agave fonts for Windows
 import './styles/fonts.css';
 import './styles/global.css';
 import './App.minimal.css';
