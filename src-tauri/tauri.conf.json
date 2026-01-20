@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "yume",
   "version": "0.1.7",
-  "identifier": "be.yuru.yume",
+  "identifier": "io.github.aofp.yume",
   "build": {
     "frontendDist": "../dist/renderer",
     "devUrl": "http://localhost:54281",
