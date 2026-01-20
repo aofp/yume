@@ -1,8 +1,8 @@
 # Yume Project Status
 
-**Date:** January 18, 2026
+**Date:** January 20, 2026
 **Version:** 0.1.0 (Pre-Release)
-**Status:** BETA - Approaching Release Readiness
+**Status:** BETA - Release Ready (macOS), Windows/Linux binaries pending
 
 ## Executive Summary
 
@@ -32,10 +32,11 @@ Yume is a sophisticated GUI for Claude CLI with intelligent context management t
 
 ### ⚠️ Remaining Issues
 1. **Code signing** - Certificates needed for macOS/Windows distribution
-2. **Windows/Linux binaries** - yume-cli binaries for windows/linux not built (scripts exist)
-3. **Console.log cleanup** - Need cleanup in production code
+2. **Windows/Linux binaries** - yume-cli binaries for windows/linux not built (build scripts exist)
+3. **Console.log cleanup** - Need cleanup in production code (591 occurrences in 41 files)
 4. **Platform testing** - Need more WSL and Linux testing
 5. **Documentation videos** - Tutorial videos not yet created
+6. **Golden transcript tests** - CI pipeline defined but tests not yet passing
 
 ### 📊 Code Quality Metrics
 - **Total Lines of Code:** ~51,000 (39k TypeScript/TSX + 12k Rust)

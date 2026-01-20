@@ -5437,9 +5437,10 @@ export const ClaudeChat: React.FC = () => {
                   }
                   // For edit operations: oldContent is the snippet, content is the new snippet
                   // For write operations: originalContent is the full file before, content is the new content
+                  if (!latestSnap) return null;
                   const oldText = latestSnap.oldContent ?? latestSnap.originalContent ?? '';
                   const newText = latestSnap.content ?? '';
-                  if (!latestSnap || (!oldText && !newText)) return null;
+                  if (!oldText && !newText) return null;
                   // Use startLine from snapshot for accurate line numbers (edit operations)
                   const diff = generateDiff(selectedSessionFile, oldText, newText, latestSnap.startLine || 1);
                   // Convert to relative path for display (cross-platform)
@@ -6373,7 +6374,16 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {((currentSession?.analytics?.tokens?.input || 0) + (currentSession?.analytics?.tokens?.output || 0)).toLocaleString()} (in: {(currentSession?.analytics?.tokens?.input || 0).toLocaleString()}, out: {(currentSession?.analytics?.tokens?.output || 0).toLocaleString()})
+                            {(() => {
+                              // Use accumulated byModel totals, not snapshot values
+                              const opusIn = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
+                              const opusOut = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
+                              const sonnetIn = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
+                              const sonnetOut = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
+                              const totalIn = opusIn + sonnetIn;
+                              const totalOut = opusOut + sonnetOut;
+                              return `${(totalIn + totalOut).toLocaleString()} (in: ${totalIn.toLocaleString()}, out: ${totalOut.toLocaleString()})`;
+                            })()}
                           </span>
                         </div>
                         <div className="stat-row">

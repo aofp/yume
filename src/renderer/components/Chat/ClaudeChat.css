@@ -569,7 +569,9 @@
 .thinking-indicator-bottom {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  user-select: none;
+  cursor: default;
+  gap: 3px;
   padding: 0;
   color: var(--fg-80);
   font-size: var(--text-sm);
@@ -578,7 +580,7 @@
 }
 
 .platform-win32 .thinking-indicator-bottom, .platform-win32 .thinking-indicator-bottom .thinking-text-wrapper {
-  gap: var(--space-0-5) !important;
+  gap: 3px !important;
 }
 
 .thinking-indicator-bottom .thinking-text-wrapper {
