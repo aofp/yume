@@ -112,8 +112,8 @@ Everything that makes Claude Code great:
 - ✅ Git diff viewer (visual diff preview)
 - ✅ **9-event hook system** (user_prompt_submit, pre/post_tool_use, session_start/end, etc.)
 - ✅ **Drag & drop** (tab reordering, file drops)
-- ✅ **30+ keyboard shortcuts** (keyboard-first design)
-- ✅ **30 themes** (most in class)
+- ✅ **32+ keyboard shortcuts** (keyboard-first design)
+- ✅ **12 themes** (oled optimized)
 - ✅ **5 built-in agents** (architect, explorer, implementer, guardian, specialist)
 - ✅ **Auto-compaction** at 60%/65% thresholds
 - ✅ **Crash recovery** (auto-save every 5 min)
@@ -126,10 +126,18 @@ Everything that makes Claude Code great:
 - ✅ Bash mode (!/$) for direct commands
 - ✅ Conversation search
 - ✅ **CLAUDE.md editor** (visual editor with save/discard)
+- ✅ **Command palette** (56 commands, Cmd+P)
+- ✅ **Multi-provider** (Claude + Gemini + OpenAI via yume-cli)
+- ✅ **Background agents** (4 concurrent, git branch isolation)
+- ✅ **Memory MCP server** (persistent knowledge graph)
+- ✅ **Skills system** (auto-inject context, ReDoS-safe triggers)
+- ✅ **Plugin system** (5 component types)
+- ✅ **Session changes panel** (track file modifications)
+- ✅ **Line changes tracking** (+added/-removed per session)
+- ✅ **Toast notifications** (success/error/info)
 
 ### Future Enhancements
 - Light mode theme
-- Command palette (Cmd+K)
 - System notifications
 
 ---

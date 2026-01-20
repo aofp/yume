@@ -2,8 +2,8 @@
 
 This roadmap focuses on making Yume provider-agnostic while preserving the existing Claude-compatible stream-json pipeline.
 
-> **Last Updated:** 2026-01-15
-> **Overall Progress:** ~90% complete
+> **Last Updated:** 2026-01-19
+> **Overall Progress:** ~95% complete (macOS ready, Windows/Linux binaries pending)
 
 > **Key Documents:**
 > - [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) - Single source of truth for models, pricing, features

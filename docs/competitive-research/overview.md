@@ -76,7 +76,6 @@ The AI coding assistant market in 2025 is dominated by three categories:
 
 ⬜ **Remaining**:
 - Light mode (1 day)
-- Command palette (2-3 days)
 
 ### Primary Competitor: Claude Code CLI
 
@@ -136,7 +135,10 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | **Stream timers** | Live thinking/bash/compacting duration |
 | **History/rollback panel** | Visual message history navigation |
 | **Ultrathink highlighting** | Rainbow gradient + Cmd+K insert |
-| **30 themes** | Way more than any competitor |
+| **Command palette** | 56 commands across 10 categories |
+| **Background agents** | 4 concurrent with git branch isolation |
+| **Memory MCP server** | Auto-learning knowledge graph |
+| **12 themes** | OLED optimized dark themes |
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration |
 | **Performance monitoring** | Real-time FPS, memory, render time |
@@ -156,7 +158,10 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | @ Mentions | ✅ | ❌ | ❌ | ❌ |
 | Crash Recovery | ✅ | ❌ | ❌ | ❌ |
 | Ultrathink Support | ✅ | ❌ | ❌ | ❌ |
-| Multi-Model | ❌ | ❌ | ❌ | ✅ (Claude+Codex) |
+| Multi-Provider | ✅ (Claude+Gemini+OpenAI) | ❌ | ❌ | ✅ (Claude+Codex) |
+| Background Agents | ✅ (4 concurrent, git isolation) | ❌ | ❌ | ❌ |
+| Memory System | ✅ (MCP knowledge graph) | ❌ | ❌ | ❌ |
+| Command Palette | ✅ (56 commands) | ❌ | ❌ | ❌ |
 | YC Backed | ❌ | ❌ | ✅ | ❌ |
 | Price | $21 | Free | Free | Free |
 | Framework | Tauri | Tauri | Tauri | Electron |
