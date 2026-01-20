@@ -54,6 +54,10 @@ function compareVersions(a: string, b: string): number {
  * Check for updates - fetches on every call (app start)
  */
 export async function checkForUpdates(): Promise<VersionCheckState> {
+  console.log('[VersionCheck] Starting update check...');
+  console.log('[VersionCheck] Current version:', APP_VERSION);
+  console.log('[VersionCheck] Fetching from:', VERSION_CHECK_URL);
+
   try {
     const response = await fetch(VERSION_CHECK_URL, {
       cache: 'no-store',
@@ -62,12 +66,17 @@ export async function checkForUpdates(): Promise<VersionCheckState> {
       }
     });
 
+    console.log('[VersionCheck] Response status:', response.status);
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
     const latestVersion = (await response.text()).trim();
+    console.log('[VersionCheck] Latest version:', latestVersion);
+
     const hasUpdate = compareVersions(latestVersion, APP_VERSION) > 0;
+    console.log('[VersionCheck] Has update:', hasUpdate);
 
     const newState: VersionCheckState = {
       latestVersion,
@@ -75,10 +84,14 @@ export async function checkForUpdates(): Promise<VersionCheckState> {
     };
 
     saveState(newState);
+    console.log('[VersionCheck] Saved state:', newState);
     return newState;
   } catch (error) {
+    console.error('[VersionCheck] Error checking for updates:', error);
     // On error, return stored state
-    return getStoredState();
+    const stored = getStoredState();
+    console.log('[VersionCheck] Returning stored state:', stored);
+    return stored;
   }
 }
 

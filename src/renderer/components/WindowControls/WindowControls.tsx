@@ -28,7 +28,9 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const vscodeExtensionEnabled = useClaudeCodeStore(state => state.vscodeExtensionEnabled);
   const hasUpdateAvailable = useClaudeCodeStore(state => state.hasUpdateAvailable);
   const latestVersion = useClaudeCodeStore(state => state.latestVersion);
-  
+
+  console.log('[WindowControls] Render - hasUpdateAvailable:', hasUpdateAvailable, 'latestVersion:', latestVersion);
+
   // Removed spammy platform detection log
   
   // Track window focus state

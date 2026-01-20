@@ -6228,10 +6228,13 @@ ${content}`;
       },
 
       checkForUpdates: async () => {
+        console.log('[Store] checkForUpdates called');
         try {
           const { checkForUpdates: checkVersion } = await import('../services/versionCheck');
           const result = await checkVersion();
+          console.log('[Store] Version check result:', result);
           set({ hasUpdateAvailable: result.hasUpdate, latestVersion: result.latestVersion });
+          console.log('[Store] Update state set - hasUpdateAvailable:', result.hasUpdate, 'latestVersion:', result.latestVersion);
         } catch (err) {
           console.error('[Store] Failed to check for updates:', err);
         }
