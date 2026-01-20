@@ -56,15 +56,15 @@ function compareVersions(a: string, b: string): number {
 export async function checkForUpdates(): Promise<VersionCheckState> {
   console.log('[VersionCheck] Starting update check...');
   console.log('[VersionCheck] Current version:', APP_VERSION);
-  console.log('[VersionCheck] Fetching from:', VERSION_CHECK_URL);
 
   try {
-    const response = await fetch(VERSION_CHECK_URL, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
-    });
+    // Add timestamp to URL to prevent caching, avoiding CORS preflight
+    const timestamp = Date.now();
+    const url = `${VERSION_CHECK_URL}?t=${timestamp}`;
+    console.log('[VersionCheck] Fetching from:', url);
+
+    // Simple GET request without custom headers to avoid CORS preflight
+    const response = await fetch(url);
 
     console.log('[VersionCheck] Response status:', response.status);
 
