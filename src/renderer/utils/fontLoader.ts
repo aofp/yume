@@ -3,12 +3,24 @@
  * Handles font loading with proper paths for both dev and production
  */
 
+import { convertFileSrc } from '@tauri-apps/api/core';
+
 export function loadFonts() {
   // In production, Tauri serves assets from the app's resources
   // We need to inject the font-face rules dynamically with proper paths
 
   const isDev = window.location.hostname === 'localhost';
-  const basePath = isDev ? './fonts' : './fonts';
+
+  // Use Tauri's convertFileSrc for production builds to get proper tauri:// protocol
+  // In dev, use relative path
+  const getAssetPath = (fontFile: string) => {
+    const relativePath = `./fonts/${fontFile}`;
+    if (isDev) {
+      return relativePath;
+    }
+    // In production, convert to Tauri asset protocol (tauri://localhost/)
+    return convertFileSrc(relativePath);
+  };
 
   // Create a style element for our font-face rules
   const styleElement = document.createElement('style');
@@ -23,13 +35,14 @@ export function loadFonts() {
   ];
 
   agaveWeights.forEach(({ weight, file }) => {
+    const fontPath = getAssetPath(`Agave-${file}.ttf`);
     fontFaceRules += `
       @font-face {
         font-family: 'Agave';
         font-style: normal;
         font-weight: ${weight};
         font-display: swap;
-        src: url('${basePath}/Agave-${file}.ttf') format('truetype');
+        src: url('${fontPath}') format('truetype');
       }
     `;
   });

@@ -1,12 +1,12 @@
 /* Font imports for yume */
 
-/* Override CSS variables with proper font stacks */
+/* Override CSS variables with Agave font only */
 :root {
-  /* Sans-serif font stack - Agave first for consistency across platforms */
-  --font-sans: 'Agave', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  /* Sans-serif font stack - Agave with system fallbacks */
+  --font-sans: 'Agave', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
 
-  /* Monospace font stack with Agave as default */
-  --font-mono: 'Agave', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
+  /* Monospace font stack - Agave with monospace fallbacks */
+  --font-mono: 'Agave', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', monospace;
 }
 
 /* Ensure font ligatures are enabled for code */
