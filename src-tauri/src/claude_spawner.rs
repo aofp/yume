@@ -785,30 +785,79 @@ impl ClaudeSpawner {
     }
 
     /// Interrupts a Claude session
+    ///
+    /// Tries multiple strategies to find and kill the process:
+    /// 1. Look up by session ID in session_manager
+    /// 2. Look up in process registry by session ID
+    /// 3. Kill ALL running Claude processes (fallback for session ID mismatches)
     pub async fn interrupt_session(&self, session_id: &str) -> Result<()> {
+        info!("Attempting to interrupt session: {}", session_id);
+
+        // Strategy 1: Try session manager first (ideal case)
         if let Some(session) = self.session_manager.get_session(session_id).await {
             if let Some(run_id) = session.run_id {
-                info!("Interrupting session {} with run_id {}", session_id, run_id);
-
-                // Kill the process
+                info!("Found session in session_manager, killing run_id {}", run_id);
                 self.registry
                     .kill_process(run_id)
                     .await
                     .map_err(|e| anyhow!(e))?;
-
-                // Update session manager
-                self.session_manager
-                    .set_streaming(session_id, false)
-                    .await?;
-
-                info!("Successfully interrupted session {}", session_id);
-                Ok(())
-            } else {
-                Err(anyhow!("Session {} has no associated process", session_id))
+                let _ = self.session_manager.set_streaming(session_id, false).await;
+                info!("Successfully interrupted session {} via session_manager", session_id);
+                return Ok(());
             }
-        } else {
-            Err(anyhow!("Session {} not found", session_id))
         }
+
+        // Strategy 2: Search process registry directly by session ID
+        if let Ok(Some(process)) = self.registry.get_claude_session_by_id(session_id) {
+            info!("Found session in process registry, killing run_id {}", process.run_id);
+            self.registry
+                .kill_process(process.run_id)
+                .await
+                .map_err(|e| anyhow!(e))?;
+            info!("Successfully interrupted session {} via registry lookup", session_id);
+            return Ok(());
+        }
+
+        // Strategy 3: Kill ALL running Claude processes
+        // This handles session ID mismatches between frontend and backend
+        // Frontend uses temp IDs like "session-123", backend uses synthetic IDs like "syn_abc"
+        let running = self.registry.get_running_claude_sessions().map_err(|e| anyhow!(e))?;
+        if !running.is_empty() {
+            info!(
+                "Session {} not found directly, killing {} running process(es) as fallback",
+                session_id,
+                running.len()
+            );
+            let mut killed_count = 0;
+            for process in running {
+                match self.registry.kill_process(process.run_id).await {
+                    Ok(true) => {
+                        info!("Killed process run_id={} (PID {})", process.run_id, process.pid);
+                        killed_count += 1;
+                    }
+                    Ok(false) => {
+                        warn!("Process run_id={} already dead", process.run_id);
+                    }
+                    Err(e) => {
+                        error!("Failed to kill process run_id={}: {}", process.run_id, e);
+                    }
+                }
+            }
+
+            // Also clear streaming state for all sessions
+            for session in self.session_manager.list_sessions().await {
+                let _ = self.session_manager.set_streaming(&session.session_id, false).await;
+            }
+
+            if killed_count > 0 {
+                info!("Successfully killed {} process(es) via fallback strategy", killed_count);
+                return Ok(());
+            }
+        }
+
+        warn!("No running processes found to interrupt for session {}", session_id);
+        // Return Ok instead of Err - no process to kill is not an error
+        Ok(())
     }
 
     /// Clears a session completely

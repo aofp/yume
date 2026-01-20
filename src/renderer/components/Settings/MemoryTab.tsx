@@ -85,26 +85,8 @@ export const MemoryTab: React.FC = () => {
     loadMemoryFilePath();
   }, []);
 
-  // Auto-load graph when memory server is running and tab is opened
-  useEffect(() => {
-    if (memoryServerRunning && !graphStats && !loading) {
-      loadMemoryGraph();
-    }
-  }, [memoryServerRunning, graphStats, loading, loadMemoryGraph]);
-
   // Ref to store loadMemoryGraph for event listener
   const loadGraphRef = useRef<(() => void) | null>(null);
-
-  // Listen for memory-load-graph event from command palette
-  useEffect(() => {
-    const handleLoadGraph = () => {
-      if (memoryServerRunning && loadGraphRef.current) {
-        loadGraphRef.current();
-      }
-    };
-    window.addEventListener('memory-load-graph', handleLoadGraph);
-    return () => window.removeEventListener('memory-load-graph', handleLoadGraph);
-  }, [memoryServerRunning]);
 
   const showNotification = (message: string, type: 'error' | 'success' | 'info') => {
     toastService[type](message);
@@ -152,6 +134,24 @@ export const MemoryTab: React.FC = () => {
   useEffect(() => {
     loadGraphRef.current = loadMemoryGraph;
   }, [loadMemoryGraph]);
+
+  // Auto-load graph when memory server is running and tab is opened
+  useEffect(() => {
+    if (memoryServerRunning && !graphStats && !loading) {
+      loadMemoryGraph();
+    }
+  }, [memoryServerRunning, graphStats, loading, loadMemoryGraph]);
+
+  // Listen for memory-load-graph event from command palette
+  useEffect(() => {
+    const handleLoadGraph = () => {
+      if (memoryServerRunning && loadGraphRef.current) {
+        loadGraphRef.current();
+      }
+    };
+    window.addEventListener('memory-load-graph', handleLoadGraph);
+    return () => window.removeEventListener('memory-load-graph', handleLoadGraph);
+  }, [memoryServerRunning]);
 
   const deleteEntity = (entityName: string) => {
     setConfirmModal({
