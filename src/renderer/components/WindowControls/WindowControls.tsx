@@ -154,16 +154,19 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   };
 
   const handleUpdateClick = async () => {
+    const url = 'https://github.com/aofp/yume/releases';
     try {
       if ((window as any).__TAURI__) {
-        const { shell } = await import('@tauri-apps/plugin-shell');
-        await shell.open('https://github.com/aofp/yume/releases');
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('open_external', { url }).catch(() => {
+          window.open(url, '_blank');
+        });
       } else {
-        window.open('https://github.com/aofp/yume/releases', '_blank');
+        window.open(url, '_blank');
       }
     } catch (error) {
       console.error('Failed to open releases page:', error);
-      window.open('https://github.com/aofp/yume/releases', '_blank');
+      window.open(url, '_blank');
     }
   };
 
