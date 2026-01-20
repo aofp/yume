@@ -63,9 +63,9 @@ windows = { version = "0.61", features = [
     "Win32_System_Threading",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Input_KeyboardAndMouse",
-    "implement",  # Required for #[implement] macro used by WebView2 permission handler
 ] }
-windows-core = "0.61"  # Required for #[implement] macro expansion
+windows-core = "0.61"
+windows-implement = "0.60"  # Required for #[implement] macro used by WebView2 permission handler
 webview2-com = "0.38"
 
 

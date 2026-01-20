@@ -6409,6 +6409,8 @@ dependencies = [
  "webview2-com",
  "which",
  "windows",
+ "windows-core 0.61.2",
+ "windows-implement",
 ]
 
 [[package]]

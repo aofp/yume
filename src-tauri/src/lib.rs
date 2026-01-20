@@ -11,10 +11,12 @@
 #[macro_use]
 extern crate objc;
 
-// Windows-specific: windows_core must be available at crate root for #[implement] macro expansion
-// The implement macro generates code that references windows_core:: directly
+// Windows-specific: windows_core and windows_implement must be available at crate root
+// The #[implement] macro generates code that references windows_core:: directly
 #[cfg(target_os = "windows")]
 extern crate windows_core;
+#[cfg(target_os = "windows")]
+extern crate windows_implement;
 
 // Module declarations for the application's core functionality
 mod agents;
@@ -745,7 +747,8 @@ pub fn run() {
                         COREWEBVIEW2_PERMISSION_KIND_CAMERA,
                         COREWEBVIEW2_PERMISSION_STATE_ALLOW,
                     };
-                    use windows::core::{Interface, implement};
+                    use windows::core::Interface;
+                    use windows_implement::implement;
 
                     // CRITICAL: Create permission request handler to auto-allow microphone/camera
                     // WebView2 requires explicit permission handling - unlike macOS WKWebView which
@@ -754,13 +757,13 @@ pub fn run() {
                     #[implement(ICoreWebView2PermissionRequestedEventHandler)]
                     struct PermissionHandler;
 
-                    impl ICoreWebView2PermissionRequestedEventHandler_Impl for PermissionHandler {
+                    impl ICoreWebView2PermissionRequestedEventHandler_Impl for PermissionHandler_Impl {
                         fn Invoke(
                             &self,
-                            _sender: Option<&ICoreWebView2>,
-                            args: Option<&ICoreWebView2PermissionRequestedEventArgs>,
+                            _sender: windows_core::Ref<'_, ICoreWebView2>,
+                            args: windows_core::Ref<'_, ICoreWebView2PermissionRequestedEventArgs>,
                         ) -> windows::core::Result<()> {
-                            if let Some(args) = args {
+                            if let Some(args) = args.as_ref() {
                                 unsafe {
                                     // Get the permission type being requested
                                     let mut kind = COREWEBVIEW2_PERMISSION_KIND_MICROPHONE;
