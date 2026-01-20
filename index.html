@@ -502,6 +502,43 @@
             color: var(--accent);
         }
 
+        /* screenshots */
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .screenshots-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .screenshot-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .screenshot-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .screenshot-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-bottom: 1px solid var(--border);
+        }
+        .screenshot-label {
+            padding: 16px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
         /* pricing */
         .pricing-section {
             background: linear-gradient(180deg, var(--bg) 0%, #050510 100%);
@@ -596,6 +633,7 @@
         <div class="container">
             <a href="/" class="logo"><img src="assets/yume.png" alt="yume" style="height: 32px; vertical-align: middle;"> yume</a>
             <nav class="nav-links">
+                <a href="#screenshots">screenshots</a>
                 <a href="#features">features</a>
                 <a href="#tech">tech</a>
                 <a href="#agents">agents</a>
@@ -643,6 +681,34 @@
         <div class="stat">
             <div class="stat-value">zero</div>
             <div class="stat-label">telemetry</div>
+        </div>
+    </section>
+
+    <section class="section" id="screenshots" style="background: #050505;">
+        <div class="container">
+            <div class="section-header">
+                <h2>see it in action</h2>
+                <p>clean interface. powerful features. built for productivity.</p>
+            </div>
+
+            <div class="screenshots-grid">
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/main-interface.png" alt="yume main interface" loading="lazy">
+                    <div class="screenshot-label">main interface</div>
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/analytics.png" alt="yume analytics dashboard" loading="lazy">
+                    <div class="screenshot-label">analytics</div>
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/settings.png" alt="yume settings panel" loading="lazy">
+                    <div class="screenshot-label">settings</div>
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/themes.png" alt="yume theme selector" loading="lazy">
+                    <div class="screenshot-label">themes</div>
+                </div>
+            </div>
         </div>
     </section>
 
