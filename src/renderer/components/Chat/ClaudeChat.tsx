@@ -498,11 +498,11 @@ export const ClaudeChat: React.FC = () => {
     memoryEnabled: state.memoryEnabled
   })));
 
-  // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
-  // useShallow may not detect nested changes properly, causing bash output to not display
-  // until the component re-renders for another reason (like tab switch)
+  // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store using state.currentSessionId
+  // NOT the closure variable - closure captures stale value causing wrong tab content to show
+  // The selector must use state.currentSessionId to get the CURRENT value when state changes
   const currentSession = useClaudeCodeStore(state =>
-    state.sessions.find(s => s.id === currentSessionId)
+    state.sessions.find(s => s.id === state.currentSessionId)
   );
 
   // Compute effective enabled tools count (excludes mcp when memory disabled)
@@ -2292,7 +2292,12 @@ export const ClaudeChat: React.FC = () => {
       }
 
       // Messages are already transformed by the server
-      const messagesToLoad = data.messages || [];
+      // Limit to 400 most recent messages to prevent lag with huge conversations
+      const MAX_RESUME_MESSAGES = 400;
+      const allMessages = data.messages || [];
+      const messagesToLoad = allMessages.length > MAX_RESUME_MESSAGES
+        ? allMessages.slice(-MAX_RESUME_MESSAGES)
+        : allMessages;
 
       // Get token usage from server response
       // Server returns totalContextTokens, not totalTokens
@@ -5655,6 +5660,7 @@ export const ClaudeChat: React.FC = () => {
         </div>
       ) : (
       <div
+        key={currentSessionId}
         className="chat-messages"
         ref={chatContainerRef}
       >

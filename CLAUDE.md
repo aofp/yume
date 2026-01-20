@@ -1544,7 +1544,6 @@ After running build commands:
 7. **Unified Conversation Format (UCF)** - Provider-agnostic conversation portability
 8. **Voice Dictation** - Native Web Speech API integration
 9. **Line Changes Tracking** - Per-session code modification statistics
-10. **One-Time Pricing** - $21 vs $20-200/month subscriptions
 
 **Strong Features (competitive parity):**
 - Analytics dashboard with project/model/date breakdowns
@@ -1575,51 +1574,3 @@ After running build commands:
    - `regexValidator.ts` - ReDoS detection utility
    - `types/skill.ts` - Enhanced types with YAML frontmatter parsing
    - YAML frontmatter sync for skill files
-
-### Future Feature Gaps
-
-**HIGH PRIORITY:**
-- **Automated PR Review** - BugBot equivalent: catch bugs before merge
-- **Inline Code Suggestions** - Autocomplete beyond @mentions and /commands
-
-**MEDIUM PRIORITY:**
-- **Git Commit/Push UI** - Currently view-only (status/diff)
-- **Code Navigation** - Go-to-definition, find references (beyond LSP tools)
-
-**LOWER PRIORITY:**
-- **Windows/Linux Unified Binaries** - Build scripts exist, need compilation
-- **Checkpoint System Activation** - Socket listeners disabled, feature flag true
-
-### Technology Trends to Monitor
-
-**Multi-Agent Systems** (Gartner: 1,445% inquiry surge):
-- Cursor: Up to 8 parallel agents, multi-agent judging
-- Yume: 5 specialized agents (needs parallel execution)
-
-**Protocol Standardization**:
-- MCP (Model Context Protocol): Yume supports via plugins
-- ACP (Agent Client Protocol): Zed's open standard, JetBrains adopting
-- A2A (Agent-to-Agent): Cross-vendor agent communication
-
-**Local Models** (Privacy trend):
-- Continue.dev: Full Ollama support
-- Zed: Zeta local model (200ms p50 latency)
-- Yume: Consider local model support via yume-cli
-
-**Security Concerns** (45% AI code has flaws):
-- Automated code review before commit
-- Hallucination detection for dependencies
-- Shadow AI detection for enterprise
-
-### Pricing Strategy Analysis
-
-| Competitor | Monthly | Annual | Yume Advantage |
-|------------|---------|--------|----------------|
-| Cursor Pro | $20 | $240 | 91% savings |
-| Windsurf Pro | $15 | $180 | 88% savings |
-| Copilot Pro | $10 | $100 | 79% savings |
-| Copilot Pro+ | $39 | $468 | 96% savings |
-| **Yume Pro** | - | **$21 once** | **Lifetime access** |
-
-Yume's one-time pricing is significant competitive advantage as competitors move to credit-based models with unpredictable costs.
-
