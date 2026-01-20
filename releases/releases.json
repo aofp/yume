@@ -1,8 +1,23 @@
 {
   "product": "yume",
-  "latest": "0.1.6",
+  "latest": "0.1.7",
   "baseUrl": "https://aofp.github.io/yume/releases",
   "releases": [
+    {
+      "version": "0.1.7",
+      "date": "2026-01-20",
+      "notes": "Fixed macOS installation - .pkg installers auto-remove quarantine flags",
+      "downloads": {
+        "mac_arm": "0.1.7/yume_0.1.7_arm64.pkg",
+        "mac": "0.1.7/yume_0.1.7_x64.pkg",
+        "windows": "0.1.7/yume_0.1.7_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "f22901d009416097193e3cba4f61da2de5a07aa8cfb6feff1ad90aa4435efda3",
+        "mac": "c0500f993bec638d13277388c1d13489733a98c0cd838cbc8c0b59b87a8585ab",
+        "windows": "be65c4f6dd68e085174cad63c06a9b84a2e471134a9787923010859240603825"
+      }
+    },
     {
       "version": "0.1.6",
       "date": "2026-01-20",
