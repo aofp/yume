@@ -94,23 +94,21 @@ claude code is powerful. the terminal experience isn't.
 ### macos
 ```bash
 # download from releases
-curl -L https://aofp.github.io/yume/releases/yume-0.1.0-macos-arm64.dmg -o yume.dmg
+curl -L https://aofp.github.io/yume/releases/0.1.6/yume-0.1.6-macos-arm64.dmg -o yume.dmg
 open yume.dmg
 ```
 
 ### windows
 ```bash
 # download from releases
-curl -L https://aofp.github.io/yume/releases/yume-0.1.0-windows-x64.msi -o yume.msi
-start yume.msi
+curl -L https://aofp.github.io/yume/releases/0.1.6/yume_0.1.6_x64-setup.exe -o yume-setup.exe
+start yume-setup.exe
 ```
 
 ### linux
 ```bash
-# download from releases
-curl -L https://aofp.github.io/yume/releases/yume-0.1.0-linux-x64.AppImage -o yume.AppImage
-chmod +x yume.AppImage
-./yume.AppImage
+# linux builds coming soon
+# visit https://aofp.github.io/yume for updates
 ```
 
 or visit [releases](https://aofp.github.io/yume) for all download options.
@@ -167,16 +165,14 @@ built with claude code + yume. see [CLAUDE.md](../CLAUDE.md) in the main yume re
 
 ## license
 
-yume is free to download and use with 2 tab limit. upgrade to pro for unlimited tabs.
-
-see [yuru.be/yume/pro](https://yuru.be/yume/pro) for pricing details.
+yume is free to download and use with 2 tab limit. upgrade to pro for unlimited tabs ($21 one-time payment).
 
 ---
 
 ## links
 
 - **download**: [aofp.github.io/yume](https://aofp.github.io/yume)
-- **support**: support@yuru.be
+- **issues**: [github.com/aofp/yume/issues](https://github.com/aofp/yume/issues)
 - **claude code cli**: [github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
 
 ---

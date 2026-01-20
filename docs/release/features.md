@@ -536,7 +536,7 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 | pro | 99 | 99 | $21 |
 
 ### validation
-- server: `https://yuru.be/api/license/validate.php`
+- server validation (configured per installation)
 - 5-minute response cache
 - 30-minute auto-revalidation
 - format: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX`
