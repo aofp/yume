@@ -1020,9 +1020,10 @@
                 renderReleases(data.releases);
                 updateDownloadButtons(data.releases[0]);
             } catch (err) {
+                console.error('Failed to load releases:', err);
                 document.getElementById('releases-list').innerHTML = `
                     <div class="release">
-                        <p class="release-notes">releases coming soon. check back later!</p>
+                        <p class="release-notes">error loading releases. please check back later.</p>
                     </div>
                 `;
             }
@@ -1057,28 +1058,33 @@
             }
 
             container.innerHTML = releases.map(r => {
-                // Define all platform buttons with labels
-                const platformButtons = [
-                    { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
-                    { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
-                    { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
-                    { key: 'linux', label: 'linux', url: r.downloads.linux }
-                ];
+                let downloadLinks = '';
 
-                // Filter out platforms without downloads
-                const availableButtons = platformButtons.filter(p => p.url);
+                // Only show download buttons if downloads exist
+                if (r.downloads) {
+                    // Define all platform buttons with labels
+                    const platformButtons = [
+                        { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
+                        { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
+                        { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
+                        { key: 'linux', label: 'linux', url: r.downloads.linux }
+                    ];
 
-                // Sort: user's platform first, then others in defined order
-                availableButtons.sort((a, b) => {
-                    if (a.key === userPlatform) return -1;
-                    if (b.key === userPlatform) return 1;
-                    return 0;
-                });
+                    // Filter out platforms without downloads
+                    const availableButtons = platformButtons.filter(p => p.url);
 
-                // Generate button HTML
-                const downloadLinks = availableButtons
-                    .map(p => `<a href="${getDownloadUrl(p.url)}">${p.label}</a>`)
-                    .join('');
+                    // Sort: user's platform first, then others in defined order
+                    availableButtons.sort((a, b) => {
+                        if (a.key === userPlatform) return -1;
+                        if (b.key === userPlatform) return 1;
+                        return 0;
+                    });
+
+                    // Generate button HTML
+                    downloadLinks = availableButtons
+                        .map(p => `<a href="${getDownloadUrl(p.url)}">${p.label}</a>`)
+                        .join('');
+                }
 
                 return `
                     <div class="release">
@@ -1087,16 +1093,14 @@
                             <span class="release-date">${r.date}</span>
                         </div>
                         <p class="release-notes">${r.notes}</p>
-                        <div class="release-downloads">
-                            ${downloadLinks}
-                        </div>
+                        ${downloadLinks ? `<div class="release-downloads">${downloadLinks}</div>` : ''}
                     </div>
                 `;
             }).join('');
         }
 
         function updateDownloadButtons(latestRelease) {
-            if (!latestRelease) return;
+            if (!latestRelease || !latestRelease.downloads) return;
 
             const urls = {
                 mac: getDownloadUrl(latestRelease.downloads.mac_arm || latestRelease.downloads.mac),

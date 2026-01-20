@@ -5,8 +5,7 @@
   <h3>claude code, unchained</h3>
   <p>the fastest, most intuitive way to use claude code</p>
   <p>
-    <a href="https://aofp.github.io/yume">Download</a> •
-    <a href="https://aofp.github.io/yume">Website</a>
+    <a href="https://aofp.github.io/yume">Download</a>
   </p>
 </div>
 
@@ -176,7 +175,6 @@ see [yuru.be/yume/pro](https://yuru.be/yume/pro) for pricing details.
 
 ## links
 
-- **website**: [aofp.github.io/yume](https://aofp.github.io/yume)
 - **download**: [aofp.github.io/yume](https://aofp.github.io/yume)
 - **support**: support@yuru.be
 - **claude code cli**: [github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
