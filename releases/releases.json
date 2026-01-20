@@ -1,8 +1,24 @@
 {
   "product": "yume",
-  "latest": "0.2.4",
+  "latest": "0.2.5",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.2.5",
+      "date": "2026-01-20",
+      "notes": "fix memory ui, context limit bug, style improvements",
+      "releaseNotes": "v0.2.5-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.2.5_aarch64.pkg",
+        "mac": "yume_0.2.5_x64.pkg",
+        "windows": "yume_0.2.5_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "546e64b23681fcf2479d734dbf0b6b9e6a19b4a2b922f8aa74c43d5a11685db4",
+        "mac": "d870a4e97fe8e35f1752c0b2b355d1be9140fdae15c12bda798fed0a48793984",
+        "windows": "698324157e52f7c2e1bd34fc148af6dadbb115f5b906445372676abb8045a419"
+      }
+    },
     {
       "version": "0.2.4",
       "date": "2026-01-20",
