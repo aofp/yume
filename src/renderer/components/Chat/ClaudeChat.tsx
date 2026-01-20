@@ -60,6 +60,37 @@ import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '.
 import './ClaudeChat.css';
 
 const USAGE_LIMITS_CACHE_KEY = appStorageKey('usage_limits_cache');
+
+// Helper to get cached usage limits synchronously for initial state
+const getCachedUsageLimits = (): {
+  five_hour?: { utilization: number; resets_at: string };
+  seven_day?: { utilization: number; resets_at: string };
+  subscription_type?: string;
+  rate_limit_tier?: string;
+} | null => {
+  try {
+    const cached = localStorage.getItem(USAGE_LIMITS_CACHE_KEY);
+    if (cached) {
+      const { data } = JSON.parse(cached);
+      // Return cached data regardless of age - async fetch will refresh if needed
+      if (data) {
+        const result: any = {};
+        if (data.five_hour?.utilization != null && data.five_hour?.resets_at != null) {
+          result.five_hour = { utilization: data.five_hour.utilization, resets_at: data.five_hour.resets_at };
+        }
+        if (data.seven_day?.utilization != null && data.seven_day?.resets_at != null) {
+          result.seven_day = { utilization: data.seven_day.utilization, resets_at: data.seven_day.resets_at };
+        }
+        if (data.subscription_type) result.subscription_type = data.subscription_type;
+        if (data.rate_limit_tier) result.rate_limit_tier = data.rate_limit_tier;
+        return Object.keys(result).length > 0 ? result : null;
+      }
+    }
+  } catch (e) {
+    // Cache read failed, return null
+  }
+  return null;
+};
 const TRIGGER_RESUME_EVENT = appEventName('trigger-resume');
 const CHECK_RESUMABLE_EVENT = appEventName('check-resumable');
 const RESTORE_INPUT_EVENT = appEventName('restore-input');
@@ -339,7 +370,7 @@ export const ClaudeChat: React.FC = () => {
     seven_day?: { utilization: number; resets_at: string };
     subscription_type?: string;
     rate_limit_tier?: string;
-  } | null>(null);
+  } | null>(getCachedUsageLimits);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const [backgroundAgentCount, setBackgroundAgentCount] = useState(0);
