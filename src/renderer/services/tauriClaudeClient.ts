@@ -570,15 +570,22 @@ export class TauriClaudeClient {
         // Message complete - but DON'T clear streaming yet! Wait for result
         // Don't send any update here
       } else if (message.type === 'usage') {
-        // Token usage information
-        // For yume-cli providers (gemini/openai), skip creating partial result here
-        // because the actual 'result' message that follows has all the data including duration_ms.
-        // Creating a partial result causes two result messages with different IDs,
-        // which breaks elapsed time display until re-render.
-        // The result message handler below will create the proper result with all fields.
-        // Just skip this - don't emit anything for standalone usage messages from yume-cli.
-        // (Claude's usage comes embedded in result messages anyway)
-        transformedMessage = null;
+        // Token usage information - CRITICAL for live context % updates
+        // processWrapperMessage already added wrapper.tokens to message (line 402)
+        // We emit this as a 'usage' type so store can sync wrapper.tokens to analytics
+        // This enables live context bar updates during streaming, not just at turn end
+        transformedMessage = {
+          type: 'usage',
+          usage: {
+            input_tokens: message.input_tokens || 0,
+            output_tokens: message.output_tokens || 0,
+            cache_creation_input_tokens: message.cache_creation_input_tokens || 0,
+            cache_read_input_tokens: message.cache_read_input_tokens || 0
+          },
+          // CRITICAL: preserve wrapper metadata for store to sync tokens
+          wrapper: message.wrapper,
+          wrapper_tokens: message.wrapper_tokens
+        };
       } else if (message.type === 'tool_use') {
         // Standalone tool_use message
         // Support both Claude format (name, input) and Gemini format (tool_name, parameters)

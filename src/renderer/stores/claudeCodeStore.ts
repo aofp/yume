@@ -5145,6 +5145,60 @@ ${content}`;
               // Initialize analytics if we need to update tokens
               let analytics = s.analytics;
 
+              // Special handling for usage messages - sync tokens but DON'T add to message array
+              // Usage messages come during streaming to provide live context % updates
+              if (message.type === 'usage' && message.wrapper?.tokens) {
+                console.log('📊 [Store] Processing USAGE message (live token update):', {
+                  sessionId,
+                  wrapperTokens: message.wrapper.tokens,
+                  percentage: message.wrapper.tokens.percentage_display
+                });
+
+                // Initialize analytics if needed
+                analytics = analytics || {
+                  totalMessages: 0,
+                  userMessages: 0,
+                  assistantMessages: 0,
+                  toolUses: 0,
+                  tokens: {
+                    input: 0,
+                    output: 0,
+                    total: 0,
+                    cacheSize: 0,
+                    byModel: {
+                      opus: { input: 0, output: 0, total: 0 },
+                      sonnet: { input: 0, output: 0, total: 0 }
+                    }
+                  },
+                  duration: 0,
+                  lastActivity: new Date(),
+                  thinkingTime: 0
+                };
+
+                // Update tokens from wrapper
+                analytics.tokens.total = message.wrapper.tokens.total || 0;
+                analytics.tokens.input = message.wrapper.tokens.input || 0;
+                analytics.tokens.output = message.wrapper.tokens.output || 0;
+                analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
+                analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
+
+                // Update contextWindow
+                const percentage = (analytics.tokens.total / 200000) * 100;
+                analytics.contextWindow = {
+                  used: analytics.tokens.total,
+                  limit: 200000,
+                  percentage: percentage,
+                  remaining: Math.max(0, 200000 - analytics.tokens.total)
+                };
+
+                // Return WITHOUT adding to messages - usage is metadata only
+                return {
+                  ...s,
+                  analytics,
+                  lastMessageTime: Date.now()
+                };
+              }
+
               // Special handling for token update messages (synthetic result messages from token listener)
               if (message.type === 'result' && message.wrapper?.tokens) {
                 console.log('📊 [Store] Processing TOKEN UPDATE message:', {

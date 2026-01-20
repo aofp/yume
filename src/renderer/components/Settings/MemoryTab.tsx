@@ -85,6 +85,13 @@ export const MemoryTab: React.FC = () => {
     loadMemoryFilePath();
   }, []);
 
+  // Auto-load graph when memory server is running and tab is opened
+  useEffect(() => {
+    if (memoryServerRunning && !graphStats && !loading) {
+      loadMemoryGraph();
+    }
+  }, [memoryServerRunning, graphStats, loading, loadMemoryGraph]);
+
   // Ref to store loadMemoryGraph for event listener
   const loadGraphRef = useRef<(() => void) | null>(null);
 

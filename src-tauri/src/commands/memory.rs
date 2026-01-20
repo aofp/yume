@@ -107,47 +107,59 @@ fn get_lock_file_path() -> Result<PathBuf, String> {
     Ok(get_memory_dir()?.join("memory.lock"))
 }
 
-/// Acquire lock to prevent multiple server instances
-fn acquire_lock() -> Result<(), String> {
+/// Check if lock exists and if the MCP server process is still alive
+/// Returns Ok(Some(pid)) if server is running, Ok(None) if not, Err on failure
+fn check_lock_status() -> Result<Option<u32>, String> {
     let lock_path = get_lock_file_path()?;
-    let pid = std::process::id();
 
-    // Check if lock exists and if the process is still alive
-    if lock_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(&lock_path) {
-            if let Ok(old_pid) = content.trim().parse::<u32>() {
-                // Check if process is still running (cross-platform)
-                #[cfg(unix)]
-                {
-                    use std::process::Command;
-                    let result = Command::new("kill").args(["-0", &old_pid.to_string()]).status();
-                    if result.map(|s| s.success()).unwrap_or(false) {
-                        return Err(format!("Memory server already running (PID: {})", old_pid));
-                    }
-                }
-                #[cfg(windows)]
-                {
-                    // On Windows, check if process exists via tasklist
-                    let output = Command::new("tasklist")
-                        .args(["/FI", &format!("PID eq {}", old_pid)])
-                        .output();
-                    if let Ok(out) = output {
-                        let stdout = String::from_utf8_lossy(&out.stdout);
-                        if stdout.contains(&old_pid.to_string()) {
-                            return Err(format!("Memory server already running (PID: {})", old_pid));
-                        }
-                    }
-                }
-            }
-        }
-        // Stale lock, remove it
-        let _ = std::fs::remove_file(&lock_path);
+    if !lock_path.exists() {
+        return Ok(None);
     }
 
-    // Write our PID
+    let content = std::fs::read_to_string(&lock_path)
+        .map_err(|e| format!("Failed to read lock file: {}", e))?;
+
+    let old_pid = match content.trim().parse::<u32>() {
+        Ok(pid) => pid,
+        Err(_) => {
+            // Invalid lock file, remove it
+            let _ = std::fs::remove_file(&lock_path);
+            return Ok(None);
+        }
+    };
+
+    // Check if process is still running
+    #[cfg(unix)]
+    {
+        use std::process::Command;
+        let result = Command::new("kill").args(["-0", &old_pid.to_string()]).status();
+        if result.map(|s| s.success()).unwrap_or(false) {
+            return Ok(Some(old_pid));
+        }
+    }
+    #[cfg(windows)]
+    {
+        let output = Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {}", old_pid)])
+            .output();
+        if let Ok(out) = output {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            if stdout.contains(&old_pid.to_string()) {
+                return Ok(Some(old_pid));
+            }
+        }
+    }
+
+    // Process not running, remove stale lock
+    let _ = std::fs::remove_file(&lock_path);
+    Ok(None)
+}
+
+/// Write memory server PID to lock file
+fn write_lock(pid: u32) -> Result<(), String> {
+    let lock_path = get_lock_file_path()?;
     std::fs::write(&lock_path, pid.to_string())
         .map_err(|e| format!("Failed to create lock file: {}", e))?;
-
     Ok(())
 }
 
@@ -367,15 +379,7 @@ fn send_mcp_request(method: &str, params: Value) -> Result<Value, String> {
 /// Start the memory MCP server using npx
 #[tauri::command]
 pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
-    // Acquire lock to prevent multiple instances
-    if let Err(e) = acquire_lock() {
-        return Ok(MemoryServerResult {
-            success: false,
-            error: Some(e),
-        });
-    }
-
-    // Check if already running
+    // Check if already running in-memory
     {
         let state = MEMORY_SERVER
             .lock()
@@ -385,6 +389,31 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
                 success: true,
                 error: Some("Memory server already running".to_string()),
             });
+        }
+    }
+
+    // Check if orphan memory server process exists from previous session
+    match check_lock_status() {
+        Ok(Some(old_pid)) => {
+            println!("[Memory] Found orphan memory server (PID: {}), killing it...", old_pid);
+            #[cfg(unix)]
+            {
+                use std::process::Command;
+                let _ = Command::new("kill").args(["-9", &old_pid.to_string()]).status();
+            }
+            #[cfg(windows)]
+            {
+                let _ = Command::new("taskkill").args(["/F", "/PID", &old_pid.to_string()]).status();
+            }
+            // Wait a moment for process to die
+            thread::sleep(Duration::from_millis(100));
+            release_lock();
+        }
+        Ok(None) => {
+            // No orphan process, good to go
+        }
+        Err(e) => {
+            println!("[Memory] Warning: Failed to check lock status: {}", e);
         }
     }
 
@@ -471,6 +500,11 @@ pub async fn start_memory_server() -> Result<MemoryServerResult, String> {
 
     let pid = child.id();
     println!("[Memory] Server started with PID: {}", pid);
+
+    // Write memory server's PID to lock file (not yume's PID!)
+    if let Err(e) = write_lock(pid) {
+        println!("[Memory] Warning: Failed to write lock file: {}", e);
+    }
 
     // Extract stdin/stdout handles
     let stdin = child
