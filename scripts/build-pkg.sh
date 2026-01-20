@@ -35,23 +35,15 @@ echo ""
 # Create pkg directory
 mkdir -p "$PKG_DIR"
 
-# Create a temporary directory for the payload
-PAYLOAD_DIR=$(mktemp -d)
-trap "rm -rf $PAYLOAD_DIR" EXIT
-
-# Copy app to Applications in payload
-mkdir -p "$PAYLOAD_DIR/Applications"
-cp -R "$APP_BUNDLE" "$PAYLOAD_DIR/Applications/"
-
-# Build the pkg with postinstall script
+# Build the pkg using component mode (prevents relocation)
 PKG_OUTPUT="$PKG_DIR/yume_${VERSION}_${ARCH_NAME}.pkg"
 
 echo "Creating package..."
 pkgbuild \
-    --root "$PAYLOAD_DIR" \
-    --identifier "be.yuru.yume" \
+    --component "$APP_BUNDLE" \
+    --identifier "io.github.aofp.yume" \
     --version "$VERSION" \
-    --install-location "/" \
+    --install-location "/Applications" \
     --scripts "$(pwd)/scripts/pkg-scripts" \
     "$PKG_OUTPUT"
 
