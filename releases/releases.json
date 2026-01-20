@@ -1,8 +1,24 @@
 {
   "product": "yume",
-  "latest": "0.2.2",
+  "latest": "0.2.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.2.3",
+      "date": "2026-01-20",
+      "notes": "Fixed 5h/7d rate limit bars showing 0% on startup - now loads cached values instantly",
+      "releaseNotes": "v0.2.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.2.3_arm64.pkg",
+        "mac": "yume_0.2.3_x64.pkg",
+        "windows": "yume_0.2.3_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "bdf756d80b31cf65eba97eca741a9b8ac467499f3fa06f2faf7df4693a7e14c2",
+        "mac": "c58ba41c89952b1fc3dcd8b498a1f1cf72cccfeb4eb2b74dd78c4fafc6b99994",
+        "windows": "b98826d144cfe014258ff50ff361e7b697782fa8f6056a15bbb8ad9b9f777e74"
+      }
+    },
     {
       "version": "0.2.2",
       "date": "2026-01-20",
