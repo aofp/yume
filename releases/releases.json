@@ -1,16 +1,49 @@
 {
   "product": "yume",
-  "latest": "0.2.0",
-  "baseUrl": "https://aofp.github.io/yume/releases",
+  "latest": "0.2.2",
+  "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.2.2",
+      "date": "2026-01-20",
+      "notes": "Critical font fix for Windows - Agave font now properly embedded",
+      "releaseNotes": "v0.2.2-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.2.2_arm64.pkg",
+        "mac": "yume_0.2.2_x64.pkg",
+        "windows": "yume_0.2.2_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "4a22e6e6b805541b067ae1187a0df295a8e525dad0be43794e0b66649713acdf",
+        "mac": "37c926795a5ec5afea4c579c8a52f846b55fb093c176e1d24cad1bfc32538c9d",
+        "windows": "3c161e0a662362a0a955b465bda8cf2de00b7a3bd907384fea2b8886242d73f9"
+      }
+    },
+    {
+      "version": "0.2.1",
+      "date": "2026-01-20",
+      "notes": "v0.2.1 maintenance release",
+      "releaseNotes": "v0.2.1-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.2.1_arm64.pkg",
+        "mac": "yume_0.2.1_x64.pkg",
+        "windows": "yume_0.2.1_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "6a1678bc5251c543dc54da571b512617723fed18a7155a11b7a350d1b7afa2a7",
+        "mac": "f77d2745d69d35ee658907d0e9d00bbbfdfe87f55dff8da39afbd2e86135fc8e",
+        "windows": "dbb764704a3ef27350444dfb629ff7fee36b13c52724ebd22f90a0459f0b96a3"
+      }
+    },
     {
       "version": "0.2.0",
       "date": "2026-01-20",
       "notes": "Font bundling fix - Agave font now properly embedded in Windows builds",
+      "releaseNotes": "v0.2.0-release-notes.md",
       "downloads": {
-        "mac_arm": "0.2.0/yume_0.2.0_arm64.pkg",
-        "mac": "0.2.0/yume_0.2.0_x64.pkg",
-        "windows": "0.2.0/yume_0.2.0_x64-setup.exe"
+        "mac_arm": "yume_0.2.0_arm64.pkg",
+        "mac": "yume_0.2.0_x64.pkg",
+        "windows": "yume_0.2.0_x64-setup.exe"
       },
       "checksums": {
         "mac_arm": "d4d180dd5b025df3fb86a19b03dd32dd31787bae11f1f7d661c3508019f901a1",
@@ -22,10 +55,11 @@
       "version": "0.1.7",
       "date": "2026-01-20",
       "notes": "Fixed macOS installation - .pkg installers auto-remove quarantine flags",
+      "releaseNotes": "v0.1.7-release-notes.md",
       "downloads": {
-        "mac_arm": "0.1.7/yume_0.1.7_arm64.pkg",
-        "mac": "0.1.7/yume_0.1.7_x64.pkg",
-        "windows": "0.1.7/yume_0.1.7_x64-setup.exe"
+        "mac_arm": "yume_0.1.7_arm64.pkg",
+        "mac": "yume_0.1.7_x64.pkg",
+        "windows": "yume_0.1.7_x64-setup.exe"
       },
       "checksums": {
         "mac_arm": "f22901d009416097193e3cba4f61da2de5a07aa8cfb6feff1ad90aa4435efda3",
@@ -34,49 +68,27 @@
       }
     },
     {
-      "version": "0.1.6",
-      "date": "2026-01-20",
-      "notes": "adds screenshots section to website",
-      "downloads": {
-        "mac_arm": "0.1.6/yume-0.1.6-macos-arm64.dmg",
-        "mac": "0.1.6/yume-0.1.6-macos-x64.dmg",
-        "windows": "0.1.6/yume_0.1.6_x64-setup.exe"
-      },
-      "checksums": {
-        "mac_arm": "c14759ba240b43fb4c9a8f0f75f64e59c3f0fc046872fc56c1ccba15ea99f105",
-        "mac": "3723f619480e346867447b509ae149f3b5a46e0fefcc5ffa1d9ce5bf2ad7858e",
-        "windows": "62f1b9011434da4e42fe4c5bf5cdb671680a72d2533d459f3071b54cd7d57355"
-      }
-    },
-    {
-      "version": "0.1.5",
-      "date": "2026-01-20",
-      "notes": "fixes releases page and readme links"
-    },
-    {
       "version": "0.1.4",
       "date": "2026-01-19",
-      "notes": "fixes update notification"
-    },
-    {
-      "version": "0.1.3",
-      "date": "2026-01-19",
-      "notes": "adds docs navigation and improves download button ordering"
-    },
-    {
-      "version": "0.1.2",
-      "date": "2026-01-19",
-      "notes": "adds update indicator and clickable status badges"
+      "notes": "fixes update notification",
+      "releaseNotes": "v0.1.4-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume-0.1.4-macos-arm64.dmg",
+        "mac": "yume-0.1.4-macos-x64.dmg",
+        "windows": "yume_0.1.4_x64-setup.exe"
+      }
     },
     {
       "version": "0.1.1",
       "date": "2026-01-19",
-      "notes": "improving ui consistency between macos and windows"
+      "notes": "improving ui consistency between macos and windows",
+      "releaseNotes": "v0.1.1-release-notes.md"
     },
     {
       "version": "0.1.0",
       "date": "2026-01-19",
-      "notes": "initial release - native gui for claude code with limits tracking, 21 features, 5 agents, plugin system, crash recovery, and 570+ themes."
+      "notes": "initial release - native gui for claude code with limits tracking, 21 features, 5 agents, plugin system, crash recovery, and 570+ themes.",
+      "releaseNotes": "v0.1.0-release-notes.md"
     }
   ]
 }

@@ -651,13 +651,12 @@
             <h1>claude code,<br><span>unchained</span></h1>
             <p class="hero-sub">the fastest, most intuitive way to use claude code.<br>limits always visible. keyboard-first. native speed.</p>
             <div class="hero-ctas">
-                <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac</a>
+                <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
+                <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
                 <a href="#" class="btn download-btn" id="dl-win" data-os="win">download for windows</a>
                 <a href="#" class="btn download-btn" id="dl-linux" data-os="linux">download for linux</a>
             </div>
-            <p class="other-platforms" style="margin-top: 16px; font-size: 13px; color: var(--text-dimmer);">
-                also available for <a href="#releases" class="alt-dl" data-os="mac">mac</a> · <a href="#releases" class="alt-dl" data-os="win">windows</a> · <a href="#releases" class="alt-dl" data-os="linux">linux</a>
-            </p>
+            <p class="other-platforms" id="other-platforms" style="margin-top: 16px; font-size: 13px; color: var(--text-dimmer);"></p>
         </div>
     </section>
 
@@ -1112,22 +1111,25 @@
             } else if (platform.includes('linux') || ua.includes('linux')) {
                 userPlatform = 'linux';
             } else if (platform.includes('mac') || platform.includes('darwin')) {
-                // Check if Apple Silicon or Intel
-                // Navigator.platform doesn't distinguish, so check userAgent
                 if (ua.includes('arm') || ua.includes('aarch64')) {
                     userPlatform = 'mac_arm';
                 } else {
-                    // Default to showing Apple Silicon first on macOS
                     userPlatform = 'mac_arm';
                 }
             }
+
+            // Helper to get GitHub Release download URL
+            const getGHReleaseUrl = (version, filename) => {
+                if (!filename) return '#';
+                const file = filename.split('/').pop();
+                return `https://github.com/aofp/yume/releases/download/v${version}/${file}`;
+            };
 
             container.innerHTML = releases.map(r => {
                 let downloadLinks = '';
 
                 // Only show download buttons if downloads exist
                 if (r.downloads) {
-                    // Define all platform buttons with labels
                     const platformButtons = [
                         { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
                         { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
@@ -1135,19 +1137,16 @@
                         { key: 'linux', label: 'linux', url: r.downloads.linux }
                     ];
 
-                    // Filter out platforms without downloads
                     const availableButtons = platformButtons.filter(p => p.url);
 
-                    // Sort: user's platform first, then others in defined order
                     availableButtons.sort((a, b) => {
                         if (a.key === userPlatform) return -1;
                         if (b.key === userPlatform) return 1;
                         return 0;
                     });
 
-                    // Generate button HTML
                     downloadLinks = availableButtons
-                        .map(p => `<a href="${getDownloadUrl(p.url)}">${p.label}</a>`)
+                        .map(p => `<a href="${getGHReleaseUrl(r.version, p.url)}">${p.label}</a>`)
                         .join('');
                 }
 
@@ -1167,30 +1166,75 @@
         function updateDownloadButtons(latestRelease) {
             if (!latestRelease || !latestRelease.downloads) return;
 
+            const version = latestRelease.version;
+            const ghReleaseBase = `https://github.com/aofp/yume/releases/download/v${version}`;
+            const getFilename = (path) => path ? path.split('/').pop() : null;
+
+            const macArmFile = getFilename(latestRelease.downloads.mac_arm);
+            const macFile = getFilename(latestRelease.downloads.mac);
+            const winFile = getFilename(latestRelease.downloads.win || latestRelease.downloads.windows);
+            const linuxFile = getFilename(latestRelease.downloads.linux);
+
             const urls = {
-                mac: getDownloadUrl(latestRelease.downloads.mac_arm || latestRelease.downloads.mac),
-                win: getDownloadUrl(latestRelease.downloads.win),
-                linux: getDownloadUrl(latestRelease.downloads.linux)
+                mac_arm: macArmFile ? `${ghReleaseBase}/${macArmFile}` : null,
+                mac: macFile ? `${ghReleaseBase}/${macFile}` : null,
+                win: winFile ? `${ghReleaseBase}/${winFile}` : null,
+                linux: linuxFile ? `${ghReleaseBase}/${linuxFile}` : null
             };
 
             // Detect OS
             const ua = navigator.userAgent.toLowerCase();
             const platform = navigator.platform.toLowerCase();
-            let os = 'mac';
-            if (platform.includes('win') || ua.includes('win')) os = 'win';
-            else if (platform.includes('linux') || ua.includes('linux')) os = 'linux';
+            let userOS = 'mac_arm'; // default
+            if (platform.includes('win') || ua.includes('win')) userOS = 'win';
+            else if (platform.includes('linux') || ua.includes('linux')) userOS = 'linux';
 
-            // Show detected OS button
-            const btn = document.getElementById('dl-' + os);
-            if (btn) {
-                btn.classList.add('active');
-                btn.href = urls[os];
+            // Hide all buttons first
+            document.querySelectorAll('.download-btn').forEach(b => {
+                b.style.display = 'none';
+                const os = b.dataset.os;
+                if (urls[os]) {
+                    b.href = urls[os];
+                }
+            });
+
+            // Show buttons based on user OS with version number
+            if (userOS === 'win' && urls.win) {
+                const btn = document.getElementById('dl-win');
+                btn.style.display = 'inline-block';
+                btn.textContent = `download v${version} for windows`;
+            } else if (userOS === 'linux' && urls.linux) {
+                const btn = document.getElementById('dl-linux');
+                btn.style.display = 'inline-block';
+                btn.textContent = `download v${version} for linux`;
+            } else {
+                // mac - show both arm and intel
+                if (urls.mac_arm) {
+                    const btn = document.getElementById('dl-mac-arm');
+                    btn.style.display = 'inline-block';
+                    btn.textContent = `download v${version} for mac (apple silicon)`;
+                }
+                if (urls.mac) {
+                    const btn = document.getElementById('dl-mac');
+                    btn.style.display = 'inline-block';
+                    btn.textContent = `download v${version} for mac (intel)`;
+                }
             }
 
-            // Update all download buttons
-            document.querySelectorAll('.download-btn').forEach(b => {
-                b.href = urls[b.dataset.os];
-            });
+            // Build "also available for" text - only show OTHER platforms
+            const otherPlatforms = [];
+            if (userOS !== 'win' && urls.win) otherPlatforms.push('<a href="#releases">windows</a>');
+            if (userOS !== 'linux' && urls.linux) otherPlatforms.push('<a href="#releases">linux</a>');
+            if (userOS === 'win' || userOS === 'linux') {
+                if (urls.mac_arm) otherPlatforms.push('<a href="#releases">mac</a>');
+            }
+
+            const otherEl = document.getElementById('other-platforms');
+            if (otherPlatforms.length > 0) {
+                otherEl.innerHTML = 'also available for ' + otherPlatforms.join(' · ');
+            } else {
+                otherEl.innerHTML = '';
+            }
         }
 
         loadReleases();

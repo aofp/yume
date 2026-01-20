@@ -12,3 +12,7 @@ Thumbs.db
 # Temporary
 *.tmp
 *.log
+
+# Old release archives (keep releases.json, release notes, and current release files only)
+releases/0.*/
+releases/*.dmg
