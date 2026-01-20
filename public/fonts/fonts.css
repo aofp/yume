@@ -1,0 +1,21 @@
+/**
+ * Agave font-face declarations
+ * These fonts are bundled with the app in public/fonts/
+ * Vite will copy them to dist/renderer/fonts/ during build
+ */
+
+@font-face {
+  font-family: 'Agave';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./Agave-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Agave';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./Agave-Bold.ttf') format('truetype');
+}

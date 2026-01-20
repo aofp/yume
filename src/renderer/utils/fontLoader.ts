@@ -1,65 +1,16 @@
 /**
  * Font loader utility for Tauri production builds
- * Handles font loading with proper paths for both dev and production
+ * Now using static CSS import for better cross-platform compatibility
  */
 
-import { convertFileSrc } from '@tauri-apps/api/core';
+// Import the embedded fonts CSS - uses /fonts/ absolute path
+// This works in both dev (Vite serves from public/) and production (Tauri serves from dist/renderer/)
+import '../styles/embedded-fonts.css';
 
 export function loadFonts() {
-  // In production, Tauri serves assets from the app's resources
-  // We need to inject the font-face rules dynamically with proper paths
-
-  const isDev = window.location.hostname === 'localhost';
-
-  // Use Tauri's convertFileSrc for production builds to get proper tauri:// protocol
-  // In dev, use relative path
-  const getAssetPath = (fontFile: string) => {
-    const relativePath = `./fonts/${fontFile}`;
-    if (isDev) {
-      return relativePath;
-    }
-    // In production, convert to Tauri asset protocol (tauri://localhost/)
-    return convertFileSrc(relativePath);
-  };
-
-  // Create a style element for our font-face rules
-  const styleElement = document.createElement('style');
-  styleElement.id = 'dynamic-fonts';
-
-  let fontFaceRules = '';
-
-  // Add Agave font-face rules - Regular and Bold
-  const agaveWeights = [
-    { weight: 400, file: 'Regular' },
-    { weight: 700, file: 'Bold' }
-  ];
-
-  agaveWeights.forEach(({ weight, file }) => {
-    const fontPath = getAssetPath(`Agave-${file}.ttf`);
-    fontFaceRules += `
-      @font-face {
-        font-family: 'Agave';
-        font-style: normal;
-        font-weight: ${weight};
-        font-display: swap;
-        src: url('${fontPath}') format('truetype');
-      }
-    `;
-  });
-
-  // Apply the font face rules
-  styleElement.textContent = fontFaceRules;
-
-  // Remove existing dynamic fonts if present
-  const existing = document.getElementById('dynamic-fonts');
-  if (existing) {
-    existing.remove();
-  }
-
-  // Add to head
-  document.head.appendChild(styleElement);
-
-  console.log('[Font Loader] Agave fonts loaded dynamically');
+  // Fonts are now loaded via static CSS import above
+  // This fixes Windows builds where dynamic convertFileSrc was failing
+  console.log('[Font Loader] Agave fonts loaded via static CSS import');
 }
 
 // Auto-load fonts on module import

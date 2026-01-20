@@ -1,0 +1,21 @@
+/**
+ * Embedded Agave fonts for Windows builds
+ * Fonts are in public/fonts/ and get copied to dist/renderer/fonts/
+ * Using /fonts/ absolute path works in both dev and production
+ */
+
+@font-face {
+  font-family: 'Agave';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Agave-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Agave';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/Agave-Bold.ttf') format('truetype');
+}
