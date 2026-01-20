@@ -1,8 +1,24 @@
 {
   "product": "yume",
-  "latest": "0.2.5",
+  "latest": "0.2.6",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.2.6",
+      "date": "2026-01-20",
+      "notes": "fix session interrupt with 3-strategy fallback, memory ui hook ordering",
+      "releaseNotes": "v0.2.6-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.2.6_aarch64.dmg",
+        "mac": "yume_0.2.6_x64.dmg",
+        "windows": "yume_0.2.6_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "28579112e649018bd5c09de2a732386f4030075f73f61480dc757b3132d23c37",
+        "mac": "1c6b5562a7bbf71136537b596d884b956eace2faad4f5b252f74ae5ee3d99961",
+        "windows": ""
+      }
+    },
     {
       "version": "0.2.5",
       "date": "2026-01-20",
