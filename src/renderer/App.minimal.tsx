@@ -41,7 +41,7 @@ const VSCODE_EXTENSION_KEY = appStorageKey('vscode-extension-enabled');
 const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
 const TRIGGER_RESUME_EVENT = appEventName('trigger-resume');
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected, checkVscodeInstallation, fetchClaudeVersion /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected, checkVscodeInstallation, fetchClaudeVersion, checkForUpdates /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [settingsInitialFontPicker, setSettingsInitialFontPicker] = useState<'monospace' | 'sans-serif' | undefined>(undefined);
@@ -148,9 +148,14 @@ export const App: React.FC = () => {
     
     // Check VSCode installation once on startup
     checkVscodeInstallation();
-    
+
     // Check Claude version once on startup
     fetchClaudeVersion();
+
+    // Check for updates after 5 second delay
+    const updateCheckTimer = setTimeout(() => {
+      checkForUpdates();
+    }, 5000);
 
     // Sync yume agents to ~/.claude/agents/ based on settings
     systemPromptService.syncAgentsToFilesystem();
@@ -237,7 +242,10 @@ export const App: React.FC = () => {
     document.documentElement.style.opacity = String(targetOpacity);
     console.log('[App] Loaded - applied target opacity:', targetOpacity);
 
-    return () => clearTimeout(initialCheck);
+    return () => {
+      clearTimeout(initialCheck);
+      clearTimeout(updateCheckTimer);
+    };
   }, [loadSessionMappings, setBackgroundOpacity]);
 
   // Apply fonts when they change (separate from initial load to avoid opacity reset)

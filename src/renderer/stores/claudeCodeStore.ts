@@ -528,6 +528,10 @@ interface ClaudeCodeStore {
   isVscodeInstalled: boolean; // Whether VSCode is installed on the system
   claudeVersion: string | null; // Cached Claude CLI version
 
+  // Version updates
+  hasUpdateAvailable: boolean; // Whether a newer version is available
+  latestVersion: string | null; // Latest version from GitHub
+
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
 
@@ -661,6 +665,10 @@ interface ClaudeCodeStore {
   setVscodeStatus: (connected: boolean, count: number) => void;
   checkVscodeInstallation: () => Promise<void>;
   fetchClaudeVersion: () => Promise<void>;
+
+  // Version updates
+  setUpdateAvailable: (hasUpdate: boolean, latestVersion: string | null) => void;
+  checkForUpdates: () => Promise<void>;
 
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
@@ -940,6 +948,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       vscodeConnectionCount: 0, // No connections initially
       isVscodeInstalled: false, // Assume not installed until checked
       claudeVersion: null, // Not checked initially
+      hasUpdateAvailable: false, // No update initially
+      latestVersion: null, // Not checked initially
       isDraggingTab: false, // No tab is being dragged initially
       contextBarVisibility: (() => {
         const stored = localStorage.getItem(CONTEXT_BAR_VISIBILITY_KEY);
@@ -6211,6 +6221,20 @@ ${content}`;
 
       setVscodeStatus: (connected: boolean, count: number) => {
         set({ vscodeConnected: connected, vscodeConnectionCount: count });
+      },
+
+      setUpdateAvailable: (hasUpdate: boolean, latestVersion: string | null) => {
+        set({ hasUpdateAvailable: hasUpdate, latestVersion });
+      },
+
+      checkForUpdates: async () => {
+        try {
+          const { checkForUpdates: checkVersion } = await import('../services/versionCheck');
+          const result = await checkVersion();
+          set({ hasUpdateAvailable: result.hasUpdate, latestVersion: result.latestVersion });
+        } catch (err) {
+          console.error('[Store] Failed to check for updates:', err);
+        }
       },
 
       checkVscodeInstallation: async () => {

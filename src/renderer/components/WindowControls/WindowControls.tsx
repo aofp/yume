@@ -26,6 +26,8 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const showAnalyticsMenu = useClaudeCodeStore(state => state.showAnalyticsMenu);
   const vscodeConnected = useClaudeCodeStore(state => state.vscodeConnected);
   const vscodeExtensionEnabled = useClaudeCodeStore(state => state.vscodeExtensionEnabled);
+  const hasUpdateAvailable = useClaudeCodeStore(state => state.hasUpdateAvailable);
+  const latestVersion = useClaudeCodeStore(state => state.latestVersion);
   
   // Removed spammy platform detection log
   
@@ -133,7 +135,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
 
   const handleClose = async () => {
     console.log('Close button clicked');
-    
+
     // Use Tauri API to close window
     try {
       if ((window as any).__TAURI__) {
@@ -148,6 +150,20 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
     } catch (error) {
       console.error('Failed to close window:', error);
       window.close();
+    }
+  };
+
+  const handleUpdateClick = async () => {
+    try {
+      if ((window as any).__TAURI__) {
+        const { shell } = await import('@tauri-apps/plugin-shell');
+        await shell.open('https://github.com/aofp/yume/releases');
+      } else {
+        window.open('https://github.com/aofp/yume/releases', '_blank');
+      }
+    } catch (error) {
+      console.error('Failed to open releases page:', error);
+      window.open('https://github.com/aofp/yume/releases', '_blank');
     }
   };
 
@@ -170,6 +186,17 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
         {vscodeExtensionEnabled && vscodeConnected && (
           <span className="vscode-indicator" title="vscode extension connected">
             [vscode connected]
+          </span>
+        )}
+        {/* Update indicator */}
+        {hasUpdateAvailable && (
+          <span
+            className="vscode-indicator update-indicator"
+            title={`update available: ${latestVersion || 'unknown'} (click to download)`}
+            onClick={handleUpdateClick}
+            style={{ cursor: 'pointer' }}
+          >
+            [update available]
           </span>
         )}
         {/* Mac: Menu items to the right of title - projects, analytics, settings, keyboard shortcuts */}
@@ -271,6 +298,17 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       {vscodeExtensionEnabled && vscodeConnected && (
         <span className="vscode-indicator" title="vscode extension connected">
           [vscode connected]
+        </span>
+      )}
+      {/* Update indicator */}
+      {hasUpdateAvailable && (
+        <span
+          className="vscode-indicator update-indicator"
+          title={`update available: ${latestVersion || 'unknown'} (click to download)`}
+          onClick={handleUpdateClick}
+          style={{ cursor: 'pointer' }}
+        >
+          [update available]
         </span>
       )}
     </div>
