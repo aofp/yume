@@ -1,8 +1,23 @@
 {
   "product": "yume",
-  "latest": "0.1.0",
+  "latest": "0.1.1",
   "baseUrl": "https://aofp.github.io/yume/releases",
   "releases": [
+    {
+      "version": "0.1.1",
+      "date": "2026-01-19",
+      "notes": "improving ui consistency between macos and windows",
+      "downloads": {
+        "mac": "0.1.1/yume-0.1.1-macos-x64.dmg",
+        "mac_arm": "0.1.1/yume-0.1.1-macos-arm64.dmg",
+        "windows": "0.1.1/yume_0.1.1_x64-setup.exe"
+      },
+      "checksums": {
+        "mac": "578500175225f50e2012aaa41e3e1130c5fcb8203ed4198e357bdbf62ef17f85",
+        "mac_arm": "3c9b48632692bd859edae4edfebb79bed52d88435341221861a549a4dc89cdb3",
+        "windows": "5c17dae31092b0840146630ee3bbb4873db204c01ce6ca8c2cc1d9f4a56aded2"
+      }
+    },
     {
       "version": "0.1.0",
       "date": "2026-01-19",
