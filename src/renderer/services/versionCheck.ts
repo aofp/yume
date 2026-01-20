@@ -1,16 +1,14 @@
 /**
- * Version check service - checks for updates once every 24 hours
+ * Version check service - checks for updates on app start
  * Fetches version.txt from github repo (aofp/yume)
  */
 
 import { APP_VERSION } from '../config/app';
 
 const VERSION_CHECK_URL = 'https://raw.githubusercontent.com/aofp/yume/main/version.txt';
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const STORAGE_KEY = 'yume-version-check';
 
 interface VersionCheckState {
-  lastCheck: number;
   latestVersion: string | null;
   hasUpdate: boolean;
 }
@@ -24,7 +22,7 @@ function getStoredState(): VersionCheckState {
   } catch {
     // ignore parse errors
   }
-  return { lastCheck: 0, latestVersion: null, hasUpdate: false };
+  return { latestVersion: null, hasUpdate: false };
 }
 
 function saveState(state: VersionCheckState): void {
@@ -53,17 +51,9 @@ function compareVersions(a: string, b: string): number {
 }
 
 /**
- * Check for updates - only fetches if 24h+ since last check
+ * Check for updates - fetches on every call (app start)
  */
-export async function checkForUpdates(force = false): Promise<VersionCheckState> {
-  const state = getStoredState();
-  const now = Date.now();
-
-  // Skip if checked recently (unless forced)
-  if (!force && state.lastCheck > 0 && (now - state.lastCheck) < CHECK_INTERVAL_MS) {
-    return state;
-  }
-
+export async function checkForUpdates(): Promise<VersionCheckState> {
   try {
     const response = await fetch(VERSION_CHECK_URL, {
       cache: 'no-store',
@@ -80,7 +70,6 @@ export async function checkForUpdates(force = false): Promise<VersionCheckState>
     const hasUpdate = compareVersions(latestVersion, APP_VERSION) > 0;
 
     const newState: VersionCheckState = {
-      lastCheck: now,
       latestVersion,
       hasUpdate
     };
@@ -88,13 +77,8 @@ export async function checkForUpdates(force = false): Promise<VersionCheckState>
     saveState(newState);
     return newState;
   } catch (error) {
-    // On error, just update lastCheck to avoid hammering the server
-    const errorState: VersionCheckState = {
-      ...state,
-      lastCheck: now
-    };
-    saveState(errorState);
-    return errorState;
+    // On error, return stored state
+    return getStoredState();
   }
 }
 
