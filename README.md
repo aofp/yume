@@ -172,6 +172,7 @@ yume is free to download and use with 2 tab limit. upgrade to pro for unlimited 
 ## links
 
 - **download**: [aofp.github.io/yume](https://aofp.github.io/yume)
+- **docs**: [aofp.github.io/yume/docs/release/viewer.html](https://aofp.github.io/yume/docs/release/viewer.html)
 - **issues**: [github.com/aofp/yume/issues](https://github.com/aofp/yume/issues)
 - **claude code cli**: [github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
 
