@@ -222,13 +222,22 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   // Calculate position for the autocomplete dropdown
   const getPosition = () => {
     if (!inputRef.current) return { bottom: 0 };
-    
+
     const input = inputRef.current;
     const rect = input.getBoundingClientRect();
-    
-    // Position above the input with extra spacing
+
+    // Get zoom from localStorage (stored as percentage like "110")
+    const zoomPercent = parseInt(localStorage.getItem('zoomPercent') || '100', 10);
+    const zoomLevel = zoomPercent / 100;
+
+    // With CSS zoom on body, position:fixed coordinates need adjustment
+    // window.innerHeight is unzoomed, rect.top is zoomed
+    // We need to position in the zoomed coordinate space
+    const adjustedTop = rect.top / zoomLevel;
+    const adjustedWindowHeight = window.innerHeight;
+
     return {
-      bottom: window.innerHeight - rect.top + 7
+      bottom: adjustedWindowHeight - adjustedTop + 7
     };
   };
 

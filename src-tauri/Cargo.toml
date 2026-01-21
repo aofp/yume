@@ -1,6 +1,6 @@
 [package]
 name = "yume"
-version = "0.2.8"
+version = "0.3.0"
 description = "yume - Minimal UI for Claude CLI"
 authors = ["aofp"]
 license = "MIT"

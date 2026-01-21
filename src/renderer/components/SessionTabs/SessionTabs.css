@@ -230,7 +230,7 @@
 .tab-context-bar {
   width: 2px;
   height: 16px;
-  background: var(--fg-15);
+  background: var(--fg-10);
   border-radius: 0;
   position: relative;
   overflow: hidden;

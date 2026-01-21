@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { appStorageKey } from '../../config/app';
+import { logger } from '../../utils/structuredLogger';
 import './ErrorBoundary.css';
 
 interface Props {
@@ -38,11 +39,15 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { name = 'Unknown' } = this.props;
-    
-    // Log error details for debugging
-    console.error(`[ErrorBoundary: ${name}] Component stack:`, errorInfo.componentStack);
-    console.error(`[ErrorBoundary: ${name}] Error:`, error);
-    
+
+    // Log error details using structured logger
+    logger.error(`ErrorBoundary caught error in ${name}`, {
+      boundary: name,
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
+
     // Update state with error details
     this.setState(prevState => ({
       errorInfo,

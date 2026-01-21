@@ -40,6 +40,7 @@ import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { Watermark } from '../Watermark/Watermark';
 // ActivityIndicator removed - now showing inline with thinking indicator
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
+import ErrorBoundary from '../Common/ErrorBoundary';
 // PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
 const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
@@ -5074,7 +5075,7 @@ export const ClaudeChat: React.FC = () => {
             ) : (
               <span className="tool-panel-title">
                 <IconHistory size={12} stroke={1.5} /> history
-                <span className="tool-panel-hint">click to rollback</span>
+                <span className="tool-panel-hint">click to roll back</span>
               </span>
             )}
             <div className="tool-panel-header-actions">
@@ -6134,13 +6135,15 @@ export const ClaudeChat: React.FC = () => {
 
       {/* Agent Executor */}
       {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
-        <React.Suspense fallback={<div>&nbsp;</div>}>
-          <AgentExecutor
-            sessionId={currentSessionId}
-            isOpen={showAgentExecutor}
-            onClose={() => { setShowAgentExecutor(false); resetHoverStates(); }}
-          />
-        </React.Suspense>
+        <ErrorBoundary name="AgentExecutor">
+          <React.Suspense fallback={<div>&nbsp;</div>}>
+            <AgentExecutor
+              sessionId={currentSessionId}
+              isOpen={showAgentExecutor}
+              onClose={() => { setShowAgentExecutor(false); resetHoverStates(); }}
+            />
+          </React.Suspense>
+        </ErrorBoundary>
       )}
 
       {/* Activity indicator moved inline with thinking indicator at end of messages */}
@@ -6351,14 +6354,27 @@ export const ClaudeChat: React.FC = () => {
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 // Don't cap at 100% - show real percentage for context usage awareness
 
+                // Format numbers as short form (2.4k, 23.4k, etc) - hide .0 decimals
+                const formatShort = (num: number): string => {
+                  if (num >= 1000000) {
+                    const val = num / 1000000;
+                    return val % 1 === 0 ? `${val}m` : `${val.toFixed(1)}m`;
+                  }
+                  if (num >= 1000) {
+                    const val = num / 1000;
+                    return val % 1 === 0 ? `${val}k` : `${val.toFixed(1)}k`;
+                  }
+                  return num.toString();
+                };
+
                 return (
                   <>
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
                         <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
                           <div className="usage-bar-label">
-                            <span>{totalContextTokens.toLocaleString()} / 200k</span>
                             <span className={rawPercentage >= 60 ? 'usage-negative' : ''}>{rawPercentage.toFixed(2)}%</span>
+                            <span>{formatShort(totalContextTokens)} / 200k</span>
                           </div>
                           <div className="usage-bar">
                             <div className="usage-bar-fill" style={{
@@ -6375,37 +6391,62 @@ export const ClaudeChat: React.FC = () => {
                             ))}
                           </div>
                         </div>
-                        <div className="stat-row">
-                          <div className="stat-keys">
-                            <IconMessage size={14} />
-                            <span className="stat-name">actual tokens</span>
-                          </div>
-                          <span className="stat-dots"></span>
-                          <span className="stat-desc">
-                            {(() => {
-                              // Use accumulated byModel totals, not snapshot values
-                              const opusIn = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
-                              const opusOut = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
-                              const sonnetIn = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
-                              const sonnetOut = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
-                              const totalIn = opusIn + sonnetIn;
-                              const totalOut = opusOut + sonnetOut;
-                              return `${(totalIn + totalOut).toLocaleString()} (in: ${totalIn.toLocaleString()}, out: ${totalOut.toLocaleString()})`;
-                            })()}
-                          </span>
-                        </div>
-                        <div className="stat-row">
-                          <div className="stat-keys">
-                            <IconArtboardFilled size={14} />
-                            <span className="stat-name">cache tokens</span>
-                          </div>
-                          <span className="stat-dots"></span>
-                          <span className="stat-desc">
-                            {((currentSession?.analytics?.tokens?.cacheSize || 0) + (currentSession?.analytics?.tokens?.cacheCreation || 0)).toLocaleString()} (read: {(currentSession?.analytics?.tokens?.cacheSize || 0).toLocaleString()}, new: {(currentSession?.analytics?.tokens?.cacheCreation || 0).toLocaleString()})
-                          </span>
-                        </div>
                       </div>
                     </div>
+              {(() => {
+                const opusIn = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
+                const opusOut = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
+                const sonnetIn = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
+                const sonnetOut = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
+                const totalIn = opusIn + sonnetIn;
+                const totalOut = opusOut + sonnetOut;
+                const cacheRead = currentSession?.analytics?.tokens?.cacheSize || 0;
+                const cacheNew = currentSession?.analytics?.tokens?.cacheCreation || 0;
+                return (
+                  <>
+              <div className="stats-column">
+                <div className="stats-section">
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconMessage size={14} />
+                      <span className="stat-name">tokens <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>in</b>)</span></span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc"><b>{formatShort(totalIn)}</b></span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconMessage size={14} />
+                      <span className="stat-name">tokens <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>out</b>)</span></span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc"><b>{formatShort(totalOut)}</b></span>
+                  </div>
+                </div>
+              </div>
+              <div className="stats-column">
+                <div className="stats-section">
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconArtboardFilled size={14} />
+                      <span className="stat-name">cache <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>new</b>)</span></span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc"><b>{formatShort(cacheNew)}</b></span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconArtboardFilled size={14} />
+                      <span className="stat-name">cache <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>read</b>)</span></span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc"><b>{formatShort(cacheRead)}</b></span>
+                  </div>
+                </div>
+              </div>
+                  </>
+                );
+              })()}
               <div className="stats-column">
                 <div className="stats-section">
                   <div className="stat-row">
@@ -6417,7 +6458,7 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-desc">
                       {(() => {
                         const messageCount = currentSession?.analytics?.totalMessages || 0;
-                        console.log(`📊 [UI MESSAGES] Displaying message count:`, { 
+                        console.log(`📊 [UI MESSAGES] Displaying message count:`, {
                           sessionId: currentSession?.id,
                           totalMessages: messageCount,
                           hasAnalytics: !!currentSession?.analytics,
@@ -6436,7 +6477,7 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-desc">
                       {(() => {
                         const toolCount = currentSession?.analytics?.toolUses || 0;
-                        console.log(`📊 [UI TOOLS] Displaying tool count:`, { 
+                        console.log(`📊 [UI TOOLS] Displaying tool count:`, {
                           sessionId: currentSession?.id,
                           toolUses: toolCount,
                           hasAnalytics: !!currentSession?.analytics
@@ -6524,8 +6565,8 @@ export const ClaudeChat: React.FC = () => {
                 <div className="stats-footer">
                   {/* Session Limit (5-hour) */}
                   <div className="stats-footer-row">
-                    <span className="stats-footer-label"><span className="stats-footer-limit-name">claude 5h</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '?'}</span>
                     <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) + '%' : '?'}</span>
+                    <span className="stats-footer-label"><span className="stats-footer-limit-name">claude 5h</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '?'}</span>
                   </div>
                   <div className="usage-bar">
                     <div
@@ -6547,8 +6588,8 @@ export const ClaudeChat: React.FC = () => {
 
                   {/* Weekly Limit (7-day) */}
                   <div className="stats-footer-row">
-                    <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">claude 7d</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '?'}</span>
                     <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) + '%' : '?'}</span>
+                    <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">claude 7d</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '?'}</span>
                   </div>
                   <div className="usage-bar">
                     <div
@@ -6641,36 +6682,42 @@ export const ClaudeChat: React.FC = () => {
       />
 
       {/* Resume conversations modal */}
-      <RecentConversationsModal
-        isOpen={showResumeModal}
-        onClose={() => { setShowResumeModal(false); resetHoverStates(); }}
-        onConversationSelect={handleResumeConversation}
-        workingDirectory={currentSession?.workingDirectory}
-      />
+      <ErrorBoundary name="RecentConversationsModal">
+        <React.Suspense fallback={null}>
+          <RecentConversationsModal
+            isOpen={showResumeModal}
+            onClose={() => { setShowResumeModal(false); resetHoverStates(); }}
+            onConversationSelect={handleResumeConversation}
+            workingDirectory={currentSession?.workingDirectory}
+          />
+        </React.Suspense>
+      </ErrorBoundary>
 
       {/* CLAUDE.md Editor Modal */}
       {showClaudeMdEditor && currentSession?.workingDirectory && (
-        <React.Suspense fallback={null}>
-          <ClaudeMdEditorModal
-            isOpen={showClaudeMdEditor}
-            onClose={() => { setShowClaudeMdEditor(false); resetHoverStates(); }}
-            workingDirectory={currentSession.workingDirectory}
-            onFileCreated={async () => {
-              // Refresh file tree to show newly created CLAUDE.md
-              if (currentSession?.workingDirectory) {
-                try {
-                  const files = await invoke('get_folder_contents', {
-                    folderPath: currentSession.workingDirectory,
-                    maxResults: 100
-                  }) as any[];
-                  setFileTree(files);
-                } catch {
-                  // Silently fail
+        <ErrorBoundary name="ClaudeMdEditorModal">
+          <React.Suspense fallback={null}>
+            <ClaudeMdEditorModal
+              isOpen={showClaudeMdEditor}
+              onClose={() => { setShowClaudeMdEditor(false); resetHoverStates(); }}
+              workingDirectory={currentSession.workingDirectory}
+              onFileCreated={async () => {
+                // Refresh file tree to show newly created CLAUDE.md
+                if (currentSession?.workingDirectory) {
+                  try {
+                    const files = await invoke('get_folder_contents', {
+                      folderPath: currentSession.workingDirectory,
+                      maxResults: 100
+                    }) as any[];
+                    setFileTree(files);
+                  } catch {
+                    // Silently fail
+                  }
                 }
-              }
-            }}
-          />
-        </React.Suspense>
+              }}
+            />
+          </React.Suspense>
+        </ErrorBoundary>
       )}
 
     </div>

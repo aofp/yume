@@ -109,6 +109,7 @@
   padding: var(--space-1) 10px;
   cursor: default;
   gap: var(--space-1-5);
+  min-height: 22px;
 }
 
 .cp-item.hover-enabled:hover {

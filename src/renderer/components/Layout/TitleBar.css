@@ -324,7 +324,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   row-gap: 0px;
-  column-gap: 4px;
   justify-content: center;
 }
 

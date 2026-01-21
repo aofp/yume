@@ -2171,8 +2171,8 @@ textarea.context-full {
 
 .key-btn {
   display: inline-block;
-  background: var(--fg-20);
-  color: var(--fg-80);
+  background: var(--fg-05);
+  color: var(--fg-95);
   padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
@@ -2400,7 +2400,6 @@ textarea.context-full {
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   row-gap: 0;
-  column-gap: var(--space-1);
   justify-content: center;
 }
 
@@ -2447,6 +2446,8 @@ textarea.context-full {
   align-items: center;
   padding: var(--space-0-5) 0;
   font-size: var(--text-sm);
+  margin-left: 40px;
+  margin-right: 40px;
 }
 
 .stat-row.opus-stat-row {
@@ -2549,14 +2550,14 @@ textarea.context-full {
 }
 
 .usage-bar-label span:first-child {
-  text-transform: lowercase;
   font-weight: 600;
-  color: var(--foreground-color);
+  color: var(--accent-color);
 }
 
 .usage-bar-label span:last-child {
+  text-transform: lowercase;
   font-weight: 600;
-  color: var(--accent-color);
+  color: var(--foreground-color);
 }
 
 .usage-bar-label span.usage-negative {
@@ -3082,6 +3083,7 @@ textarea.context-full {
   background: var(--background-color);
   border-bottom: 1px solid var(--fg-10);
   flex-shrink: 0;
+  min-height: 32px;
 }
 
 .tool-panel-title {

@@ -817,15 +817,12 @@ export const SessionTabs: React.FC = () => {
                   // Check if pending auto-compact (will compact on next message)
                   const isPendingCompact = (session as any).compactionState?.pendingAutoCompact;
 
-                  // Color gradient based on thresholds:
-                  // - 40%+: faint glow (0.3 opacity)
-                  // - 50%+: medium glow (0.8 opacity)
-                  // - pendingAutoCompact (60%+): full glow (1.0 opacity) - will compact on next message
+                  // Color: accent color with opacity based on thresholds
                   const getColor = (pct: number) => {
-                    if (isPendingCompact) return 'rgba(var(--negative-rgb), 1.0)'; // Full glow - pending compact
-                    if (pct >= 50) return 'rgba(var(--negative-rgb), 0.8)'; // Medium glow at 50%+
-                    if (pct >= 40) return 'rgba(var(--negative-rgb), 0.6)'; // Faint glow at 40%+
-                    return 'rgba(150, 150, 150, 0.8)'; // Grey below 40%
+                    if (isPendingCompact) return 'rgba(var(--negative-rgb), 1.0)'; // Full negative - pending compact
+                    if (pct >= 50) return 'rgba(var(--accent-rgb), 1.0)'; // Full accent at 50%+
+                    if (pct >= 40) return 'rgba(var(--accent-rgb), 0.8)'; // Medium accent at 40%+
+                    return 'rgba(var(--accent-rgb), 0.6)'; // Faint accent below 40%
                   };
 
                   return (

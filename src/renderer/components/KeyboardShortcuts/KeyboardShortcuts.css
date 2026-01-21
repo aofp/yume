@@ -101,8 +101,7 @@
 
 .key-btn {
   display: inline-block;
-  background: rgba(128, 128, 128, 0.2);
-  color: var(--fg-80);
+  color: var(--fg-95);
   padding: 1px 4px;
   border-radius: 3px;
   font-family: var(--font-mono);

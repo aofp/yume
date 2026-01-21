@@ -9,6 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
 import { toastService } from '../services/toastService';
+import { backgroundAgentService } from '../services/backgroundAgentService';
 import { isBashPrefix } from '../utils/helpers';
 import { appEventName, appStorageKey } from '../config/app';
 import { loadEnabledTools, DEFAULT_ENABLED_TOOLS, ALL_TOOLS, expandMcpTools, getAllMcpToolIds } from '../config/tools';
@@ -52,34 +53,85 @@ const RESTORE_INPUT_EVENT = appEventName('restore-input');
 const CHECK_RESUMABLE_EVENT = appEventName('check-resumable');
 
 // Fast message hash for deduplication - much faster than JSON.stringify comparison
-// Uses message id + type + content signature
+// Uses message id + type + content signature with validation
 function getMessageHash(message: any): string {
-  if (message.id) return `id:${message.id}`;
+  // Early return with ID if available (most reliable identifier)
+  if (message?.id) return `id:${message.id}`;
 
-  const type = message.type || '';
+  // Validate message structure
+  if (!message || typeof message !== 'object') {
+    return `invalid:${Date.now()}:${Math.random().toString(36)}`;
+  }
+
+  const type = message.type || 'unknown';
   const content = message.message;
 
-  // For simple string content, use it directly
-  if (typeof content === 'string') {
-    return `${type}:${content.length}:${content.slice(0, 100)}`;
+  // Handle null/undefined content
+  if (content === null || content === undefined) {
+    return `${type}:empty:${message.timestamp || Date.now()}`;
   }
 
-  // For object content, create a signature from key fields
-  if (content && typeof content === 'object') {
+  // Handle string content
+  if (typeof content === 'string') {
+    // Handle empty strings
+    if (content.length === 0) {
+      return `${type}:empty:${message.timestamp || Date.now()}`;
+    }
+    // Use length + first 100 chars + last 20 chars for better uniqueness
+    const preview = content.length <= 120
+      ? content
+      : content.slice(0, 100) + '...' + content.slice(-20);
+    return `${type}:str:${content.length}:${preview}`;
+  }
+
+  // Handle object content
+  if (typeof content === 'object') {
+    // Handle array content directly (not nested in content.content)
+    if (Array.isArray(content)) {
+      if (content.length === 0) {
+        return `${type}:arr:empty:${message.timestamp || Date.now()}`;
+      }
+      const first = content[0];
+      const sig = first?.type || first?.text?.slice(0, 50) || 'unknown';
+      return `${type}:arr:${content.length}:${sig}`;
+    }
+
+    // Handle nested content.content (Claude message format)
     const contentStr = content.content;
     if (typeof contentStr === 'string') {
-      return `${type}:${contentStr.length}:${contentStr.slice(0, 100)}`;
+      if (contentStr.length === 0) {
+        return `${type}:empty:${message.timestamp || Date.now()}`;
+      }
+      const preview = contentStr.length <= 120
+        ? contentStr
+        : contentStr.slice(0, 100) + '...' + contentStr.slice(-20);
+      return `${type}:obj:${contentStr.length}:${preview}`;
     }
-    if (Array.isArray(content.content)) {
-      // For array content (thinking blocks etc), hash first item
-      const first = content.content[0];
-      const sig = first?.type || first?.text?.slice(0, 50) || '';
-      return `${type}:arr:${content.content.length}:${sig}`;
+
+    // Handle array in content.content (thinking blocks)
+    if (Array.isArray(contentStr)) {
+      if (contentStr.length === 0) {
+        return `${type}:arr:empty:${message.timestamp || Date.now()}`;
+      }
+      const first = contentStr[0];
+      const sig = first?.type || first?.text?.slice(0, 50) || 'unknown';
+      return `${type}:arr:${contentStr.length}:${sig}`;
     }
+
+    // Handle tool use objects
+    if (content.tool_use_id || content.tool_name) {
+      const toolId = content.tool_use_id || 'unknown';
+      const toolName = content.tool_name || 'unknown';
+      return `${type}:tool:${toolName}:${toolId}`;
+    }
+
+    // Fallback for other object structures
+    const keys = Object.keys(content).sort().join(',');
+    return `${type}:obj:${keys}:${message.timestamp || Date.now()}`;
   }
 
-  // Fallback to type + timestamp for unique signature
-  return `${type}:${message.timestamp || Date.now()}`;
+  // Final fallback with unique identifier
+  return `${type}:fallback:${message.timestamp || Date.now()}:${Math.random().toString(36).slice(2, 9)}`;
 }
 
 // Cache for message hashes to avoid recomputing
@@ -104,6 +156,10 @@ const STREAMING_END_DEBOUNCE_MS = IS_WINDOWS ? 2000 : 700;
 // Track active subagent parent tool IDs - prevents streaming=false while subagent is working
 // Maps sessionId -> Set of parent_tool_use_ids that have active subagents
 const activeSubagentParents = new Map<string, Set<string>>();
+
+// Track active background agents - prevents streaming=false while background agents are running
+// Maps sessionId -> Set of agent IDs (e.g., "a898051", "a5a66f6")
+const activeBackgroundAgents = new Map<string, Set<string>>();
 
 // Cancel any pending streaming end timers for a session (called when new work messages arrive)
 // RACE CONDITION FIX: Cancel ALL timers for this session (both temp and main channel sources)
@@ -154,10 +210,52 @@ function trackSubagentActivity(sessionId: string, parentToolUseId: string) {
   console.log(`🤖 [SUBAGENT-TRACK] Session ${sessionId} has ${parents.size} active subagent parent(s)`);
 }
 
+// Track background agent launch - keeps streaming active while background agents run
+function trackBackgroundAgent(sessionId: string, agentId: string) {
+  let agents = activeBackgroundAgents.get(sessionId);
+  if (!agents) {
+    agents = new Set();
+    activeBackgroundAgents.set(sessionId, agents);
+  }
+  agents.add(agentId);
+  console.log(`🚀 [BACKGROUND-AGENT] Session ${sessionId} launched agent ${agentId} - ${agents.size} active background agent(s)`);
+}
+
+// Check if session has active background agents
+function hasActiveBackgroundAgents(sessionId: string): boolean {
+  const agents = activeBackgroundAgents.get(sessionId);
+  return agents ? agents.size > 0 : false;
+}
+
+// Clear a specific background agent (called when agent completes)
+function clearBackgroundAgent(sessionId: string, agentId: string) {
+  const agents = activeBackgroundAgents.get(sessionId);
+  if (agents && agents.has(agentId)) {
+    agents.delete(agentId);
+    console.log(`🏁 [BACKGROUND-AGENT] Agent ${agentId} completed - ${agents.size} remaining`);
+    if (agents.size === 0) {
+      activeBackgroundAgents.delete(sessionId);
+    }
+  }
+}
+
+// Clear all background agents for a session
+function clearBackgroundAgentsTracking(sessionId: string) {
+  if (activeBackgroundAgents.has(sessionId)) {
+    activeBackgroundAgents.delete(sessionId);
+    console.log(`🧹 [BACKGROUND-AGENT] Cleared all background agents for session ${sessionId}`);
+  }
+}
+
 // Check if session has active subagents
 function hasActiveSubagents(sessionId: string): boolean {
   const parents = activeSubagentParents.get(sessionId);
   return parents ? parents.size > 0 : false;
+}
+
+// Check if session has any active work (subagents or background agents)
+function hasActiveWork(sessionId: string): boolean {
+  return hasActiveSubagents(sessionId) || hasActiveBackgroundAgents(sessionId);
 }
 
 // Clear subagent tracking for a session (called on error/interrupt/cleanup)
@@ -1505,7 +1603,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     }
 
                     // Check for active subagents
-                    if (hasActiveSubagents(sessionId)) {
+                    if (hasActiveWork(sessionId)) {
                       console.log(`🔄 [STREAMING-DEBOUNCE] temp channel debounce cancelled - active subagents`);
                       return;
                     }
@@ -2708,7 +2806,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // CRITICAL FIX: Check if we still have pending tools (agents, subagents, etc.)
                     const session = sessions.find(s => s.id === sessionId);
                     const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
-                    const hasSubagents = hasActiveSubagents(sessionId);
+                    const hasSubagents = hasActiveWork(sessionId);
 
                     if (hasPendingTools || hasSubagents) {
                       // Don't clear streaming - agent tools or subagents are still running
@@ -2754,7 +2852,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       }
 
                       // If still has active subagents, don't clear
-                      if (hasActiveSubagents(sessionId)) {
+                      if (hasActiveWork(sessionId)) {
                         console.log(`🔄 [STREAMING-DEBOUNCE] Still has active subagents - keeping streaming=true`);
                         return;
                       }
@@ -3040,7 +3138,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // BUT preserve streaming state if there are pending tools (subagent tasks still running)
                       const session = sessions.find(s => s.id === sessionId);
                       const hasPendingTools = session?.pendingToolIds && (session.pendingToolIds?.size ?? 0) > 0;
-                      const hasSubagents = hasActiveSubagents(sessionId);
+                      const hasSubagents = hasActiveWork(sessionId);
 
                       if ((hasPendingTools || hasSubagents) && message.subtype === 'stream_end') {
                         // CRITICAL FIX: Don't clear streaming if subagent tasks are still pending
@@ -3084,7 +3182,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             return;
                           }
 
-                          if (hasActiveSubagents(sessionId)) {
+                          if (hasActiveWork(sessionId)) {
                             console.log(`🔄 [STREAMING-DEBOUNCE] stream_end debounce cancelled - active subagents`);
                             return;
                           }
@@ -3355,6 +3453,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // Remove tool ID from pending set
                     // streaming will be managed by assistant/result/stream_end messages
                     const toolUseId = message.message?.tool_use_id;
+
+                    // Check if this is a background agent launch
+                    const content = message.message?.content;
+                    const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+                    if (contentStr && contentStr.includes('Async agent launched successfully')) {
+                      const agentIdMatch = contentStr.match(/agentId:\s*([a-f0-9]+)/);
+                      if (agentIdMatch && agentIdMatch[1]) {
+                        trackBackgroundAgent(sessionId, agentIdMatch[1]);
+                        console.log(`🚀 [BACKGROUND-AGENT] Detected launch from tool_result - keeping streaming=true`);
+                      }
+                    }
+
                     // Also clear from subagent tracking (in case this was a Task tool result)
                     if (toolUseId) {
                       clearSubagentParent(sessionId, toolUseId);
@@ -4003,7 +4113,7 @@ ${content}`;
               // CRITICAL FIX: Check for pending tools before clearing streaming
               const session = sessions.find(s => s.id === sessionId);
               const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
-              const hasSubagents = hasActiveSubagents(sessionId);
+              const hasSubagents = hasActiveWork(sessionId);
 
               if ((hasPendingTools || hasSubagents) && message.subtype === 'stream_end') {
                 // Don't clear streaming - agent tools or subagents are still running
@@ -4397,7 +4507,7 @@ ${content}`;
                 // CRITICAL FIX: Check for pending tools before clearing streaming
                 const session = sessions.find(s => s.id === sessionId);
                 const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
-                const hasSubagents = hasActiveSubagents(sessionId);
+                const hasSubagents = hasActiveWork(sessionId);
 
                 if ((hasPendingTools || hasSubagents) && message.subtype === 'stream_end') {
                   // Don't clear streaming - agent tools or subagents are still running
@@ -4798,8 +4908,20 @@ ${content}`;
 
         // Only interrupt if session exists and is actually streaming
         if (sessionIdToInterrupt && sessionToInterrupt?.streaming) {
-          // Clear subagent tracking on interrupt
+          // Cancel all active background agents for this session
+          const bgAgents = activeBackgroundAgents.get(sessionIdToInterrupt);
+          if (bgAgents && bgAgents.size > 0) {
+            console.log(`🛑 [INTERRUPT] Cancelling ${bgAgents.size} background agent(s) for session ${sessionIdToInterrupt}`);
+            for (const agentId of bgAgents) {
+              backgroundAgentService.cancelAgent(agentId).catch(err => {
+                console.error(`❌ [INTERRUPT] Failed to cancel background agent ${agentId}:`, err);
+              });
+            }
+          }
+
+          // Clear all work tracking on interrupt
           clearSubagentTracking(sessionIdToInterrupt);
+          clearBackgroundAgentsTracking(sessionIdToInterrupt);
           // Immediately set streaming and runningBash to false to prevent double calls
           set(state => ({
             sessions: state.sessions.map(s => {
@@ -5590,6 +5712,18 @@ ${content}`;
                 }
               } else if (message.type === 'tool_result') {
                 const toolUseId = (message as any).message?.tool_use_id;
+
+                // Check if this is a background agent launch
+                const content = (message as any).message?.content;
+                const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+                if (contentStr && contentStr.includes('Async agent launched successfully')) {
+                  const agentIdMatch = contentStr.match(/agentId:\s*([a-f0-9]+)/);
+                  if (agentIdMatch && agentIdMatch[1]) {
+                    trackBackgroundAgent(sessionId, agentIdMatch[1]);
+                    console.log(`🚀 [BACKGROUND-AGENT] Detected launch from addMessageToSession - keeping streaming=true`);
+                  }
+                }
+
                 // Clear from subagent tracking (in case this was a Task tool result)
                 if (toolUseId) {
                   clearSubagentParent(sessionId, toolUseId);
@@ -5611,7 +5745,7 @@ ${content}`;
                 // Force-clear streaming regardless of pending tools (they should be done)
                 const hasDurationMs = typeof message.duration_ms === 'number' && message.duration_ms > 0;
                 const hasPendingTools = pendingToolIds.size > 0;
-                const hasSubagents = hasActiveSubagents(sessionId);
+                const hasSubagents = hasActiveWork(sessionId);
 
                 if (hasDurationMs || (!hasPendingTools && !hasSubagents)) {
                   shouldClearStreaming = true;
@@ -5622,8 +5756,9 @@ ${content}`;
                     pendingToolIds.clear();
                     pendingToolInfo.clear();
                   }
-                  // Clear subagent tracking
+                  // Clear all work tracking (subagents and background agents)
                   clearSubagentTracking(sessionId);
+                  clearBackgroundAgentsTracking(sessionId);
                   // Play completion sound
                   get().playCompletionSound();
                   console.log(`🎯 [STREAMING-FIX] Result in addMessageToSession - clearing streaming for ${sessionId} (hasDurationMs: ${hasDurationMs})`);
@@ -6607,3 +6742,36 @@ ${content}`;
     }
   )
 );
+
+// Initialize background agent monitoring to clear streaming when agents complete
+backgroundAgentService.initialize().then(() => {
+  backgroundAgentService.subscribeToAgent((agent) => {
+    // When agent reaches terminal state (completed, failed, cancelled), clear from tracking
+    if (agent.status === 'completed' || agent.status === 'failed' || agent.status === 'cancelled') {
+      console.log(`🏁 [BACKGROUND-AGENT] Agent ${agent.id} reached terminal state: ${agent.status}`);
+
+      // Find which session launched this agent and clear it
+      // We need to map agent IDs to sessions - for now, clear from all sessions
+      const store = useClaudeCodeStore.getState();
+      store.sessions.forEach(session => {
+        clearBackgroundAgent(session.id, agent.id);
+      });
+
+      // Check if any session should clear streaming now
+      store.sessions.forEach(session => {
+        if (session.streaming && !hasActiveWork(session.id)) {
+          console.log(`🏁 [STREAMING] No more active work for session ${session.id} - clearing streaming`);
+          useClaudeCodeStore.setState(state => ({
+            sessions: state.sessions.map(s =>
+              s.id === session.id
+                ? { ...s, streaming: false, thinkingStartTime: undefined }
+                : s
+            )
+          }));
+        }
+      });
+    }
+  });
+});
+
+export default useClaudeCodeStore;

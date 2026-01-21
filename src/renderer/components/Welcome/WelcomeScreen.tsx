@@ -482,8 +482,8 @@ export const WelcomeScreen: React.FC = () => {
                 <div className="stats-section">
                   <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
                     <div className="usage-bar-label">
-                      <span>0 / 200k</span>
                       <span>0.00%</span>
+                      <span>0 / 200k</span>
                     </div>
                     <div className="usage-bar">
                       <div className="usage-bar-fill" style={{ width: '0%' }} />
