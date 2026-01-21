@@ -16,7 +16,8 @@ import {
   IconWashDrycleanOff,
   IconWand,
   IconPencil,
-  IconPuzzle
+  IconPuzzle,
+  IconMessages
 } from '@tabler/icons-react';
 import './CommandAutocomplete.css';
 import { PluginBadge } from '../Common/PluginBadge';
@@ -47,6 +48,7 @@ const builtInCommands: Command[] = [
   { name: 'clear', description: 'clear context and start fresh', icon: <IconWashDrycleanOff size={14} />, handleLocally: true },
   { name: 'model', description: 'select model & tools', icon: <IconBolt size={14} />, handleLocally: true },
   { name: 'title', description: 'set tab title manually', icon: <IconPencil size={14} />, handleLocally: true },
+  { name: 'resume', description: 'resume a previous conversation', icon: <IconMessages size={14} />, handleLocally: true },
   { name: 'init', description: 'create/update claude.md file', icon: <IconSettings size={14} />, handleLocally: false },
   { name: 'compact', description: 'compress context to reduce token usage', icon: <IconArrowsDiagonalMinimize2 size={14} />, handleLocally: false },
 ];

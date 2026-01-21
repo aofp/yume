@@ -2338,7 +2338,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         fullMessage: message
                       });
 
-                      if (message.usage) {
+                      // Process tokens if usage OR wrapper.tokens present
+                      // BUG FIX: Previously only checked message.usage, missing wrapper.tokens-only messages
+                      if (message.usage || message.wrapper?.tokens) {
                         // Check if this is a /compact result
                         // Detection: wrapper_compact field (primary) or result text mentions "compact"
                         // NOTE: Zero tokens alone is NOT sufficient - providers like Codex can legitimately return 0 tokens
@@ -2370,9 +2372,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           return m.type === 'result' && m.id;
                         });
 
-                        // Check if we already have a result message with this ID that had usage data
+                        // Check if we already have a result message with this ID that had token data
                         const wasAlreadyProcessed = previousResultMessages.some(m =>
-                          m.id === message.id && m.usage
+                          m.id === message.id && (m.usage || m.wrapper?.tokens)
                         );
 
                         console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}`);

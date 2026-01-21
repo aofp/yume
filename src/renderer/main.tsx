@@ -61,6 +61,48 @@ import('@tauri-apps/api/core').then(m => {
 let textareaFocusedOnBlur = false;
 const isMacPlatform = navigator.platform.toLowerCase().includes('mac');
 
+// Helper: Check if WKWebView responder chain is healthy
+async function isResponderChainHealthy(): Promise<boolean> {
+  if (!window.__TAURI__) return true;
+
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const state = await invoke<string>('get_macos_focus_state');
+
+    // Responder chain is healthy if firstResponder is WKWebView or a descendant
+    // Format: "NSApp.isActive=true, ... firstResponder=WKWebView, ..."
+    const isHealthy = state.includes('firstResponder=WK') ||
+                      state.includes('firstResponder=_WK');
+
+    if (!isHealthy) {
+      console.log('[Focus] Responder chain broken:', state);
+    }
+
+    return isHealthy;
+  } catch (e) {
+    console.warn('[Focus] Failed to check responder chain:', e);
+    return true; // Assume healthy on error
+  }
+}
+
+// Helper: Restore WKWebView responder chain if broken
+async function ensureResponderChain(): Promise<void> {
+  if (!window.__TAURI__ || !isMacPlatform) return;
+
+  const healthy = await isResponderChainHealthy();
+  if (!healthy) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const restored = await invoke<boolean>('restore_webview_focus');
+      if (restored) {
+        console.log('[Focus] ✅ Restored WKWebView responder chain');
+      }
+    } catch (e) {
+      console.warn('[Focus] Failed to restore responder chain:', e);
+    }
+  }
+}
+
 import('@tauri-apps/api/event').then(({ listen }) => {
   // Listen for native window focus changes from Tauri
   // This is more reliable than web 'focus' event on macOS
@@ -84,8 +126,8 @@ import('@tauri-apps/api/event').then(({ listen }) => {
       // Non-aggressive textarea focus: only restore if textarea was focused when window lost focus
       // AND only after user explicitly switched back to this window
       if (textareaFocusedOnBlur && isMacPlatform) {
-        // Small delay for window to settle
-        setTimeout(() => {
+        // Increased delay for WKWebView responder chain to settle
+        setTimeout(async () => {
           // Skip if a modal is open
           if (document.querySelector('.modal-overlay') ||
               document.querySelector('[role="dialog"]') ||
@@ -103,11 +145,14 @@ import('@tauri-apps/api/event').then(({ listen }) => {
             }
           }
 
+          // CRITICAL: Ensure responder chain is healthy before focusing textarea
+          await ensureResponderChain();
+
           const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
           if (textarea) {
             textarea.focus();
           }
-        }, 50);
+        }, 100); // Increased from 50ms to 100ms
       }
       textareaFocusedOnBlur = false;
     } else {

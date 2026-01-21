@@ -59,6 +59,7 @@
   gap: var(--space-1);
   font-family: var(--font-mono);
   text-transform: lowercase;
+  margin-bottom: 4px;
 }
 
 /* Message hover actions */

@@ -1489,13 +1489,14 @@ export const ClaudeChat: React.FC = () => {
           // If value didn't change after typing a printable character, WKWebView lost focus
           if (valueBefore === valueAfter && document.activeElement === inputRef.current) {
             noInputChangeCount++;
-            // After 2 failed input attempts, try to restore WKWebView focus
-            if (noInputChangeCount >= 2) {
+            // CRITICAL: Reduced threshold to 1 for faster recovery
+            if (noInputChangeCount >= 1) {  // Changed from >= 2
               noInputChangeCount = 0;
+              // Keyboard input detected but not reaching textarea - restore WKWebView focus
               import('@tauri-apps/api/core').then(({ invoke }) => {
                 invoke('restore_webview_focus').then((restored: unknown) => {
                   if (restored) {
-                    console.log('[Focus] Restored WKWebView first responder');
+                    console.log('[Focus] ✅ Restored WKWebView first responder (keystroke fallback)');
                     // Re-focus textarea to ensure keyboard works
                     inputRef.current?.blur();
                     setTimeout(() => inputRef.current?.focus(), 10);
@@ -4072,13 +4073,23 @@ export const ClaudeChat: React.FC = () => {
         inputRef.current.style.overflow = 'hidden';
       }
       return;
+    } else if (trimmedInput === '/resume') {
+      // Handle /resume command - open resume conversations modal
+      setInput('');
+      setShowResumeModal(true);
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = '44px';
+        inputRef.current.style.overflow = 'hidden';
+      }
+      return;
     } else if (trimmedInput.startsWith('/') && !trimmedInput.includes(' ')) {
       // Block invalid slash commands (just "/" or "/invalid" with no args)
       // Valid commands either have a space after them (args) or are known commands above
       // Check if this is a known plugin/custom command
       const baseCommand = trimmedInput.split(' ')[0];
       const commandName = baseCommand.slice(1); // Remove leading /
-      const knownBuiltIn = ['/clear', '/compact', '/model', '/title', '/init'].includes(baseCommand);
+      const knownBuiltIn = ['/clear', '/compact', '/model', '/title', '/init', '/resume'].includes(baseCommand);
       const customCommands = getCachedCustomCommands() || [];
       const isCustom = customCommands.some((cmd: any) => {
         const trigger = cmd.name.startsWith('/') ? cmd.name : '/' + cmd.name;
@@ -4617,6 +4628,11 @@ export const ClaudeChat: React.FC = () => {
       if (newTitle && currentSessionId) {
         renameSession(currentSessionId, newTitle);
       }
+    } else if (command === '/resume') {
+      // Handle resume command locally - open resume conversations modal
+      setInput('');
+      setCommandTrigger(null);
+      setShowResumeModal(true);
     } else {
       // Check if this is a custom command (using cached version to avoid JSON.parse on every command)
       const customCommands = getCachedCustomCommands();

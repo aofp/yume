@@ -88,7 +88,7 @@ export const App: React.FC = () => {
     // Use RAF + small delay to ensure modal is fully unmounted
     // macOS WKWebView needs extra time for DOM to settle
     requestAnimationFrame(() => {
-      setTimeout(() => {
+      setTimeout(async () => {
         // Skip if another modal is now open
         if (document.querySelector('.modal-overlay') ||
             document.querySelector('[role="dialog"]') ||
@@ -104,6 +104,26 @@ export const App: React.FC = () => {
           // Already focused on an input - don't steal focus
           if (!currentActive.classList.contains('chat-input')) {
             return;
+          }
+        }
+
+        // CRITICAL: Ensure responder chain is healthy before focusing textarea
+        if (window.__TAURI__ && isMac) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const state = await invoke<string>('get_macos_focus_state');
+            const isHealthy = state.includes('firstResponder=WK') ||
+                              state.includes('firstResponder=_WK');
+
+            if (!isHealthy) {
+              console.log('[Focus] Responder chain broken (modal close):', state);
+              const restored = await invoke<boolean>('restore_webview_focus');
+              if (restored) {
+                console.log('[Focus] ✅ Restored WKWebView responder chain (modal close)');
+              }
+            }
+          } catch (e) {
+            console.warn('[Focus] Failed to restore responder chain:', e);
           }
         }
 
@@ -123,7 +143,7 @@ export const App: React.FC = () => {
             document.body.style.pointerEvents = '';
           });
         }
-      }, isMac ? 50 : 0); // macOS needs a small delay for WKWebView
+      }, isMac ? 100 : 0); // Increased from 50ms to 100ms on macOS
     });
   }, [isMac]);
 
