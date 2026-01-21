@@ -20,10 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory leak prevention in MutationObserver and ResizeObserver cleanup
 
 ### Improved
-- Type safety: Replaced `any` types in 10+ critical service and store files
+- Type safety: Replaced 12+ `any` types in service and store files with proper TypeScript types
 - Performance: Added memoization (useMemo/useCallback) to high-frequency render paths
-- Code quality: Migrated 50+ console.log calls to structured logger with context
-- Debugging: Better error context and stack traces in production logs
+- Code quality: Migrated 324+ console.log/warn/error calls to structured logger with context
+  - Services directory: 25 files, ~270 console calls replaced
+  - Components: 3 files, 54 console calls replaced (SettingsModalTabbed, CommandPalette, ClaudeChat)
+  - Stores: licenseManager, conversationStore, modalService type improvements
+- Debugging: Better error context and stack traces in production logs with structured logging
 - Storage: Centralized localStorage access for easier maintenance and migration
 
 ### Technical
