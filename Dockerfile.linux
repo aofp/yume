@@ -1,0 +1,45 @@
+# Linux build container for Yume
+FROM rust:1.75-bookworm
+
+# Install system dependencies for Tauri
+RUN apt-get update && apt-get install -y \
+    libwebkit2gtk-4.1-dev \
+    libgtk-3-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    patchelf \
+    curl \
+    wget \
+    file \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 18
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# Install pnpm (optional) and tauri-cli
+RUN npm install -g @tauri-apps/cli
+
+WORKDIR /app
+
+# Copy package files first for caching
+COPY package*.json ./
+COPY src-yume-cli/package*.json ./src-yume-cli/
+
+# Install dependencies
+RUN npm install
+RUN cd src-yume-cli && npm install
+
+# Copy source
+COPY . .
+
+# Build unified binary
+RUN npm run build:unified:linux
+
+# Prepare resources for linux
+RUN npm run prepare:resources:linux
+
+# Build tauri app
+RUN npm run tauri build -- --target x86_64-unknown-linux-gnu
+
+# Output will be in src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/

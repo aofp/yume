@@ -170,7 +170,7 @@
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: var(--fg-100);
-  padding: var(--space-1-5) 10px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm) var(--radius-sm) var(--space-0-5) var(--radius-sm);
   min-width: 60px;
   font-size: var(--text-base);
@@ -201,7 +201,7 @@
   background: var(--bg-brighter-alpha);
   border: none;
   color: var(--fg-100);
-  padding: var(--space-1-5) 10px;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) var(--space-0-5);
   min-width: 60px;
   max-width: 100%;
@@ -1420,7 +1420,7 @@ pre.bash-content,
   white-space: pre;
   max-height: 400px;
   overflow-x: auto;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-1-5) var(--space-4);
   background: var(--fg-03);
   overflow-y: auto;
   margin: 0;
@@ -1460,9 +1460,10 @@ pre.bash-content,
 
 /* Bash command output styling */
 .bash-output {
-  background: rgba(var(--negative-rgb), 0.05) !important;
+  background: rgba(var(--negative-rgb), 0.1) !important;
   color: color-mix(in srgb, var(--foreground-color) 80%, var(--negative-color) 20%) !important;
   margin-bottom: var(--space-0-5);
+  border-radius: 4px !important;
 }
 
 .bash-more {
@@ -1658,10 +1659,8 @@ hr {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 4px;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-4) 0px var(--space-4);
   background: var(--fg-03);
-  border-top-left-radius: 2px;
-  border-top-right-radius: 2px;
 }
 
 .bash-prompt {
