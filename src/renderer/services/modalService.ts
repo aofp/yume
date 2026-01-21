@@ -69,5 +69,5 @@ class ModalService {
 export const modalService = new ModalService();
 
 // global replacements
-(window as any).alert = (message: string) => modalService.alert(message);
-(window as any).confirm = (message: string) => modalService.confirm(message);
+(window as Record<string, unknown>).alert = (message: string) => modalService.alert(message);
+(window as Record<string, unknown>).confirm = (message: string) => modalService.confirm(message);

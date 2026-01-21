@@ -44,7 +44,7 @@ class PluginService {
       try {
         await invoke('plugin_init_bundled');
       } catch (e) {
-        console.warn('Bundled plugin init failed:', e);
+        logger.warn('Bundled plugin init failed:', e);
       }
 
       const plugins = await this.listPlugins();
@@ -54,7 +54,7 @@ class PluginService {
       }
       this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize plugin service:', error);
+      logger.error('Failed to initialize plugin service:', error);
     }
   }
 
@@ -66,7 +66,7 @@ class PluginService {
       const rustPlugins = await invoke<InstalledPluginRust[]>('plugin_list');
       return rustPlugins.map(pluginFromRust);
     } catch (error) {
-      console.error('Failed to list plugins:', error);
+      logger.error('Failed to list plugins:', error);
       return [];
     }
   }
@@ -175,7 +175,7 @@ class PluginService {
             localStorage.setItem(`hook_${hookId}_pluginId`, plugin.id);
           }
         } catch (e) {
-          console.warn(`Failed to read hook file ${hook.filePath}:`, e);
+          logger.warn(`Failed to read hook file ${hook.filePath}:`, e);
         }
       } else {
         // Remove from localStorage
@@ -520,9 +520,9 @@ class PluginService {
   async syncYumeAgents(enabled: boolean, model: string): Promise<void> {
     try {
       await invoke('sync_yume_agents', { enabled, model });
-      console.log(`[pluginService] Synced ${APP_NAME} agents: enabled=${enabled}, model=${model}`);
+      logger.info(`[pluginService] Synced ${APP_NAME} agents: enabled=${enabled}, model=${model}`);
     } catch (error) {
-      console.error(`Failed to sync ${APP_NAME} agents:`, error);
+      logger.error(`Failed to sync ${APP_NAME} agents:`, error);
       throw error;
     }
   }
@@ -534,7 +534,7 @@ class PluginService {
     try {
       return await invoke<boolean>('are_yume_agents_synced');
     } catch (error) {
-      console.error(`Failed to check ${APP_NAME} agents sync status:`, error);
+      logger.error(`Failed to check ${APP_NAME} agents sync status:`, error);
       return false;
     }
   }
@@ -546,7 +546,7 @@ class PluginService {
     try {
       await invoke('cleanup_yume_agents_on_exit');
     } catch (error) {
-      console.error(`Failed to cleanup ${APP_NAME} agents:`, error);
+      logger.error(`Failed to cleanup ${APP_NAME} agents:`, error);
     }
   }
 }

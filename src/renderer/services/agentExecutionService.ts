@@ -137,7 +137,7 @@ class AgentExecutionService {
 
   private attachListeners(socket: Socket) {
     socket.on('agent-started', (data: AgentStartedEvent) => {
-      console.log('[Agent] Started:', data);
+      logger.info('[Agent] Started:', data);
       const { runId, sessionId, config, projectPath: serverProjectPath } = data;
 
       // Get projectPath from pending request or server response
@@ -194,7 +194,7 @@ class AgentExecutionService {
     });
 
     socket.on('agent-completed', (data: AgentCompletedEvent) => {
-      console.log('[Agent] Completed:', data);
+      logger.info('[Agent] Completed:', data);
       const { runId, sessionId, status, metrics } = data;
 
       const run = this.activeRuns.get(runId);
@@ -211,7 +211,7 @@ class AgentExecutionService {
     });
 
     socket.on('agent-stopped', (data: AgentStoppedEvent) => {
-      console.log('[Agent] Stopped:', data);
+      logger.info('[Agent] Stopped:', data);
       const { runId } = data;
 
       const run = this.activeRuns.get(runId);
@@ -227,7 +227,7 @@ class AgentExecutionService {
     });
 
     socket.on('agent-error', (data: AgentErrorEvent) => {
-      console.error('[Agent] Error:', data);
+      logger.error('[Agent] Error:', data);
       const { runId, sessionId, error } = data;
 
       const run = this.activeRuns.get(runId);
@@ -280,7 +280,7 @@ class AgentExecutionService {
     }
 
     return new Promise((resolve, reject) => {
-      console.log(`🤖 Executing agent for session ${sessionId}:`, config);
+      logger.info(`🤖 Executing agent for session ${sessionId}:`, config);
 
       let settled = false;
       let timeoutId: ReturnType<typeof setTimeout>;
@@ -344,7 +344,7 @@ class AgentExecutionService {
     }
 
     return new Promise((resolve, reject) => {
-      console.log(`⏹️ Stopping agent ${runId}`);
+      logger.info(`⏹️ Stopping agent ${runId}`);
 
       let settled = false;
       let timeoutId: ReturnType<typeof setTimeout>;

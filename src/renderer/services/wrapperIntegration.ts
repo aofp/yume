@@ -159,8 +159,8 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     // Log for debugging
     if (wrapperState.debug) {
       const percentage = (session.totalTokens / 200000 * 100).toFixed(2);
-      console.log(`📊 [WRAPPER] Context snapshot: ${percentage}% (${session.totalTokens}/200000)`);
-      console.log(`   Formula: cacheRead(${cacheRead}) + cacheCreation(${cacheCreation}) + input(${input}) = ${session.totalTokens}`);
+      logger.info(`📊 [WRAPPER] Context snapshot: ${percentage}% (${session.totalTokens}/200000)`);
+      logger.info(`   Formula: cacheRead(${cacheRead}) + cacheCreation(${cacheCreation}) + input(${input}) = ${session.totalTokens}`);
     }
   }
   
@@ -298,7 +298,7 @@ export function getWrapperStats(sessionId?: string) {
 export function clearWrapperSession(sessionId: string) {
   wrapperState.sessions.delete(sessionId);
   if (wrapperState.debug) {
-    console.log(`[WRAPPER] Cleared session: ${sessionId}`);
+    logger.info(`[WRAPPER] Cleared session: ${sessionId}`);
   }
 }
 
@@ -309,7 +309,7 @@ export function setWrapperDebug(enabled: boolean) {
 export function setAutoCompactMessage(sessionId: string, message: string) {
   wrapperState.autoCompactPending.set(sessionId, message);
   if (wrapperState.debug) {
-    console.log(`[WRAPPER] Stored auto-compact pending message for session ${sessionId.substring(0, 8)}`);
+    logger.info(`[WRAPPER] Stored auto-compact pending message for session ${sessionId.substring(0, 8)}`);
   }
 }
 

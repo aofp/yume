@@ -32,7 +32,7 @@ class ProviderPromptService {
         return parsed;
       }
     } catch (error) {
-      console.error(`Failed to load ${provider} prompt settings:`, error);
+      logger.error(`Failed to load ${provider} prompt settings:`, error);
     }
 
     const defaults: ProviderPromptSettings = {
@@ -53,7 +53,7 @@ class ProviderPromptService {
     try {
       localStorage.setItem(this.getStorageKey(provider), JSON.stringify(settings));
     } catch (error) {
-      console.error(`Failed to save ${provider} prompt settings:`, error);
+      logger.error(`Failed to save ${provider} prompt settings:`, error);
     }
   }
 

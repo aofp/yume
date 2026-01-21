@@ -101,24 +101,24 @@ async function validateLicenseWithServer(key: string): Promise<{
     }
 
     const responseText = await response.text();
-    console.log('[LICENSE] Raw server response:', responseText);
+    logger.info('[LICENSE] Raw server response:', responseText);
 
     let result;
     try {
       result = JSON.parse(responseText);
     } catch {
-      console.log('[LICENSE] Failed to parse JSON');
+      logger.info('[LICENSE] Failed to parse JSON');
       return { valid: false, error: 'Invalid server response' };
     }
 
-    console.log('[LICENSE] Parsed result:', result);
+    logger.info('[LICENSE] Parsed result:', result);
     return {
       valid: result.valid === true,
       error: result.error,
       signature: result.signature,
       timestamp: result.validated_at
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // fallback to cached validation if available
     const cached = useLicenseStore.getState().validationCache;
     if (cached && cached.key === key) {
@@ -128,7 +128,8 @@ async function validateLicenseWithServer(key: string): Promise<{
       }
     }
 
-    return { valid: false, error: `Network error: ${error?.message || 'Unknown'}` };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown';
+    return { valid: false, error: `Network error: ${errorMessage}` };
   }
 }
 
@@ -174,7 +175,7 @@ export const useLicenseStore = create<LicenseStore>()(
 
         // validate with server
         const result = await validateLicenseWithServer(key);
-        console.log('[LICENSE] Validation result:', JSON.stringify(result));
+        logger.info('[LICENSE] Validation result:', JSON.stringify(result));
 
         if (result.valid) {
           set({

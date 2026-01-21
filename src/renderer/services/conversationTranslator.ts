@@ -407,7 +407,7 @@ async function importFromClaude(jsonlPath: string): Promise<UnifiedConversation>
         }
       }
     } catch (error) {
-      console.warn('Failed to parse JSONL line:', error);
+      logger.warn('Failed to parse JSONL line:', error);
     }
   }
 

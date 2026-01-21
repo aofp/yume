@@ -67,7 +67,7 @@ class LocalStorageService {
 
       return parsed;
     } catch (error) {
-      console.error(`[LocalStorageService] Failed to get key "${key}":`, error);
+      logger.error(`[LocalStorageService] Failed to get key "${key}":`, error);
       return defaultValue;
     }
   }
@@ -93,7 +93,7 @@ class LocalStorageService {
 
       return true;
     } catch (error) {
-      console.error(`[LocalStorageService] Failed to set key "${key}":`, error);
+      logger.error(`[LocalStorageService] Failed to set key "${key}":`, error);
       return false;
     }
   }
@@ -106,7 +106,7 @@ class LocalStorageService {
       localStorage.removeItem(key);
       this.cache.delete(key);
     } catch (error) {
-      console.error(`[LocalStorageService] Failed to remove key "${key}":`, error);
+      logger.error(`[LocalStorageService] Failed to remove key "${key}":`, error);
     }
   }
 
@@ -125,7 +125,7 @@ class LocalStorageService {
       localStorage.clear();
       this.cache.clear();
     } catch (error) {
-      console.error('[LocalStorageService] Failed to clear storage:', error);
+      logger.error('[LocalStorageService] Failed to clear storage:', error);
     }
   }
 
@@ -143,7 +143,7 @@ class LocalStorageService {
         }
       }
     } catch (error) {
-      console.error('[LocalStorageService] Failed to get keys:', error);
+      logger.error('[LocalStorageService] Failed to get keys:', error);
     }
 
     return keys;

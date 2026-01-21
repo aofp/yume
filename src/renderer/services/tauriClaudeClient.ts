@@ -8,6 +8,48 @@ import { listen, type UnlistenFn, type Event } from '@tauri-apps/api/event';
 import { processWrapperMessage, mapSessionIds } from './wrapperIntegration';
 import { resolveModelId, DEFAULT_MODEL_ID, getProviderForModel, getModelById, type ProviderType } from '../config/models';
 import { isDev } from '../utils/helpers';
+import { logger } from '../utils/structuredLogger';
+
+// =============================================================================
+// Type Definitions
+// =============================================================================
+
+interface SessionCreatedData {
+  tempSessionId: string;
+  realSessionId: string;
+}
+
+interface CreateSessionOptions {
+  model?: string;
+  claudeSessionId?: string;
+  prompt?: string;
+  sessionId?: string;
+  historyFilePath?: string;
+}
+
+interface CreateSessionResponse {
+  sessionId: string;
+  messages: unknown[];
+  workingDirectory: string;
+  claudeSessionId: string | null;
+  pendingSpawn?: boolean;
+  model?: string;
+  provider?: ProviderType;
+}
+
+interface TauriSpawnResponse {
+  session_id: string;
+}
+
+interface GetSessionHistoryResponse {
+  messages: unknown[];
+  workingDirectory: string;
+}
+
+interface SessionInfo {
+  id: string;
+  [key: string]: unknown;
+}
 
 /**
  * Check if a provider uses yume-cli (non-Claude providers)
@@ -54,12 +96,12 @@ function cleanupSessionListeners(sessionId: string) {
 
 export class TauriClaudeClient {
   private connected = true; // Always connected with Tauri
-  private messageHandlers = new Map<string, (message: any) => void>();
+  private messageHandlers = new Map<string, (message: any) => void>(); // TODO: Define StreamMessage interface
   public connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' = 'connected';
   public connectionError: string | null = null;
   public connectionAttempts = 0;
   public debugLog: string[] = [];
-  private sessionCreatedCallback: ((data: any) => void) | null = null;
+  private sessionCreatedCallback: ((data: SessionCreatedData) => void) | null = null;
 
   constructor() {
     // No connection needed - Tauri IPC is always available
@@ -74,7 +116,7 @@ export class TauriClaudeClient {
     return null; // Not applicable for Tauri
   }
 
-  async createSession(name: string, workingDirectory: string, options?: any): Promise<any> {
+  async createSession(name: string, workingDirectory: string, options?: CreateSessionOptions): Promise<CreateSessionResponse> {
     try {
       // Resolve model ID using centralized config
       const model = options?.model || DEFAULT_MODEL_ID;
@@ -127,7 +169,7 @@ export class TauriClaudeClient {
           frontend_session_id: options?.sessionId || null,
         };
 
-        if (isDev) console.log('[TauriClient] Spawning yume-cli session:', request);
+        if (isDev) logger.info('[TauriClient] Spawning yume-cli session:', request);
         const response = await invoke('spawn_yume_cli_session', { request });
 
         const sessionId = (response as any).session_id || options?.sessionId || `session-${Date.now()}`;
@@ -168,7 +210,7 @@ export class TauriClaudeClient {
     }
   }
 
-  async getSessionHistory(sessionId: string): Promise<any> {
+  async getSessionHistory(sessionId: string): Promise<GetSessionHistoryResponse> {
     try {
       const response = await invoke('get_session_output', { session_id: sessionId });
       return {
@@ -180,10 +222,10 @@ export class TauriClaudeClient {
     }
   }
 
-  async listSessions(): Promise<any[]> {
+  async listSessions(): Promise<SessionInfo[]> {
     try {
       const response = await invoke('list_active_sessions');
-      return (response as any[]) || [];
+      return (response as SessionInfo[]) || [];
     } catch (error) {
       throw error;
     }
@@ -201,7 +243,7 @@ export class TauriClaudeClient {
     try {
       await invoke('interrupt_claude_session', { session_id: sessionId });
     } catch (error) {
-      console.error(`[TauriClient] Failed to interrupt session ${sessionId}:`, error);
+      logger.error(`[TauriClient] Failed to interrupt session ${sessionId}:`, error);
       throw error;
     }
   }
@@ -229,7 +271,7 @@ export class TauriClaudeClient {
 
         // Check if this is a resume of a past conversation (has claudeSessionId)
         const isResuming = !!sessionData.claudeSessionId;
-        if (isDev) console.log('[TauriClient] Spawning session:', {
+        if (isDev) logger.info('[TauriClient] Spawning session:', {
           sessionId,
           isResuming,
           claudeSessionId: sessionData.claudeSessionId
@@ -256,7 +298,7 @@ export class TauriClaudeClient {
             frontend_session_id: sessionId
           };
 
-          if (isDev) console.log('[TauriClient] Spawning yume-cli session:', spawnRequest);
+          if (isDev) logger.info('[TauriClient] Spawning yume-cli session:', spawnRequest);
           response = await invoke('spawn_yume_cli_session', { request: spawnRequest });
         } else {
           // Spawn Claude with the first message as the prompt
@@ -306,7 +348,7 @@ export class TauriClaudeClient {
             frontend_session_id: sessionId
           };
 
-          if (isDev) console.log('[TauriClient] Spawning yume-cli for followup message:', spawnRequest);
+          if (isDev) logger.info('[TauriClient] Spawning yume-cli for followup message:', spawnRequest);
           await invoke('spawn_yume_cli_session', { request: spawnRequest });
         } else {
           // Claude: use send_claude_message (resumes existing session)
@@ -318,7 +360,7 @@ export class TauriClaudeClient {
             model: effectiveModel || null
           };
 
-          if (isDev) console.log('[TauriClient] Sending message with claude_session_id:', effectiveClaudeSessionId);
+          if (isDev) logger.info('[TauriClient] Sending message with claude_session_id:', effectiveClaudeSessionId);
           await invoke('send_claude_message', { request });
         }
       }
@@ -327,11 +369,11 @@ export class TauriClaudeClient {
     }
   }
 
-  onError(sessionId: string, handler: (error: any) => void): () => void {
+  onError(sessionId: string, handler: (error: any) => void): () => void { // TODO: Define error type
     const channel = `claude-error:${sessionId}`;
     let cleanupRequested = false;
 
-    const errorHandler = (event: Event<any>) => {
+    const errorHandler = (event: Event<unknown>) => {
       const error = event.payload;
       handler(error);
     };
@@ -356,7 +398,7 @@ export class TauriClaudeClient {
     };
   }
 
-  onMessage(sessionId: string, handler: (message: any) => void): () => void {
+  onMessage(sessionId: string, handler: (message: any) => void): () => void { // TODO: Define StreamMessage interface
     let channel = `claude-message:${sessionId}`;
     const updateChannel = `claude-session-id-update:${sessionId}`;
     let currentSessionId = sessionId; // Track the current session ID for wrapper
@@ -376,7 +418,7 @@ export class TauriClaudeClient {
         // Backend now sends raw JSON strings like Claudia does
         message = typeof payload === 'string' ? JSON.parse(payload) : payload;
       } catch (e) {
-        console.error(`[TauriClient] Failed to parse message:`, { payload: String(payload).substring(0, 200), error: e });
+        logger.error(`[TauriClient] Failed to parse message:`, { payload: String(payload).substring(0, 200), error: e });
         // Emit error to handler
         handler({
           type: 'error',
@@ -551,7 +593,7 @@ export class TauriClaudeClient {
         // Append new content
         current.content += message.content || '';
 
-        console.log('[TauriClient] TEXT message aggregated:', {
+        logger.info('[TauriClient] TEXT message aggregated:', {
           totalLength: current.content.length,
           chunkLength: (message.content || '').length,
           messageId: current.id
@@ -652,7 +694,7 @@ export class TauriClaudeClient {
         streamingAssistantMessages.delete(sessionId);
 
         // DEBUG: Log raw result message to see what fields we're getting
-        console.log('[TauriClient] RAW RESULT MESSAGE:', {
+        logger.info('[TauriClient] RAW RESULT MESSAGE:', {
           type: message.type,
           subtype: message.subtype,
           duration_ms: message.duration_ms,
@@ -880,7 +922,7 @@ export class TauriClaudeClient {
     // This handles cases where yume-cli crashes or exits without sending result message
     const completeChannel = `claude-complete:${sessionId}`;
     listen(completeChannel, () => {
-      console.log('[TauriClient] claude-complete received for session:', sessionId);
+      logger.info('[TauriClient] claude-complete received for session:', sessionId);
       streamingAssistantMessages.delete(sessionId);
       // Emit streaming_end to clear UI streaming state
       handler({
@@ -913,7 +955,7 @@ export class TauriClaudeClient {
       // This is needed so subsequent messages use the real ID for --resume
       const existingData = claudeSessionStore.get(sessionId);
       if (existingData) {
-        console.log('[TauriClient] Updating claudeSessionStore with real session ID:', {
+        logger.info('[TauriClient] Updating claudeSessionStore with real session ID:', {
           oldId: old_session_id,
           newId: new_session_id
         });
@@ -927,7 +969,7 @@ export class TauriClaudeClient {
       // BUT keep the original frontend channel listener active!
       const newChannel = `claude-message:${new_session_id}`;
       if (newChannel !== originalChannel && !activeListeners.has(newChannel)) {
-        console.log('[TauriClient] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
+        logger.info('[TauriClient] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
         const newUnlisten = await listen(newChannel, messageHandler);
         activeListeners.set(newChannel, newUnlisten);
         additionalChannels.push(newChannel); // Track for cleanup
@@ -964,7 +1006,7 @@ export class TauriClaudeClient {
    * Async version of onMessage that awaits listener setup before returning.
    * Use this when you need to ensure the listener is ready before spawning a process.
    */
-  async onMessageAsync(sessionId: string, handler: (message: any) => void): Promise<() => void> {
+  async onMessageAsync(sessionId: string, handler: (message: unknown) => void): Promise<() => void> {
     const channel = `claude-message:${sessionId}`;
     const updateChannel = `claude-session-id-update:${sessionId}`;
     let currentSessionId = sessionId;
@@ -980,7 +1022,7 @@ export class TauriClaudeClient {
       try {
         message = typeof payload === 'string' ? JSON.parse(payload) : payload;
       } catch (e) {
-        console.error(`[TauriClient] Failed to parse message:`, { payload: String(payload).substring(0, 200), error: e });
+        logger.error(`[TauriClient] Failed to parse message:`, { payload: String(payload).substring(0, 200), error: e });
         handler({
           type: 'error',
           message: `Failed to parse message: ${e instanceof Error ? e.message : String(e)}`
@@ -1147,7 +1189,7 @@ export class TauriClaudeClient {
     // This handles cases where yume-cli crashes or exits without sending result message
     const completeChannel = `claude-complete:${sessionId}`;
     const completeUnlisten = await listen(completeChannel, () => {
-      console.log('[TauriClient Async] claude-complete received for session:', sessionId);
+      logger.info('[TauriClient Async] claude-complete received for session:', sessionId);
       streamingAssistantMessages.delete(sessionId);
       // Emit streaming_end to clear UI streaming state
       handler({
@@ -1172,7 +1214,7 @@ export class TauriClaudeClient {
       // This is needed so subsequent messages use the real ID for --resume
       const existingData = claudeSessionStore.get(sessionId);
       if (existingData) {
-        console.log('[TauriClient] Updating claudeSessionStore with real session ID:', {
+        logger.info('[TauriClient] Updating claudeSessionStore with real session ID:', {
           oldId: old_session_id,
           newId: new_session_id
         });
@@ -1185,7 +1227,7 @@ export class TauriClaudeClient {
       // Add listener for new channel but keep original - multi-turn support
       const newChannel = `claude-message:${new_session_id}`;
       if (newChannel !== originalChannel && !activeListeners.has(newChannel)) {
-        console.log('[TauriClient Async] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
+        logger.info('[TauriClient Async] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
         const newUnlisten = await listen(newChannel, messageHandler);
         activeListeners.set(newChannel, newUnlisten);
         additionalChannels.push(newChannel);
@@ -1228,11 +1270,11 @@ export class TauriClaudeClient {
     // Not needed with Tauri - working directory set at session creation
   }
 
-  async updateSessionMetadata(sessionId: string, metadata: any): Promise<void> {
+  async updateSessionMetadata(sessionId: string, metadata: Record<string, unknown>): Promise<void> {
     // Could be implemented if needed
   }
 
-  async getSessionMappings(): Promise<Record<string, any>> {
+  async getSessionMappings(): Promise<Record<string, unknown>> {
     // Use session manager if needed
     return {};
   }
@@ -1258,7 +1300,7 @@ export class TauriClaudeClient {
     activeListeners.clear();
   }
 
-  onSessionCreated(handler: (data: any) => void): void {
+  onSessionCreated(handler: (data: SessionCreatedData) => void): void {
     this.sessionCreatedCallback = handler;
   }
 

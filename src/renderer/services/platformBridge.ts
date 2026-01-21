@@ -5,6 +5,7 @@
 
 import platformAPI, { isTauri } from './tauriApi';
 import { isDev } from '../utils/helpers';
+import { logger } from '../utils/structuredLogger';
 
 // Create a unified interface that matches the existing Electron API structure
 class PlatformBridge {
@@ -33,15 +34,15 @@ class PlatformBridge {
   folder = {
     select: async (): Promise<string | null> => {
       if (isDev) {
-        console.log('PlatformBridge folder.select() called');
-        console.log('isTauri:', isTauri());
-        console.log('window.__TAURI__:', (window as any).__TAURI__);
+        logger.info('PlatformBridge folder.select() called');
+        logger.info('isTauri:', isTauri());
+        logger.info('window.__TAURI__:', (window as Record<string, unknown>).__TAURI__);
       }
       if (isTauri()) {
-        if (isDev) console.log('Using Tauri API for folder selection');
+        if (isDev) logger.info('Using Tauri API for folder selection');
         return await platformAPI.folder.select();
       }
-      if (isDev) console.log('No folder selection API available');
+      if (isDev) logger.info('No folder selection API available');
       return null;
     },
     getCurrent: async (): Promise<string> => {
@@ -95,35 +96,35 @@ class PlatformBridge {
   // Zoom controls using CSS transform
   zoom = {
     in: async (): Promise<number> => {
-      if (isDev) console.log('[PlatformBridge] zoom.in() called');
+      if (isDev) logger.info('[PlatformBridge] zoom.in() called');
 
       const scrollState = this.getScrollState();
       const currentZoom = this.getCurrentZoom();
       const newZoom = Math.min(currentZoom + 5, 200);
 
-      if (isDev) console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
+      if (isDev) logger.info(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
 
       const zoomLevel = this.applyZoom(newZoom, scrollState, currentZoom);
 
-      if (isDev) console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
+      if (isDev) logger.info(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
     },
     out: async (): Promise<number> => {
-      if (isDev) console.log('[PlatformBridge] zoom.out() called');
+      if (isDev) logger.info('[PlatformBridge] zoom.out() called');
 
       const scrollState = this.getScrollState();
       const currentZoom = this.getCurrentZoom();
       const newZoom = Math.max(currentZoom - 5, 50);
 
-      if (isDev) console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
+      if (isDev) logger.info(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
 
       const zoomLevel = this.applyZoom(newZoom, scrollState, currentZoom);
 
-      if (isDev) console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
+      if (isDev) logger.info(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
     },
     reset: async (): Promise<number> => {
-      if (isDev) console.log('[PlatformBridge] zoom.reset() called');
+      if (isDev) logger.info('[PlatformBridge] zoom.reset() called');
 
       const scrollState = this.getScrollState();
       const currentZoom = this.getCurrentZoom();
@@ -131,7 +132,7 @@ class PlatformBridge {
 
       const zoomLevel = this.applyZoom(newZoom, scrollState, currentZoom);
 
-      if (isDev) console.log('[PlatformBridge] Zoom reset to 100%');
+      if (isDev) logger.info('[PlatformBridge] Zoom reset to 100%');
       return zoomLevel;
     },
     getLevel: async (): Promise<number> => {
@@ -205,14 +206,14 @@ const bridge = new PlatformBridge();
 // Function to setup the bridge
 function setupBridge() {
   if (isTauri() && !window.electronAPI) {
-    if (isDev) console.log('Platform Bridge: Setting up window.electronAPI for Tauri');
+    if (isDev) logger.info('Platform Bridge: Setting up window.electronAPI for Tauri');
     (window as any).electronAPI = bridge;
     if (isDev) {
-      console.log('Platform Bridge: window.electronAPI is now:', window.electronAPI);
-      console.log('Platform Bridge: folder.select available:', !!window.electronAPI?.folder?.select);
+      logger.info('Platform Bridge: window.electronAPI is now:', window.electronAPI);
+      logger.info('Platform Bridge: folder.select available:', !!window.electronAPI?.folder?.select);
     }
   } else {
-    if (isDev) console.log('Platform Bridge: Not setting up - isTauri:', isTauri(), 'window.electronAPI exists:', !!window.electronAPI);
+    if (isDev) logger.info('Platform Bridge: Not setting up - isTauri:', isTauri(), 'window.electronAPI exists:', !!window.electronAPI);
   }
 }
 

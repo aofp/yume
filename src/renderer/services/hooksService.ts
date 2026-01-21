@@ -134,12 +134,12 @@ export class HooksService {
       });
 
       if (response.message) {
-        console.log(`[Hook] ${response.message}`);
+        logger.info(`[Hook] ${response.message}`);
       }
 
       return response;
     } catch (error) {
-      console.error(`Hook failed: ${event}`, error);
+      logger.error(`Hook failed: ${event}`, error);
       return null;
     }
   }
@@ -165,7 +165,7 @@ export class HooksService {
     try {
       return await invoke<string[]>('get_hook_events');
     } catch (error) {
-      console.error('Failed to get hook events:', error);
+      logger.error('Failed to get hook events:', error);
       return [
         'user_prompt_submit',
         'pre_tool_use',
@@ -188,7 +188,7 @@ export class HooksService {
       const samples = await invoke<Array<[string, string, string]>>('get_sample_hooks');
       return samples.map(([name, event, script]) => ({ name, event, script }));
     } catch (error) {
-      console.error('Failed to get sample hooks:', error);
+      logger.error('Failed to get sample hooks:', error);
       return [];
     }
   }
@@ -267,7 +267,7 @@ export class HooksService {
     
     if (response?.action === 'block') {
       const message = response.message || `Context at ${usagePercentage}%. Use /compact`;
-      console.warn(`[Context] ${message}`);
+      logger.warn(`[Context] ${message}`);
     }
   }
 }
