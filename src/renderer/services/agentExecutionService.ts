@@ -1,5 +1,6 @@
 import { claudeCodeClient } from './claudeCodeClient';
 import type { Socket } from 'socket.io-client';
+import { logger } from '../utils/structuredLogger';
 
 export interface AgentConfig {
   name: string;

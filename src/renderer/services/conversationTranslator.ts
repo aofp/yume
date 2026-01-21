@@ -12,6 +12,7 @@
  * - Handle lossy conversions gracefully
  */
 
+import { logger } from '../utils/structuredLogger';
 import type {
   UnifiedConversation,
   UnifiedMessage,
@@ -407,7 +408,7 @@ async function importFromClaude(jsonlPath: string): Promise<UnifiedConversation>
         }
       }
     } catch (error) {
-      logger.warn('Failed to parse JSONL line:', error);
+      logger.warn('Failed to parse JSONL line', { error });
     }
   }
 

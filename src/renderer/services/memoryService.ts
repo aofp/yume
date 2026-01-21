@@ -10,6 +10,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '../utils/structuredLogger';
 
 // Lazy import to avoid circular dependency with claudeCodeStore
 // The store imports memoryService dynamically, so we must not import it statically here
@@ -136,7 +137,7 @@ class MemoryService {
       try {
         logger.info('[MemoryService] Invoking start_memory_server command...');
         const result = await invoke<MemoryServerResult>('start_memory_server');
-        logger.info('[MemoryService] Tauri start_memory_server result:', JSON.stringify(result));
+        logger.info('[MemoryService] Tauri start_memory_server result', { result: JSON.stringify(result) });
 
         if (result.success) {
           logger.info('[MemoryService] Memory server started successfully');
@@ -144,11 +145,11 @@ class MemoryService {
           store.getState().setMemoryServerRunning(true);
           return true;
         } else {
-          logger.error('[MemoryService] Failed to start:', result.error);
+          logger.error('[MemoryService] Failed to start', { error: result.error });
           return false;
         }
       } catch (error) {
-        logger.error('[MemoryService] Error starting server:', error);
+        logger.error('[MemoryService] Error starting server', { error });
         return false;
       } finally {
         // Clear promise after completion so next call can start fresh
@@ -190,11 +191,11 @@ class MemoryService {
           store.getState().setMemoryServerRunning(false);
           return true;
         } else {
-          logger.error('[MemoryService] Failed to stop:', result.error);
+          logger.error('[MemoryService] Failed to stop', { error: result.error });
           return false;
         }
       } catch (error) {
-        logger.error('[MemoryService] Error stopping server:', error);
+        logger.error('[MemoryService] Error stopping server', { error });
         return false;
       } finally {
         this.stopPromise = null;
@@ -214,7 +215,7 @@ class MemoryService {
       useClaudeCodeStore.getState().setMemoryServerRunning(result.running);
       return result.running;
     } catch (error) {
-      logger.error('[MemoryService] Error checking status:', error);
+      logger.error('[MemoryService] Error checking status', { error });
       return false;
     }
   }
@@ -237,7 +238,7 @@ class MemoryService {
     if (freshStore.memoryEnabled && !freshStore.memoryServerRunning) {
       logger.info('[MemoryService] Auto-starting memory server...');
       const started = await this.start();
-      logger.info('[MemoryService] Auto-start result:', started);
+      logger.info('[MemoryService] Auto-start result', { started });
 
       // Test: write a startup marker to verify the system works
       if (started) {
@@ -247,7 +248,7 @@ class MemoryService {
           entityType: 'system',
           observations: [`Memory system initialized at ${new Date().toISOString()}`]
         }]);
-        logger.info('[MemoryService] Test write result:', testResult);
+        logger.info('[MemoryService] Test write result', { testResult });
       }
     } else {
       logger.info('[MemoryService] Not auto-starting:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
@@ -261,7 +262,7 @@ class MemoryService {
     try {
       return await invoke<string>('get_memory_file_path');
     } catch (error) {
-      logger.error('[MemoryService] Error getting memory file path:', error);
+      logger.error('[MemoryService] Error getting memory file path', { error });
       return '';
     }
   }
@@ -273,7 +274,7 @@ class MemoryService {
    * Automatically adds timestamps to observations
    */
   async createEntities(entities: MemoryEntity[]): Promise<boolean> {
-    logger.info('[MemoryService] createEntities called with:', JSON.stringify(entities));
+    logger.info('[MemoryService] createEntities called with', { entities: JSON.stringify(entities) });
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       logger.warn('[MemoryService] Server not running, cannot create entities');
@@ -289,13 +290,13 @@ class MemoryService {
     try {
       logger.info('[MemoryService] Invoking memory_create_entities...');
       const result = await invoke<MemoryServerResult>('memory_create_entities', { entities: timestampedEntities });
-      logger.info('[MemoryService] memory_create_entities result:', JSON.stringify(result));
+      logger.info('[MemoryService] memory_create_entities result', { result: JSON.stringify(result) });
       if (!result.success) {
-        logger.error('[MemoryService] Failed to create entities:', result.error);
+        logger.error('[MemoryService] Failed to create entities', { error: result.error });
       }
       return result.success;
     } catch (error) {
-      logger.error('[MemoryService] Error creating entities:', error);
+      logger.error('[MemoryService] Error creating entities', { error });
       return false;
     }
   }
@@ -313,11 +314,11 @@ class MemoryService {
     try {
       const result = await invoke<MemoryServerResult>('memory_create_relations', { relations });
       if (!result.success) {
-        logger.error('[MemoryService] Failed to create relations:', result.error);
+        logger.error('[MemoryService] Failed to create relations', { error: result.error });
       }
       return result.success;
     } catch (error) {
-      logger.error('[MemoryService] Error creating relations:', error);
+      logger.error('[MemoryService] Error creating relations', { error });
       return false;
     }
   }
@@ -342,11 +343,11 @@ class MemoryService {
         observations: timestampedObservations
       });
       if (!result.success) {
-        logger.error('[MemoryService] Failed to add observations:', result.error);
+        logger.error('[MemoryService] Failed to add observations', { error: result.error });
       }
       return result.success;
     } catch (error) {
-      logger.error('[MemoryService] Error adding observations:', error);
+      logger.error('[MemoryService] Error adding observations', { error });
       return false;
     }
   }
@@ -369,10 +370,10 @@ class MemoryService {
           relations: result.relations || []
         };
       }
-      logger.error('[MemoryService] Search failed:', result.error);
+      logger.error('[MemoryService] Search failed', { error: result.error });
       return { entities: [], relations: [] };
     } catch (error) {
-      logger.error('[MemoryService] Error searching nodes:', error);
+      logger.error('[MemoryService] Error searching nodes', { error });
       return { entities: [], relations: [] };
     }
   }
@@ -395,10 +396,10 @@ class MemoryService {
           relations: result.relations || []
         };
       }
-      logger.error('[MemoryService] Read graph failed:', result.error);
+      logger.error('[MemoryService] Read graph failed', { error: result.error });
       return { entities: [], relations: [] };
     } catch (error) {
-      logger.error('[MemoryService] Error reading graph:', error);
+      logger.error('[MemoryService] Error reading graph', { error });
       return { entities: [], relations: [] };
     }
   }
@@ -416,11 +417,11 @@ class MemoryService {
     try {
       const result = await invoke<MemoryServerResult>('memory_delete_entity', { entityName });
       if (!result.success) {
-        logger.error('[MemoryService] Failed to delete entity:', result.error);
+        logger.error('[MemoryService] Failed to delete entity', { error: result.error });
       }
       return result.success;
     } catch (error) {
-      logger.error('[MemoryService] Error deleting entity:', error);
+      logger.error('[MemoryService] Error deleting entity', { error });
       return false;
     }
   }
@@ -515,7 +516,7 @@ class MemoryService {
 
       return `<memory-context>\nRelevant memories from past sessions:\n${memories}\n</memory-context>`;
     } catch (error) {
-      logger.error('[MemoryService] Error getting relevant memories:', error);
+      logger.error('[MemoryService] Error getting relevant memories', { error });
       return '';
     }
   }
@@ -557,7 +558,7 @@ class MemoryService {
         logger.info('[MemoryService] Stored architecture decision');
       }
     } catch (error) {
-      logger.error('[MemoryService] Error extracting learnings:', error);
+      logger.error('[MemoryService] Error extracting learnings', { error });
     }
   }
 }

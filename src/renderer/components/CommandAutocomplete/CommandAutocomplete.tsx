@@ -19,7 +19,7 @@ import {
   IconPuzzle
 } from '@tabler/icons-react';
 import './CommandAutocomplete.css';
-import { PluginBadge } from '../common/PluginBadge';
+import { PluginBadge } from '../Common/PluginBadge';
 import { pluginService } from '../../services/pluginService';
 
 interface CommandAutocompleteProps {
@@ -106,7 +106,19 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
           pluginName: cmd.pluginName
         }));
 
-        setAllCommands([...builtInCommands, ...customCommands, ...pluginCommands]);
+        // Deduplicate: built-in commands take priority, then custom, then plugin
+      const seenNames = new Set<string>();
+      const deduped: Command[] = [];
+
+      for (const cmd of [...builtInCommands, ...customCommands, ...pluginCommands]) {
+        const lowerName = cmd.name.toLowerCase();
+        if (!seenNames.has(lowerName)) {
+          seenNames.add(lowerName);
+          deduped.push(cmd);
+        }
+      }
+
+      setAllCommands(deduped);
       } catch (error) {
         console.error('Failed to load plugin commands:', error);
         setAllCommands([...builtInCommands, ...customCommands]);
@@ -119,36 +131,36 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   // Parse the search query from the trigger
   const searchQuery = trigger.slice(1).toLowerCase(); // Remove / symbol
 
-  // Filter commands based on search
+  // Filter commands based on search - runs when trigger or commands change
   useEffect(() => {
+    if (!allCommands.length) {
+      // Commands not loaded yet, don't filter
+      return;
+    }
+
     if (!searchQuery) {
       // Show all commands when just / is typed
       setFilteredCommands(allCommands);
     } else {
-      // Filter commands - be stricter about matching
+      // Filter commands that start with the query
       const filtered = allCommands.filter(cmd => {
         const cmdName = cmd.name.toLowerCase();
-        const query = searchQuery.toLowerCase();
-
-        // Only show commands that start with the query
-        return cmdName.startsWith(query);
+        return cmdName.startsWith(searchQuery);
       });
 
-      // Sort alphabetically
+      // Sort: exact matches first, then built-in, then alphabetical
       filtered.sort((a, b) => {
-        // Prioritize exact matches
         if (a.name.toLowerCase() === searchQuery) return -1;
         if (b.name.toLowerCase() === searchQuery) return 1;
-        // Then prioritize built-in commands
-        if (!a.isCustom && b.isCustom) return -1;
-        if (a.isCustom && !b.isCustom) return 1;
+        if (!a.isCustom && !a.pluginId && (b.isCustom || b.pluginId)) return -1;
+        if ((a.isCustom || a.pluginId) && !b.isCustom && !b.pluginId) return 1;
         return a.name.localeCompare(b.name);
       });
 
       setFilteredCommands(filtered);
     }
     setSelectedIndex(0);
-  }, [searchQuery, allCommands]);
+  }, [trigger, allCommands]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -230,14 +242,15 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
     const zoomPercent = parseInt(localStorage.getItem('zoomPercent') || '100', 10);
     const zoomLevel = zoomPercent / 100;
 
-    // With CSS zoom on body, position:fixed coordinates need adjustment
-    // window.innerHeight is unzoomed, rect.top is zoomed
-    // We need to position in the zoomed coordinate space
-    const adjustedTop = rect.top / zoomLevel;
-    const adjustedWindowHeight = window.innerHeight;
+    // With CSS zoom on body:
+    // - rect.top is in zoomed coordinates (what we see on screen)
+    // - window.innerHeight is unzoomed (physical viewport)
+    // - position:fixed bottom works in zoomed coordinates
+    // So we need to convert window.innerHeight to zoomed space
+    const zoomedViewportHeight = window.innerHeight / zoomLevel;
 
     return {
-      bottom: adjustedWindowHeight - adjustedTop + 7
+      bottom: zoomedViewportHeight - rect.top + 7
     };
   };
 
@@ -258,7 +271,7 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
       <div ref={listRef} className="command-list">
         {filteredCommands.map((cmd, index) => (
           <div
-            key={cmd.name}
+            key={cmd.fullName || cmd.name}
             className={`command-item ${index === selectedIndex ? 'selected' : ''}`}
             onMouseDown={(e) => {
               e.preventDefault(); // Prevent focus loss from textarea

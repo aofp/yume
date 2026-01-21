@@ -242,7 +242,7 @@
 
 .match-mode-btn:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .match-mode-btn svg {

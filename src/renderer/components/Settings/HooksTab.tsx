@@ -12,7 +12,7 @@ import {
 } from '@tabler/icons-react';
 import { hooksService } from '../../services/hooksService';
 import { pluginService } from '../../services/pluginService';
-import { PluginBadge } from '../common/PluginBadge';
+import { PluginBadge } from '../Common/PluginBadge';
 import { invoke } from '@tauri-apps/api/core';
 import { YUME_HOOKS } from './hooks-data';
 import { APP_NAME } from '../../config/app';

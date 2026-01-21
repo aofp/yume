@@ -14,9 +14,9 @@ import {
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { APP_AGENT_PREFIX, APP_COMMAND_PREFIX, APP_NAME, PLUGIN_ID } from '../../config/app';
-import { TabButton } from '../common/TabButton';
+import { TabButton } from '../Common/TabButton';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
-import { PluginBadge } from '../common/PluginBadge';
+import { PluginBadge } from '../Common/PluginBadge';
 import { systemPromptService } from '../../services/systemPromptService';
 import { pluginService } from '../../services/pluginService';
 import './AgentsModal.css';

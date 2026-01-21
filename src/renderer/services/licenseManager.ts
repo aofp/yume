@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { appStorageKey } from '../config/app';
 import { persist } from 'zustand/middleware';
+import { logger } from '../utils/structuredLogger';
 
 // license validation API endpoint
 const VALIDATION_API_URL = 'https://yuru.be/api/license/validate.php';

@@ -1332,9 +1332,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
               // Use async version that awaits listener setup before returning
               earlyMessageCleanup = await tauriClaudeClient.onMessageAsync(preSpawnSessionId, (message) => {
-                console.log('[Store] 🎯 EARLY message received:', preSpawnSessionId, 'type:', message.type);
+                // Type guard for message object
+                if (!message || typeof message !== 'object' || !('type' in message)) return;
+
+                const msgType = (message as { type: string }).type;
+                console.log('[Store] 🎯 EARLY message received:', preSpawnSessionId, 'type:', msgType);
                 // Update streaming state for assistant messages
-                if (message.type === 'assistant') {
+                if (msgType === 'assistant') {
                   set(state => ({
                     sessions: state.sessions.map(s =>
                       s.id === preSpawnSessionId
@@ -1344,7 +1348,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   }));
                 }
                 // Clear streaming on result, streaming_end, or error
-                if (message.type === 'result' || message.type === 'streaming_end' || message.type === 'error') {
+                if (msgType === 'result' || msgType === 'streaming_end' || msgType === 'error') {
                   set(state => ({
                     sessions: state.sessions.map(s =>
                       s.id === preSpawnSessionId
@@ -4237,10 +4241,10 @@ ${content}`;
           const persistedClient = useDirectTauriPersisted ? tauriClaudeClient : claudeClient;
 
           // Create/resume session with existing ID and claudeSessionId
+          // Note: messages will be populated from server if session exists
           const result = await persistedClient.createSession('resumed session', workingDirectory, {
             sessionId,
-            claudeSessionId,
-            messages: [] // Will be populated from server if session exists
+            claudeSessionId
           });
 
           const messages = result.messages || [];

@@ -1,7 +1,7 @@
 .command-autocomplete {
   position: fixed;
   background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--positive-rgb), 0.5);
   border-radius: 4px;
   z-index: 10000;
   left: 4px;
@@ -42,15 +42,15 @@
 }
 
 .command-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--positive-color) 10%, transparent);
 }
 
 .command-item.selected {
-  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+  background: color-mix(in srgb, var(--positive-color) 15%, transparent);
 }
 
 .command-item.selected .command-name {
-  color: var(--accent-color);
+  color: var(--positive-color);
   font-weight: 500;
 }
 
@@ -65,11 +65,11 @@
 }
 
 .command-item.selected .command-icon {
-  color: var(--accent-color);
+  color: var(--positive-color);
 }
 
 .command-item.selected .command-description {
-  color: var(--accent-color);
+  color: var(--positive-color);
   opacity: 0.8;
 }
 
@@ -108,8 +108,6 @@
   display: flex;
   gap: 6px;;
   padding: 5px 10px;
-  border-top: 1px solid var(--fg-20);
-  background: var(--bg-100);
   font-size: var(--text-xs);
   justify-content: flex-start;
   align-items: center;

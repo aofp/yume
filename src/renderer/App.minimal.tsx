@@ -28,7 +28,7 @@ import { systemPromptService } from './services/systemPromptService';
 import { pluginService } from './services/pluginService';
 import { ensureProviderDefaults } from './services/providersService';
 import { toastService } from './services/toastService';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 import { Toast } from './components/Toast/Toast';
 import { APP_NAME, appEventName, appStorageKey } from './config/app';
 import { isVSCode, invoke } from './services/tauriApi';

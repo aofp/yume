@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { APP_NAME, PLUGIN_ID, appStorageKey } from '../config/app';
+import { logger } from '../utils/structuredLogger';
 
 export interface SystemPromptSettings {
   enabled: boolean;
@@ -62,7 +63,7 @@ class SystemPromptService {
         };
       }
     } catch (error) {
-      logger.error('Failed to load system prompt settings:', error);
+      logger.error('Failed to load system prompt settings', { error });
       this.settings = {
         enabled: true,
         mode: 'default',
@@ -89,7 +90,7 @@ class SystemPromptService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
-      logger.error('Failed to save system prompt settings:', error);
+      logger.error('Failed to save system prompt settings', { error });
     }
   }
 
@@ -148,7 +149,7 @@ class SystemPromptService {
         await pluginService.syncYumeAgents(true, model);
         logger.info(`[SystemPrompt] Synced agents with model: ${model}`);
       } catch (error) {
-        logger.error('[SystemPrompt] Failed to sync agents:', error);
+        logger.error('[SystemPrompt] Failed to sync agents', { error });
       }
     } else {
       logger.info('[SystemPrompt] Agent sync skipped - no model specified');
@@ -176,7 +177,7 @@ class SystemPromptService {
       const plugin = pluginService.getPlugin(PLUGIN_ID);
       return plugin?.enabled ?? false;
     } catch (error) {
-      logger.error('[SystemPrompt] Failed to check agents sync status:', error);
+      logger.error('[SystemPrompt] Failed to check agents sync status', { error });
       return false;
     }
   }

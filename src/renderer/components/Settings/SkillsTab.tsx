@@ -18,7 +18,7 @@ import {
   IconTags
 } from '@tabler/icons-react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
-import { PluginBadge } from '../common/PluginBadge';
+import { PluginBadge } from '../Common/PluginBadge';
 import { TriggerEditor } from './TriggerEditor';
 import { ContentEditor } from './ContentEditor';
 import { pluginService } from '../../services/pluginService';

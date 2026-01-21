@@ -1,4 +1,5 @@
 import { appStorageKey } from '../config/app';
+import { logger } from '../utils/structuredLogger';
 
 export interface ProviderPromptSettings {
   enabled: boolean;
@@ -32,7 +33,7 @@ class ProviderPromptService {
         return parsed;
       }
     } catch (error) {
-      logger.error(`Failed to load ${provider} prompt settings:`, error);
+      logger.error(`Failed to load ${provider} prompt settings`, { error });
     }
 
     const defaults: ProviderPromptSettings = {
@@ -53,7 +54,7 @@ class ProviderPromptService {
     try {
       localStorage.setItem(this.getStorageKey(provider), JSON.stringify(settings));
     } catch (error) {
-      logger.error(`Failed to save ${provider} prompt settings:`, error);
+      logger.error(`Failed to save ${provider} prompt settings`, { error });
     }
   }
 

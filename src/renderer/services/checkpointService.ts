@@ -1,4 +1,5 @@
 import { claudeCodeClient } from './claudeCodeClient';
+import { logger } from '../utils/structuredLogger';
 
 export interface FileSnapshot {
   path: string;

@@ -4,6 +4,7 @@
  */
 
 import { APP_VERSION } from '../config/app';
+import { logger } from '../utils/structuredLogger';
 
 const VERSION_CHECK_URL = 'https://aofp.github.io/yume/version.txt';
 const STORAGE_KEY = 'yume-version-check';
@@ -55,28 +56,28 @@ function compareVersions(a: string, b: string): number {
  */
 export async function checkForUpdates(): Promise<VersionCheckState> {
   logger.info('[VersionCheck] Starting update check...');
-  logger.info('[VersionCheck] Current version:', APP_VERSION);
+  logger.info('[VersionCheck] Current version', { version: APP_VERSION });
 
   try {
     // Add timestamp to URL to prevent caching, avoiding CORS preflight
     const timestamp = Date.now();
     const url = `${VERSION_CHECK_URL}?t=${timestamp}`;
-    logger.info('[VersionCheck] Fetching from:', url);
+    logger.info('[VersionCheck] Fetching from', { url });
 
     // Simple GET request without custom headers to avoid CORS preflight
     const response = await fetch(url);
 
-    logger.info('[VersionCheck] Response status:', response.status);
+    logger.info('[VersionCheck] Response status', { status: response.status });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
     const latestVersion = (await response.text()).trim();
-    logger.info('[VersionCheck] Latest version:', latestVersion);
+    logger.info('[VersionCheck] Latest version', { version: latestVersion });
 
     const hasUpdate = compareVersions(latestVersion, APP_VERSION) > 0;
-    logger.info('[VersionCheck] Has update:', hasUpdate);
+    logger.info('[VersionCheck] Has update', { hasUpdate });
 
     const newState: VersionCheckState = {
       latestVersion,
@@ -84,13 +85,13 @@ export async function checkForUpdates(): Promise<VersionCheckState> {
     };
 
     saveState(newState);
-    logger.info('[VersionCheck] Saved state:', newState);
+    logger.info('[VersionCheck] Saved state', { state: newState });
     return newState;
   } catch (error) {
-    logger.error('[VersionCheck] Error checking for updates:', error);
+    logger.error('[VersionCheck] Error checking for updates', { error });
     // On error, return stored state
     const stored = getStoredState();
-    logger.info('[VersionCheck] Returning stored state:', stored);
+    logger.info('[VersionCheck] Returning stored state', { state: stored });
     return stored;
   }
 }

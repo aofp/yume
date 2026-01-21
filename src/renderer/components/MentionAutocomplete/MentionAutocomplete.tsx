@@ -606,14 +606,15 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
     const zoomPercent = parseInt(localStorage.getItem('zoomPercent') || '100', 10);
     const zoomLevel = zoomPercent / 100;
 
-    // With CSS zoom on body, position:fixed coordinates need adjustment
-    // window.innerHeight is unzoomed, rect.top is zoomed
-    // We need to position in the zoomed coordinate space
-    const adjustedTop = rect.top / zoomLevel;
-    const adjustedWindowHeight = window.innerHeight;
+    // With CSS zoom on body:
+    // - rect.top is in zoomed coordinates (what we see on screen)
+    // - window.innerHeight is unzoomed (physical viewport)
+    // - position:fixed bottom works in zoomed coordinates
+    // So we need to convert window.innerHeight to zoomed space
+    const zoomedViewportHeight = window.innerHeight / zoomLevel;
 
     return {
-      bottom: adjustedWindowHeight - adjustedTop + 7
+      bottom: zoomedViewportHeight - rect.top + 7
     };
   };
 

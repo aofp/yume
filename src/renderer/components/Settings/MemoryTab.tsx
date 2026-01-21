@@ -61,7 +61,6 @@ function getEntityMostRecentDate(entity: MemoryEntity): Date | null {
 
 export const MemoryTab: React.FC = () => {
   const { memoryEnabled, memoryServerRunning, memoryRetentionDays, setMemoryRetentionDays } = useClaudeCodeStore();
-  const [pruning, setPruning] = useState(false);
   const [memoryFilePath, setMemoryFilePath] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [graphStats, setGraphStats] = useState<GraphStats | null>(null);
@@ -176,26 +175,6 @@ export const MemoryTab: React.FC = () => {
         }
       }
     });
-  };
-
-  const pruneOldMemories = async () => {
-    try {
-      setPruning(true);
-      const result = await invoke<{ success: boolean; pruned_count: number; error?: string }>('memory_prune_old', { retentionDays: memoryRetentionDays });
-      if (result.success) {
-        showNotification(`pruned ${result.pruned_count} old memories`, 'success');
-        if (graphStats) {
-          await loadMemoryGraph();
-        }
-      } else {
-        showNotification(result.error || 'failed to prune', 'error');
-      }
-    } catch (error) {
-      console.error('Failed to prune memories:', error);
-      showNotification('failed to prune memories', 'error');
-    } finally {
-      setPruning(false);
-    }
   };
 
   const clearAllMemories = () => {
@@ -367,40 +346,24 @@ export const MemoryTab: React.FC = () => {
       </div>
 
       {/* Settings Section - only show when memory is enabled */}
+      {/* Retention: inline row */}
       {memoryEnabled && (
-        <div className="memory-section">
-          <div className="memory-section-header">
-            <IconBrain size={12} />
-            <span>settings</span>
-          </div>
-
-          {/* Retention Days */}
-          <div className="memory-settings-row">
-            <span className="memory-settings-label">retention days</span>
-            <div className="memory-settings-controls">
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={memoryRetentionDays}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val) && val >= 1 && val <= 365) {
-                    setMemoryRetentionDays(val);
-                  }
-                }}
-                className="memory-input"
-              />
-              <button
-                className="memory-action-btn"
-                onClick={pruneOldMemories}
-                disabled={pruning}
-              >
-                {pruning ? <IconLoader2 size={10} className="spin" /> : <IconTrash size={10} />}
-                prune
-              </button>
-            </div>
-          </div>
+        <div className="memory-retention-row">
+          <span className="memory-settings-label">retention</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={memoryRetentionDays}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 1 && val <= 365) {
+                setMemoryRetentionDays(val);
+              }
+            }}
+            className="memory-input"
+          />
+          <span className="memory-settings-label">days</span>
         </div>
       )}
 
@@ -419,7 +382,8 @@ export const MemoryTab: React.FC = () => {
             <span>inspector</span>
           </div>
 
-          <div className="memory-actions" style={{ marginBottom: '8px' }}>
+          {/* Single row: load graph | entities | types | clear all */}
+          <div className="memory-inspector-row">
             <button
               className="memory-action-btn"
               onClick={loadMemoryGraph}
@@ -432,32 +396,27 @@ export const MemoryTab: React.FC = () => {
               )}
               load graph
             </button>
-            {graphStats && (
-              <button
-                className="memory-action-btn danger"
-                onClick={clearAllMemories}
-              >
-                <IconTrash size={10} />
-                clear all
-              </button>
-            )}
+            <div className="memory-stat-inline">
+              <span className="memory-stat-value">{graphStats?.entityCount ?? 0}</span>
+              <span className="memory-stat-label">entities</span>
+            </div>
+            <div className="memory-stat-inline">
+              <span className="memory-stat-value">{graphStats ? Object.keys(graphStats.entitiesByType).length : 0}</span>
+              <span className="memory-stat-label">types</span>
+            </div>
+            <button
+              className="memory-action-btn danger"
+              onClick={clearAllMemories}
+              disabled={!graphStats}
+            >
+              <IconTrash size={10} />
+              clear all
+            </button>
           </div>
 
-          {/* Graph Stats */}
+          {/* Entities by Type */}
           {graphStats && (
             <>
-              <div className="memory-stats">
-                <div className="memory-stat">
-                  <div className="memory-stat-value">{graphStats.entityCount}</div>
-                  <div className="memory-stat-label">entities</div>
-                </div>
-                <div className="memory-stat">
-                  <div className="memory-stat-value">
-                    {Object.keys(graphStats.entitiesByType).length}
-                  </div>
-                  <div className="memory-stat-label">types</div>
-                </div>
-              </div>
 
               {/* Entities by Type */}
               <div

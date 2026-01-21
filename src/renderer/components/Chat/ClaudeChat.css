@@ -2303,8 +2303,8 @@ textarea.context-full {
 }
 
 .stats-action-btn:disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .stats-header-right {
@@ -2441,9 +2441,16 @@ textarea.context-full {
   text-transform: lowercase;
 }
 
+/* Container for all stat rows - ensures proper 2-column layout */
+.stats-rows-container {
+  display: flex;
+  flex-direction: column;
+}
+
 .stat-row {
   display: flex;
   align-items: center;
+  gap: 1rem;
   padding: var(--space-0-5) 0;
   font-size: var(--text-sm);
   margin-left: 40px;
@@ -3803,8 +3810,7 @@ textarea.context-full {
 }
 
 .rollback-item.disabled {
-  cursor: not-allowed;
-  opacity: 0.3;
+  opacity: 0.5;
   pointer-events: none;
 }
 

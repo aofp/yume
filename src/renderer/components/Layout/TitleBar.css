@@ -106,6 +106,7 @@
   margin-left: 6px;
 }
 
+
 .titlebar-wrapper.is-dragging .titlebar-logo {
   cursor: grabbing;
 }
@@ -130,6 +131,11 @@
   color: var(--fg-40);
   position: relative;
   top: -3px;
+  z-index: 1;
+}
+
+.titlebar-text > span {
+  text-shadow: 0 0 8px rgba(var(--accent-rgb), 0.3);
 }
 
 /* Removed per-character hover effect */

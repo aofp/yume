@@ -6,6 +6,7 @@
 import { PROVIDERS, type ProviderType } from '../config/models';
 import { FEATURE_FLAGS } from '../config/features';
 import { invoke } from './tauriApi';
+import { logger } from '../utils/structuredLogger';
 
 // check if a provider is available based on feature flags
 function isProviderFeatureAvailable(providerId: ProviderType): boolean {
@@ -55,7 +56,7 @@ export function getEnabledProviders(): EnabledProviders {
       result = { ...DEFAULT_ENABLED_PROVIDERS };
     }
   } catch (e) {
-    logger.error('Failed to load enabled providers:', e);
+    logger.error('Failed to load enabled providers', { error: e });
     result = { ...DEFAULT_ENABLED_PROVIDERS };
   }
 
@@ -72,7 +73,7 @@ function notifyEnabledProviders(): void {
     try {
       listener();
     } catch (e) {
-      logger.warn('Error in enabled provider listener', e);
+      logger.warn('Error in enabled provider listener', { error: e });
     }
   });
 }
@@ -81,7 +82,7 @@ export function setEnabledProviders(enabled: EnabledProviders): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(enabled));
   } catch (e) {
-    logger.error('Failed to persist enabled providers:', e);
+    logger.error('Failed to persist enabled providers', { error: e });
   }
   notifyEnabledProviders();
 }
@@ -117,7 +118,7 @@ function setDetectedProviders(detected: DetectedProviders): void {
   try {
     localStorage.setItem(DETECTED_KEY, JSON.stringify(detected));
   } catch (e) {
-    logger.error('Failed to persist detected providers:', e);
+    logger.error('Failed to persist detected providers', { error: e });
   }
 }
 
@@ -151,7 +152,7 @@ export async function ensureProviderDefaults(): Promise<void> {
       setEnabledProviders(current);
     }
   } catch (error) {
-    logger.warn('Failed to detect provider support; falling back to defaults', error);
+    logger.warn('Failed to detect provider support; falling back to defaults', { error });
     // If no stored prefs, use defaults
     if (!hasStoredPrefs) {
       setEnabledProviders(DEFAULT_ENABLED_PROVIDERS);

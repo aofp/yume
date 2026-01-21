@@ -1,3 +1,5 @@
+import { logger } from '../utils/structuredLogger';
+
 // Dynamic import for Tauri to support both Tauri and server modes
 let tauriInvoke: any = null;
 let tauriLoadPromise: Promise<void> | null = null;
@@ -145,8 +147,8 @@ export async function searchFiles(
       return getMockResults(query, workingDirectory);
     }
   } catch (error) {
-    logger.error('Error searching files:', error);
-    
+    logger.error('Error searching files', { error });
+
     // Fallback to simple mock data for now
     return getMockResults(query, workingDirectory);
   }
@@ -170,7 +172,7 @@ export async function getRecentFiles(workingDirectory: string, limit: number = 1
       return getMockResults('', workingDirectory).slice(0, limit);
     }
   } catch (error) {
-    logger.error('Error getting recent files:', error);
+    logger.error('Error getting recent files', { error });
     return [];
   }
 }
@@ -188,16 +190,16 @@ export async function getFolderContents(folderPath: string, maxResults: number =
     
     // Wait for Tauri to load if available
     const hasTauri = await ensureTauriLoaded();
-    
+
     if (hasTauri && tauriInvoke) {
-      logger.info('[FileSearchService] Getting folder contents via Tauri:', folderPath);
+      logger.info('[FileSearchService] Getting folder contents via Tauri', { folderPath });
       try {
         const results = await (tauriInvoke as any)('get_folder_contents', {
           folderPath,
           maxResults
         }) as FileSearchResult[];
 
-        logger.info('[FileSearchService] Got', results.length, 'results');
+        logger.info('[FileSearchService] Got results', { count: results.length });
 
         // Normalize paths to Unix-style
         return results.map((result: FileSearchResult) => ({
@@ -205,7 +207,7 @@ export async function getFolderContents(folderPath: string, maxResults: number =
           relativePath: result.relativePath.replace(/\\/g, '/')
         }));
       } catch (tauriError) {
-        logger.error('[FileSearchService] Tauri invoke error:', tauriError);
+        logger.error('[FileSearchService] Tauri invoke error', { error: tauriError });
         // Return empty array instead of throwing
         return [];
       }
@@ -234,7 +236,7 @@ export async function getFolderContents(folderPath: string, maxResults: number =
       ];
     }
   } catch (error) {
-    logger.error('[FileSearchService] Unexpected error in getFolderContents:', error);
+    logger.error('[FileSearchService] Unexpected error in getFolderContents', { error });
     return [];
   }
 }
@@ -284,7 +286,7 @@ export async function getGitChangedFiles(workingDirectory: string): Promise<File
       ];
     }
   } catch (error) {
-    logger.error('Error getting git status:', error);
+    logger.error('Error getting git status', { error });
     return [];
   }
 }

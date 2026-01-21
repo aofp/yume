@@ -118,7 +118,7 @@
 
 .agent-template-selector select:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .agent-task-input textarea,
@@ -144,7 +144,7 @@
 .agent-task-input textarea:disabled,
 .agent-advanced textarea:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .agent-advanced-toggle button {
@@ -171,7 +171,7 @@
 
 .agent-advanced-toggle button:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .agent-output {

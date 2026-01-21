@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '../utils/structuredLogger';
 
 export interface MCPServer {
   name: string;
@@ -31,7 +32,7 @@ class MCPService {
     try {
       return await invoke<MCPServer[]>('mcp_list');
     } catch (error) {
-      logger.error('Failed to list MCP servers:', error);
+      logger.error('Failed to list MCP servers', { error });
       // Return empty array on error - no mock data in production
       return [];
     }
@@ -52,7 +53,7 @@ class MCPService {
         scope: server.scope
       });
     } catch (error) {
-      logger.error('Failed to add MCP server:', error);
+      logger.error('Failed to add MCP server', { error });
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error' 
@@ -67,7 +68,7 @@ class MCPService {
     try {
       await invoke('mcp_remove', { name });
     } catch (error) {
-      logger.error('Failed to remove MCP server:', error);
+      logger.error('Failed to remove MCP server', { error });
       throw error;
     }
   }
@@ -80,7 +81,7 @@ class MCPService {
       const result = await invoke<string>('mcp_test_connection', { name });
       return result.toLowerCase().includes('success') || result.toLowerCase().includes('connected');
     } catch (error) {
-      logger.error('Failed to test connection:', error);
+      logger.error('Failed to test connection', { error });
       return false;
     }
   }
@@ -93,7 +94,7 @@ class MCPService {
       const result = await invoke<ImportResult>('mcp_import_claude_desktop');
       return result.imported;
     } catch (error) {
-      logger.error('Failed to import from Claude Desktop:', error);
+      logger.error('Failed to import from Claude Desktop', { error });
       throw error;
     }
   }
@@ -105,7 +106,7 @@ class MCPService {
     try {
       return await invoke<string>('mcp_export_config');
     } catch (error) {
-      logger.error('Failed to export configuration:', error);
+      logger.error('Failed to export configuration', { error });
       throw error;
     }
   }

@@ -32,7 +32,7 @@ import { DEFAULT_COLORS } from './config/themes';
 import { App } from './App.minimal';
 import { APP_ID, appStorageKey } from './config/app';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 import { log } from './utils/logger';
 import './utils/consoleOverride'; // Initialize console override for production
 import { perfMonitor } from './services/performanceMonitor'; // Initialize performance monitoring

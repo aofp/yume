@@ -35,8 +35,8 @@ class PlatformBridge {
     select: async (): Promise<string | null> => {
       if (isDev) {
         logger.info('PlatformBridge folder.select() called');
-        logger.info('isTauri:', isTauri());
-        logger.info('window.__TAURI__:', (window as Record<string, unknown>).__TAURI__);
+        logger.info('isTauri', { value: isTauri() });
+        logger.info('window.__TAURI__', { value: (window as unknown as Record<string, unknown>).__TAURI__ });
       }
       if (isTauri()) {
         if (isDev) logger.info('Using Tauri API for folder selection');
@@ -207,13 +207,16 @@ const bridge = new PlatformBridge();
 function setupBridge() {
   if (isTauri() && !window.electronAPI) {
     if (isDev) logger.info('Platform Bridge: Setting up window.electronAPI for Tauri');
-    (window as Record<string, unknown>).electronAPI = bridge;
+    (window as unknown as Record<string, unknown>).electronAPI = bridge;
     if (isDev) {
-      logger.info('Platform Bridge: window.electronAPI is now:', window.electronAPI);
-      logger.info('Platform Bridge: folder.select available:', !!window.electronAPI?.folder?.select);
+      logger.info('Platform Bridge: window.electronAPI is now:', { api: window.electronAPI });
+      logger.info('Platform Bridge: folder.select available', { available: !!window.electronAPI?.folder?.select });
     }
   } else {
-    if (isDev) logger.info('Platform Bridge: Not setting up - isTauri:', isTauri(), 'window.electronAPI exists:', !!window.electronAPI);
+    if (isDev) logger.info('Platform Bridge: Not setting up', {
+      isTauri: isTauri(),
+      electronAPIExists: !!window.electronAPI
+    });
   }
 }
 

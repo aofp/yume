@@ -173,7 +173,7 @@ class CompactionService {
         }, sessionId);
       }
     } catch (error) {
-      logger.error('[Compaction] Failed to update context usage:', error);
+      logger.error('[Compaction] Failed to update context usage', { error });
     }
   }
 
@@ -182,7 +182,7 @@ class CompactionService {
    * (Instead of immediately compacting, we wait for user to send a followup)
    */
   async triggerAutoCompaction(sessionId: string): Promise<void> {
-    if (isDev) logger.info('[Compaction] triggerAutoCompaction called for session:', sessionId);
+    if (isDev) logger.info('[Compaction] triggerAutoCompaction called for session', { sessionId });
 
     const store = useClaudeCodeStore.getState();
 
@@ -233,7 +233,7 @@ class CompactionService {
    * Execute the actual compaction (called from sendMessage when pending)
    */
   async executeAutoCompaction(sessionId: string, pendingUserMessage: string): Promise<void> {
-    if (isDev) logger.info('[Compaction] executeAutoCompaction called for session:', sessionId);
+    if (isDev) logger.info('[Compaction] executeAutoCompaction called for session', { sessionId });
 
     // Check if auto-compact is enabled - use !== true for safety
     const store = useClaudeCodeStore.getState();
@@ -288,7 +288,7 @@ class CompactionService {
 
       // Send /compact command with preservation hints
       const compactCommand = `/compact ${preservationHints}`;
-      if (isDev) logger.info('[Compaction] Sending compact command with hints:', compactCommand);
+      if (isDev) logger.info('[Compaction] Sending compact command with hints', { compactCommand });
       await store.sendMessage(compactCommand, false);
 
       // Reset backend flags so compaction can trigger again later
@@ -298,7 +298,7 @@ class CompactionService {
       if (isDev) logger.info('[Compaction] Auto-compact triggered successfully');
       // The compact result handler will send the pending user message
     } catch (error) {
-      logger.error('[Compaction] Auto-compact failed:', error);
+      logger.error('[Compaction] Auto-compact failed', { error });
       // Clear the pending message on failure from both stores
       import('./wrapperIntegration').then(({ clearAutoCompactMessage }) => {
         clearAutoCompactMessage(sessionId);
@@ -319,7 +319,7 @@ class CompactionService {
    * (Same as auto, but triggered at higher threshold)
    */
   async triggerForceCompaction(sessionId: string): Promise<void> {
-    if (isDev) logger.info('[Compaction] triggerForceCompaction called for session:', sessionId);
+    if (isDev) logger.info('[Compaction] triggerForceCompaction called for session', { sessionId });
 
     // Force uses same flag mechanism as auto - only compact when user submits a message
     // This prevents /compact from being sent when user isn't actively chatting
@@ -527,7 +527,7 @@ class CompactionService {
 
       if (isDev) logger.info('[Compaction] Context manifest saved:', manifest);
     } catch (error) {
-      logger.error('[Compaction] Failed to generate manifest:', error);
+      logger.error('[Compaction] Failed to generate manifest', { error });
     }
   }
 
@@ -546,7 +546,7 @@ class CompactionService {
     try {
       return await invoke<ContextManifest>('load_context_manifest', { sessionId });
     } catch (error) {
-      if (isDev) logger.error('[Compaction] Failed to load manifest:', error);
+      if (isDev) logger.error('[Compaction] Failed to load manifest', { error });
       return null;
     }
   }
@@ -560,7 +560,7 @@ class CompactionService {
     try {
       await invoke('update_compaction_config', { config: this.config });
     } catch (error) {
-      if (isDev) logger.error('[Compaction] Failed to update config:', error);
+      if (isDev) logger.error('[Compaction] Failed to update config', { error });
     }
   }
 
@@ -573,7 +573,7 @@ class CompactionService {
       this.config = config;
       return config;
     } catch (error) {
-      if (isDev) logger.error('[Compaction] Failed to get config:', error);
+      if (isDev) logger.error('[Compaction] Failed to get config', { error });
       return this.config;
     }
   }

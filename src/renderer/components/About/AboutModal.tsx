@@ -56,8 +56,12 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
         </div>
         
         <div className="about-content">
-          <div className="about-logo" style={{ fontFamily: "var(--font-mono, 'Agave', monospace)" }}>
-            <span className="yuru">y</span><span className="code">&gt;</span>
+          <div className="about-logo-container">
+            <div className="about-logo-glow about-logo-glow-1"></div>
+            <div className="about-logo-glow about-logo-glow-2"></div>
+            <div className="about-logo" style={{ fontFamily: "var(--font-mono, 'Agave', monospace)" }}>
+              <span className="yuru">y</span><span className="code">&gt;</span>
+            </div>
           </div>
 
           <div className="about-name">{APP_NAME}</div>

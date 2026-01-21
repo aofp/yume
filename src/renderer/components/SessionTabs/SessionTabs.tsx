@@ -48,17 +48,7 @@ export const SessionTabs: React.FC = () => {
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [renameInputWidth, setRenameInputWidth] = useState(16);
   const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
-  
-  // Helper function to measure text width
-  const measureTextWidth = (text: string): number => {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) return text.length * 6 + 5;
-    context.font = '9px "Agave", "Fira Code", monospace';
-    return Math.ceil(context.measureText(text).width) + 5;
-  };
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
 
   // Helper to get fallback title for a session (used when claudeTitle is empty)
@@ -488,9 +478,7 @@ export const SessionTabs: React.FC = () => {
             onDoubleClick={(e) => {
               // Double-click to rename any tab
               e.stopPropagation();
-              const title = getFallbackTitle(session);
-              setRenameValue(title);
-              setRenameInputWidth(measureTextWidth(title));
+              setRenameValue(getFallbackTitle(session));
               setRenamingTab(session.id);
             }}
             onContextMenu={(e) => {
@@ -837,36 +825,37 @@ export const SessionTabs: React.FC = () => {
                 })()}
               </div>
               {renamingTab === session.id ? (
-                <input
-                  type="text"
-                  className="tab-rename-input"
-                  value={renameValue}
-                  onChange={(e) => {
-                    setRenameValue(e.target.value);
-                    setRenameInputWidth(measureTextWidth(e.target.value));
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                <span className="tab-rename-wrapper">
+                  <span className="tab-rename-sizer">{renameValue}</span>
+                  <input
+                    type="text"
+                    className="tab-rename-input"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (renameValue.trim()) {
+                          renameSession(session.id, renameValue);
+                        }
+                        setRenamingTab(null);
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setRenamingTab(null);
+                      }
+                    }}
+                    onBlur={() => {
                       if (renameValue.trim()) {
                         renameSession(session.id, renameValue);
                       }
                       setRenamingTab(null);
-                    } else if (e.key === 'Escape') {
-                      setRenamingTab(null);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (renameValue.trim()) {
-                      renameSession(session.id, renameValue);
-                    }
-                    setRenamingTab(null);
-                  }}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                  onDoubleClick={(e) => e.stopPropagation()}
-                  style={{ width: `${renameInputWidth}px` }}
-                />
+                    }}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  />
+                </span>
               ) : (
                 <span className="tab-title">
                   {getFallbackTitle(session)}
@@ -1215,9 +1204,7 @@ export const SessionTabs: React.FC = () => {
           <button onClick={() => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);
             if (session) {
-              const title = getFallbackTitle(session);
-              setRenameValue(title);
-              setRenameInputWidth(measureTextWidth(title));
+              setRenameValue(getFallbackTitle(session));
               setRenamingTab(contextMenu.sessionId);
               setContextMenu(null);
             }

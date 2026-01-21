@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '../utils/structuredLogger';
 
 export interface HookScriptConfig {
   event: string;
@@ -139,7 +140,7 @@ export class HooksService {
 
       return response;
     } catch (error) {
-      logger.error(`Hook failed: ${event}`, error);
+      logger.error(`Hook failed: ${event}`, { error });
       return null;
     }
   }
@@ -165,7 +166,7 @@ export class HooksService {
     try {
       return await invoke<string[]>('get_hook_events');
     } catch (error) {
-      logger.error('Failed to get hook events:', error);
+      logger.error('Failed to get hook events', { error });
       return [
         'user_prompt_submit',
         'pre_tool_use',
@@ -188,7 +189,7 @@ export class HooksService {
       const samples = await invoke<Array<[string, string, string]>>('get_sample_hooks');
       return samples.map(([name, event, script]) => ({ name, event, script }));
     } catch (error) {
-      logger.error('Failed to get sample hooks:', error);
+      logger.error('Failed to get sample hooks', { error });
       return [];
     }
   }

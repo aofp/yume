@@ -73,11 +73,11 @@ class ClaudeDetectorService {
         // Cache version for 30 minutes
         if (parsed.timestamp && (Date.now() - parsed.timestamp) < 30 * 60 * 1000) {
           this.claudeVersionCache = parsed.version;
-          if (isDev) logger.info('Hydrated Claude version cache:', parsed.version);
+          if (isDev) logger.info('Hydrated Claude version cache', { version: parsed.version });
         }
       }
     } catch (error) {
-      if (isDev) logger.warn('Failed to hydrate cache from localStorage:', error);
+      if (isDev) logger.warn('Failed to hydrate cache from localStorage', { error });
     }
   }
 
@@ -120,14 +120,14 @@ class ClaudeDetectorService {
     const nativeWindows = await this.detectNativeWindows();
     if (nativeWindows) {
       result.nativeWindows = nativeWindows;
-      if (isDev) logger.info('Found native Windows Claude:', nativeWindows.path);
+      if (isDev) logger.info('Found native Windows Claude', { path: nativeWindows.path });
     }
 
     // Detect WSL installation
     const wsl = await this.detectWSL();
     if (wsl) {
       result.wsl = wsl;
-      if (isDev) logger.info('Found WSL Claude:', wsl.path);
+      if (isDev) logger.info('Found WSL Claude', { path: wsl.path });
     }
 
     // Determine recommended mode
@@ -162,7 +162,7 @@ class ClaudeDetectorService {
       this.windowsPathsCache = paths;
       return paths;
     } catch (error) {
-      if (isDev) logger.warn('Failed to get Windows paths from backend:', error);
+      if (isDev) logger.warn('Failed to get Windows paths from backend', { error });
       return {};
     }
   }
@@ -218,7 +218,7 @@ class ClaudeDetectorService {
     // Remove duplicates and undefined values
     const uniquePaths = [...new Set(possiblePaths.filter(p => p))];
 
-    if (isDev) logger.info('Checking native Windows paths:', uniquePaths.length, 'locations');
+    if (isDev) logger.info('Checking native Windows paths', { count: uniquePaths.length, unit: 'locations' });
 
     for (const path of uniquePaths) {
       try {
@@ -226,7 +226,7 @@ class ClaudeDetectorService {
         const exists = await invoke<boolean>('check_file_exists', { path });
 
         if (exists) {
-          if (isDev) logger.info('Found potential Claude at:', path);
+          if (isDev) logger.info('Found potential Claude at', { path });
           
           // Try to get version
           const version = await this.getClaudeVersion(path, 'native-windows');
@@ -267,7 +267,7 @@ class ClaudeDetectorService {
         }
       }
     } catch (error) {
-      if (isDev) logger.info('"where claude" command failed:', error);
+      if (isDev) logger.info('"where claude" command failed', { error });
     }
 
     return null;
@@ -292,7 +292,7 @@ class ClaudeDetectorService {
         return null;
       }
 
-      if (isDev) logger.info('WSL user detected:', wslUser);
+      if (isDev) logger.info('WSL user detected', { wslUser });
 
       // Common WSL Claude paths
       const wslPaths = [
@@ -310,7 +310,7 @@ class ClaudeDetectorService {
           const exists = await invoke<boolean>('check_wsl_file_exists', { path });
 
           if (exists) {
-            if (isDev) logger.info('Found WSL Claude at:', path);
+            if (isDev) logger.info('Found WSL Claude at', { path });
             
             // Get version
             const version = await this.getClaudeVersion(path, 'wsl');
@@ -347,11 +347,11 @@ class ClaudeDetectorService {
           };
         }
       } catch (error) {
-        if (isDev) logger.info('"which claude" in WSL failed:', error);
+        if (isDev) logger.info('"which claude" in WSL failed', { error });
       }
 
     } catch (error) {
-      if (isDev) logger.error('WSL detection failed:', error);
+      if (isDev) logger.error('WSL detection failed', { error });
     }
 
     return null;
@@ -377,7 +377,7 @@ class ClaudeDetectorService {
         return match ? match[1] : undefined;
       }
     } catch (error) {
-      if (isDev) logger.info('Could not get version for:', path);
+      if (isDev) logger.info('Could not get version for', { path });
     }
     return undefined;
   }
@@ -433,7 +433,7 @@ class ClaudeDetectorService {
       // Also store in Tauri app data for persistence
       await invoke('save_claude_settings', { settings: payload });
     } catch (error) {
-      if (isDev) logger.error('Failed to notify server of settings:', error);
+      if (isDev) logger.error('Failed to notify server of settings', { error });
     }
   }
 
@@ -442,7 +442,7 @@ class ClaudeDetectorService {
    */
   async testInstallation(installation: ClaudeInstallation): Promise<boolean> {
     try {
-      if (isDev) logger.info('Testing Claude installation:', installation.path);
+      if (isDev) logger.info('Testing Claude installation', { path: installation.path });
 
       const testCommand = installation.type === 'wsl'
         ? await invoke<string>('execute_wsl_command', {
@@ -458,7 +458,7 @@ class ClaudeDetectorService {
 
       return success;
     } catch (error) {
-      if (isDev) logger.error('Installation test failed:', error);
+      if (isDev) logger.error('Installation test failed', { error });
       return false;
     }
   }

@@ -5,6 +5,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { logger } from '../utils/structuredLogger';
 import type {
   BackgroundAgent,
   AgentResponse,
@@ -91,7 +92,7 @@ class BackgroundAgentService {
       try {
         listener(this.cachedAgents);
       } catch (e) {
-        logger.error('Agent listener error:', e);
+        logger.error('Agent listener error', { error: e });
       }
     });
   }
@@ -104,7 +105,7 @@ class BackgroundAgentService {
       try {
         listener(agent);
       } catch (e) {
-        logger.error('Agent update listener error:', e);
+        logger.error('Agent update listener error', { error: e });
       }
     });
   }
@@ -128,7 +129,7 @@ class BackgroundAgentService {
       this.notifyListeners();
       return agents;
     } catch (e) {
-      logger.error('Failed to refresh agents:', e);
+      logger.error('Failed to refresh agents', { error: e });
       return this.cachedAgents;
     }
   }
@@ -174,7 +175,7 @@ class BackgroundAgentService {
 
       return response;
     } catch (e) {
-      logger.error('Failed to queue agent:', e);
+      logger.error('Failed to queue agent', { error: e });
       return {
         success: false,
         error: String(e),
@@ -197,7 +198,7 @@ class BackgroundAgentService {
 
       return response;
     } catch (e) {
-      logger.error('Failed to cancel agent:', e);
+      logger.error('Failed to cancel agent', { error: e });
       return {
         success: false,
         agent_id: agentId,
@@ -221,7 +222,7 @@ class BackgroundAgentService {
 
       return response;
     } catch (e) {
-      logger.error('Failed to remove agent:', e);
+      logger.error('Failed to remove agent', { error: e });
       return {
         success: false,
         agent_id: agentId,
@@ -238,7 +239,7 @@ class BackgroundAgentService {
       const output = await invoke<string>('get_agent_output', { agentId });
       return JSON.parse(output);
     } catch (e) {
-      logger.error('Failed to get agent output:', e);
+      logger.error('Failed to get agent output', { error: e });
       return null;
     }
   }
@@ -250,7 +251,7 @@ class BackgroundAgentService {
     try {
       return await invoke<BackgroundAgent | null>('get_background_agent', { agentId });
     } catch (e) {
-      logger.error('Failed to get agent:', e);
+      logger.error('Failed to get agent', { error: e });
       return null;
     }
   }
@@ -262,7 +263,7 @@ class BackgroundAgentService {
     try {
       return await invoke<string>('get_agent_branch_diff', { agentId });
     } catch (e) {
-      logger.error('Failed to get branch diff:', e);
+      logger.error('Failed to get branch diff', { error: e });
       return null;
     }
   }
@@ -274,7 +275,7 @@ class BackgroundAgentService {
     try {
       return await invoke<boolean>('check_agent_merge_conflicts', { agentId });
     } catch (e) {
-      logger.error('Failed to check merge conflicts:', e);
+      logger.error('Failed to check merge conflicts', { error: e });
       return false;
     }
   }
@@ -295,7 +296,7 @@ class BackgroundAgentService {
 
       return response;
     } catch (e) {
-      logger.error('Failed to merge agent branch:', e);
+      logger.error('Failed to merge agent branch', { error: e });
       return {
         success: false,
         agent_id: agentId,
@@ -311,7 +312,7 @@ class BackgroundAgentService {
     try {
       return await invoke<AgentResponse>('delete_agent_branch', { agentId });
     } catch (e) {
-      logger.error('Failed to delete agent branch:', e);
+      logger.error('Failed to delete agent branch', { error: e });
       return {
         success: false,
         agent_id: agentId,
@@ -328,7 +329,7 @@ class BackgroundAgentService {
       await invoke('cleanup_old_agents');
       await this.refresh();
     } catch (e) {
-      logger.error('Failed to cleanup old agents:', e);
+      logger.error('Failed to cleanup old agents', { error: e });
     }
   }
 }

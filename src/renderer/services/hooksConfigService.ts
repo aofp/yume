@@ -5,6 +5,7 @@
 
 import { appStorageKey } from '../config/app';
 import { isWindows } from './platformUtils';
+import { logger } from '../utils/structuredLogger';
 
 export interface HookAdvancedConfig {
   enabled: boolean;
@@ -184,7 +185,7 @@ class HooksConfigService {
       try {
         this.config = JSON.parse(saved);
       } catch (e) {
-        logger.error('Failed to load hooks config:', e);
+        logger.error('Failed to load hooks config', { error: e });
         this.config = {};
       }
     }
@@ -200,7 +201,7 @@ class HooksConfigService {
       try {
         this.state = JSON.parse(saved);
       } catch (e) {
-        logger.error('Failed to load hooks state:', e);
+        logger.error('Failed to load hooks state', { error: e });
         this.initializeState();
       }
     } else {
@@ -411,7 +412,7 @@ class HooksConfigService {
       }
       return true;
     } catch (e) {
-      logger.error('Failed to import config:', e);
+      logger.error('Failed to import config', { error: e });
       return false;
     }
   }

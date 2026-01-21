@@ -243,7 +243,7 @@ export class TauriClaudeClient {
     try {
       await invoke('interrupt_claude_session', { session_id: sessionId });
     } catch (error) {
-      logger.error(`[TauriClient] Failed to interrupt session ${sessionId}:`, error);
+      logger.error(`[TauriClient] Failed to interrupt session ${sessionId}`, { error });
       throw error;
     }
   }
@@ -360,7 +360,7 @@ export class TauriClaudeClient {
             model: effectiveModel || null
           };
 
-          if (isDev) logger.info('[TauriClient] Sending message with claude_session_id:', effectiveClaudeSessionId);
+          if (isDev) logger.info('[TauriClient] Sending message with claude_session_id', { claudeSessionId: effectiveClaudeSessionId });
           await invoke('send_claude_message', { request });
         }
       }
@@ -922,7 +922,7 @@ export class TauriClaudeClient {
     // This handles cases where yume-cli crashes or exits without sending result message
     const completeChannel = `claude-complete:${sessionId}`;
     listen(completeChannel, () => {
-      logger.info('[TauriClient] claude-complete received for session:', sessionId);
+      logger.info('[TauriClient] claude-complete received for session', { sessionId });
       streamingAssistantMessages.delete(sessionId);
       // Emit streaming_end to clear UI streaming state
       handler({
@@ -969,7 +969,7 @@ export class TauriClaudeClient {
       // BUT keep the original frontend channel listener active!
       const newChannel = `claude-message:${new_session_id}`;
       if (newChannel !== originalChannel && !activeListeners.has(newChannel)) {
-        logger.info('[TauriClient] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
+        logger.info('[TauriClient] Adding listener for new channel', { newChannel, originalChannel });
         const newUnlisten = await listen(newChannel, messageHandler);
         activeListeners.set(newChannel, newUnlisten);
         additionalChannels.push(newChannel); // Track for cleanup
@@ -1189,7 +1189,7 @@ export class TauriClaudeClient {
     // This handles cases where yume-cli crashes or exits without sending result message
     const completeChannel = `claude-complete:${sessionId}`;
     const completeUnlisten = await listen(completeChannel, () => {
-      logger.info('[TauriClient Async] claude-complete received for session:', sessionId);
+      logger.info('[TauriClient Async] claude-complete received for session', { sessionId });
       streamingAssistantMessages.delete(sessionId);
       // Emit streaming_end to clear UI streaming state
       handler({
@@ -1227,7 +1227,7 @@ export class TauriClaudeClient {
       // Add listener for new channel but keep original - multi-turn support
       const newChannel = `claude-message:${new_session_id}`;
       if (newChannel !== originalChannel && !activeListeners.has(newChannel)) {
-        logger.info('[TauriClient Async] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
+        logger.info('[TauriClient Async] Adding listener for new channel', { newChannel, originalChannel });
         const newUnlisten = await listen(newChannel, messageHandler);
         activeListeners.set(newChannel, newUnlisten);
         additionalChannels.push(newChannel);

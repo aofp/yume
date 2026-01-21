@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
-import { PluginBadge } from '../common/PluginBadge';
+import { PluginBadge } from '../Common/PluginBadge';
 import {
   IconPlus, IconTrash, IconRefresh,
   IconAlertCircle, IconCheck, IconLoader2,

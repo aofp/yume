@@ -4,6 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '../utils/structuredLogger';
 
 // Types matching backend structures
 export interface DbSession {
@@ -77,7 +78,7 @@ class DatabaseService {
     try {
       await invoke('db_save_session', { session });
     } catch (error) {
-      logger.error('Failed to save session to database:', error);
+      logger.error('Failed to save session to database', { error });
       // Don't throw - allow app to continue with in-memory storage
     }
   }
@@ -111,7 +112,7 @@ class DatabaseService {
         return session;
       })
       .catch(error => {
-        logger.error('Failed to load session from database:', error);
+        logger.error('Failed to load session from database', { error });
         this.pendingOperations.delete(pendingKey);
         return null;
       });
@@ -136,7 +137,7 @@ class DatabaseService {
       
       return sessions;
     } catch (error) {
-      logger.error('Failed to load sessions from database:', error);
+      logger.error('Failed to load sessions from database', { error });
       return [];
     }
   }
@@ -153,7 +154,7 @@ class DatabaseService {
     try {
       await invoke('db_delete_session', { sessionId });
     } catch (error) {
-      logger.error('Failed to delete session from database:', error);
+      logger.error('Failed to delete session from database', { error });
     }
   }
 
@@ -166,7 +167,7 @@ class DatabaseService {
     try {
       await invoke('db_save_message', { message });
     } catch (error) {
-      logger.error('Failed to save message to database:', error);
+      logger.error('Failed to save message to database', { error });
     }
   }
 
@@ -193,7 +194,7 @@ class DatabaseService {
     try {
       return await invoke<DbMessage[]>('db_load_messages', { sessionId });
     } catch (error) {
-      logger.error('Failed to load messages from database:', error);
+      logger.error('Failed to load messages from database', { error });
       return [];
     }
   }
@@ -207,7 +208,7 @@ class DatabaseService {
     try {
       await invoke('db_save_analytics', { analytics });
     } catch (error) {
-      logger.error('Failed to save analytics to database:', error);
+      logger.error('Failed to save analytics to database', { error });
     }
   }
 
@@ -220,7 +221,7 @@ class DatabaseService {
     try {
       return await invoke<DbAnalytics[]>('db_load_analytics', { sessionId });
     } catch (error) {
-      logger.error('Failed to load analytics from database:', error);
+      logger.error('Failed to load analytics from database', { error });
       return [];
     }
   }
@@ -241,7 +242,7 @@ class DatabaseService {
     try {
       return await invoke<DbStatistics>('db_get_statistics');
     } catch (error) {
-      logger.error('Failed to get database statistics:', error);
+      logger.error('Failed to get database statistics', { error });
       return {
         sessions: 0,
         messages: 0,
@@ -266,7 +267,7 @@ class DatabaseService {
     try {
       await invoke('db_clear_all_data', { confirm });
     } catch (error) {
-      logger.error('Failed to clear database:', error);
+      logger.error('Failed to clear database', { error });
       throw error;
     }
   }
@@ -280,7 +281,7 @@ class DatabaseService {
     try {
       return await invoke('db_export_data');
     } catch (error) {
-      logger.error('Failed to export data:', error);
+      logger.error('Failed to export data', { error });
       throw error;
     }
   }
@@ -296,7 +297,7 @@ class DatabaseService {
     try {
       await invoke('db_import_data', { data });
     } catch (error) {
-      logger.error('Failed to import data:', error);
+      logger.error('Failed to import data', { error });
       throw error;
     }
   }
@@ -406,7 +407,7 @@ export class AutoSave {
     // Execute saves in parallel
     await Promise.all(saves.map(({ saveFunc }) => 
       saveFunc().catch((error: any) => {
-        logger.error('Auto-save failed:', error);
+        logger.error('Auto-save failed', { error });
       })
     ));
   }

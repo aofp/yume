@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IconX, IconChartBar, IconCoin, IconClock, IconBrain, IconMessage, IconFolder } from '@tabler/icons-react';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
-import { TabButton } from '../common/TabButton';
+import { TabButton } from '../Common/TabButton';
 import { ALL_MODELS, PROVIDERS, type ProviderType } from '../../config/models';
 import { FEATURE_FLAGS } from '../../config/features';
 import './AnalyticsModal.css';

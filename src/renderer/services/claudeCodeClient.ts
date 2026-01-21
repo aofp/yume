@@ -8,6 +8,7 @@ import platformAPI, { isTauri, isVSCode, getVSCodePort, getVSCodeCwd } from './t
 import { hooksService } from './hooksService';
 import { APP_ID, APP_NAME, appStorageKey } from '../config/app';
 import { debugLog, isDev } from '../utils/helpers';
+import { logger } from '../utils/structuredLogger';
 
 const SERVICE_NAME = `${APP_ID}-claude`;
 const DEBUG_KEY = appStorageKey('debug');
@@ -389,7 +390,10 @@ export class ClaudeCodeClient {
       }
       // Debug: log ALL message: events to see if they're being received
       if (eventName.startsWith('message:')) {
-        logger.info(`[Client] 🔔 onAny received message event: ${eventName}`, args[0]?.type, args[0]?.id);
+        logger.info(`[Client] 🔔 onAny received message event: ${eventName}`, {
+          type: args[0]?.type,
+          id: args[0]?.id
+        });
       }
     });
   }
@@ -558,7 +562,7 @@ export class ClaudeCodeClient {
       const processedContent = await hooksService.processUserPrompt(content, sessionId);
       content = processedContent;
     } catch (error) {
-      logger.error('[Hooks] Prompt blocked:', error);
+      logger.error('[Hooks] Prompt blocked', { error });
       throw error;
     }
 
@@ -570,7 +574,7 @@ export class ClaudeCodeClient {
         systemPromptSettings = JSON.parse(stored);
       }
     } catch (err) {
-      logger.error('[Client] Failed to load system prompt settings:', err);
+      logger.error('[Client] Failed to load system prompt settings', { error: err });
     }
     // Wait for connection if socket exists but not connected yet
     if (this.socket && !this.socket.connected) {

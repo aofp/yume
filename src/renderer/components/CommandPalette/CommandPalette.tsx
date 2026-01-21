@@ -123,10 +123,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setLineHeight,
     monoFont,
     sansFont,
-    isStreaming,
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
+  const isStreaming = currentSession?.streaming || false;
 
   // Load custom themes from localStorage (needed for currentThemeName in commands)
   const customThemes = useMemo(() => {

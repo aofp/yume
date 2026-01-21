@@ -6,6 +6,7 @@
  */
 
 import { createDebugLogger } from '../utils/helpers';
+import { logger } from '../utils/structuredLogger';
 
 // Check if we're in development mode
 const isDev = import.meta.env?.DEV || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');

@@ -11,6 +11,7 @@ import type {
   ConversationStore as IConversationStore,
 } from '../types/ucf';
 import { decodeClaudeProjectPath } from '../utils/helpers';
+import { logger } from '../utils/structuredLogger';
 
 // =============================================================================
 // Types
@@ -42,7 +43,7 @@ class ConversationStorePaths {
     // Get home directory from Tauri
     const homeDir = await invoke<string>('get_home_directory').catch(() => {
       // Fallback for different platforms
-      if (typeof window !== 'undefined' && (window as Record<string, unknown>).__TAURI__) {
+      if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__TAURI__) {
         return '~/.yume';
       }
       throw new Error('Failed to get home directory');
@@ -282,7 +283,7 @@ async function importFromClaudeJSONL(jsonlPath: string): Promise<UnifiedConversa
         } : undefined,
       });
     } catch (err) {
-      logger.warn('Failed to parse JSONL line:', err);
+      logger.warn('Failed to parse JSONL line', { error: err });
     }
   }
 

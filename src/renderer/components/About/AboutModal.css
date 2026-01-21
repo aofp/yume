@@ -16,23 +16,28 @@
 }
 
 .about-modal {
-  background: #0f0f0f;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background: rgba(15, 15, 15, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  border-radius: 10px;
   width: 90%;
   max-width: 180px;
   overflow-y: auto;
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 }
 
 .about-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.1);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.02) 0%, transparent 100%);
 }
 
 .about-header h3 {
@@ -64,19 +69,91 @@
   -webkit-user-select: none;
 }
 
+.about-logo-container {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
 .about-logo {
   font-size: var(--text-2xl);
   font-weight: bold;
   letter-spacing: 0.1em;
-  margin-bottom: 12px;
+  position: relative;
+  z-index: 2;
 }
 
 .about-logo .yuru {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
 }
 
 .about-logo .code {
   color: var(--accent-color);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb), 0.4);
+}
+
+.about-logo-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+.about-logo-glow-1 {
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.25) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: about-glow-float-1 4s ease-in-out infinite;
+}
+
+.about-logo-glow-2 {
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: about-glow-float-2 5.5s ease-in-out infinite;
+  animation-delay: -1.2s;
+}
+
+@keyframes about-glow-float-1 {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translate(-48%, -52%) scale(1.1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(-52%, -50%) scale(0.95);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translate(-50%, -48%) scale(1.05);
+    opacity: 0.65;
+  }
+}
+
+@keyframes about-glow-float-2 {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translate(-52%, -48%) scale(1.15);
+    opacity: 0.6;
+  }
+  60% {
+    transform: translate(-48%, -50%) scale(0.9);
+    opacity: 0.4;
+  }
+  85% {
+    transform: translate(-50%, -52%) scale(1.08);
+    opacity: 0.55;
+  }
 }
 
 .about-name {

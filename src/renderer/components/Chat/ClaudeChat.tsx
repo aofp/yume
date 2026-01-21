@@ -57,6 +57,7 @@ import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions, imageExtensions } from 
 import { resolveModelId, getProviderForModel, ALL_MODELS } from '../../config/models';
 import { getEffectiveEnabledTools } from '../../config/tools';
 import { toastService } from '../../services/toastService';
+import { logger } from '../../utils/structuredLogger';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
 
@@ -6367,8 +6368,34 @@ export const ClaudeChat: React.FC = () => {
                   return num.toString();
                 };
 
+                // Calculate token values upfront
+                const opusIn = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
+                const opusOut = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
+                const sonnetIn = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
+                const sonnetOut = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
+                const totalIn = opusIn + sonnetIn;
+                const totalOut = opusOut + sonnetOut;
+                const cacheRead = currentSession?.analytics?.tokens?.cacheSize || 0;
+                const cacheNew = currentSession?.analytics?.tokens?.cacheCreation || 0;
+                const messageCount = currentSession?.analytics?.totalMessages || 0;
+                const toolCount = currentSession?.analytics?.toolUses || 0;
+                const opusTokens = currentSession?.analytics?.tokens?.byModel?.opus?.total || 0;
+                const sonnetTokens = currentSession?.analytics?.tokens?.byModel?.sonnet?.total || 0;
+                const totalNewTokens = opusTokens + sonnetTokens || 1;
+                const opusPercentage = Math.round((opusTokens / totalNewTokens) * 100);
+
+                const totalCost = (() => {
+                  if (currentSession?.analytics?.cost?.total) {
+                    return currentSession.analytics.cost.total.toFixed(2);
+                  }
+                  const opusCost = (opusIn / 1000000) * 15.00 + (opusOut / 1000000) * 75.00;
+                  const sonnetCost = (sonnetIn / 1000000) * 3.00 + (sonnetOut / 1000000) * 15.00;
+                  return (opusCost + sonnetCost).toFixed(2);
+                })();
+
                 return (
                   <>
+                    {/* Context usage bar */}
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
                         <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
@@ -6385,7 +6412,6 @@ export const ClaudeChat: React.FC = () => {
                             }} />
                           </div>
                           <div className="usage-bar-ticks">
-                            {/* Ticks every 10% */}
                             {Array.from({ length: 11 }, (_, i) => (
                               <div key={i} className="usage-bar-tick" />
                             ))}
@@ -6393,158 +6419,89 @@ export const ClaudeChat: React.FC = () => {
                         </div>
                       </div>
                     </div>
-              {(() => {
-                const opusIn = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
-                const opusOut = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
-                const sonnetIn = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
-                const sonnetOut = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
-                const totalIn = opusIn + sonnetIn;
-                const totalOut = opusOut + sonnetOut;
-                const cacheRead = currentSession?.analytics?.tokens?.cacheSize || 0;
-                const cacheNew = currentSession?.analytics?.tokens?.cacheCreation || 0;
-                return (
-                  <>
-              <div className="stats-column">
-                <div className="stats-section">
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconMessage size={14} />
-                      <span className="stat-name">tokens <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>in</b>)</span></span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc"><b>{formatShort(totalIn)}</b></span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconMessage size={14} />
-                      <span className="stat-name">tokens <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>out</b>)</span></span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc"><b>{formatShort(totalOut)}</b></span>
-                  </div>
-                </div>
-              </div>
-              <div className="stats-column">
-                <div className="stats-section">
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconArtboardFilled size={14} />
-                      <span className="stat-name">cache <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>new</b>)</span></span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc"><b>{formatShort(cacheNew)}</b></span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconArtboardFilled size={14} />
-                      <span className="stat-name">cache <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>read</b>)</span></span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc"><b>{formatShort(cacheRead)}</b></span>
-                  </div>
-                </div>
-              </div>
-                  </>
-                );
-              })()}
-              <div className="stats-column">
-                <div className="stats-section">
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconSend size={14} />
-                      <span className="stat-name">messages</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const messageCount = currentSession?.analytics?.totalMessages || 0;
-                        console.log(`📊 [UI MESSAGES] Displaying message count:`, {
-                          sessionId: currentSession?.id,
-                          totalMessages: messageCount,
-                          hasAnalytics: !!currentSession?.analytics,
-                          analytics: currentSession?.analytics
-                        });
-                        return messageCount;
-                      })()}
-                    </span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconTool size={14} />
-                      <span className="stat-name">tool uses</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const toolCount = currentSession?.analytics?.toolUses || 0;
-                        console.log(`📊 [UI TOOLS] Displaying tool count:`, {
-                          sessionId: currentSession?.id,
-                          toolUses: toolCount,
-                          hasAnalytics: !!currentSession?.analytics
-                        });
-                        return toolCount;
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stats-column">
-                <div className="stats-section">
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconBrain size={14} />
-                      <span className="stat-name">opus %</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const opusTokens = currentSession?.analytics?.tokens?.byModel?.opus?.total || 0;
-                        const sonnetTokens = currentSession?.analytics?.tokens?.byModel?.sonnet?.total || 0;
-                        // Use only NEW tokens (not cache) for model percentage
-                        const totalNewTokens = opusTokens + sonnetTokens || 1;
-                        const percentage = Math.round((opusTokens / totalNewTokens) * 100);
-                        console.log('🎨 [OPUS UI] Rendering opus percentage:', {
-                          opusTokens,
-                          sonnetTokens,
-                          totalNewTokens,
-                          percentage,
-                          byModel: currentSession?.analytics?.tokens?.byModel
-                        });
-                        return `${percentage}%`;
-                      })()}
-                    </span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconCoin size={14} />
-                      <span className="stat-name">total</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      ${(() => {
-                        // Use actual cost from Claude if available
-                        if (currentSession?.analytics?.cost?.total) {
-                          // Format cost to 2 decimal places for display
-                          return currentSession.analytics.cost.total.toFixed(2);
-                        }
-                        
-                        // Otherwise calculate based on token usage
-                        const opusInput = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
-                        const opusOutput = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
-                        const sonnetInput = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
-                        const sonnetOutput = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
-                        
-                        const opusCost = (opusInput / 1000000) * 15.00 + (opusOutput / 1000000) * 75.00;
-                        const sonnetCost = (sonnetInput / 1000000) * 3.00 + (sonnetOutput / 1000000) * 15.00;
-                        
-                        return (opusCost + sonnetCost).toFixed(2);
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
+                    {/* All stat rows in a single container spanning 2 columns */}
+                    <div className="stats-rows-container" style={{ gridColumn: 'span 2' }}>
+                      {/* Row 1: tokens in | cache new */}
+                      <div className="stat-row">
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconMessage size={14} />
+                            <span className="stat-name">tokens <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>in</b>)</span></span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc"><b>{formatShort(totalIn)}</b></span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconArtboardFilled size={14} />
+                            <span className="stat-name">cache <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>new</b>)</span></span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc"><b>{formatShort(cacheNew)}</b></span>
+                        </div>
+                      </div>
+
+                      {/* Row 2: tokens out | cache read */}
+                      <div className="stat-row">
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconMessage size={14} />
+                            <span className="stat-name">tokens <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>out</b>)</span></span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc"><b>{formatShort(totalOut)}</b></span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconArtboardFilled size={14} />
+                            <span className="stat-name">cache <span style={{ fontSize: '0.85em', opacity: 0.7 }}>(<b>read</b>)</span></span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc"><b>{formatShort(cacheRead)}</b></span>
+                        </div>
+                      </div>
+
+                      {/* Row 3: messages | opus % */}
+                      <div className="stat-row">
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconSend size={14} />
+                            <span className="stat-name">messages</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc">{messageCount}</span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconBrain size={14} />
+                            <span className="stat-name">opus %</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc">{opusPercentage}%</span>
+                        </div>
+                      </div>
+
+                      {/* Row 4: tool uses | cost */}
+                      <div className="stat-row">
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconTool size={14} />
+                            <span className="stat-name">tool uses</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc">{toolCount}</span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <div className="stat-keys">
+                            <IconCoin size={14} />
+                            <span className="stat-name">total</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc">${totalCost}</span>
+                        </div>
+                      </div>
+                    </div>
                   </>
                 );
               })()}

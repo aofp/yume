@@ -14,22 +14,27 @@
 }
 
 .help-modal {
-  background: var(--background-color);
-  border: 1px solid var(--fg-15);
-  border-radius: 8px;
+  background: rgba(var(--background-rgb), 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
+  border-radius: 10px;
   width: 90%;
   max-width: 450px;
   max-height: 90vh;
   overflow-y: auto;
   user-select: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.03) inset;
 }
 
 .help-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
-  border-bottom: 1px solid var(--fg-10);
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.08);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.02) 0%, transparent 100%);
 }
 
 .help-header h3 {
@@ -102,12 +107,15 @@
 .key-btn {
   display: inline-block;
   color: var(--fg-95);
-  padding: 1px 4px;
-  border-radius: 3px;
+  padding: 2px 5px;
+  border-radius: 4px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: 500;
-  border: none;
+  border: 1px solid rgba(var(--accent-rgb), 0.08);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.03) 0%, rgba(var(--accent-rgb), 0.01) 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1),
+              0 0 0 1px rgba(255, 255, 255, 0.02) inset;
   user-select: none;
 }
 

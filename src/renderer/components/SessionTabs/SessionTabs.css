@@ -275,11 +275,13 @@
   font-size: var(--text-xs);
   color: var(--fg-80);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
+  overflow: visible;
   font-weight: 400;
   font-family: var(--font-mono);
+  line-height: normal;
+  letter-spacing: normal;
+  padding-left: 1px;
+  padding-right: 3px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -288,19 +290,44 @@
   color: var(--fg-100);
 }
 
+.tab-rename-wrapper {
+  position: relative;
+  display: inline-block;
+  padding-left: 1px;
+  padding-right: 3px;
+}
+
+.tab-rename-sizer {
+  visibility: hidden;
+  white-space: pre;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  font-family: var(--font-mono);
+  line-height: normal;
+  letter-spacing: normal;
+}
+
 .tab-rename-input {
+  position: absolute;
+  left: 1px;
+  top: 0;
+  width: calc(100% - 1px);
+  height: 100%;
   background: transparent;
   border: none;
   border-radius: 0;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-weight: 400;
   padding: 0;
   margin: 0;
   outline: none;
   cursor: text;
-  overflow: visible;
-  text-overflow: clip;
+  line-height: normal;
+  letter-spacing: normal;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .tab-rename-input:focus {
@@ -333,9 +360,7 @@
 }
 
 .tab-streaming-timer.renaming {
-  width: 15px;
-  position: relative;
-  left: -1px;
+  /* keep same width as normal to prevent tab resizing */
 }
 
 .tab-progress {

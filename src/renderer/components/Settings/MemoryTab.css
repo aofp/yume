@@ -134,7 +134,7 @@
 
 .memory-action-btn:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .memory-action-btn.danger {
@@ -146,7 +146,48 @@
   color: var(--negative-color);
 }
 
-/* Stats display */
+/* Single row inspector: load graph | entities | types | clear all */
+.memory-inspector-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.memory-inspector-row .memory-action-btn.danger {
+  margin-left: auto;
+}
+
+/* Retention row: inline label + input + days + prune btn */
+.memory-retention-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.memory-retention-row .memory-input {
+  width: 48px;
+}
+
+.memory-stat-inline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.memory-stat-inline .memory-stat-value {
+  font-size: var(--text-sm);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.memory-stat-inline .memory-stat-label {
+  font-size: var(--text-xs);
+  color: var(--fg-50);
+}
+
+/* Legacy stats display (kept for compatibility) */
 .memory-stats {
   display: flex;
   gap: var(--space-3);
