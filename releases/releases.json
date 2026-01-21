@@ -9,8 +9,8 @@
       "notes": "fix session interrupt with 3-strategy fallback, memory ui hook ordering",
       "releaseNotes": "v0.2.6-release-notes.md",
       "downloads": {
-        "mac_arm": "yume_0.2.6_aarch64.dmg",
-        "mac": "yume_0.2.6_x64.dmg",
+        "mac_arm": "yume_0.2.6_aarch64.pkg",
+        "mac": "yume_0.2.6_x64.pkg",
         "windows": "yume_0.2.6_x64-setup.exe"
       },
       "checksums": {
