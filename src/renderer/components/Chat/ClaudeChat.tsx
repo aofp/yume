@@ -775,14 +775,14 @@ export const ClaudeChat: React.FC = () => {
           const age = Date.now() - timestamp;
           const maxAge = hasNullUsage ? CACHE_DURATION_NULL : CACHE_DURATION_VALID;
           if (age < maxAge) {
-            console.log('[UsageLimits] Using cached data, age:', Math.round(age / 1000), 's, hasNull:', hasNullUsage);
+            logger.info('[UsageLimits] Using cached data', { ageSeconds: Math.round(age / 1000), hasNull: hasNullUsage });
             setUsageLimits(filterData(data));
             return;
           }
-          console.log('[UsageLimits] Cache expired, age:', Math.round(age / 1000), 's, wasNull:', hasNullUsage);
+          logger.info('[UsageLimits] Cache expired', { ageSeconds: Math.round(age / 1000), wasNull: hasNullUsage });
         }
       } catch (e) {
-        console.log('[UsageLimits] Cache read failed:', e);
+        logger.info('[UsageLimits] Cache read failed', { error: e });
       }
     }
 
@@ -790,13 +790,13 @@ export const ClaudeChat: React.FC = () => {
     if (isVSCode()) {
       const port = getVSCodePort();
       if (!port) {
-        console.log('[UsageLimits] VSCode mode but no port');
+        logger.info('[UsageLimits] VSCode mode but no port');
         return;
       }
       fetch(`http://127.0.0.1:${port}/claude-usage-limits`)
         .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
         .then(data => {
-          console.log('[UsageLimits] HTTP response:', JSON.stringify(data));
+          logger.info('[UsageLimits] HTTP response', { data });
           const filteredData = filterData(data);
           setUsageLimits(filteredData);
           const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
@@ -804,7 +804,7 @@ export const ClaudeChat: React.FC = () => {
             localStorage.setItem(USAGE_LIMITS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
           } catch (e) { /* ignore */ }
         })
-        .catch(err => console.error('[UsageLimits] HTTP fetch failed:', err));
+        .catch(err => logger.error('[UsageLimits] HTTP fetch failed', { error: err }));
     } else {
       invoke<{
         five_hour?: { utilization: number | null; resets_at: string | null };
@@ -813,7 +813,7 @@ export const ClaudeChat: React.FC = () => {
         rate_limit_tier?: string;
       }>('get_claude_usage_limits')
         .then(data => {
-          console.log('[UsageLimits] API response:', JSON.stringify(data));
+          logger.info('[UsageLimits] API response', { data });
           const filteredData = filterData(data);
           setUsageLimits(filteredData);
           // Cache with null flag (determines TTL on next read)
@@ -824,7 +824,7 @@ export const ClaudeChat: React.FC = () => {
             // Cache write failed, ignore
           }
         })
-        .catch(err => console.error('[UsageLimits] Failed to fetch:', err));
+        .catch(err => logger.error('[UsageLimits] Failed to fetch', { error: err }));
     }
   }, []);
 
@@ -862,7 +862,7 @@ export const ClaudeChat: React.FC = () => {
       if (lastTextareaFocused && !isTextarea && textareaExists) {
         focusLossCount++;
         const stack = new Error().stack;
-        console.warn(`[FOCUS DEBUG #${focusLossCount}] 🔴 Textarea lost focus!`, {
+        logger.warn(`[FOCUS DEBUG #${focusLossCount}] 🔴 Textarea lost focus!`, {
           previousActive: lastActiveElement?.tagName,
           previousClass: (lastActiveElement as HTMLElement)?.className,
           currentActive: currentActive?.tagName,
@@ -885,7 +885,7 @@ export const ClaudeChat: React.FC = () => {
 
         // Log what element now has focus
         if (currentActive && currentActive !== document.body) {
-          console.warn(`[FOCUS DEBUG] Focus moved to:`, {
+          logger.warn('[FOCUS DEBUG] Focus moved to', {
             tag: currentActive.tagName,
             class: (currentActive as HTMLElement)?.className,
             id: (currentActive as HTMLElement)?.id,
@@ -893,14 +893,14 @@ export const ClaudeChat: React.FC = () => {
             tabIndex: currentActive.getAttribute('tabindex'),
           });
         } else if (currentActive === document.body) {
-          console.warn(`[FOCUS DEBUG] Focus fell to document.body (no specific element)`);
+          logger.warn('[FOCUS DEBUG] Focus fell to document.body (no specific element)');
         }
 
         // Also check native macOS state
         if (window.__TAURI__) {
           import('@tauri-apps/api/core').then(({ invoke }) => {
             invoke<string>('get_macos_focus_state').then(state => {
-              console.warn(`[FOCUS DEBUG] Native macOS state: ${state}`);
+              logger.warn('[FOCUS DEBUG] Native macOS state', { state });
             }).catch(() => {});
           });
         }
@@ -919,14 +919,14 @@ export const ClaudeChat: React.FC = () => {
     // Also listen to focusin/focusout events for more detail
     const handleFocusIn = (e: FocusEvent) => {
       if (e.target === inputRef.current) {
-        console.log('[FOCUS DEBUG] ✅ Textarea gained focus via focusin');
+        logger.info('[FOCUS DEBUG] ✅ Textarea gained focus via focusin');
       }
     };
 
     const handleFocusOut = (e: FocusEvent) => {
       if (e.target === inputRef.current) {
         const relatedTarget = e.relatedTarget as HTMLElement;
-        console.log('[FOCUS DEBUG] ⚠️ Textarea focusout event', {
+        logger.info('[FOCUS DEBUG] ⚠️ Textarea focusout event', {
           relatedTarget: relatedTarget?.tagName,
           relatedClass: relatedTarget?.className,
           relatedId: relatedTarget?.id,
@@ -955,16 +955,16 @@ export const ClaudeChat: React.FC = () => {
         const serverPort = claudeCodeClient.getServerPort();
         if (serverPort) {
           const url = `http://localhost:${serverPort}/session-tokens/${encodeURIComponent(currentSession.claudeSessionId)}?workingDirectory=${encodeURIComponent(currentSession.workingDirectory)}`;
-          console.log('[StatsModal] Fetching tokens from session file:', url);
+          logger.info('[StatsModal] Fetching tokens from session file', { url });
           fetch(url)
             .then(res => res.json())
             .then(data => {
               if (data.found && data.usage) {
-                console.log('[StatsModal] Got tokens from session file:', data.usage);
+                logger.info('[StatsModal] Got tokens from session file', { usage: data.usage });
                 useClaudeCodeStore.getState().updateSessionAnalyticsFromFile(currentSessionId!, data.usage);
               }
             })
-            .catch(err => console.error('[StatsModal] Failed to fetch tokens:', err));
+            .catch(err => logger.error('[StatsModal] Failed to fetch tokens', { error: err }));
         }
       }
     }
@@ -1009,7 +1009,7 @@ export const ClaudeChat: React.FC = () => {
   const scrollToBottomHelper = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
     // DON'T scroll if user has recently scrolled up
     if (isUserScrolledUp()) {
-      console.log('[Scroll] Blocked - user scrolled up recently');
+      logger.info('[Scroll] Blocked - user scrolled up recently');
       return;
     }
 
@@ -1193,7 +1193,7 @@ export const ClaudeChat: React.FC = () => {
         if (wasAtBottom && !atBottom) {
           // User scrolled up - record the timestamp
           userScrolledUpRef.current[currentSessionId] = Date.now();
-          console.log('[Scroll] User scrolled up - blocking auto-scroll for 5s');
+          logger.info('[Scroll] User scrolled up - blocking auto-scroll for 5s');
         } else if (atBottom && !wasAtBottom) {
           // User scrolled back to bottom - clear the flag
           userScrolledUpRef.current[currentSessionId] = 0;
@@ -1317,7 +1317,7 @@ export const ClaudeChat: React.FC = () => {
               setTimeout(() => setShowResumeModal(true), 100);
             }
           } catch (err) {
-            console.error('Failed to parse recent projects:', err);
+            logger.error('Failed to parse recent projects', { error: err });
           }
         }
         return;
@@ -1365,7 +1365,7 @@ export const ClaudeChat: React.FC = () => {
     const handleRestoreInput = (e: CustomEvent<{ sessionId: string; message: string }>) => {
       const { sessionId, message } = e.detail;
       if (sessionId === currentSessionId && message) {
-        console.log(`📝 [ClaudeChat] Restoring interrupted compact message to input: "${message.slice(0, 50)}..."`);
+        logger.info('📝 [ClaudeChat] Restoring interrupted compact message to input', { messagePreview: message.slice(0, 50) });
         setInput(message);
       }
     };
@@ -1592,7 +1592,7 @@ export const ClaudeChat: React.FC = () => {
   const startDictation = useCallback(async () => {
     // Check if Speech Recognition API is available
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.error('[Dictation] Speech recognition not supported in this environment');
+      logger.error('[Dictation] Speech recognition not supported in this environment');
 
       // Platform-specific error messages
       let errorMsg = 'Dictation is not available.\n\n';
@@ -1619,15 +1619,15 @@ export const ClaudeChat: React.FC = () => {
     try {
       // Request microphone permission if needed
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        console.log('[Dictation] Requesting microphone permission...');
+        logger.info('[Dictation] Requesting microphone permission...');
         await navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
           // Stop the stream immediately, we just needed permission
           stream.getTracks().forEach(track => track.stop());
-          console.log('[Dictation] Microphone permission granted');
+          logger.info('[Dictation] Microphone permission granted');
         });
       }
     } catch (err: any) {
-      console.error('[Dictation] Microphone permission error:', err);
+      logger.error('[Dictation] Microphone permission error', { error: err });
       let errorMsg = 'Microphone access denied.\n\n';
       if (isWindows) {
         errorMsg += 'Please check:\n' +
@@ -1654,7 +1654,7 @@ export const ClaudeChat: React.FC = () => {
     recognition.maxAlternatives = 1;
     
     recognition.onstart = () => {
-      console.log('[Dictation] Started successfully');
+      logger.info('[Dictation] Started successfully');
       setIsDictating(true);
     };
     
@@ -1750,11 +1750,11 @@ export const ClaudeChat: React.FC = () => {
     };
     
     recognition.onend = () => {
-      console.log('[Dictation] Ended');
+      logger.info('[Dictation] Ended');
       setIsDictating(false);
       recognitionRef.current = null;
     };
-    
+
     recognitionRef.current = recognition;
 
     // Capture current input as base text before starting
@@ -1764,9 +1764,9 @@ export const ClaudeChat: React.FC = () => {
       recognition.start();
       // Focus the input to show dictation is active
       inputRef.current?.focus();
-      console.log('[Dictation] Starting recognition... Base text:', input);
+      logger.info('[Dictation] Starting recognition', { baseText: input });
     } catch (err) {
-      console.error('[Dictation] Failed to start:', err);
+      logger.error('[Dictation] Failed to start', { error: err });
       setIsDictating(false);
       recognitionRef.current = null;
       dictationBaseTextRef.current = '';
@@ -1837,7 +1837,7 @@ export const ClaudeChat: React.FC = () => {
   // Stop bash command or streaming session
   // This is the primary handler for the stop button and ESC key
   const handleStopBash = useCallback(async () => {
-    console.log('[ClaudeChat] handleStopBash called', {
+    logger.info('[ClaudeChat] handleStopBash called', {
       bashProcessId: currentSession?.bashProcessId,
       streaming: currentSession?.streaming,
       runningBash: currentSession?.runningBash,
@@ -1875,9 +1875,9 @@ export const ClaudeChat: React.FC = () => {
           )
         }));
 
-        console.log('[ClaudeChat] Bash process killed successfully');
+        logger.info('[ClaudeChat] Bash process killed successfully');
       } catch (error) {
-        console.error('[ClaudeChat] Failed to kill bash process:', error);
+        logger.error('[ClaudeChat] Failed to kill bash process', { error });
         // Fall through to interrupt the session as well
       }
     }
@@ -1885,13 +1885,13 @@ export const ClaudeChat: React.FC = () => {
     // Always interrupt the session if streaming (regardless of bash process result)
     // This ensures the Claude process is also killed, not just the bash subprocess
     if (currentSession?.streaming) {
-      console.log('[ClaudeChat] Interrupting streaming session');
+      logger.info('[ClaudeChat] Interrupting streaming session');
       try {
         await interruptSession(currentSessionId || undefined);
         toastService.error('interrupted');
-        console.log('[ClaudeChat] Session interrupted successfully');
+        logger.info('[ClaudeChat] Session interrupted successfully');
       } catch (error) {
-        console.error('[ClaudeChat] Failed to interrupt session:', error);
+        logger.error('[ClaudeChat] Failed to interrupt session', { error });
       }
     }
   }, [currentSession?.bashProcessId, currentSession?.streaming, currentSessionId, bashElapsedTimes, addMessageToSession, interruptSession]);
@@ -1999,7 +1999,7 @@ export const ClaudeChat: React.FC = () => {
 
     // Check if session is currently streaming - don't allow rollback during active editing
     if (currentSession?.streaming) {
-      console.warn('[Rollback] Cannot rollback while session is streaming');
+      logger.warn('[Rollback] Cannot rollback while session is streaming');
       setShowRollbackConfirm(false);
       setPendingRollbackData(null);
       return;
@@ -2025,7 +2025,7 @@ export const ClaudeChat: React.FC = () => {
 
         const hasNewConflicts = freshConflicts.some(c => c.conflict_type !== 'none');
         if (hasNewConflicts) {
-          console.warn('[Rollback] Files modified since conflict check, aborting');
+          logger.warn('[Rollback] Files modified since conflict check, aborting');
           // Close the confirm dialog - user needs to re-initiate rollback
           setShowRollbackConfirm(false);
           setPendingRollbackData(null);
@@ -2033,7 +2033,7 @@ export const ClaudeChat: React.FC = () => {
           return;
         }
       } catch (err) {
-        console.error('[Rollback] Failed to re-verify conflicts:', err);
+        logger.error('[Rollback] Failed to re-verify conflicts', { error: err });
         setShowRollbackConfirm(false);
         setPendingRollbackData(null);
         return;

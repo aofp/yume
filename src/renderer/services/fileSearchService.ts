@@ -5,9 +5,9 @@ let tauriLoadPromise: Promise<void> | null = null;
 if (typeof window !== 'undefined' && (window as any).__TAURI__) {
   tauriLoadPromise = import('@tauri-apps/api/core').then(module => {
     tauriInvoke = module.invoke;
-    console.log('[FileSearchService] Tauri API loaded successfully');
+    logger.info('[FileSearchService] Tauri API loaded successfully');
   }).catch(err => {
-    console.error('[FileSearchService] Failed to load Tauri API:', err);
+    logger.error('[FileSearchService] Failed to load Tauri API:', err);
   });
 }
 
@@ -145,7 +145,7 @@ export async function searchFiles(
       return getMockResults(query, workingDirectory);
     }
   } catch (error) {
-    console.error('Error searching files:', error);
+    logger.error('Error searching files:', error);
     
     // Fallback to simple mock data for now
     return getMockResults(query, workingDirectory);
@@ -170,7 +170,7 @@ export async function getRecentFiles(workingDirectory: string, limit: number = 1
       return getMockResults('', workingDirectory).slice(0, limit);
     }
   } catch (error) {
-    console.error('Error getting recent files:', error);
+    logger.error('Error getting recent files:', error);
     return [];
   }
 }
@@ -178,11 +178,11 @@ export async function getRecentFiles(workingDirectory: string, limit: number = 1
 // Get folder contents
 export async function getFolderContents(folderPath: string, maxResults: number = 20): Promise<FileSearchResult[]> {
   try {
-    console.log('[FileSearchService] getFolderContents called with:', { folderPath, maxResults });
+    logger.info('[FileSearchService] getFolderContents called with:', { folderPath, maxResults });
     
     // Check if path is provided
     if (!folderPath) {
-      console.warn('[FileSearchService] No folder path provided');
+      logger.warn('[FileSearchService] No folder path provided');
       return [];
     }
     
@@ -190,14 +190,14 @@ export async function getFolderContents(folderPath: string, maxResults: number =
     const hasTauri = await ensureTauriLoaded();
     
     if (hasTauri && tauriInvoke) {
-      console.log('[FileSearchService] Getting folder contents via Tauri:', folderPath);
+      logger.info('[FileSearchService] Getting folder contents via Tauri:', folderPath);
       try {
         const results = await (tauriInvoke as any)('get_folder_contents', {
           folderPath,
           maxResults
         }) as FileSearchResult[];
 
-        console.log('[FileSearchService] Got', results.length, 'results');
+        logger.info('[FileSearchService] Got', results.length, 'results');
 
         // Normalize paths to Unix-style
         return results.map((result: FileSearchResult) => ({
@@ -205,12 +205,12 @@ export async function getFolderContents(folderPath: string, maxResults: number =
           relativePath: result.relativePath.replace(/\\/g, '/')
         }));
       } catch (tauriError) {
-        console.error('[FileSearchService] Tauri invoke error:', tauriError);
+        logger.error('[FileSearchService] Tauri invoke error:', tauriError);
         // Return empty array instead of throwing
         return [];
       }
     } else {
-      console.log('[FileSearchService] Using mock folder contents (Tauri not available)');
+      logger.info('[FileSearchService] Using mock folder contents (Tauri not available)');
       // Return mock folder contents
       return [
         {
@@ -234,7 +234,7 @@ export async function getFolderContents(folderPath: string, maxResults: number =
       ];
     }
   } catch (error) {
-    console.error('[FileSearchService] Unexpected error in getFolderContents:', error);
+    logger.error('[FileSearchService] Unexpected error in getFolderContents:', error);
     return [];
   }
 }
@@ -284,7 +284,7 @@ export async function getGitChangedFiles(workingDirectory: string): Promise<File
       ];
     }
   } catch (error) {
-    console.error('Error getting git status:', error);
+    logger.error('Error getting git status:', error);
     return [];
   }
 }

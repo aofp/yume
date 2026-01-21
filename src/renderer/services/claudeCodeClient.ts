@@ -190,7 +190,7 @@ export class ClaudeCodeClient {
         this.connectWithRetry();
         return;
       } catch (err: any) {
-        console.error('[ClaudeCodeClient] Failed to get server port from Tauri:', err);
+        logger.error('[ClaudeCodeClient] Failed to get server port from Tauri:', err);
 
         // Store error in localStorage for debugging
         if (typeof window !== 'undefined' && window.localStorage) {
@@ -274,7 +274,7 @@ export class ClaudeCodeClient {
 
   private connect() {
     if (!this.serverPort) {
-      console.error('[ClaudeCodeClient] No server port available');
+      logger.error('[ClaudeCodeClient] No server port available');
       return;
     }
 
@@ -363,14 +363,14 @@ export class ClaudeCodeClient {
     });
 
     this.socket.on('connect_error', (error: any) => {
-      console.error('[Client] Socket connection error:', error.message);
+      logger.error('[Client] Socket connection error:', error.message);
       if (error.message.includes('xhr poll error')) {
-        console.error('[Client] This usually means the server is not running or not accessible');
+        logger.error('[Client] This usually means the server is not running or not accessible');
       }
     });
 
     this.socket.on('error', (error) => {
-      console.error('[Client] Socket error:', error);
+      logger.error('[Client] Socket error:', error);
     });
 
     // Log reconnection attempts
@@ -379,7 +379,7 @@ export class ClaudeCodeClient {
     });
 
     this.socket.io.on('reconnect_failed', () => {
-      console.error('[Client] All reconnection attempts failed');
+      logger.error('[Client] All reconnection attempts failed');
     });
 
     // Handle keepalive messages to maintain connection
@@ -389,7 +389,7 @@ export class ClaudeCodeClient {
       }
       // Debug: log ALL message: events to see if they're being received
       if (eventName.startsWith('message:')) {
-        console.log(`[Client] 🔔 onAny received message event: ${eventName}`, args[0]?.type, args[0]?.id);
+        logger.info(`[Client] 🔔 onAny received message event: ${eventName}`, args[0]?.type, args[0]?.id);
       }
     });
   }
@@ -430,7 +430,7 @@ export class ClaudeCodeClient {
     return new Promise((resolve, reject) => {
       // Check actual socket connection state
       if (!this.socket || !this.socket.connected) {
-        console.error('[Client] Cannot create session - not connected to server');
+        logger.error('[Client] Cannot create session - not connected to server');
         reject(new Error('Not connected to server'));
         return;
       }
@@ -465,7 +465,7 @@ export class ClaudeCodeClient {
             workingDirectory: response.workingDirectory || workingDirectory
           });
         } else {
-          console.error('[Client] Session creation failed:', response.error);
+          logger.error('[Client] Session creation failed:', response.error);
           reject(new Error(response.error));
         }
       });
@@ -558,7 +558,7 @@ export class ClaudeCodeClient {
       const processedContent = await hooksService.processUserPrompt(content, sessionId);
       content = processedContent;
     } catch (error) {
-      console.error('[Hooks] Prompt blocked:', error);
+      logger.error('[Hooks] Prompt blocked:', error);
       throw error;
     }
 
@@ -570,7 +570,7 @@ export class ClaudeCodeClient {
         systemPromptSettings = JSON.parse(stored);
       }
     } catch (err) {
-      console.error('[Client] Failed to load system prompt settings:', err);
+      logger.error('[Client] Failed to load system prompt settings:', err);
     }
     // Wait for connection if socket exists but not connected yet
     if (this.socket && !this.socket.connected) {
@@ -598,7 +598,7 @@ export class ClaudeCodeClient {
     return new Promise((resolve, reject) => {
       // Check actual socket connection state
       if (!this.socket || !this.socket.connected) {
-        console.error('[Client] Cannot send message - not connected to server');
+        logger.error('[Client] Cannot send message - not connected to server');
         reject(new Error('Not connected to server'));
         return;
       }
@@ -618,7 +618,7 @@ export class ClaudeCodeClient {
           debugLog('[Client] Message sent successfully');
           resolve();
         } else {
-          console.error('[Client] Failed to send message:', response.error);
+          logger.error('[Client] Failed to send message:', response.error);
           reject(new Error(response.error));
         }
       });
@@ -634,7 +634,7 @@ export class ClaudeCodeClient {
     const channel = `error:${sessionId}`;
 
     const errorHandler = (error: any) => {
-      console.error('[Client] Received error:', {
+      logger.error('[Client] Received error:', {
         channel,
         type: error.type,
         message: error.message
@@ -660,7 +660,7 @@ export class ClaudeCodeClient {
       // ALWAYS log bash messages for debugging
       const isBashMessage = message.id && String(message.id).startsWith('bash-');
       if (isBashMessage) {
-        console.log(`[Client] 🐚 BASH MESSAGE RECEIVED on channel ${channel}:`, {
+        logger.info(`[Client] 🐚 BASH MESSAGE RECEIVED on channel ${channel}:`, {
           id: message.id,
           type: message.type,
           streaming: message.streaming,
@@ -719,7 +719,7 @@ export class ClaudeCodeClient {
 
       // Always log errors
       if (message.type === 'error') {
-        console.error('[Client] ERROR message:', message.error);
+        logger.error('[Client] ERROR message:', message.error);
       }
 
       handler(message);
@@ -788,7 +788,7 @@ export class ClaudeCodeClient {
     this.messageHandlers.set(channel, loggingHandler);
 
     // Listen for messages
-    console.log(`[Client] 📡 Setting up socket.on listener for channel: ${channel}`);
+    logger.info(`[Client] 📡 Setting up socket.on listener for channel: ${channel}`);
     this.socket.on(channel, loggingHandler);
 
     // Also listen for batched messages

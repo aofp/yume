@@ -42,7 +42,7 @@ class ConversationStorePaths {
     // Get home directory from Tauri
     const homeDir = await invoke<string>('get_home_directory').catch(() => {
       // Fallback for different platforms
-      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      if (typeof window !== 'undefined' && (window as Record<string, unknown>).__TAURI__) {
         return '~/.yume';
       }
       throw new Error('Failed to get home directory');
@@ -282,7 +282,7 @@ async function importFromClaudeJSONL(jsonlPath: string): Promise<UnifiedConversa
         } : undefined,
       });
     } catch (err) {
-      console.warn('Failed to parse JSONL line:', err);
+      logger.warn('Failed to parse JSONL line:', err);
     }
   }
 

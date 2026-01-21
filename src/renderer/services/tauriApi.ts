@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Window } from '@tauri-apps/api/window';
+import { logger } from '../utils/structuredLogger';
 const appWindow = new Window('main');
 
 export interface TauriAPI {
@@ -66,13 +67,13 @@ class TauriAPIBridge implements TauriAPI {
   folder = {
     select: async (): Promise<string | null> => {
       try {
-        console.log('Tauri folder.select() called - using invoke command');
-        console.log('About to invoke select_folder command...');
+        logger.info('Tauri folder.select() called - using invoke command');
+        logger.info('About to invoke select_folder command...');
         const result = await invoke<string | null>('select_folder');
-        console.log('Select folder invoke returned:', result);
+        logger.info('Select folder invoke returned:', result);
         return result;
       } catch (error) {
-        console.error('Error invoking select_folder:', error);
+        logger.error('Error invoking select_folder:', error);
         throw error; // Re-throw to see the actual error
       }
     }
@@ -203,7 +204,7 @@ export const isTauri = (): boolean => {
   const result = typeof window !== 'undefined' && '__TAURI__' in window;
   // Only log once to avoid spam
   if (!window.__tauriCheckLogged) {
-    console.log('isTauri check: window defined:', typeof window !== 'undefined', '__TAURI__ in window:', typeof window !== 'undefined' && '__TAURI__' in window, 'vscode mode:', isVSCode(), 'result:', result);
+    logger.info('isTauri check: window defined:', typeof window !== 'undefined', '__TAURI__ in window:', typeof window !== 'undefined' && '__TAURI__' in window, 'vscode mode:', isVSCode(), 'result:', result);
     window.__tauriCheckLogged = true;
   }
   return result;

@@ -54,29 +54,29 @@ function compareVersions(a: string, b: string): number {
  * Check for updates - fetches on every call (app start)
  */
 export async function checkForUpdates(): Promise<VersionCheckState> {
-  console.log('[VersionCheck] Starting update check...');
-  console.log('[VersionCheck] Current version:', APP_VERSION);
+  logger.info('[VersionCheck] Starting update check...');
+  logger.info('[VersionCheck] Current version:', APP_VERSION);
 
   try {
     // Add timestamp to URL to prevent caching, avoiding CORS preflight
     const timestamp = Date.now();
     const url = `${VERSION_CHECK_URL}?t=${timestamp}`;
-    console.log('[VersionCheck] Fetching from:', url);
+    logger.info('[VersionCheck] Fetching from:', url);
 
     // Simple GET request without custom headers to avoid CORS preflight
     const response = await fetch(url);
 
-    console.log('[VersionCheck] Response status:', response.status);
+    logger.info('[VersionCheck] Response status:', response.status);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
     const latestVersion = (await response.text()).trim();
-    console.log('[VersionCheck] Latest version:', latestVersion);
+    logger.info('[VersionCheck] Latest version:', latestVersion);
 
     const hasUpdate = compareVersions(latestVersion, APP_VERSION) > 0;
-    console.log('[VersionCheck] Has update:', hasUpdate);
+    logger.info('[VersionCheck] Has update:', hasUpdate);
 
     const newState: VersionCheckState = {
       latestVersion,
@@ -84,13 +84,13 @@ export async function checkForUpdates(): Promise<VersionCheckState> {
     };
 
     saveState(newState);
-    console.log('[VersionCheck] Saved state:', newState);
+    logger.info('[VersionCheck] Saved state:', newState);
     return newState;
   } catch (error) {
-    console.error('[VersionCheck] Error checking for updates:', error);
+    logger.error('[VersionCheck] Error checking for updates:', error);
     // On error, return stored state
     const stored = getStoredState();
-    console.log('[VersionCheck] Returning stored state:', stored);
+    logger.info('[VersionCheck] Returning stored state:', stored);
     return stored;
   }
 }

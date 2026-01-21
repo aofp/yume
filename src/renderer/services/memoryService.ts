@@ -114,41 +114,41 @@ class MemoryService {
    * they all wait for the same Promise instead of each starting their own.
    */
   async start(): Promise<boolean> {
-    console.log('[MemoryService] start() called');
+    logger.info('[MemoryService] start() called');
 
     // If already starting, return the existing promise (deduplicate concurrent calls)
     if (this.startPromise) {
-      console.log('[MemoryService] Already starting, waiting for existing operation...');
+      logger.info('[MemoryService] Already starting, waiting for existing operation...');
       return this.startPromise;
     }
 
     const useClaudeCodeStore = await getStore();
     const store = useClaudeCodeStore.getState();
     if (store.memoryServerRunning) {
-      console.log('[MemoryService] Server already running');
+      logger.info('[MemoryService] Server already running');
       return true;
     }
 
-    console.log('[MemoryService] Starting memory server via tauri...');
+    logger.info('[MemoryService] Starting memory server via tauri...');
 
     // Create and store the promise for concurrent callers to share
     this.startPromise = (async () => {
       try {
-        console.log('[MemoryService] Invoking start_memory_server command...');
+        logger.info('[MemoryService] Invoking start_memory_server command...');
         const result = await invoke<MemoryServerResult>('start_memory_server');
-        console.log('[MemoryService] Tauri start_memory_server result:', JSON.stringify(result));
+        logger.info('[MemoryService] Tauri start_memory_server result:', JSON.stringify(result));
 
         if (result.success) {
-          console.log('[MemoryService] Memory server started successfully');
+          logger.info('[MemoryService] Memory server started successfully');
           const store = await getStore();
           store.getState().setMemoryServerRunning(true);
           return true;
         } else {
-          console.error('[MemoryService] Failed to start:', result.error);
+          logger.error('[MemoryService] Failed to start:', result.error);
           return false;
         }
       } catch (error) {
-        console.error('[MemoryService] Error starting server:', error);
+        logger.error('[MemoryService] Error starting server:', error);
         return false;
       } finally {
         // Clear promise after completion so next call can start fresh
@@ -167,34 +167,34 @@ class MemoryService {
   async stop(): Promise<boolean> {
     // If already stopping, return the existing promise
     if (this.stopPromise) {
-      console.log('[MemoryService] Already stopping, waiting for existing operation...');
+      logger.info('[MemoryService] Already stopping, waiting for existing operation...');
       return this.stopPromise;
     }
 
     const useClaudeCodeStore = await getStore();
     const store = useClaudeCodeStore.getState();
     if (!store.memoryServerRunning) {
-      console.log('[MemoryService] Server not running');
+      logger.info('[MemoryService] Server not running');
       return true;
     }
 
-    console.log('[MemoryService] Stopping memory server...');
+    logger.info('[MemoryService] Stopping memory server...');
 
     this.stopPromise = (async () => {
       try {
         const result = await invoke<MemoryServerResult>('stop_memory_server');
 
         if (result.success) {
-          console.log('[MemoryService] Memory server stopped successfully');
+          logger.info('[MemoryService] Memory server stopped successfully');
           const store = await getStore();
           store.getState().setMemoryServerRunning(false);
           return true;
         } else {
-          console.error('[MemoryService] Failed to stop:', result.error);
+          logger.error('[MemoryService] Failed to stop:', result.error);
           return false;
         }
       } catch (error) {
-        console.error('[MemoryService] Error stopping server:', error);
+        logger.error('[MemoryService] Error stopping server:', error);
         return false;
       } finally {
         this.stopPromise = null;
@@ -214,7 +214,7 @@ class MemoryService {
       useClaudeCodeStore.getState().setMemoryServerRunning(result.running);
       return result.running;
     } catch (error) {
-      console.error('[MemoryService] Error checking status:', error);
+      logger.error('[MemoryService] Error checking status:', error);
       return false;
     }
   }
@@ -223,34 +223,34 @@ class MemoryService {
    * Initialize memory service on app startup
    */
   async initialize(): Promise<void> {
-    console.log('[MemoryService] Initializing...');
+    logger.info('[MemoryService] Initializing...');
     const useClaudeCodeStore = await getStore();
     const store = useClaudeCodeStore.getState();
-    console.log('[MemoryService] Initial state:', { memoryEnabled: store.memoryEnabled, memoryServerRunning: store.memoryServerRunning });
+    logger.info('[MemoryService] Initial state:', { memoryEnabled: store.memoryEnabled, memoryServerRunning: store.memoryServerRunning });
 
     await this.checkStatus();
 
     // Get fresh state after checkStatus
     const freshStore = useClaudeCodeStore.getState();
-    console.log('[MemoryService] After checkStatus:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
+    logger.info('[MemoryService] After checkStatus:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
 
     if (freshStore.memoryEnabled && !freshStore.memoryServerRunning) {
-      console.log('[MemoryService] Auto-starting memory server...');
+      logger.info('[MemoryService] Auto-starting memory server...');
       const started = await this.start();
-      console.log('[MemoryService] Auto-start result:', started);
+      logger.info('[MemoryService] Auto-start result:', started);
 
       // Test: write a startup marker to verify the system works
       if (started) {
-        console.log('[MemoryService] Testing memory write...');
+        logger.info('[MemoryService] Testing memory write...');
         const testResult = await this.createEntities([{
           name: 'yume:startup-test',
           entityType: 'system',
           observations: [`Memory system initialized at ${new Date().toISOString()}`]
         }]);
-        console.log('[MemoryService] Test write result:', testResult);
+        logger.info('[MemoryService] Test write result:', testResult);
       }
     } else {
-      console.log('[MemoryService] Not auto-starting:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
+      logger.info('[MemoryService] Not auto-starting:', { memoryEnabled: freshStore.memoryEnabled, memoryServerRunning: freshStore.memoryServerRunning });
     }
   }
 
@@ -261,7 +261,7 @@ class MemoryService {
     try {
       return await invoke<string>('get_memory_file_path');
     } catch (error) {
-      console.error('[MemoryService] Error getting memory file path:', error);
+      logger.error('[MemoryService] Error getting memory file path:', error);
       return '';
     }
   }
@@ -273,10 +273,10 @@ class MemoryService {
    * Automatically adds timestamps to observations
    */
   async createEntities(entities: MemoryEntity[]): Promise<boolean> {
-    console.log('[MemoryService] createEntities called with:', JSON.stringify(entities));
+    logger.info('[MemoryService] createEntities called with:', JSON.stringify(entities));
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
-      console.warn('[MemoryService] Server not running, cannot create entities');
+      logger.warn('[MemoryService] Server not running, cannot create entities');
       return false;
     }
 
@@ -287,15 +287,15 @@ class MemoryService {
     }));
 
     try {
-      console.log('[MemoryService] Invoking memory_create_entities...');
+      logger.info('[MemoryService] Invoking memory_create_entities...');
       const result = await invoke<MemoryServerResult>('memory_create_entities', { entities: timestampedEntities });
-      console.log('[MemoryService] memory_create_entities result:', JSON.stringify(result));
+      logger.info('[MemoryService] memory_create_entities result:', JSON.stringify(result));
       if (!result.success) {
-        console.error('[MemoryService] Failed to create entities:', result.error);
+        logger.error('[MemoryService] Failed to create entities:', result.error);
       }
       return result.success;
     } catch (error) {
-      console.error('[MemoryService] Error creating entities:', error);
+      logger.error('[MemoryService] Error creating entities:', error);
       return false;
     }
   }
@@ -306,18 +306,18 @@ class MemoryService {
   async createRelations(relations: MemoryRelation[]): Promise<boolean> {
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
-      console.warn('[MemoryService] Server not running, cannot create relations');
+      logger.warn('[MemoryService] Server not running, cannot create relations');
       return false;
     }
 
     try {
       const result = await invoke<MemoryServerResult>('memory_create_relations', { relations });
       if (!result.success) {
-        console.error('[MemoryService] Failed to create relations:', result.error);
+        logger.error('[MemoryService] Failed to create relations:', result.error);
       }
       return result.success;
     } catch (error) {
-      console.error('[MemoryService] Error creating relations:', error);
+      logger.error('[MemoryService] Error creating relations:', error);
       return false;
     }
   }
@@ -329,7 +329,7 @@ class MemoryService {
   async addObservations(entityName: string, observations: string[]): Promise<boolean> {
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
-      console.warn('[MemoryService] Server not running, cannot add observations');
+      logger.warn('[MemoryService] Server not running, cannot add observations');
       return false;
     }
 
@@ -342,11 +342,11 @@ class MemoryService {
         observations: timestampedObservations
       });
       if (!result.success) {
-        console.error('[MemoryService] Failed to add observations:', result.error);
+        logger.error('[MemoryService] Failed to add observations:', result.error);
       }
       return result.success;
     } catch (error) {
-      console.error('[MemoryService] Error adding observations:', error);
+      logger.error('[MemoryService] Error adding observations:', error);
       return false;
     }
   }
@@ -357,7 +357,7 @@ class MemoryService {
   async searchNodes(query: string): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }> {
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
-      console.warn('[MemoryService] Server not running, cannot search');
+      logger.warn('[MemoryService] Server not running, cannot search');
       return { entities: [], relations: [] };
     }
 
@@ -369,10 +369,10 @@ class MemoryService {
           relations: result.relations || []
         };
       }
-      console.error('[MemoryService] Search failed:', result.error);
+      logger.error('[MemoryService] Search failed:', result.error);
       return { entities: [], relations: [] };
     } catch (error) {
-      console.error('[MemoryService] Error searching nodes:', error);
+      logger.error('[MemoryService] Error searching nodes:', error);
       return { entities: [], relations: [] };
     }
   }
@@ -383,7 +383,7 @@ class MemoryService {
   async readGraph(): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }> {
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
-      console.warn('[MemoryService] Server not running, cannot read graph');
+      logger.warn('[MemoryService] Server not running, cannot read graph');
       return { entities: [], relations: [] };
     }
 
@@ -395,10 +395,10 @@ class MemoryService {
           relations: result.relations || []
         };
       }
-      console.error('[MemoryService] Read graph failed:', result.error);
+      logger.error('[MemoryService] Read graph failed:', result.error);
       return { entities: [], relations: [] };
     } catch (error) {
-      console.error('[MemoryService] Error reading graph:', error);
+      logger.error('[MemoryService] Error reading graph:', error);
       return { entities: [], relations: [] };
     }
   }
@@ -409,18 +409,18 @@ class MemoryService {
   async deleteEntity(entityName: string): Promise<boolean> {
     const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
-      console.warn('[MemoryService] Server not running, cannot delete entity');
+      logger.warn('[MemoryService] Server not running, cannot delete entity');
       return false;
     }
 
     try {
       const result = await invoke<MemoryServerResult>('memory_delete_entity', { entityName });
       if (!result.success) {
-        console.error('[MemoryService] Failed to delete entity:', result.error);
+        logger.error('[MemoryService] Failed to delete entity:', result.error);
       }
       return result.success;
     } catch (error) {
-      console.error('[MemoryService] Error deleting entity:', error);
+      logger.error('[MemoryService] Error deleting entity:', error);
       return false;
     }
   }
@@ -515,7 +515,7 @@ class MemoryService {
 
       return `<memory-context>\nRelevant memories from past sessions:\n${memories}\n</memory-context>`;
     } catch (error) {
-      console.error('[MemoryService] Error getting relevant memories:', error);
+      logger.error('[MemoryService] Error getting relevant memories:', error);
       return '';
     }
   }
@@ -546,7 +546,7 @@ class MemoryService {
         const fixSummary = assistantResponse.substring(0, 500);
 
         await this.rememberErrorFix(errorSummary, fixSummary);
-        console.log('[MemoryService] Stored error/fix pattern');
+        logger.info('[MemoryService] Stored error/fix pattern');
       }
 
       // Check for architectural decisions
@@ -554,10 +554,10 @@ class MemoryService {
       if (archPatterns.test(userMessage) || archPatterns.test(assistantResponse)) {
         const decision = assistantResponse.substring(0, 300);
         await this.remember(projectPath, `Architecture decision: ${decision}`, 'architecture');
-        console.log('[MemoryService] Stored architecture decision');
+        logger.info('[MemoryService] Stored architecture decision');
       }
     } catch (error) {
-      console.error('[MemoryService] Error extracting learnings:', error);
+      logger.error('[MemoryService] Error extracting learnings:', error);
     }
   }
 }

@@ -184,7 +184,7 @@ class HooksConfigService {
       try {
         this.config = JSON.parse(saved);
       } catch (e) {
-        console.error('Failed to load hooks config:', e);
+        logger.error('Failed to load hooks config:', e);
         this.config = {};
       }
     }
@@ -200,7 +200,7 @@ class HooksConfigService {
       try {
         this.state = JSON.parse(saved);
       } catch (e) {
-        console.error('Failed to load hooks state:', e);
+        logger.error('Failed to load hooks state:', e);
         this.initializeState();
       }
     } else {
@@ -411,7 +411,7 @@ class HooksConfigService {
       }
       return true;
     } catch (e) {
-      console.error('Failed to import config:', e);
+      logger.error('Failed to import config:', e);
       return false;
     }
   }

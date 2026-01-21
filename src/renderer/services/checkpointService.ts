@@ -60,7 +60,7 @@ class CheckpointService {
     if (!socket) return;
 
     socket.on('checkpoint-created', (data: { sessionId: string; checkpoint: TimelineCheckpoint }) => {
-      console.log('[Checkpoint] Created:', data);
+      logger.info('[Checkpoint] Created:', data);
       const { sessionId, checkpoint } = data;
 
       // Update cache
@@ -76,7 +76,7 @@ class CheckpointService {
     });
 
     socket.on('checkpoint-restored', (data: { sessionId: string; checkpointId: string; messages: unknown[] }) => {
-      console.log('[Checkpoint] Restored:', data);
+      logger.info('[Checkpoint] Restored:', data);
       const { sessionId, checkpointId, messages } = data;
 
       // Update timeline cache
@@ -92,14 +92,14 @@ class CheckpointService {
     });
 
     socket.on('checkpoint-error', (data: { sessionId?: string; error: string }) => {
-      console.error('[Checkpoint] Error:', data);
+      logger.error('[Checkpoint] Error:', data);
       window.dispatchEvent(new CustomEvent('checkpoint-error', {
         detail: data
       }));
     });
 
     socket.on('timeline-data', (data: { sessionId: string; timeline?: Timeline; checkpoints?: TimelineCheckpoint[] }) => {
-      console.log('[Checkpoint] Timeline data received:', data);
+      logger.info('[Checkpoint] Timeline data received:', data);
       const { sessionId, timeline, checkpoints } = data;
 
       // Update caches
@@ -121,7 +121,7 @@ class CheckpointService {
   // Create a new checkpoint
   createCheckpoint(sessionId: string, description: string, trigger: 'manual' | 'auto' | 'fork' = 'manual'): Promise<TimelineCheckpoint> {
     return new Promise((resolve, reject) => {
-      console.log(`[Checkpoint] Creating for session ${sessionId}: ${description}`);
+      logger.info(`[Checkpoint] Creating for session ${sessionId}: ${description}`);
 
       const handleCreated = (event: CustomEvent<{ sessionId: string; checkpoint: TimelineCheckpoint }>) => {
         const detail = event.detail;
@@ -162,7 +162,7 @@ class CheckpointService {
   // Restore to a checkpoint
   restoreCheckpoint(sessionId: string, checkpointId: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log(`[Checkpoint] Restoring ${checkpointId} for session ${sessionId}`);
+      logger.info(`[Checkpoint] Restoring ${checkpointId} for session ${sessionId}`);
 
       const handleRestored = (event: CustomEvent<{ sessionId: string; checkpointId: string; messages: unknown[] }>) => {
         const detail = event.detail;
@@ -202,7 +202,7 @@ class CheckpointService {
   // Get timeline for a session
   getTimeline(sessionId: string): Promise<{ timeline: Timeline | null; checkpoints: TimelineCheckpoint[] }> {
     return new Promise((resolve) => {
-      console.log(`[Checkpoint] Getting timeline for session ${sessionId}`);
+      logger.info(`[Checkpoint] Getting timeline for session ${sessionId}`);
 
       // Check cache first
       const cachedTimeline = this.timelinesCache.get(sessionId);
