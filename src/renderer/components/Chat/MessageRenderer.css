@@ -1486,6 +1486,8 @@ pre.bash-content,
   display: block;
   margin-top: var(--space-1);
   font-size: var(--text-xs);
+  padding-left: 16px;
+  padding-bottom: 4px;
   color: var(--fg-40);
   font-family: var(--font-mono);
   cursor: default;

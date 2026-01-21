@@ -5062,7 +5062,8 @@ export const ClaudeChat: React.FC = () => {
                     <span>git</span>
                     {gitStatus && (
                       <span className="git-tab-stats">
-                        <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}{gitAhead > 0 ? `,${gitAhead}` : ''}</span>
+                        {gitAhead > 0 && <span>^{gitAhead}</span>}
+                        <span>{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
                         <span className="git-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
                         <span className="git-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
                       </span>

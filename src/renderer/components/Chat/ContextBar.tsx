@@ -376,7 +376,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               const removed = isGit ? gitLinesRemoved : sessionLinesRemoved;
               return (
                 <span className="btn-files-stats">
-                  <span className="stat-badge git-badge">{isGit ? (gitAheadCount > 0 ? `${count},${gitAheadCount}` : count) : count}</span>
+                  <span className="stat-badge git-badge">{isGit ? (gitAheadCount > 0 ? `^${gitAheadCount} ${count}` : count) : count}</span>
                   {backgroundAgentCount > 0 && <span className="stat-badge agent-badge">{backgroundAgentCount}</span>}
                   {(added > 0 || removed > 0) && (
                     <span className="stat-badge lines-badge">
