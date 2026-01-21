@@ -10,6 +10,7 @@ import type {
   UnifiedConversation,
   ConversationStore as IConversationStore,
 } from '../types/ucf';
+import { decodeClaudeProjectPath } from '../utils/helpers';
 
 // =============================================================================
 // Types
@@ -289,7 +290,7 @@ async function importFromClaudeJSONL(jsonlPath: string): Promise<UnifiedConversa
   const sessionId = jsonlPath.split('/').pop()?.replace('.jsonl', '') || `imported-${Date.now()}`;
 
   // Get working directory from path (Claude stores in ~/.claude/projects/-path-escaped/)
-  const cwd = extractCwdFromClaudePath(jsonlPath);
+  const cwd = await extractCwdFromClaudePath(jsonlPath);
 
   const conversation: UnifiedConversation = {
     id: sessionId,
@@ -329,12 +330,19 @@ async function importFromClaudeJSONL(jsonlPath: string): Promise<UnifiedConversa
   return conversation;
 }
 
-function extractCwdFromClaudePath(jsonlPath: string): string {
+async function extractCwdFromClaudePath(jsonlPath: string): Promise<string> {
   // Claude paths look like: ~/.claude/projects/-Users-yuru-project/session-id.jsonl
   const match = jsonlPath.match(/\.claude\/projects\/(-[^/]+)\//);
   if (match) {
-    // Un-escape the path: -Users-yuru-project -> /Users/yuru/project
-    return match[1].replace(/-/g, '/');
+    // Smart decode: try filesystem check to handle dashes in folder names
+    const checkPath = async (path: string): Promise<boolean> => {
+      try {
+        return await invoke<boolean>('check_is_directory', { path });
+      } catch {
+        return false;
+      }
+    };
+    return await decodeClaudeProjectPath(match[1], checkPath);
   }
   // Fallback to empty string if path cannot be determined
   return '';

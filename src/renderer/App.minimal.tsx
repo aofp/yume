@@ -31,7 +31,8 @@ import { toastService } from './services/toastService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { Toast } from './components/Toast/Toast';
 import { APP_NAME, appEventName, appStorageKey } from './config/app';
-import { isVSCode } from './services/tauriApi';
+import { isVSCode, invoke } from './services/tauriApi';
+import { decodeClaudeProjectPath, getProjectNameFromEncodedPath } from './utils/helpers';
 import './App.minimal.css';
 
 const BG_OPACITY_KEY = appStorageKey('bg-opacity');
@@ -1330,14 +1331,16 @@ export const App: React.FC = () => {
         onSelectSession={async (projectPath: string, sessionId: string | null, sessionTitle?: string, sessionMessageCount?: number) => {
           // If no sessionId, create a new session in the project
           if (!sessionId) {
-            // Format project name from path
-            const projectName = projectPath
-              .replace(/^-/, '/')
-              .replace(/-/g, '/')
-              .split('/')
-              .pop() || projectPath;
-            // Create new session with project path
-            const fullPath = projectPath.replace(/^-/, '/').replace(/-/g, '/');
+            // Smart decode the project path (handles dashes in folder names)
+            const checkPath = async (path: string) => {
+              try {
+                return await invoke<boolean>('check_is_directory', { path });
+              } catch {
+                return false;
+              }
+            };
+            const fullPath = await decodeClaudeProjectPath(projectPath, checkPath);
+            const projectName = fullPath.split('/').pop() || projectPath;
             createSession(projectName, fullPath);
             setShowProjectsModal(false);
             return;
@@ -1504,7 +1507,15 @@ export const App: React.FC = () => {
 
             // Create a new forked session with messages copied
             const store = useClaudeCodeStore.getState();
-            const fullPath = projectPath.replace(/^-/, '/').replace(/-/g, '/');
+            // Smart decode the project path (handles dashes in folder names)
+            const checkPath = async (path: string) => {
+              try {
+                return await invoke<boolean>('check_is_directory', { path });
+              } catch {
+                return false;
+              }
+            };
+            const fullPath = await decodeClaudeProjectPath(projectPath, checkPath);
             const newSessionId = await store.createSession(undefined, fullPath);
 
             if (newSessionId && data.messages) {

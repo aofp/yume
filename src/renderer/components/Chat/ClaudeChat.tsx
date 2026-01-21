@@ -49,7 +49,7 @@ import { APP_NAME, appEventName, appStorageKey } from '../../config/app';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { pluginService } from '../../services/pluginService';
 import { backgroundAgentService } from '../../services/backgroundAgentService';
-import { isBashPrefix } from '../../utils/helpers';
+import { isBashPrefix, decodeClaudeProjectPath } from '../../utils/helpers';
 import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions, imageExtensions } from '../../constants/chat';
@@ -2246,8 +2246,15 @@ export const ClaudeChat: React.FC = () => {
     // Decode the project path to get the working directory
     let workingDirectory = '/';
     try {
-      // Project paths are encoded like -Users-yuru-projectname
-      workingDirectory = conversation.projectPath.replace(/^-/, '/').replace(/-/g, '/');
+      // Smart decode: handles dashes in folder names by checking filesystem
+      const checkPath = async (path: string): Promise<boolean> => {
+        try {
+          return await invoke<boolean>('check_is_directory', { path });
+        } catch {
+          return false;
+        }
+      };
+      workingDirectory = await decodeClaudeProjectPath(conversation.projectPath, checkPath);
     } catch (e) {
       console.error('Failed to decode project path:', e);
     }
