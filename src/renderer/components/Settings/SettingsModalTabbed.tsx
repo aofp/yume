@@ -28,6 +28,7 @@ import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { appStorageKey } from '../../config/app';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { toastService } from '../../services/toastService';
+import { logger } from '../../utils/structuredLogger';
 
 // electronAPI type is declared globally elsewhere
 
@@ -203,7 +204,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
           }
         }
       } catch (error) {
-        console.error('Settings: Error starting drag:', error);
+        logger.error('Settings: Error starting drag', { error });
       }
     };
 
@@ -256,7 +257,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
         try {
           setCommands(JSON.parse(saved));
         } catch (error) {
-          console.error('Failed to load commands:', error);
+          logger.error('Failed to load commands', { error });
         }
       }
       // Load plugin commands
@@ -286,7 +287,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
           const level = await window.electronAPI.zoom.getLevel();
           setZoomLevel(level);
         } catch (err) {
-          console.error('Failed to get zoom level:', err);
+          logger.error('Failed to get zoom level', { error: err });
           const saved = localStorage.getItem('zoomLevel');
           if (saved) {
             setZoomLevel(parseFloat(saved));
@@ -368,7 +369,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
       try {
         setCustomThemes(JSON.parse(savedCustomThemes));
       } catch (e) {
-        console.error('Failed to parse custom themes:', e);
+        logger.error('Failed to parse custom themes', { error: e });
       }
     }
     const savedCurrentTheme = localStorage.getItem('currentThemeId');
@@ -386,7 +387,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
       const target = e.target as Node;
       const clickedTrigger = presetDropdownRef.current?.contains(target);
       const clickedMenu = dropdownMenuRef.current?.contains(target);
-      console.log('handleClickOutside', { clickedTrigger, clickedMenu, themeJustApplied: themeJustAppliedRef.current });
+      logger.info('handleClickOutside', { clickedTrigger, clickedMenu, themeJustApplied: themeJustAppliedRef.current });
       if (!clickedTrigger && !clickedMenu) {
         if (!themeJustAppliedRef.current) {
           restoreCurrentTheme(true);
@@ -511,7 +512,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
 
   // Apply a theme (fonts are independent of themes)
   const applyTheme = (theme: Theme) => {
-    console.log('applyTheme called', theme.id);
+    logger.info('applyTheme called', { themeId: theme.id });
     themeJustAppliedRef.current = true;
     handleBackgroundColorChange(theme.backgroundColor);
     handleForegroundColorChange(theme.foregroundColor);
@@ -680,7 +681,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
           setZoomLevel(newZoom);
         }
       } catch (err) {
-        console.error('Zoom in error:', err);
+        logger.error('Zoom in error', { error: err });
       }
     }
   };
@@ -693,7 +694,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
           setZoomLevel(newZoom);
         }
       } catch (err) {
-        console.error('Zoom out error:', err);
+        logger.error('Zoom out error', { error: err });
       }
     }
   };
@@ -706,7 +707,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
           setZoomLevel(0);
         }
       } catch (err) {
-        console.error('Reset zoom error:', err);
+        logger.error('Reset zoom error', { error: err });
       }
     }
   };
@@ -969,14 +970,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                           if (newEnabled) {
                             const started = await memoryService.start();
                             if (!started) {
-                              console.error('[Settings] Failed to start memory server');
+                              logger.error('[Settings] Failed to start memory server');
                               setMemoryEnabled(false);
                             }
                           } else {
                             await memoryService.stop();
                           }
                         } catch (error) {
-                          console.error('[Settings] Memory toggle error:', error);
+                          logger.error('[Settings] Memory toggle error', { error });
                           if (newEnabled) setMemoryEnabled(false);
                         }
                       }}
@@ -1024,18 +1025,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                           if (!vscodeConnected) {
                             setVscodeInstalling(true);
                             invoke('install_vscode_extension')
-                              .then(() => console.log('VSCode extension installed'))
-                              .catch((err) => console.error('Failed to install vscode extension:', err))
+                              .then(() => logger.info('VSCode extension installed'))
+                              .catch((err) => logger.error('Failed to install vscode extension', { error: err }))
                               .finally(() => setVscodeInstalling(false));
                           }
                         } else {
                           claudeCodeClient.disconnectVscodeClients();
                           invoke('uninstall_vscode_extension')
                             .then(() => {
-                              console.log('VSCode extension uninstalled');
+                              logger.info('VSCode extension uninstalled');
                               toastService.info('vscode extension uninstalled - restart vscode to complete');
                             })
-                            .catch((err) => console.error('Failed to uninstall vscode extension:', err));
+                            .catch((err) => logger.error('Failed to uninstall vscode extension', { error: err }));
                         }
                       }}
                     >
@@ -1866,7 +1867,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose, ini
                             // Also immediately apply for testing
                             const alpha = value / 100;
                             document.body.style.backgroundColor = `rgba(0, 0, 0, ${alpha})`;
-                            console.log('Set body background to:', `rgba(0, 0, 0, ${alpha})`);
+                            logger.info('Set body background', { color: `rgba(0, 0, 0, ${alpha})` });
                           }}
                           style={{
                             width: '100px',

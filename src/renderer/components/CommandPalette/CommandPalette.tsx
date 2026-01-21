@@ -6,6 +6,7 @@ import { platformBridge } from '../../services/platformBridge';
 import { BUILT_IN_THEMES, type Theme } from '../../config/themes';
 import { pluginService } from '../../services/pluginService';
 import { toastService } from '../../services/toastService';
+import { logger } from '../../utils/structuredLogger';
 import type { InstalledPlugin } from '../../types/plugin';
 import './CommandPalette.css';
 
@@ -189,7 +190,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               await createSession(undefined, folder);
             }
           } catch (err) {
-            console.error('Folder selection failed:', err);
+            logger.error('Folder selection failed', { error: err });
           }
         }
       },
@@ -737,7 +738,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           } else {
             const summary = entities.slice(0, 5).map(e => `• ${e.name}`).join('\n');
             toastService.success(`found ${entities.length} memories`);
-            console.log('[Memory Search]', entities);
+            logger.info('[Memory Search]', { entities });
           }
         }
       },
@@ -758,7 +759,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               toastService.error(result.error || 'failed to clear');
             }
           } catch (error) {
-            console.error('Failed to clear memories:', error);
+            logger.error('Failed to clear memories', { error });
             toastService.error('failed to clear memories');
           }
         }
@@ -912,7 +913,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   // Load plugins when opening plugins submenu
   useEffect(() => {
     if (activeSubmenu === 'plugins') {
-      pluginService.refresh().then(setPlugins).catch(console.error);
+      pluginService.refresh().then(setPlugins).catch(err => logger.error('Failed to refresh plugins', { error: err }));
     }
   }, [activeSubmenu]);
 
@@ -1164,7 +1165,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           const refreshed = await pluginService.refresh();
           setPlugins(refreshed);
         } catch (err) {
-          console.error('Failed to toggle plugin:', err);
+          logger.error('Failed to toggle plugin', { error: err });
         }
         break;
     }
