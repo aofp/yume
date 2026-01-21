@@ -192,7 +192,7 @@ class PlatformBridge {
   };
 
   // Emit events internally
-  emit = (event: string, ...args: any[]) => {
+  emit = (event: string, ...args: unknown[]) => {
     const handlers = this.listeners.get(event);
     if (handlers) {
       handlers.forEach(handler => handler(...args));
@@ -207,7 +207,7 @@ const bridge = new PlatformBridge();
 function setupBridge() {
   if (isTauri() && !window.electronAPI) {
     if (isDev) logger.info('Platform Bridge: Setting up window.electronAPI for Tauri');
-    (window as any).electronAPI = bridge;
+    (window as Record<string, unknown>).electronAPI = bridge;
     if (isDev) {
       logger.info('Platform Bridge: window.electronAPI is now:', window.electronAPI);
       logger.info('Platform Bridge: folder.select available:', !!window.electronAPI?.folder?.select);
