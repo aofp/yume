@@ -11,7 +11,7 @@ import type { InstalledPlugin } from '../../types/plugin';
 import './CommandPalette.css';
 
 // Submenu types
-type SubmenuType = 'theme' | 'fontSize' | 'lineHeight' | 'plugins' | null;
+type SubmenuType = 'theme' | 'fontSize' | 'lineHeight' | 'opacity' | 'plugins' | null;
 
 interface SubmenuItem {
   id: string;
@@ -63,6 +63,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [originalColors, setOriginalColors] = useState<{bg: string, fg: string, accent: string, positive: string, negative: string} | null>(null);
   const [originalFontSize, setOriginalFontSize] = useState<number | null>(null);
   const [originalLineHeight, setOriginalLineHeight] = useState<number | null>(null);
+  const [originalOpacity, setOriginalOpacity] = useState<number | null>(null);
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -121,6 +122,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setFontSize,
     lineHeight,
     setLineHeight,
+    backgroundOpacity,
+    setBackgroundOpacity,
     monoFont,
     sansFont,
   } = useClaudeCodeStore();
@@ -594,6 +597,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       hasSubmenu: 'lineHeight',
     });
     cmds.push({
+      id: 'select-opacity',
+      label: `opacity (${backgroundOpacity}%)`,
+      category: 'appearance',
+      action: () => {
+        setOriginalOpacity(backgroundOpacity);
+        setPreviousSelectedIndex(selectedIndex);
+        setActiveSubmenu('opacity');
+        setSubmenuIndex(0);
+        setQuery('');
+      },
+      hasSubmenu: 'opacity',
+    });
+    cmds.push({
       id: 'manage-plugins',
       label: 'manage plugins',
       category: 'appearance',
@@ -824,7 +840,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     showProjectsMenu, showAgentsMenu, showAnalyticsMenu,
     showCommandsSettings, showMcpSettings, showHooksSettings,
     showPluginsSettings, showSkillsSettings, showDictation, memoryEnabled, memoryServerRunning,
-    rememberTabs, autoGenerateTitle, fontSize, lineHeight, monoFont, sansFont,
+    rememberTabs, autoGenerateTitle, fontSize, lineHeight, backgroundOpacity, monoFont, sansFont,
     currentThemeName, selectedIndex, // needed for setPreviousSelectedIndex in submenu actions
     createSession, deleteSession, forkSession, toggleModel,
     setWordWrap, setSoundOnComplete, setShowResultStats, setAutoCompactEnabled, setShowConfirmDialogs,
@@ -945,6 +961,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }));
   }, [lineHeight, originalLineHeight]);
 
+  // Opacity options (70-100, step 5)
+  const opacityOptions = useMemo(() => {
+    const checkValue = originalOpacity !== null ? originalOpacity : backgroundOpacity;
+    const opacities: number[] = [];
+    for (let o = 70; o <= 100; o += 5) opacities.push(o);
+    return opacities.map(o => ({
+      id: `opacity-${o}`,
+      label: `${o}%`,
+      data: o,
+      isSelected: checkValue === o,
+    }));
+  }, [backgroundOpacity, originalOpacity]);
+
   // Plugin items
   const pluginItems = useMemo<SubmenuItem[]>(() =>
     plugins.map(p => ({
@@ -966,12 +995,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         return fontSizeOptions;
       case 'lineHeight':
         return lineHeightOptions;
+      case 'opacity':
+        return opacityOptions;
       case 'plugins':
         return pluginItems;
       default:
         return [];
     }
-  }, [activeSubmenu, allThemes, fontSizeOptions, lineHeightOptions, pluginItems]);
+  }, [activeSubmenu, allThemes, fontSizeOptions, lineHeightOptions, opacityOptions, pluginItems]);
 
   // Filter submenu items by query
   const filteredSubmenuItems = useMemo(() => {
@@ -1029,7 +1060,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     if (originalLineHeight !== null) {
       setLineHeight(originalLineHeight);
     }
-  }, [originalColors, originalFontSize, originalLineHeight, setFontSize, setLineHeight]);
+    if (originalOpacity !== null) {
+      setBackgroundOpacity(originalOpacity);
+    }
+  }, [originalColors, originalFontSize, originalLineHeight, originalOpacity, setFontSize, setLineHeight, setBackgroundOpacity]);
 
   // Preview when submenu index changes
   useEffect(() => {
@@ -1046,9 +1080,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       case 'lineHeight':
         setLineHeight(item.data as number);
         break;
+      case 'opacity':
+        setBackgroundOpacity(item.data as number);
+        break;
       // plugins don't need preview
     }
-  }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight]);
+  }, [activeSubmenu, submenuIndex, filteredSubmenuItems, previewTheme, setFontSize, setLineHeight, setBackgroundOpacity]);
 
   // Reset selection when query changes - skip disabled items
   // Note: intentionally not including visualOrderCommands in deps to avoid infinite loop
@@ -1129,6 +1166,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setOriginalColors(null);
     setOriginalFontSize(null);
     setOriginalLineHeight(null);
+    setOriginalOpacity(null);
     setQuery('');
   }, [restoreOriginals, previousSelectedIndex]);
 
@@ -1150,6 +1188,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       case 'lineHeight':
         setActiveSubmenu(null);
         setOriginalLineHeight(null);
+        onClose();
+        break;
+      case 'opacity':
+        setActiveSubmenu(null);
+        setOriginalOpacity(null);
         onClose();
         break;
       case 'plugins':
@@ -1314,6 +1357,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     theme: 'select theme',
     fontSize: 'font size',
     lineHeight: 'line height',
+    opacity: 'opacity',
     plugins: 'plugins',
   };
   const submenuTitle = activeSubmenu ? submenuTitles[activeSubmenu] || '' : '';
@@ -1322,28 +1366,28 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     <div className="cp-overlay" onClick={() => { if (activeSubmenu) { exitSubmenu(); } else { onClose(); } }} onContextMenu={(e) => e.preventDefault()}>
       <div className="cp-modal" onClick={e => { e.stopPropagation(); inputRef.current?.focus(); }}>
         <div className="cp-search">
-          {activeSubmenu ? (
-            <button
-              className="cp-back-btn"
-              onClick={exitSubmenu}
-              title="back (esc)"
-            >
-              <IconChevronLeft size={14} />
-            </button>
-          ) : (
-            <IconSearch size={14} className="cp-search-icon" />
-          )}
-          <input
-            ref={inputRef}
-            type="text"
-            className="cp-input"
-            placeholder={activeSubmenu ? `search ${submenuTitle}...` : "search commands..."}
-            value={query}
-            onChange={e => { setQuery(e.target.value); setIgnoreMouseUntilMove(true); }}
-            onKeyDown={handleKeyDown}
-            spellCheck={false}
-            autoComplete="off"
-          />
+          <div className={`cp-input-wrapper ${activeSubmenu ? 'has-back' : ''}`}>
+            {activeSubmenu && (
+              <button
+                className="cp-back-btn"
+                onClick={exitSubmenu}
+                title="back (esc)"
+              >
+                <IconChevronLeft size={14} />
+              </button>
+            )}
+            <input
+              ref={inputRef}
+              type="text"
+              className="cp-input"
+              placeholder={activeSubmenu ? `search ${submenuTitle}...` : "search commands..."}
+              value={query}
+              onChange={e => { setQuery(e.target.value); setIgnoreMouseUntilMove(true); }}
+              onKeyDown={handleKeyDown}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
         </div>
         <div className="cp-list" ref={listRef} onMouseMove={handleMouseMove}>
           {activeSubmenu ? (

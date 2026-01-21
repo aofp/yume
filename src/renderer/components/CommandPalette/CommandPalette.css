@@ -56,10 +56,25 @@
   display: none;
 }
 
+/* Input wrapper for back button inside input */
+.cp-input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--accent-color);
+  border-radius: var(--radius-xs);
+  background: transparent;
+}
+
+.cp-input-wrapper:not(:focus-within) {
+  border-color: rgba(var(--accent-rgb), 0.8);
+}
+
 .cp-input {
   flex: 1;
   background: transparent;
-  border: 1px solid var(--accent-color);
+  border: none;
   border-radius: var(--radius-xs);
   outline: none;
   color: var(--foreground-color);
@@ -74,8 +89,11 @@
   font-style: italic;
 }
 
-.cp-input:not(:focus) {
-  border-color: rgba(var(--accent-rgb), 0.8);
+/* Back button inside input wrapper */
+.cp-input-wrapper .cp-back-btn {
+  margin-left: var(--space-1);
+  margin-right: 0;
+  padding: var(--space-0-5);
 }
 
 .cp-list {
@@ -210,12 +228,12 @@
   border: none;
   color: var(--fg-40);
   padding: var(--space-1);
-  margin-right: var(--space-1);
   cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .cp-back-btn:hover {
