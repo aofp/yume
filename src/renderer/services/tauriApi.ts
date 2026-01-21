@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Window } from '@tauri-apps/api/window';
+import { logger } from '../utils/structuredLogger';
 const appWindow = new Window('main');
 
 export interface TauriAPI {
