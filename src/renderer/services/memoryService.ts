@@ -10,7 +10,22 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import { useClaudeCodeStore } from '../stores/claudeCodeStore';
+
+// Lazy import to avoid circular dependency with claudeCodeStore
+// The store imports memoryService dynamically, so we must not import it statically here
+let _storeModule: typeof import('../stores/claudeCodeStore') | null = null;
+async function getStore() {
+  if (!_storeModule) {
+    _storeModule = await import('../stores/claudeCodeStore');
+  }
+  return _storeModule.useClaudeCodeStore;
+}
+
+// Synchronous getter for use in methods that can't be async
+// Falls back to null if not loaded yet
+function getStoreSync() {
+  return _storeModule?.useClaudeCodeStore ?? null;
+}
 
 // Types matching Rust structs
 export interface MemoryEntity {
@@ -107,6 +122,7 @@ class MemoryService {
       return this.startPromise;
     }
 
+    const useClaudeCodeStore = await getStore();
     const store = useClaudeCodeStore.getState();
     if (store.memoryServerRunning) {
       console.log('[MemoryService] Server already running');
@@ -124,7 +140,8 @@ class MemoryService {
 
         if (result.success) {
           console.log('[MemoryService] Memory server started successfully');
-          useClaudeCodeStore.getState().setMemoryServerRunning(true);
+          const store = await getStore();
+          store.getState().setMemoryServerRunning(true);
           return true;
         } else {
           console.error('[MemoryService] Failed to start:', result.error);
@@ -154,6 +171,7 @@ class MemoryService {
       return this.stopPromise;
     }
 
+    const useClaudeCodeStore = await getStore();
     const store = useClaudeCodeStore.getState();
     if (!store.memoryServerRunning) {
       console.log('[MemoryService] Server not running');
@@ -168,7 +186,8 @@ class MemoryService {
 
         if (result.success) {
           console.log('[MemoryService] Memory server stopped successfully');
-          useClaudeCodeStore.getState().setMemoryServerRunning(false);
+          const store = await getStore();
+          store.getState().setMemoryServerRunning(false);
           return true;
         } else {
           console.error('[MemoryService] Failed to stop:', result.error);
@@ -191,6 +210,7 @@ class MemoryService {
   async checkStatus(): Promise<boolean> {
     try {
       const result = await invoke<{ running: boolean }>('check_memory_server');
+      const useClaudeCodeStore = await getStore();
       useClaudeCodeStore.getState().setMemoryServerRunning(result.running);
       return result.running;
     } catch (error) {
@@ -204,6 +224,7 @@ class MemoryService {
    */
   async initialize(): Promise<void> {
     console.log('[MemoryService] Initializing...');
+    const useClaudeCodeStore = await getStore();
     const store = useClaudeCodeStore.getState();
     console.log('[MemoryService] Initial state:', { memoryEnabled: store.memoryEnabled, memoryServerRunning: store.memoryServerRunning });
 
@@ -253,6 +274,7 @@ class MemoryService {
    */
   async createEntities(entities: MemoryEntity[]): Promise<boolean> {
     console.log('[MemoryService] createEntities called with:', JSON.stringify(entities));
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot create entities');
       return false;
@@ -282,6 +304,7 @@ class MemoryService {
    * Create relations between entities
    */
   async createRelations(relations: MemoryRelation[]): Promise<boolean> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot create relations');
       return false;
@@ -304,6 +327,7 @@ class MemoryService {
    * Automatically adds timestamps to observations
    */
   async addObservations(entityName: string, observations: string[]): Promise<boolean> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot add observations');
       return false;
@@ -331,6 +355,7 @@ class MemoryService {
    * Search for nodes matching a query
    */
   async searchNodes(query: string): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot search');
       return { entities: [], relations: [] };
@@ -356,6 +381,7 @@ class MemoryService {
    * Read the entire knowledge graph
    */
   async readGraph(): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot read graph');
       return { entities: [], relations: [] };
@@ -381,6 +407,7 @@ class MemoryService {
    * Delete an entity and its relations
    */
   async deleteEntity(entityName: string): Promise<boolean> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       console.warn('[MemoryService] Server not running, cannot delete entity');
       return false;
@@ -457,6 +484,7 @@ class MemoryService {
    * Returns formatted string suitable for injection into prompts
    */
   async getRelevantMemories(context: string, maxResults: number = 5): Promise<string> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       return '';
     }
@@ -497,6 +525,7 @@ class MemoryService {
    * Call this after receiving a response to auto-extract useful patterns
    */
   async extractLearnings(projectPath: string, userMessage: string, assistantResponse: string): Promise<void> {
+    const useClaudeCodeStore = await getStore();
     if (!useClaudeCodeStore.getState().memoryServerRunning) {
       return;
     }

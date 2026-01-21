@@ -337,7 +337,7 @@
 .mac-window-controls-wrapper > .vscode-indicator {
   position: fixed;
   top: 5px;
-  left: 78px; /* after 3 traffic lights + gaps */
+  right: 62px; /* after 3 traffic lights + gaps */
 }
 
 /* Windows: position after traffic lights (right side) */
