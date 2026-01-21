@@ -101,7 +101,7 @@ async function validateLicenseWithServer(key: string): Promise<{
     }
 
     const responseText = await response.text();
-    logger.info('[LICENSE] Raw server response:', responseText);
+    logger.info('[LICENSE] Raw server response:', { responseText });
 
     let result;
     try {
@@ -111,7 +111,7 @@ async function validateLicenseWithServer(key: string): Promise<{
       return { valid: false, error: 'Invalid server response' };
     }
 
-    logger.info('[LICENSE] Parsed result:', result);
+    logger.info('[LICENSE] Parsed result:', { result });
     return {
       valid: result.valid === true,
       error: result.error,
@@ -175,7 +175,7 @@ export const useLicenseStore = create<LicenseStore>()(
 
         // validate with server
         const result = await validateLicenseWithServer(key);
-        logger.info('[LICENSE] Validation result:', JSON.stringify(result));
+        logger.info('[LICENSE] Validation result:', { result: JSON.stringify(result) });
 
         if (result.valid) {
           set({
