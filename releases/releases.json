@@ -1,8 +1,40 @@
 {
   "product": "yume",
-  "latest": "0.3.1",
+  "latest": "0.3.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.3.3",
+      "date": "2026-01-21",
+      "notes": "v0.3.3 release",
+      "releaseNotes": "v0.3.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.3.3_arm64.pkg",
+        "mac": "yume_0.3.3_x64.pkg",
+        "windows": "yume_0.3.3_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "a968722c806ae9edfcfc430a3f23c6de0b8907c007ae6608011a668e8a18fd29",
+        "mac": "d09d99ea19fd8609191ba728f8feea553df414dc4a43ebc12174436624f36b52",
+        "windows": "cfcd608a1a5d7a318cc024b99dbb8e38faf39d696a15d8dccc5993be5cfc333f"
+      }
+    },
+    {
+      "version": "0.3.2",
+      "date": "2026-01-21",
+      "notes": "v0.3.2 release",
+      "releaseNotes": "v0.3.2-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.3.2_arm64.pkg",
+        "mac": "yume_0.3.2_x64.pkg",
+        "windows": "yume_0.3.2_x64-setup.exe"
+      },
+      "checksums": {
+        "mac_arm": "f81d2d80d74b8e6596df62f81782f7d74305eefbefead18083a85f9cf959c1fe",
+        "mac": "e7a27e8ec26f118ae3045c7b53cc6a331ab789a4d6c1515ec151da773b1dce78",
+        "windows": "6ab3bfe803d0c719ee2ca3073352cc2deb31294eb00025ff00cf406292a54d33"
+      }
+    },
     {
       "version": "0.3.1",
       "date": "2026-01-21",
