@@ -2,8 +2,8 @@
 
 <div align="center">
   <img src="assets/yume.png" alt="yume logo" width="120">
-  <h3>claude code, evolved</h3>
-  <p>Professional native desktop interface for Claude Code with zero compromise</p>
+  <h3>claude code, unchained</h3>
+  <p>orchestration flow. memory system. background agents. 5 built-in agents. plugins & skills.</p>
   <p>
     <a href="https://aofp.github.io/yume">Download</a>
   </p>
@@ -35,31 +35,63 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 
 ## features
 
-### core foundation
-- **persistent rate limit visibility** - 5-hour and 7-day Claude metrics continuously displayed without manual polling
-- **zero visual artifacts** - native rendering eliminates the terminal flickering issue affecting 700+ users
-- **keyboard-centric workflow** - 30+ shortcuts covering all operations, full mouse-free navigation
-- **guaranteed low latency** - maintains sub-50ms response time regardless of session duration
-- **standalone reliability** - independent process isolation prevents IDE/terminal crash propagation
-- **intelligent auto-compaction** - threshold-based context management (60% warning, 65% automatic) with visual feedback
+### orchestration flow (unique to yume)
+- **automatic task decomposition** - understand → decompose → act → verify workflow
+- **complex task handling** - 3+ step tasks get architect planning, implementer execution, guardian verification
+- **trivial task passthrough** - simple tasks proceed directly without overhead
+- **no commands needed** - baked into every session via --append-system-prompt
 
-### agent & extension system
-- **5 specialized agents** - architect (planning), explorer (read-only analysis), implementer (focused edits), guardian (security review), specialist (domain-specific tasks)
-- **extensible plugin architecture** - first-class support for custom commands, agents, hooks, skills, and MCP servers
-- **context-aware skills** - automatic context injection triggered by file extensions, keyword patterns, or regex matches
-- **parallel agent execution** - 4 concurrent background agents with git branch isolation for conflict-free workflows
-- **persistent memory system** - knowledge graph maintains learned patterns, preferences, and project context across sessions
-- **native voice input** - integrated speech-to-text for hands-free coding and long-form explanations
-- **temporal checkpoints** - visual timeline navigation for code state with rewind, restore, and comparison capabilities
-- **comprehensive analytics** - detailed breakdown of usage by project, model, date, with token accounting and cost tracking
-- **crash-resilient sessions** - 5-minute automatic checkpoints with 24-hour recovery window
-- **enhanced @ mention system** - @r (recent files), @m (modified files), intelligent folder navigation
-- **multi-provider support** - claude, gemini, openai via unified yume-cli interface
+### agent system
+- **5 built-in agents** - synced to ~/.claude/agents/yume-*.md
+  - **architect** - plans, decomposes tasks, identifies risks, todowrite tracking
+  - **explorer** - read-only codebase search, glob/grep/read, never modifies
+  - **implementer** - focused code changes, edit/write, minimal diffs
+  - **guardian** - reviews for bugs, security, performance after changes
+  - **specialist** - tests, docs, devops, domain-specific tasks
+- **4 concurrent background agents** - async execution with git branch isolation (yume-async-{type}-{id})
+- **10-minute timeout** - per agent with output to ~/.yume/agent-output/
+- **merge conflict detection** - pre-merge checks before integrating agent work
 
-### customization & compatibility
-- **570+ visual themes** - 31 base themes × (189 accents + 189 backgrounds + 189 foregrounds)
-- **OLED optimization** - pure black (#000000) default theme for power efficiency and contrast
-- **100% CLI compatibility** - full support for subagents, MCP, hooks, skills, claude.md, @mentions, /commands
+### memory mcp system
+- **persistent knowledge graph** - entities, relations, observations in ~/.yume/memory.jsonl
+- **auto-learning** - extracts patterns from error/fix conversations, architecture decisions
+- **project context** - remembers per-project facts, coding patterns, solutions
+- **cross-session persistence** - knowledge preserved across all sessions
+
+### multi-provider support
+- **6 models, 3 providers** - via yume-cli shim
+  - claude sonnet 4.5, opus 4.5
+  - gemini 2.5 pro, flash
+  - gpt-5.2 codex, codex mini
+- **protocol normalization** - stream-json output for all providers
+- **same interface** - switch providers without changing workflow
+
+### core features
+- **persistent rate limit visibility** - 5h and 7d limits always visible, no /usage needed
+- **zero visual artifacts** - native rendering eliminates terminal flickering
+- **keyboard-first** - 32+ shortcuts, full mouse-free navigation
+- **<50ms response time** - instant UI regardless of session length
+- **standalone reliability** - independent process, immune to IDE crashes
+- **auto-compaction** - 60% auto, 65% force, 38% buffer like claude code
+
+### plugin & skills system
+- **complete extensibility** - commands, agents, hooks, skills, MCP servers
+- **skills auto-injection** - context based on file extensions, keywords, regex
+- **plugin directory** - install/enable/disable per component
+- **bundled yume plugin** - default commands and agents
+
+### additional features
+- **crash recovery** - 5-min snapshots, 24hr retention, complete session restore
+- **history rollback** - restore points per message, conflict detection, undo edits
+- **mid-stream context** - real-time token updates during streaming
+- **analytics dashboard** - usage by project/model/date, cost tracking, export
+- **voice dictation** - F5 to toggle, native speech-to-text
+- **@ mention system** - @r recent, @m modified, folder navigation
+
+### customization
+- **570+ visual themes** - 31 themes × (189 accents + backgrounds + foregrounds)
+- **OLED optimization** - pure black (#000000) default
+- **100% CLI compatibility** - subagents, MCP, hooks, skills, claude.md, /commands
 
 ---
 
@@ -67,8 +99,10 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 
 - **tauri 2.9** - rust backend, native speed
 - **react 19** - modern ui with virtualized rendering
-- **<50ms response time** - type and the ui responds instantly
-- **10k+ messages** - scroll through hours without lag
+- **sqlite + wal** - sessions, messages, analytics persistence
+- **socket.io** - real-time streaming with mid-stream context updates
+- **compiled binaries** - no node.js dependency for end users (@yao-pkg/pkg)
+- **3-process architecture** - tauri (rust) + react ui + node.js server
 - **zero telemetry** - your code stays on your machine
 
 ---
@@ -77,10 +111,14 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 
 | feature | cli | cursor | opcode | crystal | yume |
 |---------|-----|--------|--------|---------|------|
+| orchestration flow | ✗ | ✗ | ✗ | ✗ | ✓ auto |
+| memory system | ✗ | ✗ | ✗ | ✗ | ✓ graph |
+| background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
+| multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
 | 5 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
-| crash recovery | ✗ | ✗ | ✗ | ✗ | ✓ |
+| crash recovery | ✗ | ✗ | ✗ | ✗ | ✓ 24hr |
 | @ mentions | partial | ✗ | ✗ | ✗ | ✓ @r @m |
 | stream timers | ✗ | ✗ | ✗ | ✗ | ✓ live |
 | native app | terminal | electron | tauri | electron | ✓ tauri |
@@ -117,15 +155,22 @@ visit [aofp.github.io/yume](https://aofp.github.io/yume) for all download option
 
 ---
 
-## 5 built-in agents
+## agents
 
-yume includes 5 specialized agents that follow your selected model (opus/sonnet):
+yume includes 5 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurrent background agents:
 
-- **architect** - plans and decomposes. runs before complex tasks.
-- **explorer** - read-only search. understands without editing.
-- **implementer** - focused edits. minimal diffs.
-- **guardian** - reviews for bugs and security issues.
-- **specialist** - tests, docs, devops, data.
+**foreground agents** (follows selected model):
+- **architect** - plans, decomposes, todowrite. runs before complex tasks.
+- **explorer** - read-only glob/grep/read. understands codebase.
+- **implementer** - edit/write. focused changes, minimal diffs.
+- **guardian** - reviews for bugs, security, performance.
+- **specialist** - tests, docs, devops. domain-specific.
+
+**background agents** (4 concurrent, async):
+- git branch isolation: yume-async-{type}-{id}
+- 10-minute timeout per agent
+- output to ~/.yume/agent-output/
+- merge conflict detection
 
 ---
 

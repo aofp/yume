@@ -102,7 +102,7 @@ main.rs                 // Entry point, initializes Tauri
 claude/mod.rs           // Claude manager and process control
 claude_binary.rs        // Binary detection and validation
 claude_session.rs       // Session state management
-claude_spawner.rs       // Process spawning and IPC
+claude_spawner.rs       // Process spawning, IPC, --append-system-prompt injection
 agents.rs               // In-memory agent CRUD (5 yume core agents)
                         // Sync to ~/.claude/agents/ via commands/mod.rs
 
@@ -578,6 +578,12 @@ class PerformanceMonitor {
 - Sets pending flags for next-message compaction
 - Generates context manifests before compaction
 - Coordinates with Rust backend via Tauri commands
+
+**4. SystemPromptService** (`systemPromptService.ts`)
+- Manages orchestration flow prompt injection
+- Stores settings: enabled, mode (default/custom/none), customPrompt, agentsEnabled
+- Default prompt guides Claude through: understand → decompose → act → verify
+- Injected via `--append-system-prompt` flag on new sessions
 
 ### 4.3 Hook System
 

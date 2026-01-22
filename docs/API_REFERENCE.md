@@ -50,10 +50,13 @@ invoke('spawn_claude_session', {
     project_path: string,
     model: string,
     prompt: string,
-    resume_session_id?: string | null
+    resume_session_id?: string | null,
+    append_system_prompt?: string | null  // Orchestration flow prompt
   }
 }) => Promise<SpawnSessionResponse>
 ```
+
+**Note:** The `append_system_prompt` field is automatically populated by `systemPromptService.getActivePrompt()` for new sessions. It injects the orchestration flow that guides Claude through structured task handling (understand → decompose → act → verify).
 
 **Returns:**
 ```typescript
@@ -1900,6 +1903,57 @@ interface TauriAPI {
 
 // Helper function
 export const isTauri = (): boolean  // Returns true if running in Tauri
+```
+
+### SystemPromptService
+
+**Location:** `src/renderer/services/systemPromptService.ts`
+
+Manages orchestration flow prompt injection for new sessions.
+
+```typescript
+class SystemPromptService {
+  // Get current settings
+  getCurrent(): SystemPromptSettings
+
+  // Get the active prompt (based on mode)
+  getActivePrompt(): string | null
+
+  // Get default prompts
+  getDefault(withAgents?: boolean): string
+
+  // Save settings
+  save(settings: SystemPromptSettings): void
+  saveAndSync(settings: SystemPromptSettings, model?: string): Promise<void>
+
+  // Agent sync
+  syncAgentsToFilesystem(model?: string): Promise<void>
+  areAgentsSynced(): Promise<boolean>
+  cleanupAgentsOnExit(): Promise<void>
+
+  // Reset to defaults
+  reset(): void
+}
+
+interface SystemPromptSettings {
+  enabled: boolean;                        // Enable/disable prompt injection
+  mode: 'default' | 'custom' | 'none';    // Prompt mode
+  customPrompt: string;                    // User's custom prompt
+  agentsEnabled: boolean;                  // Include agent guidance
+}
+
+// Default orchestration prompt (when agentsEnabled=true):
+// "yume. lowercase, concise.
+// complex tasks (3+ steps): understand → decompose → act → verify.
+// use architect to plan, explorer to search, guardian after changes.
+// one step at a time, verify before next."
+```
+
+**Usage:**
+```typescript
+// Automatically called in tauriClaudeClient.ts for new sessions
+const prompt = systemPromptService.getActivePrompt();
+// Passed as append_system_prompt to spawn_claude_session
 ```
 
 ### CompactionService

@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.1.0
-**Last Updated:** January 18, 2026
+**Version:** 0.3.3
+**Last Updated:** January 22, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -27,6 +27,7 @@
 19. [VSCode Extension Integration](#19-vscode-extension-integration)
 20. [Memory MCP System](#20-memory-mcp-system)
 21. [Background Agents](#21-background-agents)
+22. [Orchestration Flow](#22-orchestration-flow)
 
 ## 1. Core Features
 
@@ -1579,11 +1580,114 @@ Supports flags for background execution:
 - `--output-file` - Output file path
 - `--git-branch` - Create isolated git branch
 
+## 22. Orchestration Flow
+
+### 22.1 Overview
+
+**Description**: GSD-inspired automatic task orchestration that guides Claude through structured workflows for complex tasks. Baked into default behavior - no user intervention needed.
+
+**Location**: `src/renderer/services/systemPromptService.ts`, `src-tauri/src/claude_spawner.rs`
+
+### 22.2 How It Works
+
+Yume automatically appends an orchestration prompt to new sessions via the `--append-system-prompt` CLI flag. This teaches Claude to:
+
+1. **Assess** - Determine if task is trivial (1-2 steps) or complex (3+ steps)
+2. **Understand** - Gather context before planning (use explorer agent)
+3. **Decompose** - Break into atomic steps (use architect agent)
+4. **Act** - Execute one step at a time, verify each
+5. **Verify** - Review work after significant changes (use guardian agent)
+
+### 22.3 Default Prompt
+
+```
+yume. lowercase, concise.
+
+complex tasks (3+ steps): understand → decompose → act → verify.
+use architect to plan, explorer to search, guardian after changes.
+one step at a time, verify before next.
+```
+
+### 22.4 Agent Integration
+
+The orchestration flow leverages yume's 5 core agents:
+
+| Agent | Role in Flow |
+|-------|--------------|
+| `architect` | Decompose complex tasks, identify dependencies/risks |
+| `explorer` | Search codebase, gather context before planning |
+| `implementer` | Make focused code changes |
+| `guardian` | Review for bugs, security, performance after changes |
+| `specialist` | Domain-specific tasks (tests, docs, devops) |
+
+### 22.5 Implementation
+
+**Rust Backend** (`claude_spawner.rs`):
+```rust
+pub struct SpawnOptions {
+    // ...
+    pub append_system_prompt: Option<String>,
+}
+
+// In build_claude_command:
+if let Some(system_prompt) = &options.append_system_prompt {
+    cmd.arg("--append-system-prompt").arg(system_prompt);
+}
+```
+
+**Frontend** (`tauriClaudeClient.ts`):
+```typescript
+// On new session creation (not resume)
+const appendSystemPrompt = !options?.claudeSessionId
+  ? systemPromptService.getActivePrompt()
+  : null;
+
+const request = {
+  // ...
+  append_system_prompt: appendSystemPrompt
+};
+```
+
+### 22.6 Configuration
+
+**Settings** (Settings → General → System Prompt):
+
+| Setting | Description |
+|---------|-------------|
+| `enabled` | Enable/disable system prompt injection |
+| `mode` | `'default'` (orchestration), `'custom'`, or `'none'` |
+| `customPrompt` | User's custom prompt (when mode is 'custom') |
+| `agentsEnabled` | Include agent guidance in prompt |
+
+**Storage**: `localStorage` key `yume_system_prompt_settings`
+
+### 22.7 Customization
+
+Users can override the default orchestration:
+
+1. **Custom prompt**: Settings → General → System Prompt → Custom
+2. **Disable entirely**: Settings → General → System Prompt → None
+3. **Disable agents**: Toggle "Include agent guidance" off
+
+When agents are disabled, falls back to simpler prompt:
+```
+yume. lowercase, concise. read before edit, small changes, relative paths.
+```
+
+### 22.8 Key Benefits
+
+- **Automatic** - No special commands to invoke, baked into every session
+- **Context-aware** - Only applies structured flow to complex tasks
+- **Agent-leveraged** - Uses existing agents naturally in the workflow
+- **Customizable** - Users can override or disable entirely
+- **Non-intrusive** - Trivial tasks proceed directly without overhead
+
 ## Conclusion
 
 Yume offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
 
 1. **Unique Features**:
+   - **Orchestration flow** - GSD-inspired automatic task decomposition (understand → decompose → act → verify)
    - **Memory MCP system** - persistent knowledge graph for patterns, error fixes, context
    - **Background agents** - async execution with git branch isolation (4 concurrent)
    - **License system** with trial/pro tiers ($21 one-time)

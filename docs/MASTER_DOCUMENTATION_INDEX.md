@@ -1,9 +1,9 @@
 # Yume Master Documentation Index
 
 **Created:** January 3, 2025
-**Updated:** January 18, 2026
-**Total Documentation:** 8 core guides + expansion plan suite
-**Coverage:** Core codebase + competitive analysis + multi-provider expansion documented
+**Updated:** January 20, 2026
+**Total Documentation:** 8 core guides + expansion plan suite + competitive research
+**Coverage:** Core codebase + competitive analysis + multi-provider expansion + background agents + memory system documented
 
 ---
 
@@ -67,11 +67,11 @@
 ---
 
 ### 3. [API_REFERENCE.md](API_REFERENCE.md)
-**Size:** ~7,500 words  
+**Size:** ~7,500 words
 **Depth:** Complete API documentation
 
 #### API Categories:
-1. **Tauri Commands** (45+ commands)
+1. **Tauri Commands** (152 commands)
    - Session management
    - File operations
    - Claude binary detection
@@ -292,7 +292,7 @@
 ## 🔮 Future Expansion Plans (Yume 2.0)
 
 ### 9. [Expansion Plan](expansion-plan/ARCHITECTURE_OVERVIEW.md)
-**Status:** COMPLETE (macOS), Windows/Linux Pending
+**Status:** ~95% COMPLETE (macOS ready), Windows/Linux binaries pending
 **Goal:** Multi-provider support via yume-cli shim (Claude, Gemini, OpenAI/Codex)
 
 #### Key Documents:
@@ -438,10 +438,10 @@ if usage >= 0.65 {
 **The Challenge**: External servers add complexity and require Node.js
 **Our Solution**: Compile server to platform-specific binaries using @yao-pkg/pkg
 
-Server binaries are stored in `src-tauri/resources/` for each platform:
-- `yume-server-macos-arm64` / `yume-server-macos-x64` for macOS
-- `yume-server-windows-x64.exe` for Windows
-- `yume-server-linux-x64` for Linux
+Server binaries are stored in `src-tauri/resources/` for each platform using unified binary architecture:
+- `yume-bin-macos-arm64` / `yume-bin-macos-x64` for macOS (combines server + yume-cli)
+- `yume-cli-macos-arm64` / `yume-cli-macos-x64` shell wrappers that invoke `yume-bin-* cli`
+- Windows/Linux binaries: Build scripts exist but binaries not yet compiled
 
 **Benefits**:
 - No Node.js required for end users

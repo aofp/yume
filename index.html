@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>yume - claude code, unchained</title>
-    <meta name="description" content="native gui for claude code. zero flickering. zero lag. keyboard-first. 30+ shortcuts. full customization. 5 agents.">
+    <meta name="description" content="native gui for claude code. orchestration flow. 5 agents. memory system. background agents. plugins & skills. zero flickering. 570+ themes.">
     <link rel="icon" type="image/png" href="assets/yume.png">
     <style>
         @font-face {
@@ -633,11 +633,10 @@
         <div class="container">
             <a href="/" class="logo"><img src="assets/yume.png" alt="yume" style="height: 32px; vertical-align: middle;"> yume</a>
             <nav class="nav-links">
-                <a href="#screenshots">screenshots</a>
+                <a href="#orchestration">orchestration</a>
                 <a href="#features">features</a>
-                <a href="#tech">tech</a>
                 <a href="#agents">agents</a>
-                <a href="#themes">themes</a>
+                <a href="#tech">tech</a>
                 <a href="docs/release/viewer.html">docs</a>
                 <a href="#releases">releases</a>
             </nav>
@@ -649,7 +648,7 @@
         <div class="container">
             <img src="assets/yume.png" alt="yume" class="hero-logo">
             <h1>claude code,<br><span>unchained</span></h1>
-            <p class="hero-sub">the fastest, most intuitive way to use claude code.<br>limits always visible. keyboard-first. native speed.</p>
+            <p class="hero-sub">orchestration flow. memory system. background agents. 5 built-in agents. plugins & skills.<br>the most powerful way to use claude code.</p>
             <div class="hero-ctas">
                 <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
                 <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
@@ -662,24 +661,28 @@
 
     <section class="stats">
         <div class="stat">
-            <div class="stat-value">always</div>
-            <div class="stat-label">limits visible</div>
+            <div class="stat-value">orchestration</div>
+            <div class="stat-label">auto task flow</div>
         </div>
         <div class="stat">
             <div class="stat-value">5</div>
             <div class="stat-label">built-in agents</div>
         </div>
         <div class="stat">
+            <div class="stat-value">memory</div>
+            <div class="stat-label">knowledge graph</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">4</div>
+            <div class="stat-label">background agents</div>
+        </div>
+        <div class="stat">
             <div class="stat-value">plugins</div>
-            <div class="stat-label">extensible</div>
+            <div class="stat-label">& skills</div>
         </div>
         <div class="stat">
-            <div class="stat-value">32+</div>
-            <div class="stat-label">shortcuts</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value">zero</div>
-            <div class="stat-label">telemetry</div>
+            <div class="stat-value">570+</div>
+            <div class="stat-label">themes</div>
         </div>
     </section>
 
@@ -711,7 +714,39 @@
         </div>
     </section>
 
-    <section class="section" id="features">
+    <section class="section" id="orchestration">
+        <div class="container">
+            <div class="section-header">
+                <h2>orchestration flow</h2>
+                <p>automatic task decomposition. claude works smarter, not harder.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card" style="grid-column: span 2;">
+                    <h3>understand → decompose → act → verify</h3>
+                    <p>yume automatically guides claude through structured workflows. complex tasks (3+ steps) get broken down with architect, executed with implementer, verified with guardian. trivial tasks proceed directly. no commands to learn - it just works.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>architect agent</h3>
+                    <p>plans before executing. breaks complex tasks into atomic steps. identifies dependencies and risks. uses todowrite for tracking.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>explorer agent</h3>
+                    <p>read-only codebase search. understands structure before changes. uses glob, grep, read. never modifies files.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>implementer agent</h3>
+                    <p>focused code changes. small, precise edits. minimal diffs. uses edit and write tools. one thing at a time.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>guardian agent</h3>
+                    <p>reviews after significant changes. catches bugs, security issues, performance problems. automatic quality gate.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="features" style="background: #050505;">
         <div class="container">
             <div class="section-header">
                 <h2>why switch from cli?</h2>
@@ -792,12 +827,12 @@
                     <p>@r for recent files. @m for modified files. folder navigation. fast file references.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>memory system</h3>
-                    <p>persistent knowledge graph. remembers patterns, fixes, context across sessions. your codebase wisdom, preserved.</p>
+                    <h3>memory mcp system</h3>
+                    <p>persistent knowledge graph stored in ~/.yume/memory.jsonl. entities, relations, observations. auto-learns patterns from conversations. remember error fixes, architecture decisions, project context. persists across all sessions.</p>
                 </div>
                 <div class="feature-card">
                     <h3>background agents</h3>
-                    <p>4 concurrent async agents. git branch isolation per task. parallel workflows without blocking your main session.</p>
+                    <p>4 concurrent async agents with git branch isolation. each agent runs in yume-async-{type}-{id} branch. 10-minute timeout. merge conflicts detection. parallel workflows without blocking main session. output in ~/.yume/agent-output/.</p>
                 </div>
                 <div class="feature-card">
                     <h3>multi-provider</h3>
@@ -827,6 +862,22 @@
                     <h3>projects modal</h3>
                     <p>comprehensive project and session browser. infinite scroll. search filtering. git changes count. session title persistence.</p>
                 </div>
+                <div class="feature-card">
+                    <h3>multi-provider support</h3>
+                    <p>claude sonnet/opus, gemini 2.5 pro/flash, gpt-5.2 codex. switch via yume-cli shim. same interface, any llm provider. protocol normalization handles the rest.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>crash recovery</h3>
+                    <p>5-minute automatic snapshots. 24-hour retention. window position restoration. unsaved work recovery. never lose a session again.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>history rollback</h3>
+                    <p>restore points track file changes per message. visual rollback panel. conflict detection with mtime checking. undo bad edits, try different approaches.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>mid-stream context</h3>
+                    <p>real-time token updates during streaming. see accurate context percentage as claude responds. auto-compact can trigger mid-stream if needed.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -834,11 +885,16 @@
     <section class="section" id="tech" style="background: #050505;">
         <div class="container">
             <div class="section-header">
-                <h2>built for speed</h2>
-                <p>native tauri + rust app. optimized for long coding sessions.</p>
+                <h2>built for speed & power</h2>
+                <p>native tauri + rust. multi-provider. compiled binaries. zero dependencies.</p>
             </div>
 
             <div class="tech-grid">
+                <div class="tech-card">
+                    <div class="tech-value">6 models</div>
+                    <div class="tech-label">3 providers</div>
+                    <div class="tech-detail">claude sonnet/opus, gemini 2.5 pro/flash, gpt-5.2 codex. via yume-cli shim.</div>
+                </div>
                 <div class="tech-card">
                     <div class="tech-value">&lt;50ms</div>
                     <div class="tech-label">response time</div>
@@ -850,24 +906,19 @@
                     <div class="tech-detail">virtualized rendering. scroll through hours of conversation without lag.</div>
                 </div>
                 <div class="tech-card">
-                    <div class="tech-value">auto</div>
-                    <div class="tech-label">compaction</div>
-                    <div class="tech-detail">smart context management at 60%/65%. never hit limits unexpectedly.</div>
+                    <div class="tech-value">60%/65%</div>
+                    <div class="tech-label">auto-compaction</div>
+                    <div class="tech-detail">smart context management with 38% buffer like claude code. never hit limits.</div>
                 </div>
                 <div class="tech-card">
                     <div class="tech-value">24hr</div>
                     <div class="tech-label">crash recovery</div>
-                    <div class="tech-detail">auto-saves every 5 min. recover sessions even after crashes.</div>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-value">real-time</div>
-                    <div class="tech-label">streaming</div>
-                    <div class="tech-detail">see claude's response as it's generated. no waiting for complete replies.</div>
+                    <div class="tech-detail">5-min snapshots. window position, unsaved work. complete session restore.</div>
                 </div>
                 <div class="tech-card">
                     <div class="tech-value">zero</div>
                     <div class="tech-label">telemetry</div>
-                    <div class="tech-detail">your code stays on your machine. we don't track anything.</div>
+                    <div class="tech-detail">your code stays on your machine. no tracking. no analytics. ever.</div>
                 </div>
             </div>
         </div>
@@ -876,31 +927,37 @@
     <section class="section" id="agents">
         <div class="container">
             <div class="section-header">
-                <h2>5 built-in agents</h2>
-                <p>task-specific agents, ready to use. follows your selected model.</p>
+                <h2>5 built-in agents + 4 background</h2>
+                <p>orchestration-ready agents. sync in ~/.claude/agents/yume-*.md. follows selected model.</p>
             </div>
 
             <div class="agents-grid">
                 <div class="agent-card">
                     <div class="agent-name">architect</div>
-                    <div class="agent-desc">plans and decomposes. runs before complex tasks.</div>
+                    <div class="agent-desc">plans, decomposes, identifies risks. todowrite tracking.</div>
                 </div>
                 <div class="agent-card">
                     <div class="agent-name">explorer</div>
-                    <div class="agent-desc">read-only search. understands without editing.</div>
+                    <div class="agent-desc">read-only. glob, grep, read. understands codebase.</div>
                 </div>
                 <div class="agent-card">
                     <div class="agent-name">implementer</div>
-                    <div class="agent-desc">focused edits. minimal diffs.</div>
+                    <div class="agent-desc">edit, write. focused changes. minimal diffs.</div>
                 </div>
                 <div class="agent-card">
                     <div class="agent-name">guardian</div>
-                    <div class="agent-desc">reviews for bugs and security issues.</div>
+                    <div class="agent-desc">reviews for bugs, security, performance issues.</div>
                 </div>
                 <div class="agent-card">
                     <div class="agent-name">specialist</div>
-                    <div class="agent-desc">tests, docs, devops, data.</div>
+                    <div class="agent-desc">tests, docs, devops. domain-specific tasks.</div>
                 </div>
+            </div>
+
+            <div style="margin-top: 32px; text-align: center;">
+                <p style="color: var(--text-dim); font-size: 14px;">
+                    + 4 concurrent background agents with git branch isolation. parallel async workflows.
+                </p>
             </div>
         </div>
     </section>
@@ -989,6 +1046,30 @@
                     <div>opcode</div>
                     <div>crystal</div>
                     <div style="color: var(--accent);">yume</div>
+                </div>
+                <div class="comparison-row">
+                    <div>orchestration flow</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> auto</div>
+                </div>
+                <div class="comparison-row">
+                    <div>memory system</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> graph</div>
+                </div>
+                <div class="comparison-row">
+                    <div>background agents</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> 4 async</div>
                 </div>
                 <div class="comparison-row">
                     <div>limits always visible</div>
