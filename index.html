@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yume - claude code, unchained</title>
+    <meta name="description" content="native gui for claude code. zero flickering. zero lag. keyboard-first. 30+ shortcuts. full customization. 5 agents.">
+    <link rel="icon" type="image/png" href="assets/yume.png">
+    <style>
+        @font-face {
+            font-family: 'Agave';
+            src: url('fonts/Agave-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Agave';
+            src: url('fonts/Agave-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --accent: #bb99ff;
+            --accent-rgb: 187, 153, 255;
+            --bg: #000;
+            --card: #0a0a0a;
+            --border: #1a1a1a;
+            --text: #fff;
+            --text-dim: #888;
+            --text-dimmer: #555;
+            --green: #4a4;
+            --red: #a44;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Agave', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .logo:hover {
+            opacity: 0.85;
+            transform: translateY(-1px);
+        }
+        .nav-links {
+            display: flex;
+            gap: 32px;
+        }
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+        .nav-links a:hover { color: var(--accent); }
+        .btn {
+            background: var(--accent);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            border: 1px solid var(--accent);
+        }
+        .btn:hover {
+            background: #d4bbff;
+            border-color: #d4bbff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(187, 153, 255, 0.3);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover {
+            background: rgba(var(--accent-rgb), 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* hero */
+        .hero {
+            padding: 100px 0 80px;
+            text-align: center;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(187, 153, 255, 0.1);
+            border: 1px solid rgba(187, 153, 255, 0.3);
+            color: var(--accent);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+        .hero-badge:hover {
+            background: rgba(187, 153, 255, 0.15);
+            border-color: rgba(187, 153, 255, 0.5);
+        }
+        .hero-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 32px;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 12px rgba(var(--accent-rgb), 0.25));
+            transition: filter 0.3s ease;
+        }
+        .hero-logo:hover {
+            filter: drop-shadow(0 0 24px rgba(var(--accent-rgb), 0.5));
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+        }
+        .hero h1 span { color: var(--accent); }
+        .hero-sub {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+        .hero-ctas {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .hero-ctas .btn { padding: 14px 32px; font-size: 16px; }
+        .download-btn { display: none; }
+        .download-btn.active { display: inline-block; }
+        .other-platforms a { color: var(--text-dim); text-decoration: underline; transition: color 0.2s ease; }
+        .other-platforms a:hover { color: var(--accent); }
+
+        /* stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            padding: 40px 0;
+            flex-wrap: wrap;
+        }
+        .stat {
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+        .stat:hover {
+            transform: translateY(-2px);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            transition: color 0.2s ease;
+        }
+        .stat:hover .stat-value {
+            text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.4);
+        }
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* features grid */
+        .section {
+            padding: 80px 0;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .section-header h2 {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+        .section-header p {
+            color: var(--text-dim);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            transition: all 0.2s ease;
+        }
+        .feature-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            background: rgba(var(--accent-rgb), 0.03);
+            transform: translateY(-2px);
+        }
+        .feature-card:hover h3 {
+            color: var(--accent);
+        }
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            transition: color 0.2s ease;
+        }
+        .feature-card p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        /* tech */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .tech-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .tech-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .tech-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            background: rgba(var(--accent-rgb), 0.03);
+            transform: translateY(-2px);
+        }
+        .tech-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'Agave', monospace;
+            margin-bottom: 4px;
+        }
+        .tech-label {
+            font-size: 12px;
+            color: var(--text-dimmer);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .tech-detail {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        /* agents */
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+        @media (max-width: 900px) {
+            .agents-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .agents-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .agent-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .agent-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            background: rgba(var(--accent-rgb), 0.05);
+            transform: translateY(-2px);
+        }
+        .agent-name {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .agent-desc {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        /* themes showcase */
+        .themes-showcase {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .themes-showcase:hover {
+            border-color: rgba(var(--accent-rgb), 0.4);
+            box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.1);
+        }
+
+        /* keyboard shortcuts */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .shortcut-item:hover {
+            border-color: rgba(var(--accent-rgb), 0.4);
+            background: rgba(var(--accent-rgb), 0.03);
+        }
+        .shortcut-item:hover .key {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .shortcut-action { color: var(--text-dim); font-size: 14px; }
+        .shortcut-keys {
+            display: flex;
+            gap: 4px;
+        }
+        .key {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Agave', monospace;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        /* comparison */
+        .comparison {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .comparison-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+            background: #0f0f0f;
+            border-bottom: 1px solid var(--border);
+        }
+        .comparison-header div {
+            padding: 16px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .comparison-header div:first-child { text-align: left; padding-left: 16px; }
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+        .comparison-row:last-child { border-bottom: none; }
+        .comparison-row {
+            transition: background 0.15s ease;
+        }
+        .comparison-row:hover {
+            background: rgba(var(--accent-rgb), 0.03);
+        }
+        .comparison-row div {
+            padding: 12px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .comparison-row div:first-child { justify-content: flex-start; color: var(--text-dim); padding-left: 16px; }
+        .check { color: var(--green); font-size: 18px; }
+        .cross { color: var(--red); font-size: 18px; }
+        .comparison-row div:last-child,
+        .comparison-header div:last-child {
+            background: rgba(187, 153, 255, 0.05);
+        }
+        .comparison-simple .comparison-header,
+        .comparison-simple .comparison-row {
+            grid-template-columns: 2fr 1fr 1fr;
+        }
+
+        /* releases */
+        .releases {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .release {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .release:last-child { border-bottom: none; }
+        .release-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .release-version {
+            font-weight: 600;
+            color: var(--accent);
+        }
+        .release-date {
+            font-size: 0.8rem;
+            color: var(--text-dimmer);
+        }
+        .release-notes {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+        .release-downloads {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .release-downloads a {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            padding: 6px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .release-downloads a:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* screenshots */
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .screenshots-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .screenshot-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .screenshot-card:hover {
+            border-color: rgba(var(--accent-rgb), 0.5);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .screenshot-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-bottom: 1px solid var(--border);
+        }
+        .screenshot-label {
+            padding: 16px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        /* pricing */
+        .pricing-section {
+            background: linear-gradient(180deg, var(--bg) 0%, #050510 100%);
+            padding: 100px 0;
+        }
+        .pricing-card {
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--card);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            padding: 48px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .pricing-card:hover {
+            box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.15);
+            transform: translateY(-2px);
+        }
+        .pricing-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .pricing-title {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        .pricing-price {
+            font-size: 4rem;
+            font-weight: 700;
+            margin: 24px 0 8px;
+        }
+        .pricing-note {
+            color: var(--text-dim);
+            margin-bottom: 32px;
+        }
+        .pricing-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 32px;
+        }
+        .pricing-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .pricing-features li:last-child { border-bottom: none; }
+        .pricing-features .check { font-size: 14px; }
+
+        /* footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 0;
+            text-align: center;
+        }
+        footer p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+        footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        footer a:hover { color: var(--accent); }
+
+        /* responsive */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .stats { gap: 24px; }
+            .comparison-header, .comparison-row {
+                grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+                font-size: 0.75rem;
+            }
+            .comparison-header div, .comparison-row div {
+                padding: 10px 4px;
+            }
+            .pricing-card { padding: 32px 24px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo"><img src="assets/yume.png" alt="yume" style="height: 32px; vertical-align: middle;"> yume</a>
+            <nav class="nav-links">
+                <a href="#screenshots">screenshots</a>
+                <a href="#features">features</a>
+                <a href="#tech">tech</a>
+                <a href="#agents">agents</a>
+                <a href="#themes">themes</a>
+                <a href="docs/release/viewer.html">docs</a>
+                <a href="#releases">releases</a>
+            </nav>
+            <a href="#releases" class="btn">download</a>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <img src="assets/yume.png" alt="yume" class="hero-logo">
+            <h1>claude code,<br><span>unchained</span></h1>
+            <p class="hero-sub">the fastest, most intuitive way to use claude code.<br>limits always visible. keyboard-first. native speed.</p>
+            <div class="hero-ctas">
+                <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
+                <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
+                <a href="#" class="btn download-btn" id="dl-win" data-os="win">download for windows</a>
+                <a href="#" class="btn download-btn" id="dl-linux" data-os="linux">download for linux</a>
+            </div>
+            <p class="other-platforms" id="other-platforms" style="margin-top: 16px; font-size: 13px; color: var(--text-dimmer);"></p>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-value">always</div>
+            <div class="stat-label">limits visible</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">5</div>
+            <div class="stat-label">built-in agents</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">plugins</div>
+            <div class="stat-label">extensible</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">32+</div>
+            <div class="stat-label">shortcuts</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">zero</div>
+            <div class="stat-label">telemetry</div>
+        </div>
+    </section>
+
+    <section class="section" id="screenshots" style="background: #050505;">
+        <div class="container">
+            <div class="section-header">
+                <h2>see it in action</h2>
+                <p>clean interface. powerful features. built for productivity.</p>
+            </div>
+
+            <div class="screenshots-grid">
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/main-interface.png" alt="yume main interface" loading="lazy">
+                    <div class="screenshot-label">main interface</div>
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/analytics.png" alt="yume analytics dashboard" loading="lazy">
+                    <div class="screenshot-label">analytics</div>
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/settings.png" alt="yume settings panel" loading="lazy">
+                    <div class="screenshot-label">settings</div>
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/screenshots/themes.png" alt="yume theme selector" loading="lazy">
+                    <div class="screenshot-label">themes</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>why switch from cli?</h2>
+                <p>claude code is amazing. the terminal experience isn't.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>limits always visible</h3>
+                    <p>5h and 7-day limits shown permanently in the ui. no commands to check. no surprises. always know exactly where you stand.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>no more flickering</h3>
+                    <p>cli has 700+ upvotes on the flickering issue. we eliminate it completely with native rendering. zero terminal artifacts.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>keyboard-first design</h3>
+                    <p>30+ shortcuts. cmd+t tab, cmd+o model, cmd+k ultrathink, cmd+l clear, cmd+m compact. never touch the mouse.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>no more input lag</h3>
+                    <p>cli slows to 10+ seconds in long sessions. yume stays under 50ms. always. your thoughts don't wait for the ui.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>no more vs code crashes</h3>
+                    <p>cli in ide terminals crashes after 10-20 minutes. yume is a standalone native app. crash-proof by design.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>smart auto-compaction</h3>
+                    <p>auto-compacts at 60%, forces at 65%. disable or adjust in settings. visual indicator shows when it triggers.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>visual checkpoints</h3>
+                    <p>timeline navigator for code state. rewind, restore, compare. see every change claude made.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>fully customizable</h3>
+                    <p>oled black default. 31 themes. 189 accent colors. 189 backgrounds. 189 foregrounds. 570+ combinations.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>full cli compatibility</h3>
+                    <p>subagents, mcp, hooks, skills, claude.md, @mentions, /commands. everything works. we just fix the pain points.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>plugin system</h3>
+                    <p>install custom commands, agents, hooks, skills, mcp servers. extend yume without touching code. complete extensibility.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>skills system</h3>
+                    <p>auto-inject context based on triggers. file extensions, keywords, regex patterns. your knowledge, automatically applied.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>yume guard</h3>
+                    <p>built-in security hook. blocks dangerous commands before they run. rm -rf protection. configurable rules.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>voice dictation</h3>
+                    <p>speak instead of type. native speech-to-text. hands-free coding when you need it.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>message rollback</h3>
+                    <p>history panel with undo. roll back to any previous message. branching conversations.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>claude.md editor</h3>
+                    <p>edit project instructions in-app. live preview. no switching to text editor.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>analytics dashboard</h3>
+                    <p>usage by project, model, date. token breakdown. cost tracking. know exactly what you spend.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>stream timers</h3>
+                    <p>live duration for thinking, bash, compacting. see exactly how long each step takes.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>@ mention system</h3>
+                    <p>@r for recent files. @m for modified files. folder navigation. fast file references.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>memory system</h3>
+                    <p>persistent knowledge graph. remembers patterns, fixes, context across sessions. your codebase wisdom, preserved.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>background agents</h3>
+                    <p>4 concurrent async agents. git branch isolation per task. parallel workflows without blocking your main session.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>multi-provider</h3>
+                    <p>claude, gemini, openai. switch models via yume-cli. use any llm provider with the same interface.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>command palette</h3>
+                    <p>vs code-style command palette. 56 commands across 10 categories. fuzzy search. keyboard navigation. cmd+p.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>hooks system</h3>
+                    <p>9 event types for intercepting claude behavior. pre-tool-use, post-tool-use, context warnings. customize workflow.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>mcp support</h3>
+                    <p>model context protocol server integration. extend claude with external tools and data sources.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>performance monitoring</h3>
+                    <p>real-time fps, memory, render time tracking. metrics export. debug and optimize your workflow.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>session stats modal</h3>
+                    <p>detailed session statistics. context usage visualization. token breakdown. cost tracking. cmd+. to open.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>projects modal</h3>
+                    <p>comprehensive project and session browser. infinite scroll. search filtering. git changes count. session title persistence.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="tech" style="background: #050505;">
+        <div class="container">
+            <div class="section-header">
+                <h2>built for speed</h2>
+                <p>native tauri + rust app. optimized for long coding sessions.</p>
+            </div>
+
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <div class="tech-value">&lt;50ms</div>
+                    <div class="tech-label">response time</div>
+                    <div class="tech-detail">type and the ui responds instantly. cli slows to 10+ seconds in long sessions.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">10k+</div>
+                    <div class="tech-label">messages</div>
+                    <div class="tech-detail">virtualized rendering. scroll through hours of conversation without lag.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">auto</div>
+                    <div class="tech-label">compaction</div>
+                    <div class="tech-detail">smart context management at 60%/65%. never hit limits unexpectedly.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">24hr</div>
+                    <div class="tech-label">crash recovery</div>
+                    <div class="tech-detail">auto-saves every 5 min. recover sessions even after crashes.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">real-time</div>
+                    <div class="tech-label">streaming</div>
+                    <div class="tech-detail">see claude's response as it's generated. no waiting for complete replies.</div>
+                </div>
+                <div class="tech-card">
+                    <div class="tech-value">zero</div>
+                    <div class="tech-label">telemetry</div>
+                    <div class="tech-detail">your code stays on your machine. we don't track anything.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="agents">
+        <div class="container">
+            <div class="section-header">
+                <h2>5 built-in agents</h2>
+                <p>task-specific agents, ready to use. follows your selected model.</p>
+            </div>
+
+            <div class="agents-grid">
+                <div class="agent-card">
+                    <div class="agent-name">architect</div>
+                    <div class="agent-desc">plans and decomposes. runs before complex tasks.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">explorer</div>
+                    <div class="agent-desc">read-only search. understands without editing.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">implementer</div>
+                    <div class="agent-desc">focused edits. minimal diffs.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">guardian</div>
+                    <div class="agent-desc">reviews for bugs and security issues.</div>
+                </div>
+                <div class="agent-card">
+                    <div class="agent-name">specialist</div>
+                    <div class="agent-desc">tests, docs, devops, data.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="themes">
+        <div class="container">
+            <div class="themes-showcase">
+                <h2>570+ color combinations. oled-first.</h2>
+                <p style="color: var(--text-dim); margin-top: 12px;">pure black default for oled displays. 31 themes. 189 accent colors, 189 backgrounds, 189 foregrounds. fully yours.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" style="background: #050505;">
+        <div class="container">
+            <div class="section-header">
+                <h2>30+ keyboard shortcuts</h2>
+                <p>keyboard-first means never touching the mouse. every action has a shortcut.</p>
+            </div>
+
+            <div class="shortcuts-grid">
+                <div class="shortcut-item">
+                    <span class="shortcut-action">new tab</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">T</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">close tab</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">W</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">toggle model</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">O</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">ultrathink</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">K</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">settings</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">,</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">search messages</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">F</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">files panel</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">E</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">git panel</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">G</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">analytics</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">Y</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">agents</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">N</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">clear context</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">L</span></div>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-action">compact context</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">M</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>yume vs the competition</h2>
+                <p>same claude power. better everything else.</p>
+            </div>
+
+            <div class="comparison">
+                <div class="comparison-header">
+                    <div>feature</div>
+                    <div>cli</div>
+                    <div>cursor</div>
+                    <div>opcode</div>
+                    <div>crystal</div>
+                    <div style="color: var(--accent);">yume</div>
+                </div>
+                <div class="comparison-row">
+                    <div>limits always visible</div>
+                    <div>/usage</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> always</div>
+                </div>
+                <div class="comparison-row">
+                    <div>plugin/skills system</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> unique</div>
+                </div>
+                <div class="comparison-row">
+                    <div>5 built-in agents</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span></div>
+                </div>
+                <div class="comparison-row">
+                    <div>crash recovery</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span></div>
+                </div>
+                <div class="comparison-row">
+                    <div>@ mentions</div>
+                    <div>partial</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> @r @m</div>
+                </div>
+                <div class="comparison-row">
+                    <div>stream timers</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> live</div>
+                </div>
+                <div class="comparison-row">
+                    <div>native app</div>
+                    <div>terminal</div>
+                    <div>electron</div>
+                    <div>tauri</div>
+                    <div>electron</div>
+                    <div><span class="check">✓</span> tauri</div>
+                </div>
+                <div class="comparison-row">
+                    <div>full customization</div>
+                    <div><span class="cross">✗</span></div>
+                    <div>~5 themes</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> 570+</div>
+                </div>
+                <div class="comparison-row">
+                    <div>price</div>
+                    <div>pro/max</div>
+                    <div>$20-200/mo</div>
+                    <div><span class="check">✓</span> free</div>
+                    <div><span class="check">✓</span> free</div>
+                    <div><span class="check">✓</span> free</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="section" id="releases">
+        <div class="container">
+            <div class="section-header">
+                <h2>releases</h2>
+                <p>download the latest version for your platform</p>
+            </div>
+
+            <div class="releases" id="releases-list">
+                <div class="release">
+                    <div class="release-header">
+                        <span class="release-version">loading...</span>
+                    </div>
+                    <p class="release-notes">fetching latest releases...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 12px;">
+                <a href="docs/release/viewer.html">docs</a> &bull;
+                <a href="https://github.com/aofp/yume/issues" target="_blank">issues</a> &bull;
+                <a href="https://github.com/anthropics/claude-code" target="_blank">claude code cli</a>
+            </p>
+            <p>© 2026 aofp. made with claude code + yume.</p>
+        </div>
+    </footer>
+
+    <script>
+        let baseUrl = 'releases';
+
+        // Load releases from releases.json
+        async function loadReleases() {
+            try {
+                const response = await fetch('releases/releases.json');
+                const data = await response.json();
+                baseUrl = data.baseUrl || 'releases';
+                renderReleases(data.releases);
+                updateDownloadButtons(data.releases[0]);
+            } catch (err) {
+                console.error('Failed to load releases:', err);
+                document.getElementById('releases-list').innerHTML = `
+                    <div class="release">
+                        <p class="release-notes">error loading releases. please check back later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function getDownloadUrl(filename) {
+            if (!filename) return '#';
+            return `${baseUrl}/${filename}`;
+        }
+
+        function renderReleases(releases) {
+            const container = document.getElementById('releases-list');
+
+            // Detect user's platform
+            const ua = navigator.userAgent.toLowerCase();
+            const platform = navigator.platform.toLowerCase();
+            let userPlatform = 'mac_arm'; // default to Apple Silicon
+
+            if (platform.includes('win') || ua.includes('win')) {
+                userPlatform = 'win';
+            } else if (platform.includes('linux') || ua.includes('linux')) {
+                userPlatform = 'linux';
+            } else if (platform.includes('mac') || platform.includes('darwin')) {
+                if (ua.includes('arm') || ua.includes('aarch64')) {
+                    userPlatform = 'mac_arm';
+                } else {
+                    userPlatform = 'mac_arm';
+                }
+            }
+
+            // Helper to get GitHub Release download URL
+            const getGHReleaseUrl = (version, filename) => {
+                if (!filename) return '#';
+                const file = filename.split('/').pop();
+                return `https://github.com/aofp/yume/releases/download/v${version}/${file}`;
+            };
+
+            container.innerHTML = releases.map(r => {
+                let downloadLinks = '';
+
+                // Only show download buttons if downloads exist
+                if (r.downloads) {
+                    const platformButtons = [
+                        { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
+                        { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
+                        { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
+                        { key: 'linux', label: 'linux', url: r.downloads.linux }
+                    ];
+
+                    const availableButtons = platformButtons.filter(p => p.url);
+
+                    availableButtons.sort((a, b) => {
+                        if (a.key === userPlatform) return -1;
+                        if (b.key === userPlatform) return 1;
+                        return 0;
+                    });
+
+                    downloadLinks = availableButtons
+                        .map(p => `<a href="${getGHReleaseUrl(r.version, p.url)}">${p.label}</a>`)
+                        .join('');
+                }
+
+                return `
+                    <div class="release">
+                        <div class="release-header">
+                            <span class="release-version">v${r.version}</span>
+                            <span class="release-date">${r.date}</span>
+                        </div>
+                        <p class="release-notes">${r.notes}</p>
+                        ${downloadLinks ? `<div class="release-downloads">${downloadLinks}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateDownloadButtons(latestRelease) {
+            if (!latestRelease || !latestRelease.downloads) return;
+
+            const version = latestRelease.version;
+            const ghReleaseBase = `https://github.com/aofp/yume/releases/download/v${version}`;
+            const getFilename = (path) => path ? path.split('/').pop() : null;
+
+            const macArmFile = getFilename(latestRelease.downloads.mac_arm);
+            const macFile = getFilename(latestRelease.downloads.mac);
+            const winFile = getFilename(latestRelease.downloads.win || latestRelease.downloads.windows);
+            const linuxFile = getFilename(latestRelease.downloads.linux);
+
+            const urls = {
+                mac_arm: macArmFile ? `${ghReleaseBase}/${macArmFile}` : null,
+                mac: macFile ? `${ghReleaseBase}/${macFile}` : null,
+                win: winFile ? `${ghReleaseBase}/${winFile}` : null,
+                linux: linuxFile ? `${ghReleaseBase}/${linuxFile}` : null
+            };
+
+            // Detect OS
+            const ua = navigator.userAgent.toLowerCase();
+            const platform = navigator.platform.toLowerCase();
+            let userOS = 'mac_arm'; // default
+            if (platform.includes('win') || ua.includes('win')) userOS = 'win';
+            else if (platform.includes('linux') || ua.includes('linux')) userOS = 'linux';
+
+            // Hide all buttons first
+            document.querySelectorAll('.download-btn').forEach(b => {
+                b.style.display = 'none';
+                const os = b.dataset.os;
+                if (urls[os]) {
+                    b.href = urls[os];
+                }
+            });
+
+            // Show buttons based on user OS with version number
+            if (userOS === 'win' && urls.win) {
+                const btn = document.getElementById('dl-win');
+                btn.style.display = 'inline-block';
+                btn.textContent = `download v${version} for windows`;
+            } else if (userOS === 'linux' && urls.linux) {
+                const btn = document.getElementById('dl-linux');
+                btn.style.display = 'inline-block';
+                btn.textContent = `download v${version} for linux`;
+            } else {
+                // mac - show both arm and intel
+                if (urls.mac_arm) {
+                    const btn = document.getElementById('dl-mac-arm');
+                    btn.style.display = 'inline-block';
+                    btn.textContent = `download v${version} for mac (apple silicon)`;
+                }
+                if (urls.mac) {
+                    const btn = document.getElementById('dl-mac');
+                    btn.style.display = 'inline-block';
+                    btn.textContent = `download v${version} for mac (intel)`;
+                }
+            }
+
+            // Build "also available for" text - only show OTHER platforms
+            const otherPlatforms = [];
+            if (userOS !== 'win' && urls.win) otherPlatforms.push('<a href="#releases">windows</a>');
+            if (userOS !== 'linux' && urls.linux) otherPlatforms.push('<a href="#releases">linux</a>');
+            if (userOS === 'win' || userOS === 'linux') {
+                if (urls.mac_arm) otherPlatforms.push('<a href="#releases">mac</a>');
+            }
+
+            const otherEl = document.getElementById('other-platforms');
+            if (otherPlatforms.length > 0) {
+                otherEl.innerHTML = 'also available for ' + otherPlatforms.join(' · ');
+            } else {
+                otherEl.innerHTML = '';
+            }
+        }
+
+        loadReleases();
+    </script>
+</body>
+</html>
