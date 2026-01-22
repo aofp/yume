@@ -1,8 +1,8 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.1.0
-**Last Updated:** January 18, 2026
-**Status:** Beta - Approaching Production
+**Version:** 0.3.3
+**Last Updated:** January 22, 2026
+**Status:** Released
 
 ## Table of Contents
 

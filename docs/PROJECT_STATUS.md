@@ -1,8 +1,8 @@
 # Yume Project Status
 
-**Date:** January 20, 2026
-**Version:** 0.1.0 (Pre-Release)
-**Status:** BETA - Release Ready (macOS), Windows/Linux binaries pending
+**Date:** January 22, 2026
+**Version:** 0.3.3
+**Status:** Released (macOS/Windows), Linux pending
 
 ## Executive Summary
 
@@ -95,14 +95,14 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 - **Time:** 160-240 developer hours
 
 ### Revenue Potential
-- **Price Point:** $21 one-time
-- **Target:** 1,000 sales in Year 1
-- **Projected Revenue:** $21,000
+- **Price Point:** Free
+- **Target:** Community adoption
+- **Focus:** Best Claude Code GUI experience
 
 ### Competitive Analysis
-- **Opcode:** Free/Open source - we offer premium features (plugins, skills, auto-compact)
-- **Claudia:** $20 - we're $21 but offer significantly more (15+ unique features)
-- **Cursor/Windsurf:** $240-2400/year subscriptions - we're 90%+ cheaper one-time
+- **Opcode:** Free/Open source - yume offers more features (orchestration, memory, background agents)
+- **Cursor/Windsurf:** $240-2400/year subscriptions - yume is free
+- **Crystal:** Free - yume offers more features (orchestration, memory, background agents)
 - **Market Size:** ~50,000 Claude Code users + IDE users seeking lightweight alternative
 
 ## Risk Assessment
@@ -138,9 +138,9 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 4. Set up customer support system
 
 ### Launch Strategy
-1. **Soft launch** with "Beta" badge
-2. **One-time pricing** at $21 (all features included, no subscription)
-3. **Focus marketing** on auto-compact feature and plugin system
+1. **Released** as free (closed source)
+2. **All features included** - orchestration, memory, agents, plugins
+3. **Focus marketing** on orchestration flow, memory system, and agents
 4. **Target communities:** Claude Discord, AI developers, productivity tools users
 
 ## Success Criteria

@@ -1,6 +1,6 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.3.3
+**Version:** 0.3.4
 **Last Updated:** January 22, 2026
 **Platform:** macOS, Windows, Linux
 
