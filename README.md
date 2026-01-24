@@ -89,7 +89,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 - **@ mention system** - @r recent, @m modified, folder navigation
 
 ### customization
-- **31 themes, infinite combinations** - accents, backgrounds, foregrounds fully customizable
+- **12 themes, infinite combinations** - accents, backgrounds, foregrounds fully customizable
 - **OLED optimization** - pure black (#000000) default
 - **100% CLI compatibility** - subagents, MCP, hooks, skills, claude.md, /commands
 
