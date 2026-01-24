@@ -613,18 +613,97 @@
         }
         footer a:hover { color: var(--accent); }
 
-        /* responsive */
+        /* responsive - tablet */
+        @media (max-width: 900px) {
+            .container { padding: 0 16px; }
+            .section { padding: 60px 0; }
+            .section-header { margin-bottom: 40px; }
+            .section-header h2 { font-size: 1.6rem; }
+            .hero { padding: 60px 0 50px; }
+            .hero-logo { width: 80px; height: 80px; margin-bottom: 24px; }
+            .hero h1 { font-size: 2rem; }
+            .hero-sub { font-size: 1rem; margin-bottom: 32px; }
+            .hero-ctas .btn { padding: 12px 24px; font-size: 14px; }
+            .features-grid { grid-template-columns: 1fr; }
+        }
+
+        /* responsive - mobile */
         @media (max-width: 768px) {
             .nav-links { display: none; }
-            .stats { gap: 24px; }
+            header .container { gap: 8px; }
+            header .btn { padding: 8px 14px; font-size: 13px; }
+            header .btn-outline { display: none; }
+            .stats { gap: 16px; padding: 24px 0; }
+            .stat-value { font-size: 1.4rem; }
+            .stat-label { font-size: 11px; }
+
+            /* comparison table - horizontal scroll */
+            .comparison { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             .comparison-header, .comparison-row {
+                min-width: 600px;
                 grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
                 font-size: 0.75rem;
             }
-            .comparison-header div, .comparison-row div {
-                padding: 10px 4px;
+            .comparison-header div, .comparison-row div { padding: 10px 4px; }
+
+            .pricing-section { padding: 60px 0; }
+            .pricing-card { padding: 32px 20px; }
+            .pricing-price { font-size: 3rem; }
+
+            .shortcuts-grid { grid-template-columns: 1fr; }
+            .themes-showcase { padding: 24px 16px; }
+            .themes-showcase h2 { font-size: 1.2rem; }
+        }
+
+        /* responsive - small mobile */
+        @media (max-width: 480px) {
+            body { font-size: 14px; }
+            .container { padding: 0 12px; }
+            .section { padding: 40px 0; }
+            .hero { padding: 40px 0 32px; }
+            .hero-logo { width: 64px; height: 64px; margin-bottom: 16px; }
+            .hero h1 { font-size: 1.6rem; margin-bottom: 12px; }
+            .hero-sub { font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5; }
+            .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
+            .hero-ctas .btn { width: 100%; max-width: 280px; text-align: center; }
+
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                padding: 20px 0;
             }
-            .pricing-card { padding: 32px 24px; }
+            .stat { padding: 12px 8px; }
+            .stat-value { font-size: 1.1rem; }
+
+            .section-header h2 { font-size: 1.3rem; }
+            .section-header p { font-size: 0.85rem; }
+
+            .feature-card { padding: 20px; }
+            .feature-card h3 { font-size: 1rem; }
+            .feature-card p { font-size: 13px; }
+
+            .agents-grid { grid-template-columns: 1fr; gap: 12px; }
+            .agent-card { padding: 16px; }
+
+            .tech-card { padding: 16px; }
+            .tech-value { font-size: 1.4rem; }
+
+            .release { padding: 16px; }
+            .release-downloads { gap: 6px; }
+            .release-downloads a { padding: 5px 10px; font-size: 0.8rem; }
+
+            .shortcut-item { padding: 10px 12px; }
+            .shortcut-action { font-size: 13px; }
+            .key { padding: 3px 6px; font-size: 11px; }
+
+            .pricing-card { padding: 24px 16px; border-radius: 16px; }
+            .pricing-title { font-size: 1.2rem; }
+            .pricing-price { font-size: 2.5rem; }
+            .pricing-features li { padding: 8px 0; font-size: 0.9rem; }
+
+            footer { padding: 24px 0; }
+            footer p { font-size: 12px; }
         }
     </style>
 </head>
@@ -666,7 +745,7 @@
             <div class="stat-label">auto task flow</div>
         </div>
         <div class="stat">
-            <div class="stat-value">5</div>
+            <div class="stat-value">4</div>
             <div class="stat-label">built-in agents</div>
         </div>
         <div class="stat">
