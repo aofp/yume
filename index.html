@@ -162,26 +162,26 @@
             z-index: 1;
         }
         .orb-1 {
-            width: 24px;
-            height: 24px;
-            top: -20px;
+            width: 20px;
+            height: 20px;
+            top: -30px;
             left: 50%;
             transform: translateX(-50%);
             animation: orb-float-1 4s ease-in-out infinite;
         }
         .orb-2 {
-            width: 18px;
-            height: 18px;
-            bottom: 10px;
-            left: -25px;
-            animation: orb-float-2 5s ease-in-out infinite;
+            width: 20px;
+            height: 20px;
+            bottom: -15px;
+            left: -15px;
+            animation: orb-float-2 4s ease-in-out infinite 1.33s;
         }
         .orb-3 {
             width: 20px;
             height: 20px;
-            bottom: 0;
-            right: -30px;
-            animation: orb-float-3 4.5s ease-in-out infinite;
+            bottom: -15px;
+            right: -15px;
+            animation: orb-float-3 4s ease-in-out infinite 2.66s;
         }
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
@@ -374,7 +374,7 @@
         /* agents */
         .agents-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 16px;
         }
         @media (max-width: 900px) {
@@ -1156,11 +1156,6 @@
                     <i class="ti ti-shield-check icon"></i>
                     <div class="agent-name">guardian</div>
                     <div class="agent-desc">reviews for bugs, security, performance issues.</div>
-                </div>
-                <div class="agent-card">
-                    <i class="ti ti-tools icon"></i>
-                    <div class="agent-name">specialist</div>
-                    <div class="agent-desc">tests, docs, devops. domain-specific tasks.</div>
                 </div>
             </div>
 
