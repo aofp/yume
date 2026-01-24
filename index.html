@@ -168,7 +168,7 @@
             left: 50%;
             margin-top: -75px;
             margin-left: -75px;
-            animation: orb-orbit-1 12s linear infinite;
+            animation: orb-orbit-1 25s linear infinite;
         }
         .orb-2 {
             width: 150px;
@@ -177,7 +177,7 @@
             left: 50%;
             margin-top: -75px;
             margin-left: -75px;
-            animation: orb-orbit-2 12s linear infinite;
+            animation: orb-orbit-2 25s linear infinite;
         }
         .orb-3 {
             width: 150px;
@@ -186,26 +186,23 @@
             left: 50%;
             margin-top: -75px;
             margin-left: -75px;
-            animation: orb-orbit-3 12s linear infinite;
+            animation: orb-orbit-3 25s linear infinite;
         }
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-8px); }
         }
         @keyframes orb-orbit-1 {
-            0% { transform: rotate(0deg) translateX(80px) rotate(0deg); opacity: 0.10; }
-            50% { opacity: 0.15; }
-            100% { transform: rotate(360deg) translateX(80px) rotate(-360deg); opacity: 0.10; }
+            0% { transform: rotate(0deg) translateX(70px); }
+            100% { transform: rotate(360deg) translateX(70px); }
         }
         @keyframes orb-orbit-2 {
-            0% { transform: rotate(120deg) translateX(80px) rotate(-120deg); opacity: 0.08; }
-            50% { opacity: 0.12; }
-            100% { transform: rotate(480deg) translateX(80px) rotate(-480deg); opacity: 0.08; }
+            0% { transform: rotate(120deg) translateX(70px); }
+            100% { transform: rotate(480deg) translateX(70px); }
         }
         @keyframes orb-orbit-3 {
-            0% { transform: rotate(240deg) translateX(80px) rotate(-240deg); opacity: 0.06; }
-            50% { opacity: 0.10; }
-            100% { transform: rotate(600deg) translateX(80px) rotate(-600deg); opacity: 0.06; }
+            0% { transform: rotate(240deg) translateX(70px); }
+            100% { transform: rotate(600deg) translateX(70px); }
         }
         .hero h1 {
             font-size: clamp(2.5rem, 6vw, 4rem);
