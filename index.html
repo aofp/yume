@@ -157,7 +157,7 @@
             position: absolute;
             border-radius: 50%;
             background: var(--accent);
-            opacity: 0.15;
+            opacity: 0.10;
             filter: blur(8px);
             z-index: 1;
         }
@@ -167,37 +167,37 @@
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            animation: orb-float-1 4s ease-in-out infinite;
+            animation: orb-float-1 7s ease-in-out infinite;
         }
         .orb-2 {
             width: 100px;
             height: 100px;
             bottom: 20px;
             left: 15px;
-            animation: orb-float-2 4s ease-in-out infinite 1.33s;
+            animation: orb-float-2 7s ease-in-out infinite 2.33s;
         }
         .orb-3 {
             width: 100px;
             height: 100px;
             bottom: 20px;
             right: 15px;
-            animation: orb-float-3 4s ease-in-out infinite 2.66s;
+            animation: orb-float-3 7s ease-in-out infinite 4.66s;
         }
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-8px); }
         }
         @keyframes orb-float-1 {
-            0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.15; }
-            50% { transform: translateX(-50%) translateY(-12px); opacity: 0.25; }
+            0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.10; }
+            50% { transform: translateX(-50%) translateY(-12px); opacity: 0.18; }
         }
         @keyframes orb-float-2 {
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.12; }
-            50% { transform: translateY(-8px) translateX(5px); opacity: 0.2; }
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.08; }
+            50% { transform: translateY(-8px) translateX(5px); opacity: 0.15; }
         }
         @keyframes orb-float-3 {
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.1; }
-            50% { transform: translateY(-10px) translateX(-5px); opacity: 0.18; }
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.07; }
+            50% { transform: translateY(-10px) translateX(-5px); opacity: 0.14; }
         }
         .hero h1 {
             font-size: clamp(2.5rem, 6vw, 4rem);
