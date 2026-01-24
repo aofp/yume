@@ -229,7 +229,7 @@
 
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 24px;
         }
         .feature-card {
@@ -631,8 +631,10 @@
         @media (max-width: 768px) {
             .nav-links { display: none; }
             header .container { gap: 8px; }
-            header .btn { padding: 8px 14px; font-size: 13px; }
+            header .btn { padding: 8px 16px; font-size: 13px; }
             header .btn-outline { display: none; }
+            .logo { font-size: 1.2rem; }
+            .logo img { height: 28px !important; }
             .stats { gap: 16px; padding: 24px 0; }
             .stat-value { font-size: 1.4rem; }
             .stat-label { font-size: 11px; }
@@ -669,23 +671,27 @@
 
             .stats {
                 display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
                 padding: 20px 0;
             }
-            .stat { padding: 12px 8px; }
-            .stat-value { font-size: 1.1rem; }
+            .stat { padding: 8px 4px; }
+            .stat-value { font-size: 0.9rem; word-break: break-word; }
+            .stat-label { font-size: 10px; }
 
             .section-header h2 { font-size: 1.3rem; }
             .section-header p { font-size: 0.85rem; }
 
+            .features-grid { grid-template-columns: 1fr; }
             .feature-card { padding: 20px; }
             .feature-card h3 { font-size: 1rem; }
             .feature-card p { font-size: 13px; }
+            .feature-card[style*="span"] { grid-column: span 1 !important; }
 
             .agents-grid { grid-template-columns: 1fr; gap: 12px; }
             .agent-card { padding: 16px; }
 
+            .tech-grid { grid-template-columns: 1fr; }
             .tech-card { padding: 16px; }
             .tech-value { font-size: 1.4rem; }
 
@@ -693,6 +699,7 @@
             .release-downloads { gap: 6px; }
             .release-downloads a { padding: 5px 10px; font-size: 0.8rem; }
 
+            .shortcuts-grid { grid-template-columns: 1fr; }
             .shortcut-item { padding: 10px 12px; }
             .shortcut-action { font-size: 13px; }
             .key { padding: 3px 6px; font-size: 11px; }
