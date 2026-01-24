@@ -26,7 +26,7 @@
     {
       "version": "0.4.3",
       "date": "2026-01-24",
-      "notes": "v0.4.3 release",
+      "notes": "stability improvements and bug fixes",
       "releaseNotes": "v0.4.3-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.3_arm64.pkg",
@@ -42,7 +42,7 @@
     {
       "version": "0.4.2",
       "date": "2026-01-23",
-      "notes": "v0.4.2 release",
+      "notes": "ui polish and performance optimizations",
       "releaseNotes": "v0.4.2-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.2_arm64.pkg",
@@ -58,7 +58,7 @@
     {
       "version": "0.4.1",
       "date": "2026-01-23",
-      "notes": "v0.4.1 release",
+      "notes": "agent system refinements and memory improvements",
       "releaseNotes": "v0.4.1-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.1_arm64.pkg",
@@ -74,7 +74,7 @@
     {
       "version": "0.4.0",
       "date": "2026-01-23",
-      "notes": "v0.4.0 release",
+      "notes": "major update: orchestration flow, 4 built-in agents, plugin system",
       "releaseNotes": "v0.4.0-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.0_arm64.pkg",
@@ -90,7 +90,7 @@
     {
       "version": "0.3.7",
       "date": "2026-01-22",
-      "notes": "v0.3.7 release",
+      "notes": "crash recovery and session persistence improvements",
       "releaseNotes": "v0.3.7-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.7_arm64.pkg",
@@ -106,7 +106,7 @@
     {
       "version": "0.3.6",
       "date": "2026-01-22",
-      "notes": "v0.3.6 release",
+      "notes": "keyboard shortcuts and navigation improvements",
       "releaseNotes": "v0.3.6-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.6_arm64.pkg",
@@ -122,7 +122,7 @@
     {
       "version": "0.3.5",
       "date": "2026-01-22",
-      "notes": "v0.3.5 release",
+      "notes": "theme system expansion and customization options",
       "releaseNotes": "v0.3.5-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.5_arm64.pkg",
@@ -138,7 +138,7 @@
     {
       "version": "0.3.4",
       "date": "2026-01-22",
-      "notes": "v0.3.4 release",
+      "notes": "rate limit display and usage tracking enhancements",
       "releaseNotes": "v0.3.4-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.4_arm64.pkg",
@@ -154,7 +154,7 @@
     {
       "version": "0.3.3",
       "date": "2026-01-21",
-      "notes": "v0.3.3 release",
+      "notes": "streaming performance and ui responsiveness fixes",
       "releaseNotes": "v0.3.3-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.3_arm64.pkg",
@@ -170,7 +170,7 @@
     {
       "version": "0.3.2",
       "date": "2026-01-21",
-      "notes": "v0.3.2 release",
+      "notes": "@ mention system and file navigation",
       "releaseNotes": "v0.3.2-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.2_arm64.pkg",
@@ -186,7 +186,7 @@
     {
       "version": "0.3.1",
       "date": "2026-01-21",
-      "notes": "v0.3.1 release",
+      "notes": "auto-compaction and context management",
       "releaseNotes": "v0.3.1-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.1_arm64.pkg",
@@ -202,7 +202,7 @@
     {
       "version": "0.3.0",
       "date": "2026-01-21",
-      "notes": "v0.3.0 release",
+      "notes": "background agents and git branch isolation",
       "releaseNotes": "v0.3.0-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.0_arm64.pkg",
