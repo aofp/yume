@@ -156,48 +156,56 @@
         .orb {
             position: absolute;
             border-radius: 50%;
-            background: var(--accent);
-            opacity: 0.07;
-            filter: blur(8px);
+            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+            opacity: 0.12;
+            filter: blur(20px);
             z-index: 1;
         }
         .orb-1 {
             width: 150px;
             height: 150px;
-            top: 5px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            animation: orb-float-1 7s ease-in-out infinite;
+            margin-top: -75px;
+            margin-left: -75px;
+            animation: orb-orbit-1 12s linear infinite;
         }
         .orb-2 {
             width: 150px;
             height: 150px;
-            bottom: 15px;
-            left: 10px;
-            animation: orb-float-2 7s ease-in-out infinite 2.33s;
+            top: 50%;
+            left: 50%;
+            margin-top: -75px;
+            margin-left: -75px;
+            animation: orb-orbit-2 12s linear infinite;
         }
         .orb-3 {
             width: 150px;
             height: 150px;
-            bottom: 15px;
-            right: 10px;
-            animation: orb-float-3 7s ease-in-out infinite 4.66s;
+            top: 50%;
+            left: 50%;
+            margin-top: -75px;
+            margin-left: -75px;
+            animation: orb-orbit-3 12s linear infinite;
         }
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-8px); }
         }
-        @keyframes orb-float-1 {
-            0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.07; }
-            50% { transform: translateX(-50%) translateY(-12px); opacity: 0.12; }
+        @keyframes orb-orbit-1 {
+            0% { transform: rotate(0deg) translateX(80px) rotate(0deg); opacity: 0.10; }
+            50% { opacity: 0.15; }
+            100% { transform: rotate(360deg) translateX(80px) rotate(-360deg); opacity: 0.10; }
         }
-        @keyframes orb-float-2 {
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.06; }
-            50% { transform: translateY(-8px) translateX(5px); opacity: 0.10; }
+        @keyframes orb-orbit-2 {
+            0% { transform: rotate(120deg) translateX(80px) rotate(-120deg); opacity: 0.08; }
+            50% { opacity: 0.12; }
+            100% { transform: rotate(480deg) translateX(80px) rotate(-480deg); opacity: 0.08; }
         }
-        @keyframes orb-float-3 {
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.05; }
-            50% { transform: translateY(-10px) translateX(-5px); opacity: 0.09; }
+        @keyframes orb-orbit-3 {
+            0% { transform: rotate(240deg) translateX(80px) rotate(-240deg); opacity: 0.06; }
+            50% { opacity: 0.10; }
+            100% { transform: rotate(600deg) translateX(80px) rotate(-600deg); opacity: 0.06; }
         }
         .hero h1 {
             font-size: clamp(2.5rem, 6vw, 4rem);
