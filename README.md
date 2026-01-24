@@ -3,7 +3,7 @@
 <div align="center">
   <img src="assets/yume.png" alt="yume logo" width="120">
   <h3>claude code, unchained</h3>
-  <p>orchestration flow. memory system. background agents. 5 built-in agents. plugins & skills.</p>
+  <p>orchestration flow. memory system. background agents.<br>4 built-in agents. plugins & skills.</p>
   <p>
     <a href="https://aofp.github.io/yume">Download</a>
   </p>
@@ -42,7 +42,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 - **no commands needed** - baked into every session via --append-system-prompt
 
 ### agent system
-- **5 built-in agents** - synced to ~/.claude/agents/yume-*.md
+- **4 built-in agents** - synced to ~/.claude/agents/yume-*.md
   - **architect** - plans, decomposes tasks, identifies risks, todowrite tracking
   - **explorer** - read-only codebase search, glob/grep/read, never modifies
   - **implementer** - focused code changes, edit/write, minimal diffs
@@ -117,7 +117,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 | multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
-| 5 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
+| 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
 | crash recovery | ✗ | ✗ | ✗ | ✗ | ✓ 24hr |
 | @ mentions | partial | ✗ | ✗ | ✗ | ✓ @r @m |
 | stream timers | ✗ | ✗ | ✗ | ✗ | ✓ live |
@@ -157,7 +157,7 @@ visit [aofp.github.io/yume](https://aofp.github.io/yume) for all download option
 
 ## agents
 
-yume includes 5 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurrent background agents:
+yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurrent background agents:
 
 **foreground agents** (follows selected model):
 - **architect** - plans, decomposes, todowrite. runs before complex tasks.
