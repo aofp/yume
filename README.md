@@ -89,7 +89,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 - **@ mention system** - @r recent, @m modified, folder navigation
 
 ### customization
-- **570+ visual themes** - 31 themes × (189 accents + backgrounds + foregrounds)
+- **31 themes, infinite combinations** - accents, backgrounds, foregrounds fully customizable
 - **OLED optimization** - pure black (#000000) default
 - **100% CLI compatibility** - subagents, MCP, hooks, skills, claude.md, /commands
 
@@ -122,7 +122,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 | @ mentions | partial | ✗ | ✗ | ✗ | ✓ @r @m |
 | stream timers | ✗ | ✗ | ✗ | ✗ | ✓ live |
 | native app | terminal | electron | tauri | electron | ✓ tauri |
-| customization | ✗ | ~5 themes | ✗ | ✗ | ✓ 570+ |
+| customization | ✗ | ~5 themes | ✗ | ✗ | ✓ ∞ |
 | price | pro/max | $20-200/mo | ✓ free | ✓ free | ✓ free |
 
 ---

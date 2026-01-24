@@ -395,7 +395,7 @@
     {
       "version": "0.1.0",
       "date": "2026-01-19",
-      "notes": "initial release - native gui for claude code with limits tracking, 21 features, 5 agents, plugin system, crash recovery, and 570+ themes.",
+      "notes": "initial release - native gui for claude code with limits tracking, 21 features, 4 agents, plugin system, crash recovery, and infinite theme combinations.",
       "releaseNotes": "v0.1.0-release-notes.md"
     }
   ]
