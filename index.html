@@ -1211,7 +1211,7 @@
             if (platform.includes('win') || ua.includes('win')) {
                 userPlatform = 'win';
             } else if (platform.includes('linux') || ua.includes('linux')) {
-                userPlatform = 'linux';
+                userPlatform = 'linux_deb';
             } else if (platform.includes('mac') || platform.includes('darwin')) {
                 if (ua.includes('arm') || ua.includes('aarch64')) {
                     userPlatform = 'mac_arm';
@@ -1236,7 +1236,8 @@
                         { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
                         { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
                         { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
-                        { key: 'linux', label: 'linux', url: r.downloads.linux }
+                        { key: 'linux_deb', label: 'linux (deb)', url: r.downloads.linux_deb },
+                        { key: 'linux_rpm', label: 'linux (rpm)', url: r.downloads.linux_rpm }
                     ];
 
                     const availableButtons = platformButtons.filter(p => p.url);
@@ -1275,13 +1276,15 @@
             const macArmFile = getFilename(latestRelease.downloads.mac_arm);
             const macFile = getFilename(latestRelease.downloads.mac);
             const winFile = getFilename(latestRelease.downloads.win || latestRelease.downloads.windows);
-            const linuxFile = getFilename(latestRelease.downloads.linux);
+            const linuxDebFile = getFilename(latestRelease.downloads.linux_deb);
+            const linuxRpmFile = getFilename(latestRelease.downloads.linux_rpm);
 
             const urls = {
                 mac_arm: macArmFile ? `${ghReleaseBase}/${macArmFile}` : null,
                 mac: macFile ? `${ghReleaseBase}/${macFile}` : null,
                 win: winFile ? `${ghReleaseBase}/${winFile}` : null,
-                linux: linuxFile ? `${ghReleaseBase}/${linuxFile}` : null
+                linux_deb: linuxDebFile ? `${ghReleaseBase}/${linuxDebFile}` : null,
+                linux_rpm: linuxRpmFile ? `${ghReleaseBase}/${linuxRpmFile}` : null
             };
 
             // Detect OS
@@ -1294,30 +1297,30 @@
             // Hide all buttons first
             document.querySelectorAll('.download-btn').forEach(b => {
                 b.style.display = 'none';
-                const os = b.dataset.os;
-                if (urls[os]) {
-                    b.href = urls[os];
-                }
             });
 
             // Show buttons based on user OS with version number
             if (userOS === 'win' && urls.win) {
                 const btn = document.getElementById('dl-win');
+                btn.href = urls.win;
                 btn.style.display = 'inline-block';
                 btn.textContent = `download v${version} for windows`;
-            } else if (userOS === 'linux' && urls.linux) {
+            } else if (userOS === 'linux' && urls.linux_deb) {
                 const btn = document.getElementById('dl-linux');
+                btn.href = urls.linux_deb;
                 btn.style.display = 'inline-block';
-                btn.textContent = `download v${version} for linux`;
+                btn.textContent = `download v${version} for linux (deb)`;
             } else {
                 // mac - show both arm and intel
                 if (urls.mac_arm) {
                     const btn = document.getElementById('dl-mac-arm');
+                    btn.href = urls.mac_arm;
                     btn.style.display = 'inline-block';
                     btn.textContent = `download v${version} for mac (apple silicon)`;
                 }
                 if (urls.mac) {
                     const btn = document.getElementById('dl-mac');
+                    btn.href = urls.mac;
                     btn.style.display = 'inline-block';
                     btn.textContent = `download v${version} for mac (intel)`;
                 }
@@ -1326,7 +1329,8 @@
             // Build "also available for" text - only show OTHER platforms
             const otherPlatforms = [];
             if (userOS !== 'win' && urls.win) otherPlatforms.push('<a href="#releases">windows</a>');
-            if (userOS !== 'linux' && urls.linux) otherPlatforms.push('<a href="#releases">linux</a>');
+            if (userOS !== 'linux' && (urls.linux_deb || urls.linux_rpm)) otherPlatforms.push('<a href="#releases">linux</a>');
+            if (userOS === 'linux' && urls.linux_rpm) otherPlatforms.push('<a href="#releases">linux (rpm)</a>');
             if (userOS === 'win' || userOS === 'linux') {
                 if (urls.mac_arm) otherPlatforms.push('<a href="#releases">mac</a>');
             }
