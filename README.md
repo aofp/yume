@@ -47,7 +47,6 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
   - **explorer** - read-only codebase search, glob/grep/read, never modifies
   - **implementer** - focused code changes, edit/write, minimal diffs
   - **guardian** - reviews for bugs, security, performance after changes
-  - **specialist** - tests, docs, devops, domain-specific tasks
 - **4 concurrent background agents** - async execution with git branch isolation (yume-async-{type}-{id})
 - **10-minute timeout** - per agent with output to ~/.yume/agent-output/
 - **merge conflict detection** - pre-merge checks before integrating agent work
@@ -164,7 +163,6 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 - **explorer** - read-only glob/grep/read. understands codebase.
 - **implementer** - edit/write. focused changes, minimal diffs.
 - **guardian** - reviews for bugs, security, performance.
-- **specialist** - tests, docs, devops. domain-specific.
 
 **background agents** (4 concurrent, async):
 - git branch isolation: yume-async-{type}-{id}
