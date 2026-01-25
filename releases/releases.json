@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.4.6",
+  "latest": "0.5.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.5.0",
+      "date": "2026-01-25",
+      "notes": "fix bash streaming race, token display, session isolation, linux compositing",
+      "releaseNotes": "v0.5.0-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.5.0_arm64.pkg",
+        "mac": "yume_0.5.0_x64.pkg",
+        "windows": "yume_0.5.0_x64-setup.exe",
+        "linux_deb": "yume_0.5.0_amd64.deb",
+        "linux_rpm": "yume-0.5.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "241b27e5e53e9a115935bad4664b33dc471a571764e0001b1771efb029eee367",
+        "mac": "90d4f9a7ed3b50090b66f6acf790e9f7f08978d432f0fd46f632a48bafc84893",
+        "windows": "0c396e54b9e4e91431b66a274b1b3f4e4a0a2ee0b5cf6eb95f896373222ffdfa",
+        "linux_deb": "4fc5161aaa80508d30e72e8ccee5b77c8e3fec5d6e6747934211e2822d389980",
+        "linux_rpm": "1110262b9d44361a2dacee9a9bade47abda9149b86a46b096f38624d6f4d3e15"
+      }
+    },
     {
       "version": "0.4.6",
       "date": "2026-01-25",
