@@ -6,7 +6,7 @@
     {
       "version": "0.4.5",
       "date": "2026-01-24",
-      "notes": "v0.4.5 release",
+      "notes": "analytics heatmap, todo progress tracking, focus health checks",
       "releaseNotes": "v0.4.5-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.5_arm64.pkg",
@@ -26,7 +26,7 @@
     {
       "version": "0.4.4",
       "date": "2026-01-24",
-      "notes": "v0.4.4 release - first release with Linux support",
+      "notes": "linux support (deb/rpm), fix credential loading, font size defaults",
       "releaseNotes": "v0.4.4-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.4_arm64.pkg",
