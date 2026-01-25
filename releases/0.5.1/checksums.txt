@@ -1,0 +1,16 @@
+SHA256 Checksums for yume 0.5.1
+
+yume_0.5.1_arm64.pkg (macOS Apple Silicon):
+5a9631db7fe01288aea42729b45d14467b728e2dae6f8349a177fa6b95c894e1
+
+yume_0.5.1_x64.pkg (macOS Intel):
+29ebaf0734cbf6720fd2babdfd2a6d0d5e8e484e9ef3f39fd8599568de51a3a2
+
+yume_0.5.1_x64-setup.exe (Windows):
+4abdaec794d41a42c18828883b9c7c23088b4f28eabe9809e77746f67d727506
+
+yume_0.5.1_amd64.deb (Linux Debian/Ubuntu):
+e2eaf24a25ae5c80bc602fdd668620733ee3ef43357374a06db5a3d6d432f49e
+
+yume-0.5.1-1.x86_64.rpm (Linux Fedora/RHEL):
+7488151a894a741c684f8c7eb4e7f7cc67e168e01fadce01a2731d2b3c5644ed
