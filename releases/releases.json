@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.4.5",
+  "latest": "0.4.6",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.4.6",
+      "date": "2026-01-25",
+      "notes": "fix scroll anchoring, stop/interrupt button, bash indicator",
+      "releaseNotes": "v0.4.6-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.4.6_arm64.pkg",
+        "mac": "yume_0.4.6_x64.pkg",
+        "windows": "yume_0.4.6_x64-setup.exe",
+        "linux_deb": "yume_0.4.6_amd64.deb",
+        "linux_rpm": "yume-0.4.6-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "04710894b0da50ae72fb9c34b1ba8a8e5911100e6af5b55913b5d39b680fa857",
+        "mac": "8d72d89264be39f489a593eb8845cb9f3835d56cfe38fbc90420bcef37e748ee",
+        "windows": "8105d22cc9d7cac15f10ac0576f40489814174b9f892e77f2b750e83848fbbd3",
+        "linux_deb": "ea0ebeb93dfa50918b596af64220024f08b1e9df9e34433083045f7241c7bcdb",
+        "linux_rpm": "db307b93f91b13e59dee361eb70eec4314ea83bd9f835773e8b1d0e9be9e34d6"
+      }
+    },
     {
       "version": "0.4.5",
       "date": "2026-01-24",
