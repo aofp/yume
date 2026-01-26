@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.5.2",
+  "latest": "0.5.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.5.3",
+      "date": "2026-01-25",
+      "notes": "fix thinking indicator token display, autocompact thresholds, style improvements",
+      "releaseNotes": "v0.5.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.5.3_arm64.pkg",
+        "mac": "yume_0.5.3_x64.pkg",
+        "windows": "yume_0.5.3_x64-setup.exe",
+        "linux_deb": "yume_0.5.3_amd64.deb",
+        "linux_rpm": "yume-0.5.3-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "a3de63c258a5ba212064ab5c1fde857a70440293084f547c7fe4e686c9bb71f2",
+        "mac": "b7243dcf35f465097d5d7f48a057f0d95e26f5f7323ca9317e80f28110ca9e3c",
+        "windows": "58501df0908574aeceab97de3c67801b7e29a0d7561dccd2ca46e36abf5b0f21",
+        "linux_deb": "4b737fab918fbb9ce278616ee71d027af77f0d4758f0548a62b519fbe2b54e02",
+        "linux_rpm": "7d0b7937d775222499e642fb6b80e5c958bc3f73c140c80c740b70359c4739f7"
+      }
+    },
     {
       "version": "0.5.2",
       "date": "2026-01-25",
