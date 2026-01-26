@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.5.1",
+  "latest": "0.5.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.5.2",
+      "date": "2026-01-25",
+      "notes": "improved syntax highlighting",
+      "releaseNotes": "v0.5.2-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.5.2_arm64.pkg",
+        "mac": "yume_0.5.2_x64.pkg",
+        "windows": "yume_0.5.2_x64-setup.exe",
+        "linux_deb": "yume_0.5.2_amd64.deb",
+        "linux_rpm": "yume-0.5.2-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "51318a4fe029e334b52169e3aa84098caf9d3e42094ffeac512d01b085bac85d",
+        "mac": "80edb8a5fb7cc68c104d58226f695964d300895f46b1d417522b78b7f67f241e",
+        "windows": "1dcf1dca51349846325bf27eab61deceb6814dc8287e31cc4b6f5f6d7a1ec6eb",
+        "linux_deb": "427e96e283ea354da7deec3a4fd5caef4092b2efa77e2ac2db8015040832cfb7",
+        "linux_rpm": "4679ecafaae470a55eaa4da6980f8f3129a688139918dd93f62a938bf8766b96"
+      }
+    },
     {
       "version": "0.5.1",
       "date": "2026-01-25",
