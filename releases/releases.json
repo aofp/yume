@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.5.3",
+  "latest": "0.5.4",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.5.4",
+      "date": "2026-01-26",
+      "notes": "fix concurrent spawn race condition, improved scroll virtualization, fix token counting, diff viewer text selection, subagent streaming fix",
+      "releaseNotes": "v0.5.4-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.5.4_arm64.pkg",
+        "mac": "yume_0.5.4_x64.pkg",
+        "windows": "yume_0.5.4_x64-setup.exe",
+        "linux_deb": "yume_0.5.4_amd64.deb",
+        "linux_rpm": "yume-0.5.4-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "77d2eb6b98262254b0acd7d44ec5d1dbc09d54716379dcda99935164b5c9fc7a",
+        "mac": "3c14c9f3ad62208f0713327a8b0372b6ba555dde5e6deb727ba573419a3c5726",
+        "windows": "431f7bf3b7404c4eb3dabc91351a26bce2e799c09495dffd78e0aa61c4f07b3a",
+        "linux_deb": "2f7e85b656472d7cc71e5d68974661a8a04029d62191554e1d87fb1f6ea0f36d",
+        "linux_rpm": "a761736cf80a2da4b7e7a95bc9e8f34fd80f5b64bb0a92edff1296fb3419f61a"
+      }
+    },
     {
       "version": "0.5.3",
       "date": "2026-01-25",
