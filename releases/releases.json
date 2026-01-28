@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.5.7",
+  "latest": "0.5.9",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.5.9",
+      "date": "2026-01-28",
+      "notes": "fix outdated info: compaction 77.5%/85%, memory v2, 12 themes",
+      "releaseNotes": "v0.5.9-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.5.9_arm64.pkg",
+        "mac": "yume_0.5.9_x64.pkg",
+        "windows": "yume_0.5.9_x64-setup.exe",
+        "linux_deb": "yume_0.5.9_amd64.deb",
+        "linux_rpm": "yume-0.5.9-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "53a983f98fc3c6a5ce1c555b2c7669edace87dccbcce495674477b7d2d24a5b2",
+        "mac": "82c4c170827571229f0bcc294366b0ad43b0e4cc1ce410b2eea98117a35849e5",
+        "windows": "2e6e00febf392c7870663e03f4f5f1bb82987fae9cb4dee0e86a48be49a60bc3",
+        "linux_deb": "0ab9956329ce8aa6acfcf0e41a0e9274894c03479427dbef29b1ee05264e00f8",
+        "linux_rpm": "774c0e755a2f6016bbb291e9afe0ddd6bef8eebe0ebbaa7b556efd3a1589ce8f"
+      }
+    },
     {
       "version": "0.5.7",
       "date": "2026-01-28",
