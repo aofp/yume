@@ -10,11 +10,17 @@
       "releaseNotes": "v0.5.7-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.5.7_arm64.pkg",
-        "mac": "yume_0.5.7_x64.pkg"
+        "mac": "yume_0.5.7_x64.pkg",
+        "windows": "yume_0.5.7_x64-setup.exe",
+        "linux_deb": "yume_0.5.7_amd64.deb",
+        "linux_rpm": "yume-0.5.7-1.x86_64.rpm"
       },
       "checksums": {
         "mac_arm": "a398c754ff4822d9bb6fef1887b18e0ca390d0b70a3e17e8d7902b1be02250a0",
-        "mac": "3274bd087f7d264ce20f841406a418b0ac47669a2eb0f778448c069f4193fb8b"
+        "mac": "3274bd087f7d264ce20f841406a418b0ac47669a2eb0f778448c069f4193fb8b",
+        "windows": "b143bfeacc8bb8aa8a0b4b032e8f2c48b22a67f7f85a10fbdbbedb6189ed3b12",
+        "linux_deb": "78ab7aa3bb5196a33466a0beab391ffc8035bd9f403df6327dcf3dd6e4a9abb5",
+        "linux_rpm": "1616337a3d1a2836c80569175cd66499a21d7644065eb7e5b0b18738ede786de"
       }
     },
     {
