@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.5.5",
+  "latest": "0.5.6",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.5.6",
+      "date": "2026-01-27",
+      "notes": "fix streaming isolation, auto-update support, tool reorganization, background agent file tracking",
+      "releaseNotes": "v0.5.6-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.5.6_arm64.pkg",
+        "mac": "yume_0.5.6_x64.pkg",
+        "windows": "yume_0.5.6_x64-setup.exe",
+        "linux_deb": "yume_0.5.6_amd64.deb",
+        "linux_rpm": "yume-0.5.6-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "1ff958ef87f29f3a9b4cad69f97b08c5f526ad31d3febe1e6f2033eb1f162317",
+        "mac": "3ad89059da8cf71bafd05c20404d05ac98a702c7ca9c1d54b347b4bf7e721c97",
+        "windows": "ec7e623f9380e6ca8d4fd2ed81b88be34541cffe06e51d89e04e7477eb302d05",
+        "linux_deb": "3170ede721ab0e7f132243383a4ab39f6a89605e40157a950c89aeb4cb6c2f0e",
+        "linux_rpm": "88fe16d23bff4ae84090558c835ebe035b0c97400160755e8d5866cf9223ec1c"
+      }
+    },
     {
       "version": "0.5.5",
       "date": "2026-01-27",
