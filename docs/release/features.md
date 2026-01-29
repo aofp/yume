@@ -7,7 +7,7 @@ complete feature reference.
 ## session management
 
 ### tabs
-- up to 99 concurrent sessions (pro), 2 (trial)
+- up to 99 concurrent sessions (pro), 3 (trial)
 - independent context per tab
 - lazy reconnection (connects when accessed)
 - drag & drop reordering
@@ -31,9 +31,9 @@ states: created → connecting → active ↔ streaming ↔ idle → disconnecte
 ### auto-compaction
 | threshold | action |
 |-----------|--------|
-| 55% | yellow warning |
-| 60% | auto-compact triggers |
-| 65% | force compact |
+| 70% | yellow warning |
+| 77.5% | auto-compact triggers |
+| 85% | force compact |
 
 sends `/compact` on next user message. generates context manifest preserving important files/functions/decisions.
 
@@ -147,52 +147,58 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 ---
 
-## 5 built-in agents
+## 4 built-in agents
 
 | agent | purpose | tools |
 |-------|---------|-------|
 | yume-architect | plans, designs, decomposes tasks | all except edit/write |
-| yume-explorer | finds, reads, understands code | read-only |
+| yume-explorer | finds, reads, understands code (sonnet, read-only) | read-only |
 | yume-implementer | makes focused code changes | all tools |
-| yume-guardian | reviews, audits, verifies | all except edit/write |
-| yume-specialist | domain-specific expertise | all tools |
+| yume-guardian | reviews, audits, verifies + domain tasks (tests, docs, devops, data) | all except edit/write |
 
 agents auto-sync to `~/.claude/agents/yume-*.md` when enabled. use selected model. pid tracking prevents multi-instance conflicts.
 
 ---
 
-## memory mcp server
+## memory v2 system
 
 ### overview
-persistent knowledge graph using @modelcontextprotocol/server-memory.
+per-project markdown memory with TTL-based expiration.
 
 ### storage
-- location: `~/.yume/memory.jsonl`
-- format: jsonl with entities and relations
-- auto-start when enabled on app launch
-- cleanup on app exit
+- location: `~/.yume/memory/`
+- format: markdown files per project
+- structure:
+  - `global/preferences.md` - user preferences
+  - `global/patterns.md` - global coding patterns
+  - `projects/{hash}/learnings.md` - project learnings
+  - `projects/{hash}/errors.md` - error→solution mappings
+  - `projects/{hash}/patterns.md` - project patterns
+  - `projects/{hash}/brief.md` - project overview
 
-### knowledge graph model
-- **entities**: named nodes with type and observations
-- **relations**: connections between entities with relation type
-- **observations**: facts attached to entities
+### importance levels
+| level | ttl | use case |
+|-------|-----|----------|
+| 1 | 1 day | ephemeral notes |
+| 2 | 7 days | short-term context |
+| 3 | 30 days | normal learnings |
+| 4 | 90 days | important patterns |
+| 5 | permanent | critical knowledge |
 
 ### auto-learning triggers
 - error/fix patterns: detects `/error|bug|fix|issue|problem|crash|fail/i`
 - architecture decisions: detects `/should (use|prefer|avoid)|best practice|pattern/i`
-- stores first 200-500 chars as summary
 
-### api
-- `remember(projectPath, fact, category)` - store project fact
-- `rememberPattern(pattern, context)` - store coding pattern
-- `rememberErrorFix(error, solution)` - store error/fix pair
-- `getRelevantMemories(context, maxResults)` - get memories for prompt injection
-- `extractLearnings(projectPath, userMessage, response)` - auto-extract patterns
+### mcp server
+custom `yume-mcp-memory.cjs` with tools:
+- `add_observations` - add memories
+- `search_nodes` - search by query
+- `read_graph` - read all memories
 
 ### settings tab
 - enable/disable memory system
-- server status indicator
-- view storage file path
+- view entries per project
+- add/delete entries with importance
 
 ---
 
@@ -532,7 +538,7 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 ### tiers
 | tier | tabs | windows | price |
 |------|------|---------|-------|
-| trial | 2 | 1 | free |
+| trial | 3 | 1 | free |
 | pro | 99 | 99 | $21 |
 
 ### validation

@@ -9,7 +9,7 @@ desktop app for claude cli with multi-provider support.
 ## core features
 
 - **multi-tab sessions** — up to 99 concurrent conversations (pro)
-- **auto-compaction** — 60% triggers, 65% force, preserves important context
+- **auto-compaction** — 77.5% triggers, 85% force, preserves important context
 - **token tracking** — input/output/cache tokens, cost per message
 - **crash recovery** — 30s auto-save, full state restoration
 - **multi-provider** — claude, gemini, openai via official clis
@@ -18,7 +18,7 @@ desktop app for claude cli with multi-provider support.
 
 ## context management
 
-- **usage thresholds** — 55% warning, 60% auto-compact, 65% force
+- **usage thresholds** — 70% warning, 77.5% auto-compact, 85% force
 - **manifest generation** — preserves files, functions, decisions
 - **rate limit tracking** — 5h + 7d limits from anthropic api (claude only)
 - **context bar** — visual indicator with color-coded warnings
@@ -55,12 +55,12 @@ unified stream-json protocol. provider switching forks session. macos binaries b
 
 ---
 
-## memory system
+## memory v2 system
 
-persistent knowledge graph via mcp server:
-- **storage** — `~/.yume/memory.jsonl`
+per-project markdown memory:
+- **storage** — `~/.yume/memory/` (markdown files)
 - **auto-learning** — extracts patterns from conversations
-- **model** — entities, relations, observations
+- **importance levels** — 1-5 with TTL (1 day to permanent)
 - **access** — search, retrieve relevant memories for prompts
 
 ---
@@ -75,19 +75,18 @@ persistent knowledge graph via mcp server:
 - **skills** — auto-inject context based on file types/keywords
 - **mcp** — model context protocol servers
 
-bundled plugin: 5 agents, 5 commands.
+bundled plugin: 4 agents, 5 commands.
 
 ---
 
-## 5 built-in agents
+## 4 built-in agents
 
 | agent | purpose |
 |-------|---------|
 | yume-architect | planning, task decomposition |
-| yume-explorer | read-only codebase analysis |
+| yume-explorer | read-only codebase analysis (sonnet) |
 | yume-implementer | focused code changes |
-| yume-guardian | code review, security audit |
-| yume-specialist | domain-specific expertise |
+| yume-guardian | code review, security + domain tasks |
 
 agents use selected model. synced to `~/.claude/agents/`.
 
@@ -188,7 +187,7 @@ sqlite in `~/.yume/yume.db`:
 
 ## pricing
 
-- **trial** — free, 2 tabs, 1 window
+- **trial** — free, 3 tabs, 1 window
 - **pro** — $21 once, 99 tabs, 99 windows
 
 ---

@@ -71,7 +71,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 - **keyboard-first** - 32+ shortcuts, full mouse-free navigation
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
-- **auto-compaction** - 60% auto, 65% force, 38% buffer like claude code
+- **auto-compaction** - 77.5% auto, 85% force, same buffer as claude code
 
 ### plugin & skills system
 - **complete extensibility** - commands, agents, hooks, skills, MCP servers
@@ -183,7 +183,7 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 ## license
 
-yume is free to download and use with 2 tab limit. upgrade to pro for unlimited tabs ($21 one-time payment).
+yume is free to download and use with 3 tab limit. upgrade to pro for unlimited tabs ($21 one-time payment).
 
 ---
 

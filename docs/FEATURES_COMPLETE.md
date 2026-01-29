@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.3.4
-**Last Updated:** January 22, 2026
+**Version:** 5.7.0
+**Last Updated:** January 28, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -28,6 +28,7 @@
 20. [Memory MCP System](#20-memory-mcp-system)
 21. [Background Agents](#21-background-agents)
 22. [Orchestration Flow](#22-orchestration-flow)
+23. [Auto-Update System](#23-auto-update-system)
 
 ## 1. Core Features
 
@@ -198,9 +199,9 @@ pub struct CrashRecoveryManager {
 
 ### 3.1 Overview
 
-**Description**: Automatically compacts conversation context with conservative thresholds (55% warning, 60% auto, 65% force).
+**Description**: Automatically compacts conversation context with conservative thresholds (70% warning, 78% auto, 85% force).
 
-**Unique Feature**: Uses same 38% buffer as Claude Code for reliable context management.
+**Unique Feature**: Uses same 22.5% buffer (45k tokens) as Claude Code for reliable context management.
 
 ### 3.2 Technical Implementation
 
@@ -209,8 +210,8 @@ pub struct CrashRecoveryManager {
 **Threshold Detection**:
 ```rust
 pub struct CompactionManager {
-    auto_threshold: f32,  // 0.60 (60%)
-    force_threshold: f32, // 0.65 (65%)
+    auto_threshold: f32,  // 0.78 (78%)
+    force_threshold: f32, // 0.85 (85%)
 
     pub async fn monitor_usage(&self, stats: TokenStats) {
         let usage = stats.context_tokens as f32 / stats.max_tokens as f32;
@@ -226,7 +227,7 @@ pub struct CompactionManager {
 ### 3.3 Compaction Process
 
 **Steps**:
-1. **Detection**: Monitor reaches 60% (auto) or 65% (force) threshold
+1. **Detection**: Monitor reaches 78% (auto) or 85% (force) threshold
 2. **Preparation**: Save current state
 3. **Trigger**: Send `/compact` command on next user message
 4. **Processing**: Claude creates summary
@@ -244,8 +245,8 @@ pub struct CompactionManager {
 ```typescript
 interface CompactionSettings {
   autoTrigger: boolean;        // Enable auto-compaction
-  autoThreshold: number;       // 0.60 (60%)
-  forceThreshold: number;      // 0.65 (65%)
+  autoThreshold: number;       // 0.78 (78%)
+  forceThreshold: number;      // 0.85 (85%)
   preserveContext: boolean;    // Preserve important context
   generateManifest: boolean;   // Create compaction manifest
 }
@@ -451,20 +452,18 @@ pub struct HookConfig {
 
 ### 6.3 Available Triggers
 
-**Message Hooks**:
-- `before-message`: Modify outgoing messages
-- `after-message`: Process responses
-- `on-error`: Handle errors
+**9 Hook Events**:
+- `user_prompt_submit`: Before user message sent
+- `pre_tool_use`: Before tool execution **(ACTIVE)**
+- `post_tool_use`: After tool execution
+- `assistant_response`: After assistant response
+- `session_start`: New session created
+- `session_end`: Session closed
+- `context_warning`: Context threshold exceeded **(ACTIVE)**
+- `compaction_trigger`: Before auto-compaction **(ACTIVE)**
+- `error`: Error occurred
 
-**Session Hooks**:
-- `session-start`: New session created
-- `session-end`: Session terminated
-- `session-compact`: Compaction triggered
-
-**System Hooks**:
-- `app-start`: Application launch
-- `app-shutdown`: Application closing
-- `file-change`: File modification detected
+> **Note:** Only `pre_tool_use`, `context_warning`, and `compaction_trigger` are actively triggered. The other 6 hooks are defined but not currently called.
 
 ### 6.4 Hook Examples
 
@@ -537,19 +536,18 @@ impl McpManager {
 
 ### 7.4 Yume Agents System
 
-**Description**: 5 built-in AI agents that sync to `~/.claude/agents/` for Claude CLI integration. All agents automatically use the **currently selected model** (opus or sonnet).
+**Description**: 4 built-in AI agents that sync to `~/.claude/agents/` for Claude CLI integration. All agents automatically use the **currently selected model** (opus or sonnet).
 
 **Location**: `src-tauri/src/commands/mod.rs` (sync), `src/renderer/services/agentExecutionService.ts` (execution)
 
-**The 5 Yume Core Agents**:
+**The 4 Yume Core Agents**:
 
 | Agent | Purpose | Key Tools |
 |-------|---------|-----------|
 | **architect** | Plans, designs, decomposes tasks | TodoWrite |
-| **explorer** | Finds, reads, understands codebase | Glob, Grep, Read |
-| **implementer** | Codes, edits, builds | Edit, Write |
-| **guardian** | Reviews, audits, verifies | Read, Grep |
-| **specialist** | Domain-specific: tests, docs, devops | Varies |
+| **explorer** | Finds, reads, understands codebase (sonnet, read-only) | Glob, Grep, Read |
+| **implementer** | Codes, edits, builds (small, focused edits) | Edit, Write |
+| **guardian** | Reviews, audits, verifies + domain tasks (tests, docs, devops, data) | Read, Grep, Bash |
 
 **Sync Mechanism**:
 - Agents are written as `.md` files to `~/.claude/agents/yume-*.md`
@@ -716,25 +714,32 @@ ORDER BY rank;
 
 ### 9.4 Virtual Scrolling
 
-**Description**: Efficiently render large conversations.
+**Description**: Efficiently render large conversations using react-virtuoso.
 
 **Implementation**:
 ```typescript
 // src/renderer/components/Chat/VirtualizedMessageList.tsx
-<VirtualList
-  height={windowHeight}
-  itemCount={messages.length}
-  itemSize={getItemSize}
-  overscanCount={5}
->
-  {({ index, style }) => (
-    <MessageRenderer
-      message={messages[index]}
-      style={style}
-    />
-  )}
-</VirtualList>
+<Virtuoso
+  data={displayMessages}
+  defaultItemHeight={400}
+  increaseViewportBy={{ top: 800, bottom: 800 }}
+  alignToBottom={true}
+  followOutput={followOutput}
+  atBottomThreshold={50}
+  itemContent={itemContent}
+/>
 ```
+
+**Key Features**:
+- ResizeObserver-based scroll pinning (no RAF polling) for streaming content
+- MutationObserver for new item detection
+- Active text selection detection (prevents scroll interruption during selection)
+- State snapshot save/restore for tab switching
+- Active agent status cards inline in message list
+- Todo/task progress display during streaming
+- Streaming token count display
+- Bash output streaming with live process output
+- Compacting indicator with followup message preview
 
 ### 9.5 Loading States
 
@@ -983,38 +988,38 @@ use windows::Win32::*;
 **Description**: Commercial licensing system with trial and Pro tiers.
 
 **Pricing**:
-- **Trial**: Free (2 tabs, 1 window)
+- **Trial**: Free (3 tabs, 1 window)
 - **Pro**: $21 one-time (99 tabs, 99 windows)
 
 ### 14.2 Implementation
 
-**Location**: `src/renderer/stores/licenseManager.ts` (Zustand store)
+**Location**: `src/renderer/services/licenseManager.ts` (Zustand store with encrypted persistence)
 
-**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters)
+**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters, base-32 alphabet)
 
 **Validation**:
-- Server-side validation: `https://license.yume.com/validate`
-- Response caching: 5-minute TTL
-- Encrypted storage: XOR cipher in localStorage
-- Auto-revalidation: Every 30 minutes
+- Server-side validation: `https://yuru.be/api/license/validate.php`
+- Response caching: 5-minute TTL (fallback on network error)
+- Encrypted storage: XOR cipher in localStorage + backup to `~/.yume/license.json`
+- One-time validation: License validated at registration, no periodic re-validation
+- Backup restoration: Automatically restores from `~/.yume/license.json` if localStorage is empty
 
 ### 14.3 Features
 
 **License Operations**:
 ```typescript
-interface LicenseManager {
+interface LicenseStore {
   validateLicense(key: string): Promise<boolean>
-  activateLicense(key: string): Promise<void>
-  deactivateLicense(): void
+  activateLicense(key: string): Promise<boolean>
+  deactivateLicense(): Promise<boolean>
   getFeatures(): LicenseFeatures
   refreshLicenseStatus(): Promise<void>
+  clearLicense(): void
 }
 
 interface LicenseFeatures {
-  maxTabs: number      // 2 (trial) or 99 (pro)
+  maxTabs: number      // 3 (trial) or 99 (pro)
   maxWindows: number   // 1 (trial) or 99 (pro)
-  isTrial: boolean
-  isLicensed: boolean
 }
 ```
 
@@ -1414,13 +1419,14 @@ interface FileSnapshot {
 
 | Feature | Yume | Opcode | Claudia | Continue |
 |---------|----------|--------|---------|----------|
+| **Auto-update (CLI + app)** | ✅ | ❌ | ❌ | ❌ |
 | **License system (trial/pro)** | ✅ | ❌ | ❌ | ❌ |
 | **Plugin system** | ✅ | ❌ | ❌ | ❌ |
 | **Skills system** | ✅ | ❌ | ❌ | ❌ |
 | **Performance monitoring** | ✅ | ❌ | ❌ | ❌ |
 | **Analytics dashboard** | ✅ | ⚠️ | ❌ | ❌ |
 | **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
-| Auto-compact (60% auto, 65% force) | ✅ | ❌ | ❌ | ❌ |
+| Auto-compact (78% auto, 85% force) | ✅ | ❌ | ❌ | ❌ |
 | Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
 | Token tracking | ✅ | ✅ | ⚠️ | ✅ |
 | Cost calculation | ✅ | ✅ | ❌ | ❌ |
@@ -1430,7 +1436,7 @@ interface FileSnapshot {
 | Virtual scrolling | ✅ | ⚠️ | ❌ | ✅ |
 | Git diff viewer | ✅ | ✅ | ❌ | ✅ |
 | 12 themes | ✅ | ❌ | ❌ | ❌ |
-| 5 built-in agents | ✅ | ❌ | ❌ | ❌ |
+| 4 built-in agents | ✅ | ❌ | ❌ | ❌ |
 | 5 custom commands | ✅ | ❌ | ❌ | ❌ |
 | 30+ keyboard shortcuts | ✅ | ❌ | ❌ | ✅ |
 | Drag & drop tabs | ✅ | ❌ | ❌ | ❌ |
@@ -1440,6 +1446,7 @@ interface FileSnapshot {
 | Compiled server | ✅ | ❌ | ❌ | ❌ |
 | VSCode extension | ✅ | ❌ | ❌ | ✅ |
 | Multi-provider (Claude/Gemini/OpenAI) | ✅ | ❌ | ❌ | ✅ |
+| **Memory system** | ✅ TTL, importance, auto-pruning, multi-query search | ❌ | ❌ | ❌ |
 | Platform support | 3 | 3 | 2 | 3 |
 
 ## Performance Benchmarks
@@ -1454,63 +1461,99 @@ interface FileSnapshot {
 | Search 10K messages | 120ms | +10MB | 15% |
 | Export session | 200ms | +5MB | 10% |
 
-## 20. Memory MCP System
+## 20. Memory V2 System (Per-Project Markdown)
 
 ### 20.1 Overview
 
-**Description**: Persistent knowledge graph for remembering patterns, error fixes, and project context across sessions.
+**Description**: Persistent per-project memory system using markdown files for storing learnings, error fixes, patterns, and project context across sessions.
 
-**Location**: `src-tauri/src/commands/memory.rs`, `src/renderer/services/memoryService.ts`
+**Location**: `src-tauri/src/commands/memory_v2.rs`, `src/renderer/services/memoryServiceV2.ts`
 
-**Storage**: `~/.yume/memory.jsonl` (JSONL format)
+**Storage**: `~/.yume/memory/`
+- `global/preferences.md` - User preferences across all projects
+- `global/patterns.md` - Global coding patterns
+- `projects/{hash}/learnings.md` - Project-specific learnings
+- `projects/{hash}/errors.md` - Error → solution mappings
+- `projects/{hash}/patterns.md` - Project patterns
+- `projects/{hash}/brief.md` - Project overview
 
 ### 20.2 Architecture
 
-**MCP Server**: Spawned via `npx -y @modelcontextprotocol/server-memory`
-- Protocol version: `2024-11-05`
-- Communication: JSON-RPC 2.0 over stdin/stdout
-- Auto-start when `memoryEnabled` is true on app startup
-- Cleanup on app exit via `cleanup_memory_server()`
+**Centralized Rust Service**: Thread-safe with RwLock state
+- Single writer prevents race conditions across tabs
+- Atomic file writes (write to .tmp, then rename)
+- Event broadcasting via `memory-updated` Tauri event
+- Cross-tab synchronization via event-driven updates
 
-**Knowledge Graph Model**:
-- **Entities**: Named nodes with type and observations
-- **Relations**: Connections between entities with relation type
-- **Observations**: Facts attached to entities
+**MCP Server**: Custom `yume-mcp-memory.cjs` (replaces npm `@modelcontextprotocol/server-memory`)
+- Source: `src-tauri/resources/yume-mcp-memory.cjs`
+- Copied to: `~/.yume/yume-mcp-memory.cjs` on init
+- Registration: `claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs`
+- Tools: `add_observations`, `search_nodes`, `read_graph`
+- Writes directly to V2 markdown files
 
-### 20.3 Tauri Commands (10)
+### 20.3 Tauri Commands (17)
 
 | Command | Description |
 |---------|-------------|
-| `start_memory_server` | Start MCP server process with handshake |
-| `stop_memory_server` | Stop server process |
-| `check_memory_server` | Check if running |
-| `get_memory_file_path` | Get storage path |
-| `memory_create_entities` | Create entities via `tools/call` |
-| `memory_create_relations` | Create relations |
-| `memory_add_observations` | Add observations to entity |
-| `memory_search_nodes` | Search knowledge graph |
-| `memory_read_graph` | Read entire graph |
-| `memory_delete_entity` | Delete entity and relations |
+| `memory_v2_init` | Initialize memory system |
+| `memory_v2_add_learning` | Add project learning |
+| `memory_v2_add_error` | Add error/solution mapping |
+| `memory_v2_add_pattern` | Add project pattern |
+| `memory_v2_set_brief` | Set project brief |
+| `memory_v2_add_preference` | Add global preference |
+| `memory_v2_add_global_pattern` | Add global pattern |
+| `memory_v2_build_context` | Build context for injection |
+| `memory_v2_get_project` | Get project memory |
+| `memory_v2_get_global` | Get global memory |
+| `memory_v2_list_projects` | List all projects |
+| `memory_v2_delete_entry` | Delete specific entry |
+| `memory_v2_prune_expired` | Prune expired entries |
+| `memory_v2_clear_project` | Clear project memory |
+| `memory_v2_get_base_path` | Get memory base path |
 
-### 20.4 Frontend Service Methods
+### 20.4 Entry Format & Importance
 
-**High-Level API**:
-- `remember(projectPath, fact, category)` - Store project fact
-- `rememberPattern(pattern, context)` - Store coding pattern
-- `rememberErrorFix(error, solution)` - Store error/fix pair
-- `getRelevantMemories(context, maxResults)` - Get memories for prompt injection
-- `extractLearnings(projectPath, userMessage, response)` - Auto-extract patterns
+**Markdown Entry Format**:
+```markdown
+## 2026-01-28T10:00:00Z | importance:4 | ttl:90 | id:abc123
+Uses Zustand for state management
+```
 
-**Auto-Learning Triggers**:
-- Error/fix patterns: Detects `/error|bug|fix|issue|problem|crash|fail/i`
-- Architecture decisions: Detects `/should (use|prefer|avoid)|best practice|pattern|architecture|design/i`
+**Importance Levels (1-5)**:
 
-### 20.5 Entity Naming Conventions
+| Level | Name | TTL | Use Case |
+|-------|------|-----|----------|
+| 1 | Ephemeral | 1 day | Temporary notes, scratch context |
+| 2 | Low | 7 days | Short-term patterns, session-specific fixes |
+| 3 | Normal | 30 days | Standard learnings, error fixes |
+| 4 | High | 90 days | Architecture decisions, important patterns |
+| 5 | Permanent | ∞ | Core preferences, critical knowledge |
 
-- Projects: `project:{path-with-dashes}` (e.g., `project:Users-yuru-myapp`)
-- Patterns: `pattern:{name-slug}` (max 50 chars)
-- Errors: `error:{first-30-chars-slug}`
-- System: `yume:startup-test` (initialization marker)
+**Auto-Pruning**:
+- Expired entries pruned automatically via `memory_v2_prune_expired`
+- Based on TTL from importance level
+- Safe: only removes entries past expiration
+
+### 20.5 Context Injection
+
+**System Prompt Integration**:
+- `<yume-memory>` block injected into system prompt
+- Token budget: default 2000 tokens
+- Includes relevant project learnings, patterns, and global preferences
+- Built via `memory_v2_build_context` command
+
+### 20.6 Migration from V1
+
+**Automatic Migration**:
+- V1 storage: `~/.yume/memory.jsonl` (deprecated)
+- On first V2 init, V1 data migrated automatically
+- Backup created: `memory.jsonl.bak`
+- MCP package `@modelcontextprotocol/server-memory` no longer used
+
+### 20.7 Legacy Memory V1 (Deprecated)
+
+The previous memory system using `~/.yume/memory.jsonl` and `@modelcontextprotocol/server-memory` is deprecated. Legacy commands in `src-tauri/src/commands/memory.rs` (12 commands) remain for backward compatibility but are no longer actively used.
 
 ## 21. Background Agents
 
@@ -1524,18 +1567,18 @@ interface FileSnapshot {
 
 - `AgentQueueManager` - Thread-safe manager for background agent lifecycle
 - `MAX_CONCURRENT_AGENTS`: 4 (parallel execution limit)
-- `AGENT_TIMEOUT_SECS`: 600 (10 minute timeout)
+- **No timeout** (agents run until completion)
 - Output directory: `~/.yume/agent-output/`
 - Event emission: `background-agent-status` (Tauri event)
+- **Streaming isolation**: Background agents do NOT control main CLI streaming state; only main process `streaming_end`/`result` events set `streaming=false`
 
 ### 21.3 Agent Types
 
 Maps to yume core agents:
-- `Architect` - Plans, designs, decomposes tasks
-- `Explorer` - Finds, reads, understands codebase
-- `Implementer` - Codes, edits, builds
-- `Guardian` - Reviews, audits, verifies
-- `Specialist` - Domain-specific tasks
+- `Architect` (`yume-architect`) - Plans, designs, decomposes tasks
+- `Explorer` (`yume-explorer`) - Finds, reads, understands codebase (sonnet, read-only)
+- `Implementer` (`yume-implementer`) - Codes, edits, builds (small, focused edits)
+- `Guardian` (`yume-guardian`) - Reviews, audits, verifies + domain tasks (tests, docs, devops, data)
 - `Custom(String)` - User-defined agents
 
 ### 21.4 Agent Status Flow
@@ -1550,12 +1593,15 @@ Maps to yume core agents:
 - Conflict detection: `check_merge_conflicts`
 - Cleanup: `cleanup_old_branches` removes merged branches
 
-### 21.6 Tauri Commands (13)
+### 21.6 Tauri Commands (14)
+
+> Note: Background agents use Claude CLI directly with `--dangerously-skip-permissions`, NOT yume-cli. Debounce timing: 700ms macOS, 2000ms Windows.
 
 | Command | Description |
 |---------|-------------|
 | `queue_background_agent` | Queue new agent with optional git branch |
 | `get_agent_queue` | Get all agents (queued, running, completed) |
+| `get_agents_for_session` | Get agents filtered by session ID |
 | `get_background_agent` | Get specific agent by ID |
 | `cancel_background_agent` | Cancel running/queued agent |
 | `remove_background_agent` | Remove completed agent |
@@ -1573,12 +1619,12 @@ Maps to yume core agents:
 - `AgentQueuePanel.tsx` - Sliding panel with agent cards
 - `ProgressIndicator.tsx` - Real-time progress display
 
-### 21.8 yume-cli Integration
+### 21.8 Streaming Isolation
 
-Supports flags for background execution:
-- `--async` - Run in background mode
-- `--output-file` - Output file path
-- `--git-branch` - Create isolated git branch
+**Critical**: Background agents do NOT control main CLI streaming state.
+- Only main process `streaming_end`/`result` events set `streaming=false`
+- Subagent results (with `parent_tool_use_id`) excluded from clearing streaming state
+- Debounce: 700ms macOS, 2000ms Windows
 
 ## 22. Orchestration Flow
 
@@ -1610,15 +1656,14 @@ one step at a time, verify before next.
 
 ### 22.4 Agent Integration
 
-The orchestration flow leverages yume's 5 core agents:
+The orchestration flow leverages yume's 4 core agents:
 
 | Agent | Role in Flow |
 |-------|--------------|
-| `architect` | Decompose complex tasks, identify dependencies/risks |
-| `explorer` | Search codebase, gather context before planning |
-| `implementer` | Make focused code changes |
-| `guardian` | Review for bugs, security, performance after changes |
-| `specialist` | Domain-specific tasks (tests, docs, devops) |
+| `yume-architect` | Decompose complex tasks, identify dependencies/risks |
+| `yume-explorer` | Search codebase, gather context before planning (sonnet, read-only) |
+| `yume-implementer` | Make focused code changes (small, incremental edits) |
+| `yume-guardian` | Review for bugs, security, performance + domain tasks (tests, docs, devops, data) |
 
 ### 22.5 Implementation
 
@@ -1682,6 +1727,51 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 - **Customizable** - Users can override or disable entirely
 - **Non-intrusive** - Trivial tasks proceed directly without overhead
 
+## 23. Auto-Update System
+
+### 23.1 Claude CLI Auto-Update
+
+**Description**: Automatically runs `claude update` on app startup to keep the CLI current.
+
+**Location**: `src/renderer/stores/claudeCodeStore.ts`
+
+**Features**:
+- Toggle in Settings (General tab): "auto-update claude" (default: on)
+- Runs `claude update` via bash on app start
+- Parses output for version info and update status
+- Non-blocking: runs in background without interrupting user flow
+
+### 23.2 App Version Check
+
+**Description**: Checks for new Yume versions via GitHub Pages on app startup.
+
+**Location**: `src/renderer/services/versionCheck.ts`
+
+**Features**:
+- Fetches `version.txt` from `https://aofp.github.io/yume/version.txt`
+- Semantic version comparison against current app version
+- Update notification shown in window controls when new version available
+- Result cached in localStorage between sessions
+- Cache-busting via timestamp query parameter
+
+### Test Infrastructure
+
+**Framework:** Vitest with jsdom environment (`vitest.config.ts`)
+
+**8 Test Suites:**
+| Category | File | Coverage |
+|----------|------|----------|
+| Config | `app.test.ts` | App name, version, ID derivation |
+| Config | `tools.test.ts` | Tool definitions validation |
+| Services | `licenseManager.test.ts` | License validation, trial/pro |
+| Types | `ucf.test.ts` | UCF format validation |
+| Utils | `chatHelpers.test.ts` | Chat utility functions |
+| Utils | `helpers.test.ts` | General helper functions |
+| Utils | `performance.test.ts` | Performance utilities |
+| Utils | `regexValidator.test.ts` | ReDoS pattern validation |
+
+**Setup:** `src/test/setup.ts` mocks Tauri APIs for test isolation
+
 ## Conclusion
 
 Yume offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
@@ -1690,6 +1780,7 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
    - **Orchestration flow** - GSD-inspired automatic task decomposition (understand → decompose → act → verify)
    - **Memory MCP system** - persistent knowledge graph for patterns, error fixes, context
    - **Background agents** - async execution with git branch isolation (4 concurrent)
+   - **Auto-update** - CLI auto-update on startup + app version check via GitHub Pages
    - **License system** with trial/pro tiers ($21 one-time)
    - **Plugin system** - complete extensibility framework (commands, agents, hooks, skills, MCP)
    - **Skills system** - auto-inject context based on triggers (file extensions, keywords, regex)
@@ -1698,9 +1789,9 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
    - **Timeline & checkpoints** - visual conversation state management
    - **CLAUDE.md editor** - in-app project documentation editing
    - 5h + 7-day Anthropic limit tracking (no competitor has this)
-   - Auto-compaction (55% warn, 60% auto, 65% force) - same 38% buffer as Claude Code
+   - Auto-compaction (70% warn, 78% auto, 85% force) - matches Claude Code's 45k token buffer
    - Crash recovery (auto-save every 5 min)
-   - Built-in agents (architect, explorer, implementer, guardian, specialist)
+   - Built-in agents (architect, explorer, implementer, guardian)
    - Custom commands with templates
    - Hook system for behavior customization (9 events)
 
@@ -1750,4 +1841,4 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
 
 The combination of advanced features with a focus on performance, privacy, and extensibility makes Yume the most capable Claude GUI available.
 
-**Planned Expansion:** Multi-provider support (Gemini/OpenAI) is actively being integrated via a Claude-compatible stream-json shim. Gemini integration is currently the primary focus. See `docs/expansion-plan/ROADMAP.md`.
+**Multi-Provider Support:** Multi-provider support (Gemini/OpenAI) is implemented but disabled by default via feature flags (`PROVIDER_GEMINI_AVAILABLE: false`, `PROVIDER_OPENAI_AVAILABLE: false`). Uses a Claude-compatible stream-json shim (`yume-cli`). Enable in `src/renderer/config/features.ts`.
