@@ -1,7 +1,7 @@
 # Yume Complete Troubleshooting Guide
 
-**Version:** 0.1.0
-**Last Updated:** January 14, 2026
+**Version:** 0.6.0
+**Last Updated:** January 28, 2026
 **Platforms:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -227,8 +227,8 @@ del %APPDATA%\yume\window-state.json
 # macOS
 system_profiler SPDisplaysDataType
 
-# Force window to primary display
-defaults write be.yuru.yume NSWindow\ Frame\ MainWindow "0 0 1024 768"
+# Force window to primary display (use correct identifier)
+defaults write io.github.aofp.yume NSWindow\ Frame\ MainWindow "0 0 580 440"
 ```
 
 3. **GPU driver issues**
@@ -319,16 +319,17 @@ export PATH="$PATH:/path/to/claude/directory"
 # Check Claude version
 claude --version
 
-# Check required version
-cat /Applications/Yume.app/Contents/Resources/requirements.txt
+# Note: Yume works with Claude CLI version 1.0.0 and above
+# Yume auto-updates Claude CLI on startup by default
 ```
 
 #### Solution:
 ```bash
-# Update Claude CLI
-npm update -g @anthropic/claude-cli
-# Or
-pip install --upgrade anthropic-claude-cli
+# Update Claude CLI (if using npm)
+npm update -g @anthropic-ai/claude-code
+
+# Yume can also auto-update Claude CLI on startup (enabled by default)
+# Check Settings > Auto-update Claude CLI
 ```
 
 ### 3.3 Authentication Issues
@@ -404,12 +405,17 @@ console.log('Connected:', store.isConnected);
 console.log('Server port:', store.serverPort);
 ```
 
-**Note:** The server runs as a compiled binary on each platform:
-- macOS: `yume-server-macos-arm64` (Apple Silicon) or `yume-server-macos-x64` (Intel)
-- Windows: `yume-server-windows-x64.exe`
-- Linux: `yume-server-linux-x64`
+**Note:** The server runs as a unified binary on each platform:
+- macOS: `yume-bin-macos-arm64` (Apple Silicon) or `yume-bin-macos-x64` (Intel)
+- Windows: `yume-bin-windows-x64.exe` (build script exists, binary not yet bundled)
+- Linux: `yume-bin-linux-x64` (build script exists, binary not yet bundled)
 
-Fallback .cjs files exist for backwards compatibility when binaries fail.
+Multi-provider CLI shim binaries:
+- `yume-cli-macos-arm64` / `yume-cli-macos-x64` - complete
+- `yume-cli-windows-x64.exe` / `yume-cli-linux-x64` - pending
+
+Fallback .cjs files at project root for development:
+- `server-claude-macos.cjs`, `server-claude-windows.cjs`, `server-claude-linux.cjs`
 
 **2. Test WebSocket connection**:
 ```javascript
@@ -763,11 +769,11 @@ setInterval(() => {
 **1. Backup current database**:
 ```bash
 # Find database
-# macOS
-cp ~/Library/Application\ Support/yume/yume.db yume.db.corrupt
+# macOS/Linux
+cp ~/.yume/yume.db yume.db.corrupt
 
 # Windows
-copy %APPDATA%\yume\yume.db yume.db.corrupt
+copy %USERPROFILE%\.yume\yume.db yume.db.corrupt
 ```
 
 **2. Attempt repair**:
@@ -919,8 +925,8 @@ ulimit -a
 System Preferences > Security & Privacy > Privacy > Full Disk Access
 # Add Yume.app
 
-# Reset permissions
-tccutil reset All be.yuru.yume
+# Reset permissions (use correct app identifier)
+tccutil reset All io.github.aofp.yume
 ```
 
 #### Issue: Translucent sidebar not working
@@ -1115,11 +1121,13 @@ procmon.exe /Quiet /Minimized /BackingFile trace.pml
 rm -rf ~/Library/Application\ Support/yume
 rm -rf ~/Library/Caches/yume
 rm -rf ~/Library/Logs/yume
-rm -rf ~/Library/Preferences/be.yuru.yume.plist
+rm -rf ~/Library/Preferences/io.github.aofp.yume.plist
+rm -rf ~/.yume
 
 # Windows
 rmdir /s /q %APPDATA%\yume
 rmdir /s /q %LOCALAPPDATA%\yume
+rmdir /s /q %USERPROFILE%\.yume
 reg delete HKCU\Software\yume /f
 
 # Linux
@@ -1159,10 +1167,8 @@ echo "=== End Health Check ==="
 
 ### Support Channels
 
-1. **GitHub Issues**: https://github.com/yume/yume/issues
-2. **Discord Community**: https://discord.gg/yume
-3. **Email Support**: support@yume.app
-4. **Documentation**: https://docs.yume.app
+1. **GitHub Issues**: https://github.com/aofp/yume/issues
+2. **Documentation**: See `docs/` directory in the repository
 
 ### Information to Provide
 
@@ -1212,7 +1218,9 @@ copy %LOCALAPPDATA%\yume\logs\server.log yume-debug\
 
 ---
 
-## 13. Multi-Provider (Active)
+## 13. Multi-Provider
+
+> **Note:** Multi-provider support is disabled by default via feature flags (`PROVIDER_GEMINI_AVAILABLE: false`, `PROVIDER_OPENAI_AVAILABLE: false`). Enable in `src/renderer/config/features.ts` if needed.
 
 These items apply once Gemini/OpenAI providers are enabled via `yume-cli`.
 
@@ -1250,4 +1258,4 @@ These items apply once Gemini/OpenAI providers are enabled via `yume-cli`.
 
 ---
 
-This troubleshooting guide covers common issues and known future-provider scenarios. For issues not covered here, please contact support with detailed information about your problem.
+This troubleshooting guide covers common issues and known future-provider scenarios. For issues not covered here, please open an issue at https://github.com/aofp/yume/issues with detailed information about your problem.

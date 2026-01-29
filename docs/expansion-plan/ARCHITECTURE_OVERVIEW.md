@@ -1,7 +1,7 @@
 # Multi-Model CLI Architecture Expansion
 
-> **Last Updated:** 2026-01-14
-> **Implementation Status:** ~75% complete
+> **Last Updated:** 2026-01-28
+> **Implementation Status:** ~95% complete (macOS ready, Windows/Linux binaries pending)
 
 ## Implementation Summary
 
@@ -11,13 +11,16 @@
 | Provider Selector UI | ✅ Complete | `src/renderer/components/ProviderSelector/` |
 | Providers Tab | ✅ Complete | `src/renderer/components/Settings/ProvidersTab.tsx` |
 | Model Registry | ✅ Complete | `src/renderer/config/models.ts` |
-| yume-cli Shim | 🔄 60% | `src-yume-cli/` |
+| yume-cli Shim | ✅ Complete | `src-yume-cli/` |
 | Backend Spawner | ✅ Complete | `src-tauri/src/yume_cli_spawner.rs` |
 | CLI Detection | ✅ Complete | `src-tauri/src/commands/claude_detector.rs` |
 | Analytics Multi-Model | ✅ Complete | `server-claude-*.cjs` |
 | UCF Types | ✅ Complete | `src/renderer/types/ucf.ts` |
 | Conversation Store | ✅ Complete | `src/renderer/services/conversationStore.ts` |
-| Translation Layer | 🔄 50% | `src/renderer/services/conversationTranslator.ts` |
+| Translation Layer | ✅ Complete | `src/renderer/services/conversationTranslator.ts` |
+| Agent Loop | ✅ Complete | `src-yume-cli/src/core/agent-loop.ts` |
+| Tool Executors | ✅ Complete | `src-yume-cli/src/tools/` |
+| Plugin System | ✅ Complete | `src-yume-cli/src/core/plugins.ts` |
 
 ## Overview
 
@@ -87,15 +90,18 @@ Today the frontend listens to Tauri events like `claude-message:{sessionId}`. To
 - **Protocol:** Gemini stream-json → translated to Claude-compatible by yume-cli
 - **Authentication:** User runs `gemini auth login` separately
 - **Installation:** `npm install -g @google/gemini-cli`
-- **Status:** Active integration
-- **Key Differences:** Function-calling format, usage metadata, massive context window
+- **Status:** ✅ Complete
+- **Key Differences:** Function-calling format (tool_use/tool_result), usage metadata, massive context window (1M tokens)
+- **CLI Flags:** `--model`, `--output-format stream-json`, `--yolo` (auto-approve)
 
 ### 3. OpenAI/Codex (Official CLI via Shim)
 - **Binary:** `yume-cli --provider openai` spawns official `codex` CLI
-- **Protocol:** Codex stream-json → translated to Claude-compatible by yume-cli
-- **Authentication:** User runs `codex auth login` separately
-- **Installation:** `npm install -g codex-cli`
-- **Status:** Planned
+- **Protocol:** Codex JSONL → translated to Claude-compatible by yume-cli
+- **Authentication:** User runs `codex login` separately
+- **Installation:** `npm install -g @openai/codex`
+- **Status:** ✅ Complete
+- **CLI Flags:** `exec --json -C <cwd> --full-auto -m <model>`
+- **Special handling:** Mini models use `model_reasoning_effort="low"` override
 
 ## Frontend Changes
 
@@ -103,13 +109,14 @@ Today the frontend listens to Tauri events like `claude-message:{sessionId}`. To
 2.  **UI:** Add a Provider Selector in the sidebar or new session modal.
 3.  **Settings:** Add configuration sections for each provider (binary path, specific flags).
 
-## Roadmap
+## Implementation Status
 
-1.  **Refactor Server:** Extract Claude logic from `server-claude-direct.cjs` into `adapters/claude.js`. (In Progress)
-2.  **Generic Server:** Create `server-core.js` that loads the correct adapter based on initialization params.
-3.  **Gemini Prototype:** Build a minimal `adapters/gemini.js` (shim-backed) and test connection. (Active Integration)
-4.  **Codex Prototype:** Build a minimal `adapters/codex.js` (OpenAI-backed) and test connection.
-5.  **Frontend Integration:** expose switching logic.
+1.  ✅ **yume-cli Shim:** Complete TypeScript implementation in `src-yume-cli/`
+2.  ✅ **Gemini Provider:** Spawns `gemini` CLI with stream-json translation
+3.  ✅ **OpenAI Provider:** Spawns `codex` CLI with JSONL translation
+4.  ✅ **Backend Spawner:** `yume_cli_spawner.rs` handles multi-provider process management
+5.  ✅ **Frontend Integration:** Provider switching, model selection, analytics
+6.  🔄 **Binary Distribution:** macOS works, Windows/Linux binaries pending
 
 ## Model Identifier Strategy
 
@@ -117,62 +124,47 @@ All providers use a normalized `{provider}:{model}` format for analytics and cos
 
 ### Model Mapping Table
 
-| Provider | API Model ID | Display Name | Analytics Key |
-|----------|-------------|--------------|---------------|
-| Claude | claude-sonnet-4-20250514 | Sonnet 4 | claude:sonnet-4 |
-| Claude | claude-opus-4-5-20251101 | Opus 4.5 | claude:opus-4.5 |
-| Gemini | gemini-1.5-pro | Gemini 1.5 Pro | gemini:1.5-pro |
-| Gemini | gemini-1.5-flash | Gemini 1.5 Flash | gemini:1.5-flash |
-| Gemini | gemini-2.0-flash | Gemini 2.0 Flash | gemini:2.0-flash |
-| Gemini | gemini-2.0-flash-thinking | Gemini 2.0 Thinking | gemini:2.0-thinking |
-| OpenAI | gpt-4o | GPT-4o | openai:gpt-4o |
-| OpenAI | gpt-4o-mini | GPT-4o Mini | openai:gpt-4o-mini |
-| OpenAI | o1 | O1 | openai:o1 |
-| OpenAI | o1-mini | O1 Mini | openai:o1-mini |
-| OpenAI | o3-mini | O3 Mini | openai:o3-mini |
+**Note:** Model IDs are defined in `src/renderer/config/models.ts` - DO NOT CHANGE without explicit approval.
+
+| Provider | API Model ID | Display Name | Context Window |
+|----------|-------------|--------------|----------------|
+| Claude | claude-sonnet-4-5-20250929 | Sonnet 4.5 | 200K |
+| Claude | claude-opus-4-5-20251101 | Opus 4.5 | 200K |
+| Gemini | gemini-2.5-pro | Gemini 2.5 Pro | 1M |
+| Gemini | gemini-2.5-flash | Gemini 2.5 Flash | 1M |
+| OpenAI | gpt-5.2-codex | Codex 5.2 | 200K |
+| OpenAI | gpt-5.1-codex-mini | Codex 5.1 Mini | 200K |
+
+**yume-cli internal models** (additional models supported):
+| Gemini | gemini-2.0-flash | Gemini 2.0 Flash | 1M |
+| Gemini | gemini-3-flash | Gemini 3 Flash | 1M |
+| Gemini | gemini-2.0-flash-thinking-exp | Gemini 2.0 Thinking | 32K |
+| OpenAI | gpt-4o | GPT-4o | 128K |
+| OpenAI | gpt-4o-mini | GPT-4o Mini | 128K |
+| OpenAI | o1/o1-mini/o3-mini | O-series | 128-200K |
 
 ### Implementation
 
+See `src/renderer/config/models.ts` for the actual model registry:
+
 ```typescript
-interface ModelInfo {
-  provider: 'claude' | 'gemini' | 'openai';
-  apiModelId: string;
-  displayName: string;
-  analyticsKey: string;
-  contextLimit: number;
-  outputLimit: number;
+// From src/renderer/config/models.ts
+interface ModelDefinition {
+  id: string;                // Full model ID for API calls
+  shortName: string;         // Short name for display and shortcuts
+  displayName: string;       // Full display name
+  provider: ProviderType;    // 'claude' | 'gemini' | 'openai'
+  contextWindow: number;     // Context window size
+  maxOutput: number;         // Max output tokens
+  supportsTools: boolean;
+  supportsThinking?: boolean;
+  reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
 }
 
-const MODEL_REGISTRY: Record<string, ModelInfo> = {
-  'claude:sonnet-4': {
-    provider: 'claude',
-    apiModelId: 'claude-sonnet-4-20250514',
-    displayName: 'Sonnet 4',
-    analyticsKey: 'claude:sonnet-4',
-    contextLimit: 200000,
-    outputLimit: 16000,
-  },
-  'gemini:1.5-pro': {
-    provider: 'gemini',
-    apiModelId: 'gemini-1.5-pro',
-    displayName: 'Gemini 1.5 Pro',
-    analyticsKey: 'gemini:1.5-pro',
-    contextLimit: 1000000,
-    outputLimit: 8192,
-  },
-  // ... etc
-};
-
-function normalizeModelId(provider: string, apiModelId: string): string {
-  // Map API model ID to analytics key
-  for (const [key, info] of Object.entries(MODEL_REGISTRY)) {
-    if (info.provider === provider && info.apiModelId === apiModelId) {
-      return key;
-    }
-  }
-  // Fallback: construct from provider and model
-  return `${provider}:${apiModelId.replace(/[-_]?\d{8}$/, '')}`;
-}
+// Example entries (actual IDs - DO NOT CHANGE without approval):
+// Claude: claude-sonnet-4-5-20250929, claude-opus-4-5-20251101
+// Gemini: gemini-2.5-pro, gemini-2.5-flash
+// OpenAI: gpt-5.2-codex, gpt-5.1-codex-mini
 ```
 
 ## Cost Tracking

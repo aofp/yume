@@ -2,6 +2,8 @@
 
 This document enumerates scenarios the translation layer (`yume-cli` or adapters) must handle to ensure Yume behaves consistently across Claude, Gemini, and OpenAI/Codex.
 
+**Implementation Status:** Multi-provider support is designed but not yet enabled. Feature flags `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` are currently `false` in `config/features.ts`. The `yume-cli` shim exists in `src-yume-cli/` but is not yet fully integrated.
+
 ## 1. Provider Capability Matrix (Minimum)
 | Capability | Claude CLI | Gemini (Shim) | OpenAI/Codex (Shim) | Notes |
 |------------|------------|---------------|---------------------|-------|
@@ -24,8 +26,8 @@ This matrix shows which features work with which providers:
 | Multi-tool parallel | ✅ | ✅ | ✅ | Shim serializes for determinism |
 | Image input | ✅ | ✅ | ✅ | Base64 encoding required |
 | PDF input | ✅ | ✅ | ❌ | OpenAI lacks native PDF support |
-| Thinking/reasoning | ✅ | ⚠️ | ✅ | Gemini 2.0 Thinking, O1/O3 models |
-| Extended thinking | ✅ | ❌ | ✅ | Sonnet 4 / O1 models only |
+| Thinking/reasoning | ✅ | ⚠️ | ✅ | Gemini 2.5 Thinking, O1/O3 models |
+| Extended thinking | ✅ | ❌ | ✅ | Sonnet 4.5 / O1 models only |
 | Session resume | ✅ | ✅* | ✅* | *Shim maintains local state |
 | Native session files | ✅ | ❌ | ❌ | Only Claude uses ~/.claude/projects |
 | MCP (Model Context Protocol) | ✅ | ❌ | ❌ | Claude-only feature |

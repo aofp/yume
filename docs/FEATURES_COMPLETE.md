@@ -1,6 +1,6 @@
 # Yume Complete Feature Documentation
 
-**Version:** 5.7.0
+**Version:** 0.6.0
 **Last Updated:** January 28, 2026
 **Platform:** macOS, Windows, Linux
 
@@ -199,9 +199,9 @@ pub struct CrashRecoveryManager {
 
 ### 3.1 Overview
 
-**Description**: Automatically compacts conversation context with user-configurable threshold (default 75%).
+**Description**: Automatically compacts conversation context with dynamic thresholds (default T=75%: 70% warning, 75% auto, 80% force).
 
-**Unique Feature**: Variable threshold that users can adjust (50-90%) or disable entirely for manual control.
+**Unique Feature**: Variable threshold system with 5% warning buffer and 5% force buffer around the configurable auto-compact threshold.
 
 ### 3.2 Technical Implementation
 
@@ -209,24 +209,28 @@ pub struct CrashRecoveryManager {
 
 **Threshold Detection**:
 ```rust
-pub struct CompactionManager {
-    threshold: f32,  // User-configurable (default 0.75 / 75%)
-    enabled: bool,   // Can be disabled for manual control
+pub struct CompactionConfig {
+    pub auto_threshold: f32,  // default 0.75 (75%)
+    pub force_threshold: f32, // default 0.80 (auto + 5%)
+}
 
-    pub async fn monitor_usage(&self, stats: TokenStats) {
-        if !self.enabled { return; }
-        let usage = stats.context_tokens as f32 / stats.max_tokens as f32;
-        if usage >= self.threshold {
-            self.trigger_auto_compaction().await;
-        }
-    }
+// Dynamic thresholds: warning = threshold - 5%, auto = threshold, force = threshold + 5%
+pub fn check_compaction_action(&self, usage: f32) -> CompactionAction {
+    let warning_threshold = threshold - 0.05;  // 70%
+    let auto_threshold = threshold;            // 75%
+    let force_threshold = threshold + 0.05;    // 80%
+
+    if usage >= force_threshold { Force }
+    else if usage >= auto_threshold { AutoTrigger }
+    else if usage >= warning_threshold { Warning }
+    else { None }
 }
 ```
 
 ### 3.3 Compaction Process
 
 **Steps**:
-1. **Detection**: Monitor reaches user-configured threshold (default 75%)
+1. **Detection**: Monitor reaches 75% (auto) or 80% (force) threshold (default values)
 2. **Preparation**: Save current state
 3. **Trigger**: Send `/compact` command on next user message
 4. **Processing**: Claude creates summary
@@ -243,8 +247,9 @@ pub struct CompactionManager {
 
 ```typescript
 interface CompactionSettings {
-  enabled: boolean;            // Enable/disable auto-compaction
-  threshold: number;           // 0.75 (75%) default, range 0.50-0.90
+  autoTrigger: boolean;        // Enable auto-compaction
+  autoThreshold: number;       // 0.75 (75%) default
+  forceThreshold: number;      // 0.80 (80%) default (auto + 5%)
   preserveContext: boolean;    // Preserve important context
   generateManifest: boolean;   // Create compaction manifest
 }
@@ -450,18 +455,22 @@ pub struct HookConfig {
 
 ### 6.3 Available Triggers
 
-**9 Hook Events**:
-- `user_prompt_submit`: Before user message sent
+**9 Hook Events (only 3 active)**:
+
+*Active hooks (wired to execution paths):*
 - `pre_tool_use`: Before tool execution **(ACTIVE)**
+- `context_warning`: Context threshold exceeded **(ACTIVE)**
+- `compaction_trigger`: Before auto-compaction **(ACTIVE)**
+
+*Defined but not currently called:*
+- `user_prompt_submit`: Before user message sent
 - `post_tool_use`: After tool execution
 - `assistant_response`: After assistant response
 - `session_start`: New session created
 - `session_end`: Session closed
-- `context_warning`: Context threshold exceeded **(ACTIVE)**
-- `compaction_trigger`: Before auto-compaction **(ACTIVE)**
 - `error`: Error occurred
 
-> **Note:** Only `pre_tool_use`, `context_warning`, and `compaction_trigger` are actively triggered. The other 6 hooks are defined but not currently called.
+> **Important:** Only 3 of 9 hooks are actively triggered in the codebase. The other 6 are defined but not wired to any execution path.
 
 ### 6.4 Hook Examples
 
@@ -1424,7 +1433,7 @@ interface FileSnapshot {
 | **Performance monitoring** | ✅ | ❌ | ❌ | ❌ |
 | **Analytics dashboard** | ✅ | ⚠️ | ❌ | ❌ |
 | **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
-| Auto-compact (variable, default 75%) | ✅ | ❌ | ❌ | ❌ |
+| Auto-compact (75% auto, 80% force) | ✅ | ❌ | ❌ | ❌ |
 | Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
 | Token tracking | ✅ | ✅ | ⚠️ | ✅ |
 | Cost calculation | ✅ | ✅ | ❌ | ❌ |
@@ -1490,7 +1499,7 @@ interface FileSnapshot {
 - Tools: `add_observations`, `search_nodes`, `read_graph`
 - Writes directly to V2 markdown files
 
-### 20.3 Tauri Commands (17)
+### 20.3 Tauri Commands (15)
 
 | Command | Description |
 |---------|-------------|
@@ -1593,7 +1602,7 @@ Maps to yume core agents:
 
 ### 21.6 Tauri Commands (14)
 
-> Note: Background agents use Claude CLI directly with `--dangerously-skip-permissions`, NOT yume-cli. Debounce timing: 700ms macOS, 2000ms Windows.
+> **Note:** Background agents use Claude CLI directly with `--dangerously-skip-permissions`, NOT yume-cli. Subagent results (with `parent_tool_use_id`) are excluded from clearing main streaming state. Debounce timing: 700ms macOS, 2000ms Windows.
 
 | Command | Description |
 |---------|-------------|
@@ -1621,8 +1630,8 @@ Maps to yume core agents:
 
 **Critical**: Background agents do NOT control main CLI streaming state.
 - Only main process `streaming_end`/`result` events set `streaming=false`
-- Subagent results (with `parent_tool_use_id`) excluded from clearing streaming state
-- Debounce: 700ms macOS, 2000ms Windows
+- Subagent results (with `parent_tool_use_id`) are also excluded from clearing streaming state
+- Debounce timing: 700ms macOS, 2000ms Windows (accounts for platform event timing differences)
 
 ## 22. Orchestration Flow
 
@@ -1754,7 +1763,7 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 
 ### Test Infrastructure
 
-**Framework:** Vitest with jsdom environment (`vitest.config.ts`)
+**Framework:** Vitest 3.x with jsdom environment (`vitest.config.ts`)
 
 **8 Test Suites:**
 | Category | File | Coverage |
@@ -1787,7 +1796,7 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
    - **Timeline & checkpoints** - visual conversation state management
    - **CLAUDE.md editor** - in-app project documentation editing
    - 5h + 7-day Anthropic limit tracking (no competitor has this)
-   - Auto-compaction (variable threshold, default 75%, user configurable or disable)
+   - Auto-compaction (70% warn, 75% auto, 80% force) - dynamic thresholds with configurable T
    - Crash recovery (auto-save every 5 min)
    - Built-in agents (architect, explorer, implementer, guardian)
    - Custom commands with templates

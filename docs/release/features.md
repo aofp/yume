@@ -123,7 +123,8 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 #### hooks
 - location: `hooks/*.js`, `hooks/*.py`, `hooks/*.sh`
-- 9 events: UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
+- 9 events defined, **only 3 active**: `PreToolUse`, `ContextWarning`, `CompactionTrigger`
+- 6 events defined but not wired: `UserPromptSubmit`, `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`
 - actions: continue, block, modify
 - 5s timeout default
 - variable substitution: `${session_id}`, `${message}`, `${file}`
@@ -206,9 +207,11 @@ custom `yume-mcp-memory.cjs` with tools:
 
 ### queue management
 - max 4 concurrent agents
-- 10-minute timeout per agent
+- no timeout (agents run until completion)
 - queued → running → completed/failed/cancelled states
 - real-time progress polling (5s interval)
+- uses claude cli directly with `--dangerously-skip-permissions`
+- streaming isolation: does NOT control main session streaming state
 
 ### git integration
 - automatic branch creation (`yume-async-{type}-{id}`)
@@ -557,7 +560,7 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 - node.js server (compiled to binary)
 
 ### code
-- 152 tauri commands
+- 181+ tauri commands
 - 24 frontend services
 - ~51k lines (39k ts/tsx + 12k rust)
 - 32 rust files

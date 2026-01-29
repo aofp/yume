@@ -1,8 +1,8 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.3.3
-**Last Updated:** January 22, 2026
-**Status:** Released
+**Version:** 0.6.0
+**Last Updated:** January 28, 2026
+**Status:** Production Ready
 
 ## Table of Contents
 
@@ -97,13 +97,14 @@ See `docs/expansion-plan/ARCHITECTURE_OVERVIEW.md` and `docs/expansion-plan/PROT
 // Core Application Entry
 lib.rs                  // Main application setup, window management
 main.rs                 // Entry point, initializes Tauri
+app.rs                  // App metadata constants (APP_ID, APP_NAME, APP_IDENTIFIER)
 
 // Claude Integration
 claude/mod.rs           // Claude manager and process control
 claude_binary.rs        // Binary detection and validation
 claude_session.rs       // Session state management
 claude_spawner.rs       // Process spawning, IPC, --append-system-prompt injection
-agents.rs               // In-memory agent CRUD (5 yume core agents)
+agents.rs               // In-memory agent CRUD (4 yume core agents)
                         // Sync to ~/.claude/agents/ via commands/mod.rs
 
 // Server Management
@@ -127,14 +128,14 @@ commands/mcp.rs                // MCP server management
 commands/custom_commands.rs    // Custom command utilities
 
 // Advanced Features
-compaction/mod.rs       // Auto-compaction at 60%/65% context thresholds
+compaction/mod.rs       // Auto-compaction at configurable thresholds (default 75%/80%)
 hooks/mod.rs            // Hook system for customization
 mcp/mod.rs              // Model Context Protocol support
 crash_recovery.rs       // Session recovery after crashes
 
 // Utilities
 stream_parser.rs        // JSON stream parsing with token accumulation
-websocket/mod.rs        // WebSocket server implementation
+// NOTE: websocket/mod.rs removed (was unused - app uses Node.js Socket.IO server instead)
 process/mod.rs          // Process utilities
 process/registry.rs     // Process registry and management
 ```
@@ -213,8 +214,11 @@ App.minimal.tsx                    // Root component
 │   └── ClaudeChat.tsx             // Main chat interface
 │       ├── MessageRenderer.tsx    // Message display with markdown
 │       ├── DiffViewer.tsx         // Code diff visualization
-│       └── VirtualizedMessageList.tsx // Performance optimization
+│       ├── VirtualizedMessageList.tsx // react-virtuoso with scroll pinning
+│       ├── AgentStatusCard.tsx   // Active agent status display
+│       └── BashOutputStream.tsx  // Live bash output streaming
 ├── ModelSelector/ModelSelector.tsx // Model selection
+│   └── ModelToolsModal.tsx       // Model + tool toggles (8 categories)
 ├── ConnectionStatus/ConnectionStatus.tsx // Server connection status
 ├── common/ErrorBoundary.tsx       // Error recovery
 ├── ClaudeNotDetected/             // Claude CLI detection failure UI
@@ -249,6 +253,9 @@ interface ClaudeCodeStore {
   sansFont: string;
   backgroundOpacity: number;
   globalWatermarkImage: string | null;
+
+  // Auto-update
+  autoUpdateClaude: boolean;
 
   // Tab Persistence
   rememberTabs: boolean;
@@ -290,6 +297,7 @@ Key Features:
 - Session-level analytics tracking
 - Compaction state per session
 - Agent management
+- **Streaming isolation**: Background agents tracked separately; only main CLI `streaming_end`/`result` events control `streaming=false` state. Background agent completion does NOT clear the main session's streaming flag. Subagent results (with `parent_tool_use_id`) are excluded. Debounce: 700ms macOS, 2000ms Windows.
 
 ### 2.3 Compiled Server Architecture
 
@@ -381,6 +389,22 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
 
 *MCP Commands (mcp.rs):*
 - `mcp_list_servers`, `mcp_add_server`, `mcp_test_connection`
+
+*Memory Commands (memory.rs):*
+- `start_memory_server`, `stop_memory_server`, `check_memory_server`
+- `memory_create_entities`, `memory_create_relations`, `memory_add_observations`
+- `memory_search_nodes`, `memory_read_graph`, `memory_delete_entity`
+- `memory_prune_old`, `memory_clear_all`, `get_memory_file_path`
+
+*Plugin Commands (plugins.rs):*
+- `plugin_list`, `plugin_install`, `plugin_uninstall`, `plugin_enable`, `plugin_disable`
+- `plugin_get_details`, `plugin_validate`, `plugin_rescan`, `plugin_init_bundled`
+
+*Background Agent Commands (background_agents.rs):*
+- Agent lifecycle: `queue_background_agent`, `cancel_background_agent`, `remove_background_agent`
+- Queue management: `get_agent_queue`, `get_agents_for_session`, `get_background_agent`
+- Git isolation: `create_agent_branch`, `get_agent_branch_diff`, `merge_agent_branch`, `delete_agent_branch`, `check_agent_merge_conflicts`
+- Maintenance: `cleanup_old_agents`, `update_agent_progress`, `get_agent_output`
 
 ### 3.2 Process Registry
 
@@ -516,7 +540,18 @@ Recovery paths:
 - Message streaming
 - Auto-compaction trigger
 - Token tracking display
-- Virtual scrolling for performance
+- Virtual scrolling via VirtualizedMessageList
+
+**1b. VirtualizedMessageList** (`src/renderer/components/Chat/VirtualizedMessageList.tsx`)
+- Uses `react-virtuoso` (Virtuoso component) with `alignToBottom` mode
+- ResizeObserver-based scroll pinning (observes inner container + item wrappers)
+- MutationObserver for new item detection during streaming
+- Active text selection detection prevents scroll interruption
+- State snapshot save/restore for tab switching
+- Inline indicators: thinking timer, bash timer, compacting timer, agent status cards
+- Todo/task progress and streaming token count in thinking indicator
+- Followup message preview during compaction
+- BashOutputStream integration for live bash output
 
 **2. MessageRenderer** (`src/renderer/components/Chat/MessageRenderer.tsx`)
 - Markdown rendering
@@ -536,7 +571,26 @@ class ErrorBoundary extends Component<Props, State> {
 }
 ```
 
-### 4.2 Service Layer
+### 4.2 Tool Configuration
+
+**Location**: `src/renderer/config/tools.ts`
+
+Tools are organized into 8 categories with per-tool enable/disable toggles:
+
+| Category | Tools |
+|----------|-------|
+| **file-read** | Read, Glob, Grep |
+| **file-write** | Write, Edit, NotebookEdit |
+| **terminal** | Bash, KillShell |
+| **web** | WebFetch, WebSearch |
+| **agents** | Task, TaskOutput |
+| **tasks** | TodoWrite, TaskCreate, TaskUpdate, TaskList, TaskGet |
+| **skills** | Skill, LSP |
+| **mcp** | mcp__memory (expands to 7 memory tools) |
+
+MCP server toggles expand to individual tool IDs for CLI `--allowedTools` flag. Tool state persisted in localStorage.
+
+### 4.3 Service Layer
 
 **Location**: `src/renderer/services/`
 
@@ -574,18 +628,24 @@ class PerformanceMonitor {
 
 **3. CompactionService** (`compactionService.ts`)
 - Monitors context usage percentage
-- Auto-triggers at 60%, force-triggers at 65%
+- Auto-triggers at 75%, force-triggers at 80% (configurable)
 - Sets pending flags for next-message compaction
 - Generates context manifests before compaction
 - Coordinates with Rust backend via Tauri commands
 
-**4. SystemPromptService** (`systemPromptService.ts`)
+**4. VersionCheck** (`versionCheck.ts`)
+- Checks for app updates via GitHub Pages (`aofp.github.io/yume/version.txt`)
+- Semantic version comparison
+- Cached results in localStorage
+- Non-blocking check on app startup
+
+**5. SystemPromptService** (`systemPromptService.ts`)
 - Manages orchestration flow prompt injection
 - Stores settings: enabled, mode (default/custom/none), customPrompt, agentsEnabled
 - Default prompt guides Claude through: understand → decompose → act → verify
 - Injected via `--append-system-prompt` flag on new sessions
 
-### 4.3 Hook System
+### 4.4 Hook System
 
 **Location**: `src/renderer/services/hooksService.ts`
 
@@ -619,16 +679,18 @@ class HooksService {
 }
 ```
 
-Available Hook Events:
-- `user_prompt_submit`: Modify/block user messages before sending
-- `pre_tool_use`: Intercept tool calls before execution
-- `post_tool_use`: Process tool results after execution
-- `assistant_response`: Process Claude responses
-- `session_start`: Session initialization
-- `session_end`: Session cleanup
-- `context_warning`: Context usage alerts
-- `compaction_trigger`: Custom compaction behavior
-- `error`: Error handling
+Available Hook Events (9 total, **only 3 active**):
+- `pre_tool_use`: Intercept tool calls before execution **(ACTIVE)**
+- `context_warning`: Context usage alerts **(ACTIVE)**
+- `compaction_trigger`: Custom compaction behavior **(ACTIVE)**
+- `user_prompt_submit`: Modify/block user messages before sending *(defined, not called)*
+- `post_tool_use`: Process tool results after execution *(defined, not called)*
+- `assistant_response`: Process Claude responses *(defined, not called)*
+- `session_start`: Session initialization *(defined, not called)*
+- `session_end`: Session cleanup *(defined, not called)*
+- `error`: Error handling *(defined, not called)*
+
+> **Note:** Only 3 of 9 hooks are actively triggered in the codebase. The other 6 are defined but not currently wired to any execution path.
 
 ## 5. Process Communication Architecture
 
@@ -752,19 +814,19 @@ Token Tracking Flow:
 2. StreamParser in Rust extracts usage from messages
 3. TokenAccumulator aggregates input/output/cache tokens
 4. Frontend fetches session tokens from server endpoint
-5. Auto-compact triggers at 60% context usage
+5. Auto-compact triggers at 75% context usage (configurable)
 
 ## 7. Critical Systems
 
 ### 7.1 Auto-Compaction System
 
-**Thresholds**: 55% warning, 60% auto-trigger, 65% force-trigger
+**Thresholds**: Dynamic (default T=75%: 70% warning, 75% auto-trigger, 80% force-trigger)
 **Location**: `src-tauri/src/compaction/mod.rs`
 
 ```rust
 pub struct CompactionConfig {
-    pub auto_threshold: f32,     // 0.60 (60%) - auto-compact
-    pub force_threshold: f32,    // 0.65 (65%) - force-compact
+    pub auto_threshold: f32,     // 0.75 (75%) default - auto-compact
+    pub force_threshold: f32,    // 0.80 (80%) default - force-compact (auto + 5%)
     pub preserve_context: bool,
     pub generate_manifest: bool,
 }
@@ -772,9 +834,9 @@ pub struct CompactionConfig {
 pub enum CompactionAction {
     None,
     Notice,       // deprecated
-    Warning,      // 55%+
-    AutoTrigger,  // 60%+ (38% buffer like Claude Code)
-    Force,        // 65%+
+    Warning,      // 70%+
+    AutoTrigger,  // 75%+ (configurable threshold)
+    Force,        // 85%+
 }
 
 pub struct CompactionManager {
@@ -785,7 +847,7 @@ pub struct CompactionManager {
 ```
 
 Compaction Process:
-1. Detect threshold (60% auto, 65% force)
+1. Detect threshold (75% auto, 80% force by default)
 2. Set `pendingAutoCompact` flag in session
 3. On next user message, generate context manifest
 4. Send `/compact` command to Claude
@@ -813,7 +875,78 @@ impl ServerProcessGuard {
 }
 ```
 
-### 7.3 Error Recovery
+### 7.3 Memory System V1 (Legacy - Deprecated)
+
+**Location**: `src-tauri/src/commands/memory.rs`, `src/renderer/services/memoryService.ts`
+**Storage**: `~/.yume/memory.jsonl` (deprecated, auto-migrated to V2)
+
+The legacy memory graph stores entities, relations, and observations as a knowledge graph managed via Tauri invoke commands. This system is deprecated in favor of Memory V2.
+
+**Commands (12):**
+- `start_memory_server`, `stop_memory_server`, `check_memory_server`, `get_memory_file_path`
+- `memory_create_entities`, `memory_create_relations`, `memory_add_observations`
+- `memory_search_nodes`, `memory_read_graph`, `memory_delete_entity`
+- `memory_prune_old`, `memory_clear_all`
+
+### 7.4 Memory System V2 (Per-Project Markdown)
+
+**Location**: `src-tauri/src/commands/memory_v2.rs`, `src/renderer/services/memoryServiceV2.ts`
+**Storage**: `~/.yume/memory/`
+
+Memory V2 uses per-project markdown files instead of a global JSONL graph. This provides better organization and human-readable storage.
+
+**Storage Structure:**
+```
+~/.yume/memory/
+  global/
+    preferences.md    # User preferences across all projects
+    patterns.md       # Global coding patterns
+  projects/{hash}/
+    learnings.md      # Project-specific learnings
+    errors.md         # Error -> solution mappings
+    patterns.md       # Project patterns
+    brief.md          # Project overview
+```
+
+**MCP Server:** Custom `yume-mcp-memory.cjs` (replaces npm `@modelcontextprotocol/server-memory`)
+- Source: `src-tauri/resources/yume-mcp-memory.cjs`
+- Copied to: `~/.yume/yume-mcp-memory.cjs` on init
+- Registration: `claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs`
+- Tools: `add_observations`, `search_nodes`, `read_graph`
+
+**Architecture:** Centralized Rust service with RwLock state
+- Single writer prevents race conditions across tabs
+- Atomic file writes (write to .tmp, then rename)
+- Event broadcasting via `memory-updated` Tauri event
+
+**Entry Format (Markdown):**
+```markdown
+## 2026-01-28T10:00:00Z | importance:4 | ttl:90 | id:abc123
+Uses Zustand for state management
+```
+
+**Importance Levels (5 tiers):**
+| Level | Value | TTL | Use Case |
+|-------|-------|-----|----------|
+| Ephemeral | 1 | 1 day | Temporary context, scratch notes |
+| Low | 2 | 7 days | Short-term references |
+| Normal | 3 | 30 days | Standard learnings, patterns |
+| High | 4 | 90 days | Architecture decisions, key fixes |
+| Permanent | 5 | No TTL | Critical knowledge, never expires |
+
+**Commands (15):**
+- `memory_v2_init`, `memory_v2_add_learning`, `memory_v2_add_error`
+- `memory_v2_add_pattern`, `memory_v2_set_brief`, `memory_v2_add_preference`
+- `memory_v2_add_global_pattern`, `memory_v2_build_context`
+- `memory_v2_get_project`, `memory_v2_get_global`, `memory_v2_list_projects`
+- `memory_v2_delete_entry`, `memory_v2_prune_expired`, `memory_v2_clear_project`
+- `memory_v2_get_base_path`
+
+**Context Injection:** `<yume-memory>` block with token budget (default 2000)
+
+**Migration:** V1 (`memory.jsonl`) auto-migrates to V2 on init, backed up to `.jsonl.bak`
+
+### 7.5 Error Recovery
 
 Multiple layers of error handling:
 
@@ -823,7 +956,7 @@ Multiple layers of error handling:
 4. **Crash Recovery**: Session restoration
 5. **Retry Logic**: Automatic reconnection
 
-### 7.4 Security Features
+### 7.6 Security Features
 
 **Content Security Policy** (`tauri.conf.json`):
 ```json
@@ -985,6 +1118,7 @@ Features:
 ```bash
 npm run dev          # Start dev server
 npm run tauri dev    # Start Tauri dev
+npm test             # Run vitest test suites
 ```
 
 **Production**:
@@ -1002,8 +1136,24 @@ npm run tauri:build:linux # Build for Linux
 
 ### Code Signing
 
-**macOS**: Requires Apple Developer Certificate ($99/year)  
+**macOS**: Requires Apple Developer Certificate ($99/year)
 **Windows**: Requires EV Certificate ($300-600/year)
+
+### Test Infrastructure
+
+**Framework:** Vitest 3.x with jsdom environment
+**Config:** `vitest.config.ts` with path aliases (`@/` → `src/renderer/`, `@shared/` → `src/shared/`)
+**Setup:** `src/test/setup.ts` with Tauri API mocks
+
+**Test Suites (8 files):**
+- `src/renderer/config/__tests__/app.test.ts` - App configuration
+- `src/renderer/config/__tests__/tools.test.ts` - Tools configuration
+- `src/renderer/services/__tests__/licenseManager.test.ts` - License management
+- `src/renderer/types/__tests__/ucf.test.ts` - UCF type validation
+- `src/renderer/utils/__tests__/chatHelpers.test.ts` - Chat utilities
+- `src/renderer/utils/__tests__/helpers.test.ts` - General helpers
+- `src/renderer/utils/__tests__/performance.test.ts` - Performance utilities
+- `src/renderer/utils/__tests__/regexValidator.test.ts` - ReDoS validation
 
 ## Performance Benchmarks
 
@@ -1029,15 +1179,15 @@ npm run tauri:build:linux # Build for Linux
 **Rationale**: Better isolation, security, and debugging  
 **Trade-offs**: More complex IPC, higher memory usage  
 
-### ADR-003: 60%/65% Auto-Compaction
-**Decision**: Automatically compact at 60% context usage (force at 65%)
-**Rationale**: Maintains 38-40% buffer like Claude Code, prevents context overflow
-**Trade-offs**: Earlier compaction, but smoother user experience  
+### ADR-003: Dynamic Auto-Compaction Thresholds
+**Decision**: Configurable threshold T (default 75%) with warning at T-5%, auto at T, force at T+5%
+**Rationale**: Variable thresholds allow users to tune compaction timing; default 75% provides good balance
+**Trade-offs**: Higher threshold preserves more context but risks overflow; lower threshold is safer but compacts more often
 
-### ADR-004: No Telemetry/Auto-Updates
-**Decision**: Remove all tracking and auto-update code  
-**Rationale**: User privacy, control over updates  
-**Trade-offs**: No usage insights, manual update process  
+### ADR-004: No Telemetry, Opt-In Auto-Updates
+**Decision**: No telemetry; auto-update for Claude CLI (opt-in, default on) and app version check via GitHub Pages
+**Rationale**: User privacy preserved (no tracking), but CLI and app stay current automatically
+**Trade-offs**: No usage insights; version check requires network access to GitHub Pages  
 
 ## Conclusion
 

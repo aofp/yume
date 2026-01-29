@@ -2,17 +2,23 @@
 
 This document consolidates all provider, model, context window, pricing, and capability information. **Update this file when models or pricing change.**
 
+> **Last Updated:** 2026-01-28
+
 ## Provider Overview
 
 | Provider | CLI Command | Auth Method | Installation | Status |
 |----------|-------------|-------------|--------------|--------|
 | Claude (Anthropic) | `claude` | Auto on first run | Bundled with Yume | ✅ Production |
-| Gemini (Google) | `yume-cli --provider gemini`<br>(spawns `gemini` CLI) | `gemini auth login` | `npm install -g @google/gemini-cli` | 🚧 In Progress |
-| OpenAI/Codex | `yume-cli --provider openai`<br>(spawns `codex` CLI) | `codex auth login` | `npm install -g codex-cli` | 🚧 Planned |
+| Gemini (Google) | `yume-cli --provider gemini`<br>(spawns `gemini` CLI) | `gemini auth login` | `npm install -g @google/gemini-cli` | 🚧 85% Complete |
+| OpenAI/Codex | `yume-cli --provider openai`<br>(spawns `codex` CLI) | `codex login` | `npm install -g @openai/codex` | 🚧 85% Complete |
+
+**Feature Flags (in `config/features.ts`):**
+- `PROVIDER_GEMINI_AVAILABLE: false` (disabled by default)
+- `PROVIDER_OPENAI_AVAILABLE: false` (disabled by default)
 
 ## Model Registry
 
-### Claude (Anthropic)
+### Claude (Anthropic) - Source: `src/renderer/config/models.ts`
 
 | Model ID | Short Name | Display Name | Context | Output | Tools | Thinking |
 |----------|-----------|--------------|---------|--------|-------|----------|
@@ -21,28 +27,37 @@ This document consolidates all provider, model, context window, pricing, and cap
 
 **Analytics Key Format:** `claude:sonnet-4.5`, `claude:opus-4.5`
 
-### Gemini (Google)
+### Gemini (Google) - Source: `src/renderer/config/models.ts`
 
 | Model ID | Short Name | Display Name | Context | Output | Tools | Thinking |
 |----------|-----------|--------------|---------|--------|-------|----------|
-| gemini-2.0-flash | gemini-flash | Gemini 2.0 Flash | 1M | 8K | ✅ | ❌ |
-| gemini-2.0-flash-thinking | gemini-thinking | Gemini 2.0 Thinking | 32K | 8K | ✅ | ✅ |
-| gemini-1.5-pro | gemini-pro | Gemini 1.5 Pro | 1M | 8K | ✅ | ❌ |
-| gemini-1.5-flash | gemini-1.5-flash | Gemini 1.5 Flash | 1M | 8K | ✅ | ❌ |
+| gemini-2.5-pro | gemini-pro | Gemini 2.5 Pro | 1M | 8K | ✅ | ✅ |
+| gemini-2.5-flash | gemini-flash | Gemini 2.5 Flash | 1M | 8K | ✅ | ❌ |
 
-**Analytics Key Format:** `gemini:2.0-flash`, `gemini:2.0-thinking`, `gemini:1.5-pro`
+**Extended models in yume-cli `gemini.ts`:**
+- gemini-2.0-flash (1M/8K)
+- gemini-2.0-flash-thinking-exp (32K/8K, thinking)
+- gemini-3-flash (1M/65K)
+- gemini-1.5-pro (1M/8K)
+- gemini-1.5-flash (1M/8K)
 
-### OpenAI
+**Analytics Key Format:** `gemini:2.5-pro`, `gemini:2.5-flash`
+
+### OpenAI/Codex - Source: `src/renderer/config/models.ts`
 
 | Model ID | Short Name | Display Name | Context | Output | Tools | Reasoning |
 |----------|-----------|--------------|---------|--------|-------|-----------|
-| gpt-4o | gpt4o | GPT-4o | 128K | 16K | ✅ | ❌ |
-| gpt-4o-mini | gpt4o-mini | GPT-4o Mini | 128K | 16K | ✅ | ❌ |
-| o1 | o1 | O1 | 200K | 100K | ✅ | ✅ |
-| o1-mini | o1-mini | O1 Mini | 128K | 65K | ✅ | ✅ |
-| o3-mini | o3-mini | O3 Mini | 200K | 100K | ✅ | ✅ |
+| gpt-5.2-codex | codex | Codex 5.2 | 200K | 100K | ✅ | ✅ (xhigh) |
+| gpt-5.1-codex-mini | codex-mini | Codex 5.1 Mini | 200K | 100K | ✅ | ✅ (low) |
 
-**Analytics Key Format:** `openai:gpt-4o`, `openai:o1`, `openai:o3-mini`
+**Extended models in yume-cli `openai.ts`:**
+- gpt-4o (128K/16K)
+- gpt-4o-mini (128K/16K)
+- o1 (200K/100K)
+- o1-mini (128K/65K)
+- o3-mini (200K/100K)
+
+**Analytics Key Format:** `openai:codex-5.2`, `openai:codex-5.1-mini`
 
 ## Pricing (per 1M tokens, USD)
 
@@ -175,14 +190,14 @@ gemini auth status
 ### OpenAI/Codex
 ```bash
 # 1. Install the official Codex CLI
-npm install -g codex-cli
+npm install -g @openai/codex
 
 # 2. Authenticate with OpenAI
-codex auth login
+codex login
 # Follow prompts to authenticate
 
-# 3. Verify authentication
-codex auth status
+# 3. Verify authentication (check if logged in)
+codex --help  # Should show user info if logged in
 ```
 
 **Note:** Yume does not manage OpenAI authentication. Users authenticate separately with the official `codex` CLI.
@@ -227,4 +242,4 @@ When models or pricing change:
 4. Update `src/renderer/config/pricing.ts` (if exists)
 5. Run golden transcript tests
 
-**Last Updated:** 2025-01-14
+**Last Updated:** 2026-01-28

@@ -1,20 +1,20 @@
 # Gemini Integration Plan
 
-> **Last Updated:** 2026-01-14
-> **Implementation Status:** ~65% complete
+> **Last Updated:** 2026-01-28
+> **Implementation Status:** ~85% complete
 
 ## Implementation Summary
 
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Provider Definition | ✅ Complete | `models.ts` with Gemini 2.5 Flash/Pro |
-| Provider Service | ✅ Complete | Enable/disable Gemini provider |
+| Provider Service | ✅ Complete | Enable/disable via `providersService.ts` |
 | Provider UI | ✅ Complete | Settings tab, selector, no-provider modal |
-| CLI Detection | ✅ Complete | `check_cli_installed('gemini')` |
+| CLI Detection | ✅ Complete | `detect_provider_support` Tauri command |
 | Backend Spawner | ✅ Complete | `yume_cli_spawner.rs` with Gemini enum |
-| yume-cli Provider | 🔄 50% | `src-yume-cli/src/providers/gemini.ts` |
-| Stream Translation | ❌ Pending | Gemini → Claude format |
-| Auth Verification | ❌ Pending | `gemini auth status` check |
+| yume-cli Provider | ✅ Complete | `src-yume-cli/src/providers/gemini.ts` |
+| Stream Translation | ✅ Complete | Gemini CLI → Claude format in yume-cli |
+| Auth Verification | ❌ Pending | Manual user authentication required |
 
 ## Objective
 Enable Yume to drive Google's Gemini models via the official `gemini` CLI from the `@google/gemini-cli` npm package. A thin `yume-cli` shim spawns the official CLI and translates its stream-json output to Claude-compatible format.
@@ -157,8 +157,28 @@ All Gemini output must be normalized to the Claude-compatible stream-json format
 - `usage` and terminal `result` for token tracking and UI completion.
 
 ## Tool Support
-Gemini function calling should be mapped to Yume's standard tools:
-- `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, `LS`, `Bash`
+
+Gemini function calling is mapped to Yume's standard tools via `GEMINI_TO_CLAUDE_TOOLS` in `gemini.ts`:
+
+```typescript
+// Tool name translation: Gemini CLI -> Claude format
+const GEMINI_TO_CLAUDE_TOOLS: Record<string, string> = {
+  'run_shell_command': 'Bash',
+  'read_file': 'Read',
+  'write_file': 'Write',
+  'edit_file': 'Edit',
+  'list_directory': 'LS',
+  'find_files': 'Glob',
+  'search_files': 'Grep',
+  'glob': 'Glob',
+  'grep': 'Grep',
+  'ls': 'LS',
+  'bash': 'Bash',
+  'read': 'Read',
+  'write': 'Write',
+  'edit': 'Edit',
+};
+```
 
 If Gemini returns partial function arguments, buffer until valid JSON before emitting `tool_use`.
 Use `docs/expansion-plan/TOOL_SCHEMA_REFERENCE.md` for input field expectations (e.g., `file_path`).
@@ -168,12 +188,27 @@ Gemini models have massive context windows (up to 1M tokens).
 
 ### Context Window Limits
 
+**Current models in `models.ts`:**
+- `gemini-2.5-pro` (1M context, 8K output, supports thinking)
+- `gemini-2.5-flash` (1M context, 8K output)
+
+**Models in yume-cli `gemini.ts`:**
+- `gemini-2.0-flash` (1M context, 8K output)
+- `gemini-2.5-pro` (1M context, 65K output)
+- `gemini-2.5-flash` (1M context, 65K output)
+- `gemini-3-flash` (1M context, 65K output)
+- `gemini-2.0-flash-thinking-exp` (32K context, 8K output)
+- `gemini-1.5-pro` (1M context, 8K output)
+- `gemini-1.5-flash` (1M context, 8K output)
+
 | Model | Input Limit | Output Limit | Compaction Threshold |
 |-------|-------------|--------------|---------------------|
-| gemini-1.5-pro | 1,000,000 | 8,192 | 80% (~800K tokens) |
-| gemini-1.5-flash | 1,000,000 | 8,192 | 80% |
+| gemini-2.5-pro | 1,000,000 | 65,536 | 80% (~800K tokens) |
+| gemini-2.5-flash | 1,000,000 | 65,536 | 80% |
 | gemini-2.0-flash | 1,000,000 | 8,192 | 80% |
-| gemini-2.0-flash-thinking | 32,767 | 8,192 | 60% |
+| gemini-2.0-flash-thinking-exp | 32,767 | 8,192 | 60% |
+| gemini-1.5-pro | 1,000,000 | 8,192 | 80% |
+| gemini-1.5-flash | 1,000,000 | 8,192 | 80% |
 
 ### Compaction Strategy
 
@@ -236,14 +271,19 @@ function normalizeGeminiUsage(usage: GeminiUsage): TokenUsage {
 - Validate rate limit headers and retry semantics.
 - Confirm safety settings defaults and override options.
 
-## Implementation Steps
-1. Install and test the official `@google/gemini-cli` package to understand its stream-json format.
-2. Implement CLI spawner in `yume-cli` that launches `gemini` binary with appropriate args.
-3. Build stream-json translation layer to convert Gemini messages to Claude-compatible format.
-4. Implement CLI detection and auth verification commands.
-5. Wire `yume-cli --provider gemini` into Yume's server adapter.
-6. Add UI for CLI installation status and auth verification.
-7. Run golden transcript tests on macOS, Windows, Linux.
+## Implementation Status
+
+**Completed:**
+1. ✅ `GeminiProvider` class in `src-yume-cli/src/providers/gemini.ts`
+2. ✅ CLI spawner with `--model`, `--output-format stream-json`, `--yolo` flags
+3. ✅ Stream translation layer converting Gemini events to Claude format
+4. ✅ Tool name translation (`run_shell_command` -> `Bash`, etc.)
+5. ✅ Model definitions in both `models.ts` and yume-cli
+6. ✅ Provider service in `providersService.ts` with feature flag support
+
+**Remaining:**
+- Manual auth verification (user must run `gemini auth login` separately)
+- Golden transcript tests across platforms
 
 ## User Documentation
 

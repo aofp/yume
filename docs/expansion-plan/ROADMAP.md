@@ -2,7 +2,7 @@
 
 This roadmap focuses on making Yume provider-agnostic while preserving the existing Claude-compatible stream-json pipeline.
 
-> **Last Updated:** 2026-01-19
+> **Last Updated:** 2026-01-28
 > **Overall Progress:** ~95% complete (macOS ready, Windows/Linux binaries pending)
 
 > **Key Documents:**
@@ -18,7 +18,7 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
 - [x] **Technical Approach Doc:** Finalize best-practice architecture and tool support tiers.
 
 ## Phase 1: Foundation ✅ COMPLETE
-- [x] **Claude CLI Integration**: Native support for Claude Sonnet 4.5 / Opus 4.5.
+- [x] **Claude CLI Integration**: Native support for Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) / Opus 4.5 (`claude-opus-4-5-20251101`).
 - [x] **Multi-Session Architecture**: Tabbed interface with independent contexts.
 - [x] **Core Tooling**: Read, Write, Edit, Glob, Grep, Bash tool definitions.
 - [x] **Provider Service:** `providersService.ts` for enabling/disabling providers.
@@ -26,7 +26,10 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
 - [x] **Providers Tab:** `ProvidersTab.tsx` with CLI status, toggles, per-provider options.
 - [x] **yume-cli Scaffolding:** Full `src-yume-cli/` directory with TypeScript implementation.
 - [x] **Event Compatibility:** Existing `claude-message` events work for all providers.
-- [x] **Model Registry:** `models.ts` with all providers (Claude, Gemini, OpenAI/Codex).
+- [x] **Model Registry:** `models.ts` with all providers:
+    - Claude: `claude-sonnet-4-5-20250929`, `claude-opus-4-5-20251101`
+    - Gemini: `gemini-2.5-pro`, `gemini-2.5-flash`
+    - OpenAI: `gpt-5.2-codex`, `gpt-5.1-codex-mini`
 
 ## Phase 2: Translation Layer ✅ COMPLETE
 - [x] **yume-cli Structure:** Complete TypeScript implementation in `src-yume-cli/`.
@@ -148,6 +151,27 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
 - User can switch between Claude, Gemini, and OpenAI in one app.
 - All existing UI features work across providers without code changes.
 - Protocol compliance tests pass across macOS, Windows, Linux.
+
+## Current Implementation Notes
+
+### yume-cli Binary Location Logic (from `yume_cli_spawner.rs`)
+1. Development: `src-yume-cli/dist/index.js` (runs via node)
+2. Production macOS: `Contents/Resources/resources/yume-cli-macos-{arm64|x64}`
+3. Production Windows: `{exe_dir}/resources/yume-cli-windows-x64.exe`
+4. Production Linux: `{exe_dir}/resources/yume-cli-linux-x64`
+5. Override: `YUME_CLI_BINARY` environment variable
+
+### Background Agents (from `background_agents.rs`)
+- Background agents use Claude CLI directly (not yume-cli)
+- Max concurrent agents: 4 (`MAX_CONCURRENT_AGENTS`)
+- No timeout - agents run indefinitely
+- Output stored in `~/.yume/agent-output/{agent-id}.json`
+- Agent types: `yume-architect`, `yume-explorer`, `yume-implementer`, `yume-guardian`, `Custom(name)`
+
+### Provider CLI Commands
+- **Gemini:** `gemini --model <model> --output-format stream-json --yolo <prompt>`
+- **Codex:** `codex exec --json -C <cwd> --full-auto -m <model> <prompt>`
+- **Claude:** `claude -p --model <model> --output-format stream-json --dangerously-skip-permissions <prompt>`
 
 ---
 

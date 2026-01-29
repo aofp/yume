@@ -2,6 +2,8 @@
 
 This document defines how to construct system prompts for each provider, ensuring consistent behavior across Claude, Gemini, and OpenAI.
 
+**Implementation Status:** Multi-provider support is designed but not yet enabled. Feature flags `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` are currently `false` in `config/features.ts`.
+
 ## Prompt Components
 
 Every provider session needs these components:

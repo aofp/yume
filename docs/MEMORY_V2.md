@@ -201,7 +201,10 @@ Prevents corruption on crash.
 
 ## Deprecation
 
-V1 (`@modelcontextprotocol/server-memory`) is deprecated:
+**V1 is fully deprecated and auto-migrates to V2.**
+
+V1 (`@modelcontextprotocol/server-memory`) is no longer used:
 - No longer registered as MCP server
 - `memory_add_observations` command returns success but no-ops
-- Existing V1 data auto-migrates to V2
+- Existing V1 data (`~/.yume/memory.jsonl`) auto-migrates to V2 on first init
+- Backup created at `memory.jsonl.bak`

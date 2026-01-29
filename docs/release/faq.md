@@ -42,14 +42,14 @@ chmod +x yume-*.AppImage
 
 ## usage
 
-**only 2 tabs?**
-trial mode. pro is $21.
+**only 3 tabs?**
+trial mode (3 tabs, 1 window). pro is $21 (99 tabs, 99 windows).
 
 **where are conversations saved?**
 `~/.claude/projects/` — same as claude cli
 
 **what does auto-compact do?**
-at 60% context: summarizes old messages, keeps recent ones and active code.
+at configurable threshold (default 75%): summarizes old messages, keeps recent ones and active code. warn at T-5%, auto at T%, force at T+5%.
 
 **can i adjust thresholds?**
 yes. settings → compaction.
@@ -69,6 +69,8 @@ license validation only. conversations stay local.
 - settings: `~/Library/Application Support/yume/` (mac)
 - database: `~/.yume/yume.db`
 - plugins: `~/.yume/plugins/`
+- memory v2: `~/.yume/memory/`
+- agent output: `~/.yume/agent-output/`
 
 **how to uninstall completely?**
 delete app, then remove `~/.yume/` and `~/Library/Application Support/yume/`
@@ -93,7 +95,7 @@ check settings → plugins, make sure it's enabled
 ## tech
 
 **stack?**
-rust/tauri, react, node.js. 146 commands, ~51k lines.
+rust/tauri 2.9, react 19, node.js. 181+ tauri commands, ~83k lines.
 
 **why tauri?**
 smaller binary (~50mb vs electron's ~150mb), less memory, native performance.

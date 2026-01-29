@@ -1,5 +1,7 @@
 # Multi-Provider UI/UX Design Plan
 
+**Implementation Status:** Multi-provider support is designed but not yet enabled. Feature flags `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` are currently `false` in `config/features.ts`.
+
 ## Core Philosophy
 **"Minimal Configuration, Maximum Power."**
 Yume should remain clean and focused. Provider configuration should be accessible but not intrusive. The default experience remains Claude, with other providers opting-in via a seamless "switch."
@@ -44,7 +46,7 @@ A list of cards for each provider.
 
 #### Card State: Active
 - **Toggle:** On/Off switch.
-- **Model Selection:** Dropdown for default model (e.g., `gemini-1.5-pro`).
+- **Model Selection:** Dropdown for default model (e.g., `gemini-2.5-pro`).
 - **Configuration Fields (Collapsible):**
   - **Binary Source:** [Bundled `yume-cli`] | [Native CLI] | [WSL Path] | [Custom Path]
   - **Auth Status:** Indicator showing if the provider is authenticated (e.g., `gcloud auth print-access-token`, `gh auth status`, or presence of env vars).
@@ -236,7 +238,7 @@ The context bar (above the input) should show the active provider:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  [Claude Sonnet 4] │ 42K / 200K tokens │ $0.12  │
+│  [Claude Sonnet 4.5] │ 42K / 200K tokens │ $0.12 │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -290,7 +292,7 @@ When a provider lacks feature support:
 │  ┌─────────────────────────────────────────┐   │
 │  │ 🟣 Claude                    [Enabled ✓] │   │
 │  │ Status: Connected                        │   │
-│  │ Model: claude-sonnet-4-20250514         │   │
+│  │ Model: claude-sonnet-4-5-20250929       │   │
 │  │ [Configure]                              │   │
 │  └─────────────────────────────────────────┘   │
 │                                                 │
@@ -333,7 +335,7 @@ When clicking "Configure" or "Enable":
 │  ─────────────────────────────────────────────  │
 │                                                 │
 │  Default Model                                  │
-│  [gemini-1.5-pro ▼]                            │
+│  [gemini-2.5-pro ▼]                            │
 │                                                 │
 │  Context Compaction Threshold                   │
 │  [80%] (800K tokens for 1M context)            │

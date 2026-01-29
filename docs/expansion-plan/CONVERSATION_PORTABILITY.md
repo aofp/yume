@@ -1,9 +1,28 @@
 # Conversation Portability & Mid-Session Model Switching
 
+> **Last Updated:** 2026-01-28
 > **Related Documents:**
 > - [UNIVERSAL_SESSION_ARCHITECTURE.md](./UNIVERSAL_SESSION_ARCHITECTURE.md) - Session storage foundation
 > - [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) - Model and feature matrix (single source of truth)
 > - [PROTOCOL_NORMALIZATION.md](./PROTOCOL_NORMALIZATION.md) - Stream-JSON protocol contract
+
+## Implementation Status
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| UCF Types | ✅ Complete | `src/renderer/types/ucf.ts` |
+| Conversation Translator | ✅ Complete | `src/renderer/services/conversationTranslator.ts` |
+| Claude Import | ✅ Complete | `importFromClaude()` |
+| Claude Export | ✅ Complete | `exportToClaude()` |
+| Gemini Export | ✅ Complete | `exportToGemini()` |
+| OpenAI Export | ✅ Complete | `exportToOpenAI()` |
+| Gemini Import | ❌ Pending | Throws "Not implemented yet" |
+| OpenAI Import | ❌ Pending | Throws "Not implemented yet" |
+| Switch Analysis | ✅ Complete | `analyzeSwitch()` |
+| Prepare for Switch | ✅ Complete | `prepareForSwitch()` |
+| Thinking Translation | ✅ Complete | `translateThinking()` |
+| Artifact Translation | ✅ Complete | `translateArtifact()` |
+| MCP Tool Detection | ✅ Complete | `isMCPTool()` |
 
 ## Overview
 
@@ -193,39 +212,39 @@ interface ProviderSwitch {
     └── {session-id}.{timestamp}.json
 ```
 
+**Note:** This is implemented in `conversationStore.ts` via the `ConversationStorePaths` class.
+
 ## Translation Layer
 
-### Service Interface
+### Service Interface (Implemented)
 
 ```typescript
 // src/renderer/services/conversationTranslator.ts
 
-interface ConversationTranslator {
-  // Import from provider-specific format to UCF
-  importFromClaude(jsonlPath: string): Promise<UnifiedConversation>;
-  importFromGemini(sessionData: GeminiSession): Promise<UnifiedConversation>;
-  importFromOpenAI(thread: OpenAIThread): Promise<UnifiedConversation>;
+export const conversationTranslator = {
+  // Import functions (Claude implemented, Gemini/OpenAI pending)
+  importFromClaude,                    // ✅ Complete
+  importFromGemini: async () => { throw new Error('Not implemented yet'); },  // ❌
+  importFromOpenAI: async () => { throw new Error('Not implemented yet'); },  // ❌
 
-  // Export from UCF to provider-specific format
-  exportToClaude(conv: UnifiedConversation): ClaudeHistory;
-  exportToGemini(conv: UnifiedConversation): GeminiHistory;
-  exportToOpenAI(conv: UnifiedConversation): OpenAIHistory;
+  // Export functions (all implemented)
+  exportToClaude,                      // ✅ Complete
+  exportToGemini,                      // ✅ Complete
+  exportToOpenAI,                      // ✅ Complete
 
-  // Analyze switch feasibility
-  analyzeSwitch(
-    conv: UnifiedConversation,
-    toProvider: ProviderType,
-    toModel: string
-  ): SwitchAnalysis;
+  // Analysis and preparation (all implemented)
+  analyzeSwitch,                       // ✅ Complete
+  prepareForSwitch,                    // ✅ Complete
 
-  // Prepare conversation for new provider
-  prepareForSwitch(
-    conv: UnifiedConversation,
-    toProvider: ProviderType,
-    toModel: string,
-    options?: SwitchOptions
-  ): PreparedConversation;
-}
+  // Helper utilities
+  generateId,
+  estimateTokens,
+  checkThinkingSupport,
+  isMCPTool,
+  translateThinking,
+  translateArtifact,
+  getTokenEstimate,
+};
 
 interface SwitchAnalysis {
   canSwitch: boolean;
@@ -491,15 +510,26 @@ See [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) for complete feature matrix
 | Text messages | ✅ | ✅ | ✅ | Direct |
 | Tool calling | ✅ | ✅ | ✅ | ID remapping |
 | System prompt | Via param | systemInstruction | First message | Adapt per provider |
-| Thinking blocks | ✅ | ⚠️ 2.0-thinking | ⚠️ O1/O3 | See Reasoning section |
+| Thinking blocks | ✅ | ⚠️ 2.5-pro | ⚠️ Codex 5.2 | See Reasoning section |
 | Artifacts | ✅ | ❌ | ❌ | Inline as code block |
 | Images in input | ✅ | ✅ | ✅ | Direct |
 | Images in output | ❌ | ✅ | ✅ | Preserve if available |
 | Code execution | Via Bash | ❌ | ✅ | Tool compatibility |
 | Grounding/Search | ❌ | ✅ | ✅ (browsing) | Drop or convert |
 | Caching | ✅ | ✅ | ❌ | Ignore cache tokens |
-| MCP support | ✅ | ❌ | ❌ | Disable MCP tools |
-| Context window | 200K | 32K-1M | 128K-200K | Summarize if needed |
+| MCP support | ✅ | ❌ | ❌ | Disable MCP tools (via `isMCPTool()`) |
+| Context window | 200K | 1M | 200K | Summarize if needed |
+
+**MCP Tool Detection (implemented in `conversationTranslator.ts`):**
+```typescript
+function isMCPTool(toolName: string): boolean {
+  return (
+    toolName.includes(':') ||
+    toolName.startsWith('mcp_') ||
+    MCP_TOOL_PREFIXES.some((prefix) => toolName.startsWith(prefix))
+  );
+}
+```
 
 ## Thinking & Reasoning Block Handling
 
@@ -929,26 +959,26 @@ In the chat view, provider switches are shown:
 ## Implementation Phases
 
 ### Phase A: Unified Storage (Foundation)
-- [ ] Define UCF TypeScript interfaces
-- [ ] Create `conversationStore.ts` service
-- [ ] Implement UCF file I/O
-- [ ] Add migration from Claude JSONL to UCF
+- [x] Define UCF TypeScript interfaces (`types/ucf.ts`)
+- [x] Create `conversationStore.ts` service
+- [x] Implement UCF file I/O (save/load/list/delete)
+- [x] Add migration from Claude JSONL to UCF (`importFromClaudeJSONL`)
 - [ ] Background sync: UCF ↔ provider sessions
 
 ### Phase B: Translation Layer
-- [ ] Create `conversationTranslator.ts` service
-- [ ] Implement Claude adapter (import/export)
-- [ ] Implement Gemini adapter (import/export)
-- [ ] Implement OpenAI adapter (import/export)
-- [ ] Add token estimation utilities
-- [ ] Add context summarization logic
+- [x] Create `conversationTranslator.ts` service
+- [x] Implement Claude adapter (import/export)
+- [ ] Implement Gemini adapter (import only - export done)
+- [ ] Implement OpenAI adapter (import only - export done)
+- [x] Add token estimation utilities (`estimateTokens`, `getTokenEstimate`)
+- [ ] Add context summarization logic (currently truncates)
 
 ### Phase C: Switch Analysis
-- [ ] Implement `analyzeSwitch()` function
-- [ ] Feature parity detection
-- [ ] Context window validation
-- [ ] Warning generation
-- [ ] Lossy conversion detection
+- [x] Implement `analyzeSwitch()` function
+- [x] Feature parity detection (thinking, artifacts, MCP)
+- [x] Context window validation
+- [x] Warning generation
+- [x] Lossy conversion detection (`lossyFeatures` array)
 
 ### Phase D: Hot-Swap UI
 - [ ] Enhance ModelSelector for cross-provider switching

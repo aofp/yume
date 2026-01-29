@@ -1,8 +1,30 @@
 # Multi-Provider Conversation Resume Architecture
 
-> **Status:** Architectural Design (Phase 3 of Expansion Roadmap)
-> **Dependencies:** Phase 2 (yume-cli foundation), UNIVERSAL_SESSION_ARCHITECTURE.md, CONVERSATION_PORTABILITY.md
+> **Status:** Partially Implemented
+> **Dependencies:** yume-cli foundation (complete), UNIVERSAL_SESSION_ARCHITECTURE.md, CONVERSATION_PORTABILITY.md
 > **Created:** 2025-01-14
+> **Last Updated:** 2026-01-28
+
+## Implementation Status
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| UCF Types | ✅ Complete | `src/renderer/types/ucf.ts` |
+| Conversation Store | ✅ Complete | `src/renderer/services/conversationStore.ts` |
+| Conversation Translator | ✅ Complete | `src/renderer/services/conversationTranslator.ts` |
+| Claude JSONL Import | ✅ Complete | `conversationTranslator.importFromClaude()` |
+| Claude Export | ✅ Complete | `conversationTranslator.exportToClaude()` |
+| Gemini Export | ✅ Complete | `conversationTranslator.exportToGemini()` |
+| OpenAI Export | ✅ Complete | `conversationTranslator.exportToOpenAI()` |
+| Gemini Import | ❌ Pending | Throws "Not implemented yet" |
+| OpenAI Import | ❌ Pending | Throws "Not implemented yet" |
+| Session Index (Rust) | ❌ Pending | Architecture defined, not implemented |
+| RecentConversationsModal | 🔄 Claude-only | Needs multi-provider badges |
+
+**Storage Locations:**
+- UCF files: `~/.yume/conversations/{session-id}.json`
+- UCF metadata: `~/.yume/conversations/{session-id}.meta.json`
+- UCF backups: `~/.yume/conversations/backups/{session-id}.{timestamp}.json`
 
 ## Executive Summary
 
@@ -921,44 +943,31 @@ async function resumeCrossProvider(
 
 ## Provider Detection & Model Display Names
 
-```rust
-// src-tauri/src/models.rs
+**Note:** Model display names are now managed in `src/renderer/config/models.ts`.
 
-pub fn get_model_display_name(model_id: &str) -> String {
-    match model_id {
-        // Claude
-        "claude-sonnet-4-5-20250929" => "Sonnet 4.5".to_string(),
-        "claude-opus-4-5-20251101" => "Opus 4.5".to_string(),
+```typescript
+// src/renderer/config/models.ts
 
-        // Gemini
-        "gemini-2.0-flash" => "Gemini 2.0 Flash".to_string(),
-        "gemini-2.0-flash-thinking" => "Gemini 2.0 Thinking".to_string(),
-        "gemini-1.5-pro" => "Gemini 1.5 Pro".to_string(),
-        "gemini-1.5-flash" => "Gemini 1.5 Flash".to_string(),
+// Claude models
+{ id: 'claude-sonnet-4-5-20250929', displayName: 'sonnet 4.5' }
+{ id: 'claude-opus-4-5-20251101', displayName: 'opus 4.5' }
 
-        // OpenAI
-        "gpt-4o" => "GPT-4o".to_string(),
-        "gpt-4o-mini" => "GPT-4o Mini".to_string(),
-        "o1" => "O1".to_string(),
-        "o1-mini" => "O1 Mini".to_string(),
-        "o3-mini" => "O3 Mini".to_string(),
+// Gemini models
+{ id: 'gemini-2.5-pro', displayName: 'gemini 2.5 pro' }
+{ id: 'gemini-2.5-flash', displayName: 'gemini 2.5 flash' }
 
-        // Fallback
-        _ => model_id.to_string(),
-    }
-}
+// OpenAI/Codex models
+{ id: 'gpt-5.2-codex', displayName: 'codex 5.2' }
+{ id: 'gpt-5.1-codex-mini', displayName: 'codex 5.1 mini' }
 
-pub fn detect_provider_from_model(model_id: &str) -> ProviderType {
-    if model_id.starts_with("claude-") {
-        ProviderType::Claude
-    } else if model_id.starts_with("gemini-") {
-        ProviderType::Gemini
-    } else if model_id.starts_with("gpt-") || model_id.starts_with("o1") || model_id.starts_with("o3") {
-        ProviderType::OpenAI
-    } else {
-        ProviderType::Unknown
-    }
-}
+// Get provider for a model
+export const getProviderForModel = (modelId: string): ProviderType => {
+  const model = getModelById(modelId);
+  return model?.provider || 'claude';
+};
+
+// Provider detection is handled by models.ts based on model.provider field
+// No need for string prefix matching - the model definition includes provider
 ```
 
 ## Backward Compatibility Strategy

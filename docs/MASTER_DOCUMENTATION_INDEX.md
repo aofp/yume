@@ -1,9 +1,10 @@
 # Yume Master Documentation Index
 
 **Created:** January 3, 2025
-**Updated:** January 20, 2026
-**Total Documentation:** 8 core guides + expansion plan suite + competitive research
-**Coverage:** Core codebase + competitive analysis + multi-provider expansion + background agents + memory system documented
+**Updated:** January 28, 2026
+**Version:** 0.6.0
+**Total Documentation:** 11 core guides + 19 expansion plan docs + competitive research suite
+**Coverage:** Core codebase + competitive analysis + multi-provider expansion + background agents + Memory V2 system + test infrastructure documented
 
 ---
 
@@ -41,7 +42,7 @@
 #### Core Feature Categories:
 1. **Claude CLI Integration**: 6 models across 3 providers, streaming JSON, binary detection
 2. **Session Management**: 7 states, persistence layers, recovery
-3. **Auto-Compaction**: Variable threshold (default 75%), user configurable or disable
+3. **Auto-Compaction**: Dynamic thresholds (default T=75%: 70% warn, 75% auto, 80% force)
 4. **Token Tracking**: Real-time counting, accurate cost calculation
 5. **Editor Features**: Syntax highlighting, diff viewer, file references
 6. **Hook System**: 9 triggers, blocking/non-blocking, variables
@@ -52,13 +53,13 @@
 11. **Security**: CSP, isolation, validation, sanitization
 12. **Performance**: Lazy loading, memory management, monitoring
 13. **Platform Features**: Native integrations for each OS
-14. **Memory MCP System**: Persistent knowledge graph, auto-learning
-15. **Background Agents**: Async execution, git branch isolation (4 concurrent)
+14. **Memory V2 System**: Per-project markdown, TTL-based expiration (5 importance levels), context injection
+15. **Background Agents**: Async execution, git branch isolation (4 concurrent, streaming isolation, debounce: 700ms macOS/2000ms Windows)
 
 #### Exclusive Features:
-- Memory MCP system with auto-learning from conversations
-- Background agents with git branch isolation
-- Only GUI with variable auto-compaction (default 75%, user can adjust or disable)
+- Memory V2 system with per-project markdown and auto-learning
+- Background agents with git branch isolation and streaming isolation
+- Only GUI with configurable auto-compaction (default T=75%: 70% warn, 75% auto, 80% force)
 - Compiled server binaries (no Node.js dependency for end users)
 - Crash recovery with session restoration
 - True token cost tracking (accurate to cent)
@@ -71,7 +72,7 @@
 **Depth:** Complete API documentation
 
 #### API Categories:
-1. **Tauri Commands** (152 commands)
+1. **Tauri Commands** (183+ commands)
    - Session management
    - File operations
    - Claude binary detection
@@ -240,7 +241,7 @@
 
 ### 7. [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md)
 **Size:** ~10,000 words
-**Depth:** Complete competitive landscape analysis for v0.1.0
+**Depth:** Complete competitive landscape analysis for v0.5.5
 
 #### Key Sections:
 1. **Competitive Landscape**
@@ -284,19 +285,45 @@
 
 ---
 
-### 8. [MASTER_DOCUMENTATION_INDEX.md](MASTER_DOCUMENTATION_INDEX.md) (This File)
+### 8. [PROJECT_STATUS.md](PROJECT_STATUS.md)
+**Purpose:** Current project status, version, platform readiness
+
+#### Key Sections:
+- Version and release status
+- Platform build readiness (macOS, Windows, Linux)
+- Feature completion tracking
+
+---
+
+### 9. [YUME_GRADE_REPORT.md](YUME_GRADE_REPORT.md)
+**Purpose:** Quality assessment and grading of the codebase
+
+#### Key Sections:
+- Executive summary of codebase quality
+- Category-by-category grading
+- Improvement recommendations
+
+---
+
+### 10. [DOCUMENTATION_UPDATE_SUMMARY.md](DOCUMENTATION_UPDATE_SUMMARY.md)
+**Purpose:** Changelog of documentation updates for each version
+
+---
+
+### 11. [MASTER_DOCUMENTATION_INDEX.md](MASTER_DOCUMENTATION_INDEX.md) (This File)
 **Purpose:** Documentation overview and navigation
 
 ---
 
 ## 🔮 Future Expansion Plans (Yume 2.0)
 
-### 9. [Expansion Plan](expansion-plan/ARCHITECTURE_OVERVIEW.md)
-**Status:** ~95% COMPLETE (macOS ready), Windows/Linux binaries pending
+### [Expansion Plan](expansion-plan/ARCHITECTURE_OVERVIEW.md)
+**Status:** ~95% COMPLETE (macOS ready, Windows/Linux build scripts exist)
 **Goal:** Multi-provider support via yume-cli shim (Claude, Gemini, OpenAI/Codex)
 
 #### Key Documents:
 - [**Architecture Overview**](expansion-plan/ARCHITECTURE_OVERVIEW.md): Adapter pattern design.
+- [**Architecture Update**](expansion-plan/ARCHITECTURE_UPDATE.md): Official CLI integration strategy update.
 - [**Shim Architecture**](expansion-plan/SHIM_ARCHITECTURE.md): The "Yume Agent" design for stateless providers.
 - [**Yume CLI Spec**](expansion-plan/YUME_CLI_SPEC.md): Technical specification for the `yume-cli` binary.
 - [**Protocol Normalization**](expansion-plan/PROTOCOL_NORMALIZATION.md): Canonical mapping into Claude-compatible stream-json.
@@ -307,6 +334,37 @@
 - [**Gemini Integration**](expansion-plan/GEMINI_INTEGRATION.md): Strategy for Gemini via shim.
 - [**Codex Integration**](expansion-plan/CODEX_INTEGRATION.md): Strategy for OpenAI/Codex via shim.
 - [**Roadmap**](expansion-plan/ROADMAP.md): Multi-provider execution plan.
+- [**System Prompt Strategy**](expansion-plan/SYSTEM_PROMPT_STRATEGY.md): Cross-provider system prompt construction.
+- [**UI/UX Design**](expansion-plan/UI_UX_DESIGN.md): Multi-provider UI design plan.
+- [**VSCode Integration**](expansion-plan/VSCODE_INTEGRATION.md): VSCode extension architecture.
+- [**Conversation Portability**](expansion-plan/CONVERSATION_PORTABILITY.md): Mid-session model switching and UCF translation.
+- [**Universal Session Architecture**](expansion-plan/UNIVERSAL_SESSION_ARCHITECTURE.md): Cross-provider session storage foundation.
+- [**Provider Reference**](expansion-plan/PROVIDER_REFERENCE.md): Model and feature matrix (single source of truth).
+- [**Multi-Provider Resume**](expansion-plan/MULTI_PROVIDER_RESUME_ARCHITECTURE.md): Conversation resume across providers.
+
+---
+
+### [Competitive Research](competitive-research/overview.md)
+**Status:** Complete market analysis
+**Goal:** Inform product strategy and positioning
+
+#### Key Documents:
+- [**Overview**](competitive-research/overview.md): Market landscape summary.
+- [**Executive Summary**](competitive-research/executive-summary.md): Presentation-ready overview.
+- [**Competitors**](competitive-research/competitors.md): Detailed competitor profiles.
+- [**Feature Gaps**](competitive-research/feature-gaps.md): Missing features and opportunities.
+- [**Yume Advantages**](competitive-research/yume-advantages.md): Competitive differentiators.
+- [**Pricing Analysis**](competitive-research/pricing-analysis.md): Pricing model comparison.
+- [**Strategic Recommendations**](competitive-research/strategic-recommendations.md): Action items.
+- [**Emerging Trends**](competitive-research/emerging-trends.md): Market direction.
+- [**UI Improvement Opportunities**](competitive-research/ui-improvement-opportunities.md): UX gaps.
+- [**Claude Code CLI**](competitive-research/claude-code-cli.md): Claude CLI analysis.
+- [**Claude Code Appreciation**](competitive-research/claude-code-appreciation.md): Claude Code strengths.
+- [**Technical Architecture**](competitive-research/technical-architecture.md): Technical comparison.
+- [**Marketing Strategy**](competitive-research/marketing-strategy.md): Go-to-market plan.
+- [**Enterprise Features**](competitive-research/enterprise-features.md): Enterprise requirements.
+- [**User Sentiment**](competitive-research/user-sentiment.md): User feedback analysis.
+- [**Roadmap**](competitive-research/ROADMAP.md): Competitive response roadmap.
 
 ---
 
@@ -407,25 +465,24 @@
 
 ### Unique Features Deep Dive
 
-#### Variable Auto-Compaction
+#### Auto-Compaction with Dynamic Thresholds
 
-**User-Configurable Threshold**:
-- Default: 75% (recommended balance of context retention and safety)
-- Range: 50% to 90% (user adjustable via settings)
-- Can be disabled entirely for manual control
-- Prevents context overflow while maximizing usable context
+**Why Dynamic Thresholds?**
+- Configurable threshold T (default 75%) allows tuning
+- Warning at T-5% (70%), auto at T (75%), force at T+5% (80%)
+- Prevents context overflow with comfortable margin
 
 **Implementation**:
 ```rust
-if usage >= user_threshold {
-    trigger_auto_compaction();
-}
-// If disabled, user must manually compact with Cmd/Ctrl+M
+// Dynamic thresholds from configurable T (default 0.75)
+let warning_threshold = threshold - 0.05;  // 70%
+let auto_threshold = threshold;            // 75%
+let force_threshold = threshold + 0.05;    // 80%
 ```
 
 **Process**:
 1. Monitor token usage continuously
-2. Detect user-configured threshold (default 75%)
+2. Detect 75% (auto) or 80% (force) threshold (default values)
 3. Set pending compaction flag
 4. Send /compact command with next user message
 5. Create new session with summary
@@ -459,22 +516,33 @@ Server binaries are stored in `src-tauri/resources/` for each platform using uni
 
 #### Yume Agents System
 
-**5 Built-in Agents** synced to `~/.claude/agents/yume-*.md`. All agents automatically use the **currently selected model** (opus or sonnet):
+**4 Built-in Agents** synced to `~/.claude/agents/yume-*.md`. All agents automatically use the **currently selected model** (opus or sonnet):
 
 | Agent | Purpose |
 |-------|---------|
 | `yume-architect` | Plans, designs, decomposes tasks |
-| `yume-explorer` | Codebase exploration (read-only) |
-| `yume-implementer` | Focused code changes |
-| `yume-guardian` | Code review and auditing |
-| `yume-specialist` | Domain-specific tasks |
+| `yume-explorer` | Codebase exploration (sonnet, read-only) |
+| `yume-implementer` | Small, focused code changes |
+| `yume-guardian` | Code review and auditing + domain tasks (tests, docs, devops, data) |
 
 **Background Agents** (Async Execution):
-- 4 concurrent agents max
+- 4 concurrent agents max (`MAX_CONCURRENT_AGENTS`)
 - Git branch isolation (`yume-async-{type}-{id}`)
-- 10 minute timeout per agent
+- No timeout per agent
+- Uses Claude CLI directly with `--dangerously-skip-permissions` (NOT yume-cli)
 - Output to `~/.yume/agent-output/`
-- 13 Tauri commands for lifecycle management
+- 14 Tauri commands for lifecycle management
+- Streaming isolation: does NOT control main CLI streaming state
+- Subagent results (with `parent_tool_use_id`) excluded from clearing streaming
+- Debounce timing: 700ms macOS, 2000ms Windows
+
+#### Memory V2 System
+- **Per-project markdown:** `~/.yume/memory/` with global + project folders
+- **TTL/Importance:** 5 importance levels (ephemeral 1d → permanent)
+- **Auto-pruning:** Expired entries pruned via `memory_v2_prune_expired`
+- **Context injection:** `<yume-memory>` block with 2000 token budget
+- **Custom MCP server:** `yume-mcp-memory.cjs` writes directly to V2 files
+- **15 Tauri commands:** Full CRUD + search + build context
 
 **Sync Mechanism**:
 - PID tracking prevents multi-instance conflicts
@@ -495,6 +563,9 @@ Server binaries are stored in `src-tauri/resources/` for each platform using uni
 - Performance optimization
 - Platform specifics
 - Development workflow
+- Test infrastructure (Vitest)
+- Competitive research
+- Multi-provider expansion plan
 
 ---
 

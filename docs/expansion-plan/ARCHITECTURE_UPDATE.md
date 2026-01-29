@@ -1,8 +1,8 @@
 # Architecture Update: Official CLI Integration Strategy
 
-**Date:** 2026-01-14
-**Status:** Active Development
-**Impact:** Phase 2 & 3 of Roadmap
+**Date:** 2026-01-28
+**Status:** ✅ Implementation Complete
+**Impact:** Phase 2 & 3 of Roadmap (both complete)
 
 ## Overview
 
@@ -18,12 +18,14 @@ The multi-provider expansion strategy has been updated to leverage **official CL
 - Token caching and auth management
 - Session persistence in `~/.yume/sessions/`
 
-### New Approach (Current)
-- `yume-cli` is a **thin translation shim**
-- Spawns official CLI binaries (`gemini`, `codex`)
-- Reads their stream-json output
-- Translates to Claude-compatible format
-- Emits to stdout
+### New Approach (Implemented)
+- `yume-cli` is a **universal agent shim** with its own agent loop
+- Spawns official CLI binaries (`gemini`, `codex`) with auto-approve flags
+- Reads their stream-json/JSONL output line-by-line
+- Translates to Claude-compatible format with tool name normalization
+- Implements Think -> Act -> Observe cycle (MAX_TURNS=50, MAX_DURATION=10min)
+- Supports plugin system (agents, skills from `~/.yume/plugins/`)
+- Handles session persistence in `~/.yume/sessions/{provider}/`
 
 ## Provider Integration Details
 
@@ -79,23 +81,30 @@ The multi-provider expansion strategy has been updated to leverage **official CL
 
 ## What yume-cli Does
 
-1. **CLI Detection:** Check if required CLI is installed (`gemini --version`, `codex --version`)
-2. **Auth Verification:** Check if user is authenticated (`gemini auth status`, `codex auth status`)
-3. **Process Spawning:** Launch official CLI with appropriate arguments
-4. **Stream Reading:** Read line-delimited JSON from CLI stdout
-5. **Message Translation:** Convert provider-specific messages to Claude format
-6. **Output Emission:** Write translated messages to yume-cli stdout
-7. **Error Handling:** Translate CLI errors to Claude-compatible error messages
+1. **CLI Detection:** Spawns official CLI binaries (`gemini`, `codex`)
+2. **Process Spawning:** Launch official CLI with appropriate arguments:
+   - Gemini: `gemini --model <model> --output-format stream-json --yolo <prompt>`
+   - Codex: `codex exec --json -C <cwd> --full-auto -m <model> <prompt>`
+3. **Stream Reading:** Read line-delimited JSON from CLI stdout
+4. **Message Translation:** Convert provider-specific messages to Claude format
+   - Tool name normalization (e.g., `run_shell_command` -> `Bash`, `read_file` -> `Read`)
+   - Tool result handling (Gemini: `tool_result`, Codex: `item.completed`)
+5. **Output Emission:** Write translated messages to yume-cli stdout
+6. **Error Handling:** Translate CLI errors to Claude-compatible error messages
+7. **Agent Loop:** Implements Think -> Act -> Observe with safety limits:
+   - MAX_TURNS: 50 iterations
+   - MAX_DURATION_MS: 10 minutes
+   - MAX_HISTORY_MESSAGES: 100 (auto-compaction)
+8. **Session Persistence:** Stores sessions in `~/.yume/sessions/{provider}/`
+9. **Plugin Support:** Loads agents/skills from `~/.yume/plugins/`
 
 ## What yume-cli Does NOT Do
 
-- ❌ Make REST API calls
-- ❌ Implement agent loop (Think → Act → Observe)
-- ❌ Execute tools locally
-- ❌ Manage authentication or tokens
+- ❌ Make direct REST API calls (delegates to official CLIs)
+- ❌ Manage authentication or API keys (users authenticate separately via official CLIs)
 - ❌ Cache API responses
-- ❌ Implement retry logic (CLIs handle this)
-- ❌ Session persistence (CLIs handle this)
+
+**Note:** yume-cli does implement local tool executors in `src/tools/` which are used when providers return tool calls. The official CLIs (gemini, codex) may execute tools internally, but yume-cli handles any tool calls that bubble up through its agent loop.
 
 ## Translation Examples
 
@@ -187,74 +196,77 @@ codex auth login
 - ✅ `PROVIDER_REFERENCE.md` - CLI installation & auth
 - ✅ `ARCHITECTURE_OVERVIEW.md` - Provider integration details
 
-#### Code (Upcoming)
-- [ ] `src-yume-cli/` - New directory structure
-  - [ ] `core/spawner.ts` - CLI process spawning
-  - [ ] `core/translator.ts` - Message translation
-  - [ ] `translators/gemini-to-claude.ts` - Gemini translation
-  - [ ] `translators/codex-to-claude.ts` - Codex translation
-  - [ ] `detection/cli-detector.ts` - CLI detection
-  - [ ] `detection/auth-checker.ts` - Auth verification
-- [ ] `src/renderer/components/Settings/ProvidersTab.tsx` - CLI status UI
-- [ ] Update server adapters to spawn yume-cli
+#### Code (Complete)
+- [x] `src-yume-cli/` - Full TypeScript implementation
+  - [x] `src/index.ts` - Entry point, CLI parsing
+  - [x] `src/core/agent-loop.ts` - Agent loop with Think -> Act -> Observe
+  - [x] `src/core/emit.ts` - Stream emission utilities
+  - [x] `src/core/session.ts` - Session management
+  - [x] `src/core/plugins.ts` - Plugin loader (agents, skills)
+  - [x] `src/core/pathSecurity.ts` - Path validation
+  - [x] `src/providers/base.ts` - Provider interface
+  - [x] `src/providers/gemini.ts` - Gemini CLI spawner + translation
+  - [x] `src/providers/openai.ts` - Codex CLI spawner + translation
+  - [x] `src/providers/index.ts` - Provider factory
+  - [x] `src/tools/*.ts` - Tool executors (Bash, Read, Write, Edit, Glob, Grep, LS)
+- [x] `src/renderer/components/Settings/ProvidersTab.tsx` - CLI status UI
+- [x] `src-tauri/src/yume_cli_spawner.rs` - Rust spawner with event handling
 
 ## Migration Path
 
-### Phase 1: Scaffolding (Current)
+### Phase 1: Scaffolding ✅ Complete
 - [x] Update documentation to reflect new architecture
-- [ ] Create `src-yume-cli/` directory structure
-- [ ] Implement CLI detection utilities
-- [ ] Implement auth checking utilities
+- [x] Create `src-yume-cli/` directory structure
+- [x] Implement CLI detection utilities
+- [x] Implement provider factory pattern
 
-### Phase 2: Translation Layer
-- [ ] Install and study official CLIs (`@google/gemini-cli`, `codex-cli`)
-- [ ] Document their stream-json formats
-- [ ] Implement translation logic for each provider
-- [ ] Write unit tests for translation
+### Phase 2: Translation Layer ✅ Complete
+- [x] Install and study official CLIs (`@google/gemini-cli`, `@openai/codex`)
+- [x] Document their stream-json formats
+- [x] Implement translation logic for Gemini (tool_use/tool_result events)
+- [x] Implement translation logic for Codex (item.completed events)
+- [x] Tool name normalization (detectToolFromCommand for Codex)
 
-### Phase 3: Integration
-- [ ] Wire yume-cli into Yume's server
-- [ ] Add CLI status UI in settings
-- [ ] Add installation instructions
-- [ ] Test end-to-end flows
+### Phase 3: Integration ✅ Complete
+- [x] Wire yume-cli into Yume's backend via `yume_cli_spawner.rs`
+- [x] Add CLI status UI in ProvidersTab.tsx
+- [x] Multi-channel event emission for session routing
+- [x] Session ID extraction from init events
 
-### Phase 4: Polish
-- [ ] Add helpful error messages for missing CLIs
-- [ ] Add auth verification before session start
-- [ ] Add version compatibility checks
-- [ ] Document user setup flow
+### Phase 4: Polish 🔄 In Progress
+- [x] Error handling for missing CLIs
+- [x] Model-specific handling (mini models reasoning effort override)
+- [ ] Binary distribution (macOS works, Windows/Linux pending)
+- [ ] Golden transcript compliance tests
 
-## Open Questions
+## Resolved Questions
 
-1. **Gemini CLI Availability:** Is `@google/gemini-cli` published and stable? If not, we may need a fallback to direct API calls.
+1. **Gemini CLI:** `@google/gemini-cli` is available and stable. Uses `--output-format stream-json` and `--yolo` for auto-approve.
 
-2. **Codex CLI Availability:** Is there an official `codex-cli` package? OpenAI may not have published one yet.
+2. **Codex CLI:** `@openai/codex` is available. Uses `exec --json --full-auto` for JSONL output with auto-approve.
 
-3. **Stream-JSON Format:** Do these CLIs emit line-delimited JSON? If not, we may need PTY parsing.
+3. **Stream-JSON Format:** Both CLIs emit line-delimited JSON. Gemini uses `message`, `tool_use`, `tool_result`, `result` types. Codex uses `thread.started`, `item.completed`, `turn.completed` types.
 
-4. **Tool Support:** Do the CLIs implement all the tools we need (Read, Write, Edit, etc.)?
+4. **Tool Support:** Both CLIs implement native tools. yume-cli provides local tool executors as fallback.
 
-5. **Session Persistence:** Do the CLIs handle session persistence, or do we need to implement this?
-
-## Fallback Strategy
-
-If official CLIs are not available or don't support stream-json:
-
-1. **Gemini:** Fall back to REST API integration (original Phase 2 plan)
-2. **OpenAI:** Fall back to REST API integration (original Phase 2 plan)
-3. Keep documentation for both approaches
-4. Implement detection logic to choose best path
+5. **Session Persistence:** yume-cli handles session persistence in `~/.yume/sessions/{provider}/`
 
 ## Conclusion
 
-This architectural update significantly simplifies our multi-provider integration by leveraging official CLIs. The key insight is that we don't need to reimplement the agent loop - we just need to translate output formats.
+The CLI-first architecture is fully implemented. Both Gemini and Codex providers work via the yume-cli shim:
 
-If the official CLIs don't exist or don't meet our needs, we can fall back to the original REST API approach. But if they work as expected, this approach will save months of development time and ongoing maintenance.
+- **Gemini:** Spawns `gemini` CLI, translates tool_use/tool_result events
+- **Codex:** Spawns `codex` CLI, translates item.completed events with intelligent tool detection
+
+The key insight was correct: we delegate tool execution to the official CLIs and focus on translation. The yume-cli adds value through:
+- Unified Claude-compatible output format
+- Plugin system support (agents, skills)
+- Session persistence across providers
+- Safety limits (max turns, max duration, history compaction)
 
 ---
 
-**Next Steps:**
-1. Research availability of `@google/gemini-cli` and `codex-cli`
-2. Test their stream-json output formats
-3. Begin implementation of translation layer
-4. Update roadmap based on findings
+**Remaining Work:**
+1. Windows/Linux binary distribution
+2. Golden transcript compliance tests
+3. Auth status verification before session start

@@ -1,8 +1,8 @@
 # Yume Production Deployment Guide
 
-**Version:** 0.1.0
-**Last Updated:** January 14, 2026
-**Status:** Development
+**Version:** 0.6.0
+**Last Updated:** January 29, 2026
+**Status:** Beta
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@
 ### 1.1 Code Quality
 
 #### Required Checks
-- [ ] **No console.log statements** - Replaced with logger (591 remaining)
+- [ ] **No console.log statements** - Replaced with logger (cleanup in progress)
 - [x] **Error boundaries implemented** - All major components wrapped
 - [x] **Memory leaks fixed** - Bounded buffers, proper cleanup
 - [x] **Security CSP enabled** - Content Security Policy configured
@@ -53,14 +53,26 @@ npx tsc --noEmit
 cd src-tauri
 cargo test --release
 
+# Run frontend tests (Vitest 3.x with jsdom)
+npm run test
+
+# Watch mode for development
+npm run test:watch
+
 # Build and verify frontend compiles
 npm run build
 ```
 
+**Frontend Test Suites (8 files):**
+- Config: `app.test.ts`, `tools.test.ts`
+- Services: `licenseManager.test.ts`
+- Types: `ucf.test.ts`
+- Utils: `chatHelpers.test.ts`, `helpers.test.ts`, `performance.test.ts`, `regexValidator.test.ts`
+
 #### Manual Testing Checklist
 - [ ] Fresh installation on clean system
 - [ ] Session creation and management
-- [ ] Auto-compaction at 60%
+- [ ] Auto-compaction at 75%
 - [ ] Token tracking accuracy
 - [ ] Cost calculation correctness
 - [ ] Crash recovery functionality
@@ -161,18 +173,19 @@ rm -rf dist/ src-tauri/target/
 # Install dependencies
 npm ci
 
-# Build frontend
-npm run build
+# Build Tauri app (includes frontend build, unified binary, and resources)
+# For Apple Silicon (arm64):
+npm run tauri:build:mac:arm64
 
-# Build Tauri app
-npm run tauri:build:mac
+# For Intel (x64):
+npm run tauri:build:mac:x64
 
-# For universal binary (Intel + Apple Silicon)
-npm run tauri build -- --target universal-apple-darwin
+# Note: npm run tauri:build:mac is an alias for arm64
+# These commands automatically build unified binaries and prepare resources
 ```
 
 #### Windows Build
-```bash
+```powershell
 # Clean previous builds
 Remove-Item -Recurse -Force dist\
 Remove-Item -Recurse -Force src-tauri\target\
@@ -180,14 +193,13 @@ Remove-Item -Recurse -Force src-tauri\target\
 # Install dependencies
 npm ci
 
-# Build frontend
-npm run build
-
-# Build Tauri app
+# Build Tauri app (includes frontend, unified binary, and resources)
 npm run tauri:build:win
 
-# Build both MSI and NSIS installers
-npm run tauri build -- --bundles msi,nsis
+# Note: This command automatically:
+# 1. Builds the unified Windows binary
+# 2. Prepares Windows resources
+# 3. Builds with target x86_64-pc-windows-msvc
 ```
 
 #### Linux Build
@@ -198,21 +210,20 @@ rm -rf dist/ src-tauri/target/
 # Install dependencies
 npm ci
 
-# Build frontend
-npm run build
-
-# Build Tauri app
+# Build Tauri app (includes frontend, unified binary, and resources)
 npm run tauri:build:linux
 
-# Build multiple formats
-npm run tauri build -- --bundles appimage,deb,rpm
+# Note: This command automatically:
+# 1. Builds the unified Linux binary
+# 2. Prepares Linux resources
+# 3. Builds with target x86_64-unknown-linux-gnu
 ```
 
 ### 2.4 Server Binary Builds
 
 The Node.js server is compiled into platform-specific binaries using @yao-pkg/pkg. These binaries hide source code and remove the Node.js dependency for end users.
 
-#### Server Binary Commands
+#### Server-Only Binary Commands (for development/debugging)
 ```bash
 # Build macOS server binary (arm64 and x64)
 npm run build:server:macos
@@ -227,28 +238,60 @@ npm run build:server:linux
 npm run build:server:all
 ```
 
-#### Server Binary Locations
+#### Unified Binary Commands (recommended for production)
+Unified binaries bundle both the server and yume-cli together:
+```bash
+# Build macOS unified binary (arm64 and x64)
+npm run build:unified:macos
+
+# Build Windows unified binary (x64)
+npm run build:unified:windows
+
+# Build Linux unified binary (x64)
+npm run build:unified:linux
+```
+
+#### Binary Locations
 After building, binaries are placed in `src-tauri/resources/`:
-- macOS Apple Silicon: `yume-server-macos-arm64`
-- macOS Intel: `yume-server-macos-x64`
-- Windows: `yume-server-windows-x64.exe`
-- Linux: `yume-server-linux-x64`
+- macOS Apple Silicon: `yume-bin-macos-arm64`
+- macOS Intel: `yume-bin-macos-x64`
+- Windows: `yume-bin-windows-x64.exe` (build script exists, not yet bundled)
+- Linux: `yume-bin-linux-x64` (build script exists, not yet bundled)
 
-#### Future Multi-Provider Packaging (Planned)
-When `yume-cli` is introduced, bundle per-platform shim binaries alongside the server binaries:
-- `yume-cli-macos-arm64`, `yume-cli-macos-x64`
-- `yume-cli-windows-x64.exe`
-- `yume-cli-linux-x64`
+#### Multi-Provider CLI Shim Binaries
+```bash
+# Build yume-cli bundle first
+npm run build:yume-cli
 
-Ensure they are code-signed and included in the installer manifest.
+# Then build platform binaries
+npm run build:yume-cli:binary:macos    # arm64 + x64
+npm run build:yume-cli:binary:win      # Windows x64
+npm run build:yume-cli:binary:linux    # Linux x64
+npm run build:yume-cli:binary:all      # All platforms
+```
 
-#### Fallback .cjs Files
-For backwards compatibility, .cjs fallback files exist:
+Output locations:
+- `yume-cli-macos-arm64`, `yume-cli-macos-x64` - **complete and bundled**
+- `yume-cli-windows-x64.exe` - build script exists
+- `yume-cli-linux-x64` - build script exists
+
+#### MCP Memory Server
+Custom MCP server for Memory V2 system:
+- Source: `src-tauri/resources/yume-mcp-memory.cjs`
+- Automatically copied to `~/.yume/yume-mcp-memory.cjs` on init
+
+#### Fallback .cjs Source Files
+Development source files at project root (NOT in resources/):
 - `server-claude-macos.cjs`
 - `server-claude-windows.cjs`
 - `server-claude-linux.cjs`
 
-These are used when the compiled binary is not found or fails to execute.
+**Development workflow:**
+1. Edit `.cjs` files at project root
+2. Run `npm run build:server:<platform>` to compile
+3. Restart `npm run tauri:dev`
+
+Dev mode uses compiled binaries from `src-tauri/resources/`, not source files.
 
 ### 2.5 Build Optimization
 
@@ -256,11 +299,15 @@ These are used when the compiled binary is not found or fails to execute.
 ```toml
 # src-tauri/Cargo.toml
 [profile.release]
-opt-level = 3          # Maximum optimizations
-lto = true            # Link-time optimization
-codegen-units = 1     # Single codegen unit
-strip = true          # Strip symbols
-panic = "abort"       # Smaller panic handler
+opt-level = 3            # Maximum speed optimization
+lto = "fat"              # Full LTO for best cross-crate optimization
+codegen-units = 1        # Single codegen unit for better optimization
+strip = true             # Strip symbols from binary
+panic = "abort"          # Faster panic handling, removes unwind info
+debug = false            # No debug info
+debug-assertions = false # Remove debug assertions
+overflow-checks = false  # Remove overflow checks
+incremental = false      # Disable incremental for better optimization
 ```
 
 #### Frontend Optimizations
@@ -268,18 +315,23 @@ panic = "abort"       # Smaller panic handler
 // vite.config.mjs
 export default {
   build: {
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
+    minify: 'esbuild',  // esbuild handles complex regex patterns correctly
+    esbuild: {
+      drop: ['debugger'],
+      legalComments: 'none',
     },
+    sourcemap: false,  // Disabled for production
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['@radix-ui/*'],
+        manualChunks(id) {
+          if (id.includes('shiki') || id.includes('@shikijs')) return 'shiki';
+          if (id.includes('node_modules/react-dom')) return 'vendor';
+          if (id.includes('node_modules/react/')) return 'vendor';
+          if (id.includes('node_modules/zustand')) return 'vendor';
+          if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark-gfm')) return 'markdown';
+          if (id.includes('node_modules/@tabler/icons-react')) return 'icons';
+          if (id.includes('node_modules/socket.io-client')) return 'socket';
+          if (id.includes('node_modules/@tauri-apps')) return 'tauri';
         }
       }
     }
@@ -309,31 +361,39 @@ export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 
 #### Sign Application
 ```bash
-# Sign the app bundle
+# Sign the app bundle (architecture-specific paths)
+# For arm64:
 codesign --deep --force --verify --verbose \
   --sign "$APPLE_SIGNING_IDENTITY" \
   --options runtime \
   --entitlements src-tauri/entitlements.plist \
-  "src-tauri/target/release/bundle/macos/Yume.app"
+  "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app"
+
+# For x64:
+codesign --deep --force --verify --verbose \
+  --sign "$APPLE_SIGNING_IDENTITY" \
+  --options runtime \
+  --entitlements src-tauri/entitlements.plist \
+  "src-tauri/target/x86_64-apple-darwin/release/bundle/macos/yume.app"
 
 # Verify signature
 codesign --verify --verbose=4 \
-  "src-tauri/target/release/bundle/macos/Yume.app"
+  "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app"
 
 # Check notarization readiness
 spctl --assess --verbose=4 \
-  "src-tauri/target/release/bundle/macos/Yume.app"
+  "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app"
 ```
 
 #### Notarization
 ```bash
-# Create ZIP for notarization
+# Create ZIP for notarization (arm64 example)
 ditto -c -k --keepParent \
-  "src-tauri/target/release/bundle/macos/Yume.app" \
-  "Yume.zip"
+  "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app" \
+  "yume.zip"
 
 # Submit for notarization
-xcrun notarytool submit Yume.zip \
+xcrun notarytool submit yume.zip \
   --apple-id "your-apple-id@example.com" \
   --team-id "TEAMID" \
   --password "app-specific-password" \
@@ -341,7 +401,7 @@ xcrun notarytool submit Yume.zip \
 
 # Staple the notarization
 xcrun stapler staple \
-  "src-tauri/target/release/bundle/macos/Yume.app"
+  "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app"
 ```
 
 ### 3.2 Windows Code Signing
@@ -379,22 +439,16 @@ signtool verify /pa "src-tauri\target\release\yume.exe"
 ### 4.1 macOS Deployment
 
 #### DMG Creation
-```bash
-# Use create-dmg tool
-npm install -g create-dmg
+DMG files are automatically created by the build process. Output locations:
+- arm64: `src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/`
+- x64: `src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/`
 
-create-dmg \
-  --volname "Yume" \
-  --volicon "assets/icons/mac/yume.icns" \
-  --background "assets/dmg-background.png" \
-  --window-size 600 400 \
-  --icon-size 100 \
-  --icon "Yume.app" 175 190 \
-  --hide-extension "Yume.app" \
-  --app-drop-link 425 190 \
-  "Yume-1.0.0.dmg" \
-  "src-tauri/target/release/bundle/macos/"
+To open the built DMG:
+```bash
+npm run open:dmg
 ```
+
+Post-build scripts (`scripts/post-build-mac.cjs` and `scripts/build-pkg.sh`) handle additional packaging.
 
 #### Distribution Requirements
 - Sign DMG file
@@ -515,91 +569,96 @@ rpmbuild -ba yume.spec
 #### File Hosting
 ```bash
 # Generate checksums
-sha256sum Yume-*.dmg > checksums.txt
-sha256sum yume-*.msi >> checksums.txt
-sha256sum yume-*.AppImage >> checksums.txt
+sha256sum yume_*.dmg > checksums.txt
+sha256sum yume_*.msi >> checksums.txt
+sha256sum yume_*.AppImage >> checksums.txt
 
-# Upload structure
+# Upload structure (example for v0.6.0)
 releases/
-├── v1.0.0/
+├── v0.6.0/
 │   ├── mac/
-│   │   ├── Yume-1.0.0-universal.dmg
-│   │   └── Yume-1.0.0-universal.dmg.sha256
+│   │   ├── yume_0.6.0_aarch64.dmg        # Apple Silicon
+│   │   ├── yume_0.6.0_x64.dmg            # Intel
+│   │   └── checksums.sha256
 │   ├── windows/
-│   │   ├── yume-1.0.0-x64.msi
-│   │   ├── yume-1.0.0-x64.msi.sha256
-│   │   ├── yume-1.0.0-x64-setup.exe
-│   │   └── yume-1.0.0-x64-setup.exe.sha256
+│   │   ├── yume_0.6.0_x64-setup.exe
+│   │   ├── yume_0.6.0_x64_en-US.msi
+│   │   └── checksums.sha256
 │   └── linux/
-│       ├── yume-1.0.0.AppImage
-│       ├── yume-1.0.0.deb
-│       └── yume-1.0.0.rpm
+│       ├── yume_0.6.0_amd64.AppImage
+│       ├── yume_0.6.0_amd64.deb
+│       └── checksums.sha256
 ```
 
 ### 5.2 GitHub Releases
 
 #### Create Release
 ```bash
-# Tag version
-git tag -a v1.0.0 -m "Release version 1.0.0"
-git push origin v1.0.0
+# Tag version (use semantic versioning)
+git tag -a v0.6.0 -m "Release version 0.6.0"
+git push origin v0.6.0
 
 # Create release with GitHub CLI
-gh release create v1.0.0 \
-  --title "Yume v1.0.0" \
+gh release create v0.6.0 \
+  --title "Yume v0.6.0" \
   --notes "Release notes here" \
   --draft
 
 # Upload assets
-gh release upload v1.0.0 \
-  Yume-1.0.0-universal.dmg \
-  yume-1.0.0-x64.msi \
-  yume-1.0.0.AppImage
+gh release upload v0.6.0 \
+  yume_0.6.0_aarch64.dmg \
+  yume_0.6.0_x64.dmg \
+  yume_0.6.0_x64-setup.exe \
+  yume_0.6.0_amd64.AppImage
 ```
+
+#### Auto-Update System
+Yume uses a two-tier update mechanism:
+1. **App updates**: `versionCheck.ts` fetches `https://aofp.github.io/yume/version.txt` on startup
+2. **Claude CLI updates**: Runs `claude update` on startup (enabled by default)
 
 ### 5.3 Package Managers
 
-#### Homebrew (macOS)
+#### Homebrew (macOS) - Planned
 ```ruby
-# yume.rb
-class Yume < Formula
-  desc "Claude GUI with auto-compaction"
-  homepage "https://yume.app"
-  url "https://github.com/yume/releases/download/v1.0.0/Yume-1.0.0.tar.gz"
+# yume.rb (not yet published)
+class Yume < Cask
+  desc "Minimal Claude Code UI"
+  homepage "https://github.com/aofp/yume"
+  url "https://github.com/aofp/yume/releases/download/v0.6.0/yume_0.6.0_aarch64.dmg"
   sha256 "SHA256_HERE"
-  version "1.0.0"
-  
-  def install
-    bin.install "yume"
-  end
+  version "0.6.0"
+
+  app "yume.app"
 end
 ```
 
-#### Chocolatey (Windows)
+#### Chocolatey (Windows) - Planned
 ```xml
-<!-- yume.nuspec -->
+<!-- yume.nuspec (not yet published) -->
 <?xml version="1.0"?>
 <package>
   <metadata>
     <id>yume</id>
-    <version>1.0.0</version>
+    <version>0.6.0</version>
     <title>Yume</title>
-    <authors>Yuru Software</authors>
-    <description>Claude GUI with auto-compaction</description>
-    <projectUrl>https://yume.app</projectUrl>
+    <authors>aofp</authors>
+    <description>Minimal Claude Code UI</description>
+    <projectUrl>https://github.com/aofp/yume</projectUrl>
   </metadata>
 </package>
 ```
 
-#### Snap (Linux)
+#### Snap (Linux) - Planned
 ```yaml
-# snapcraft.yaml
+# snapcraft.yaml (not yet published)
 name: yume
-version: '1.0.0'
-summary: Claude GUI with auto-compaction
+version: '0.6.0'
+summary: Minimal Claude Code UI
 description: |
-  Yume is a sophisticated GUI for Claude CLI
-  
+  Yume is a minimal GUI for Claude CLI with auto-compaction,
+  multi-tab sessions, and background agents.
+
 confinement: strict
 grade: stable
 
@@ -639,7 +698,7 @@ MAJOR.MINOR.PATCH
 Released: January 3, 2025
 
 ## ✨ New Features
-- Auto-compaction at 60% context usage
+- Auto-compaction at 75% context usage (configurable)
 - Crash recovery system
 - Performance monitoring
 
@@ -670,19 +729,13 @@ Released: January 3, 2025
 - Social media
 
 #### Update Notification
-```json
-// update-manifest.json
-{
-  "version": "1.0.0",
-  "releaseDate": "2025-01-03",
-  "notes": "Major release with auto-compaction",
-  "downloads": {
-    "darwin": "https://...",
-    "win32": "https://...",
-    "linux": "https://..."
-  }
-}
+Yume uses a simple version.txt file hosted on GitHub Pages:
 ```
+# https://aofp.github.io/yume/version.txt
+0.6.0
+```
+
+The app checks this on startup and shows an `[update available]` badge in window controls when a newer version is detected.
 
 ---
 
@@ -708,6 +761,12 @@ const errors = JSON.parse(
 
 # Linux server logs
 ~/.yume/logs/server.log
+
+# Database location (all platforms)
+~/.yume/yume.db
+
+# Memory V2 storage (all platforms)
+~/.yume/memory/
 ```
 
 ### 7.2 Performance Monitoring
@@ -722,10 +781,8 @@ const errors = JSON.parse(
 ### 7.3 Support Infrastructure
 
 #### Support Channels
-1. **GitHub Issues**: Bug reports
-2. **Discord Server**: Community support
-3. **Email Support**: Premium users
-4. **Documentation**: Self-service
+1. **GitHub Issues**: https://github.com/aofp/yume/issues
+2. **Documentation**: `docs/` directory in repository
 
 #### Issue Templates
 ```markdown
@@ -808,14 +865,15 @@ echo "v1.0.0" > LATEST_STABLE
 
 #### macOS Notarization Failed
 ```bash
-# Check for unsigned libraries
-find Yume.app -type f -exec codesign -dv {} \; 2>&1 | grep "not signed"
+# Check for unsigned libraries (arm64 example)
+find src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app \
+  -type f -exec codesign -dv {} \; 2>&1 | grep "not signed"
 
 # Re-sign with hardened runtime
 codesign --deep --force --verify --verbose \
   --options runtime \
   --sign "$APPLE_SIGNING_IDENTITY" \
-  Yume.app
+  src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app
 ```
 
 #### Windows SmartScreen Warning
@@ -826,13 +884,16 @@ codesign --deep --force --verify --verbose \
 #### Linux AppImage Won't Run
 ```bash
 # Make executable
-chmod +x Yume.AppImage
+chmod +x yume_*.AppImage
 
 # Check dependencies
-ldd Yume.AppImage
+ldd yume_*.AppImage
 
 # Run with debug
-APPIMAGE_DEBUG=1 ./Yume.AppImage
+APPIMAGE_DEBUG=1 ./yume_*.AppImage
+
+# If FUSE is missing
+sudo apt install fuse libfuse2  # Ubuntu/Debian
 ```
 
 ---
@@ -857,4 +918,16 @@ APPIMAGE_DEBUG=1 ./Yume.AppImage
 
 ## Conclusion
 
-This deployment guide ensures a smooth, secure, and professional release of Yume. Follow each step carefully and maintain a deployment log for future reference. Remember: quality over speed for production releases.
+This deployment guide ensures a smooth, secure, and professional release of Yume. Follow each step carefully and maintain a deployment log for future reference.
+
+**Current Build Status:**
+- macOS (arm64 + x64): Fully supported with DMG + PKG
+- Windows: Build scripts exist, binaries not yet bundled
+- Linux: Build scripts exist, binaries not yet bundled
+
+**Key Files Reference:**
+- Build scripts: `scripts/` directory
+- Tauri configs: `src-tauri/tauri.conf.json`, `tauri.arm64.conf.json`, `tauri.x64.conf.json`
+- Rust config: `src-tauri/Cargo.toml`
+- Vite config: `vite.config.mjs`
+- Resources: `src-tauri/resources/`
