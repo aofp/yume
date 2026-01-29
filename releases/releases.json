@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.5.9",
+  "latest": "0.6.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.6.0",
+      "date": "2026-01-28",
+      "notes": "context bar improvements, analytics chart fixes, compaction service updates",
+      "releaseNotes": "v0.6.0-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.6.0_arm64.pkg",
+        "mac": "yume_0.6.0_x64.pkg",
+        "windows": "yume_0.6.0_x64-setup.exe",
+        "linux_deb": "yume_0.6.0_amd64.deb",
+        "linux_rpm": "yume-0.6.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "92f568005b279cfea315dd3e52f8e2f193f7d6a371b7a5e4aad0d2caa80c8a92",
+        "mac": "209f65f9a96ab33e32dea3f8a414dafcf648dd28a5e12b5d9283b51b5d0f7218",
+        "windows": "1de7e8fa5879fea738ebc070060135df8e1a723c6c9563a0c09ce24fbc4ddfab",
+        "linux_deb": "7cc2cc9c4df877fecc219e06cd35c08cbb0b2ca9763a55101f09511df63ad09a",
+        "linux_rpm": "b715b022034fe8bcc9f549eb3cb1ad26a07e07d9638347b4def14c6e001e95b6"
+      }
+    },
     {
       "version": "0.5.9",
       "date": "2026-01-28",
