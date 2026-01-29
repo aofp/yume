@@ -41,7 +41,7 @@
 #### Core Feature Categories:
 1. **Claude CLI Integration**: 6 models across 3 providers, streaming JSON, binary detection
 2. **Session Management**: 7 states, persistence layers, recovery
-3. **Auto-Compaction**: 55% warn, 60% auto, 65% force thresholds
+3. **Auto-Compaction**: Variable threshold (default 75%), user configurable or disable
 4. **Token Tracking**: Real-time counting, accurate cost calculation
 5. **Editor Features**: Syntax highlighting, diff viewer, file references
 6. **Hook System**: 9 triggers, blocking/non-blocking, variables
@@ -58,7 +58,7 @@
 #### Exclusive Features:
 - Memory MCP system with auto-learning from conversations
 - Background agents with git branch isolation
-- Only GUI with conservative auto-compaction (60%/65% thresholds, 38% buffer)
+- Only GUI with variable auto-compaction (default 75%, user can adjust or disable)
 - Compiled server binaries (no Node.js dependency for end users)
 - Crash recovery with session restoration
 - True token cost tracking (accurate to cent)
@@ -407,27 +407,25 @@
 
 ### Unique Features Deep Dive
 
-#### Auto-Compaction at 60%/65%
+#### Variable Auto-Compaction
 
-**Why 60%/65%?**
-- Uses same 38% buffer as Claude Code for reliability
-- 55%: Warning notification
-- 60%: Auto-compact triggers (sets flag for next message)
-- 65%: Force compact
-- Prevents context overflow with comfortable margin
+**User-Configurable Threshold**:
+- Default: 75% (recommended balance of context retention and safety)
+- Range: 50% to 90% (user adjustable via settings)
+- Can be disabled entirely for manual control
+- Prevents context overflow while maximizing usable context
 
 **Implementation**:
 ```rust
-if usage >= 0.65 {
-    trigger_force_compaction();
-} else if usage >= 0.60 {
+if usage >= user_threshold {
     trigger_auto_compaction();
 }
+// If disabled, user must manually compact with Cmd/Ctrl+M
 ```
 
 **Process**:
 1. Monitor token usage continuously
-2. Detect 60% (auto) or 65% (force) threshold
+2. Detect user-configured threshold (default 75%)
 3. Set pending compaction flag
 4. Send /compact command with next user message
 5. Create new session with summary

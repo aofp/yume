@@ -9,7 +9,7 @@ desktop app for claude cli with multi-provider support.
 ## core features
 
 - **multi-tab sessions** — up to 99 concurrent conversations (pro)
-- **auto-compaction** — 77.5% triggers, 85% force, preserves important context
+- **auto-compaction** — variable threshold (default 75%), user configurable or disable
 - **token tracking** — input/output/cache tokens, cost per message
 - **crash recovery** — 30s auto-save, full state restoration
 - **multi-provider** — claude, gemini, openai via official clis
@@ -18,7 +18,7 @@ desktop app for claude cli with multi-provider support.
 
 ## context management
 
-- **usage thresholds** — 70% warning, 77.5% auto-compact, 85% force
+- **usage thresholds** — auto-compact at user-configured threshold (default 75%)
 - **manifest generation** — preserves files, functions, decisions
 - **rate limit tracking** — 5h + 7d limits from anthropic api (claude only)
 - **context bar** — visual indicator with color-coded warnings

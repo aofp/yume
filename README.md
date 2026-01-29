@@ -71,7 +71,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 - **keyboard-first** - 32+ shortcuts, full mouse-free navigation
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
-- **auto-compaction** - 77.5% auto, 85% force, same buffer as claude code
+- **auto-compaction** - variable threshold (default 75%), user configurable or disable
 
 ### plugin & skills system
 - **complete extensibility** - commands, agents, hooks, skills, MCP servers

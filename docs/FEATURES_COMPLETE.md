@@ -199,9 +199,9 @@ pub struct CrashRecoveryManager {
 
 ### 3.1 Overview
 
-**Description**: Automatically compacts conversation context with conservative thresholds (70% warning, 78% auto, 85% force).
+**Description**: Automatically compacts conversation context with user-configurable threshold (default 75%).
 
-**Unique Feature**: Uses same 22.5% buffer (45k tokens) as Claude Code for reliable context management.
+**Unique Feature**: Variable threshold that users can adjust (50-90%) or disable entirely for manual control.
 
 ### 3.2 Technical Implementation
 
@@ -210,14 +210,13 @@ pub struct CrashRecoveryManager {
 **Threshold Detection**:
 ```rust
 pub struct CompactionManager {
-    auto_threshold: f32,  // 0.78 (78%)
-    force_threshold: f32, // 0.85 (85%)
+    threshold: f32,  // User-configurable (default 0.75 / 75%)
+    enabled: bool,   // Can be disabled for manual control
 
     pub async fn monitor_usage(&self, stats: TokenStats) {
+        if !self.enabled { return; }
         let usage = stats.context_tokens as f32 / stats.max_tokens as f32;
-        if usage >= self.force_threshold {
-            self.trigger_force_compaction().await;
-        } else if usage >= self.auto_threshold {
+        if usage >= self.threshold {
             self.trigger_auto_compaction().await;
         }
     }
@@ -227,7 +226,7 @@ pub struct CompactionManager {
 ### 3.3 Compaction Process
 
 **Steps**:
-1. **Detection**: Monitor reaches 78% (auto) or 85% (force) threshold
+1. **Detection**: Monitor reaches user-configured threshold (default 75%)
 2. **Preparation**: Save current state
 3. **Trigger**: Send `/compact` command on next user message
 4. **Processing**: Claude creates summary
@@ -244,9 +243,8 @@ pub struct CompactionManager {
 
 ```typescript
 interface CompactionSettings {
-  autoTrigger: boolean;        // Enable auto-compaction
-  autoThreshold: number;       // 0.78 (78%)
-  forceThreshold: number;      // 0.85 (85%)
+  enabled: boolean;            // Enable/disable auto-compaction
+  threshold: number;           // 0.75 (75%) default, range 0.50-0.90
   preserveContext: boolean;    // Preserve important context
   generateManifest: boolean;   // Create compaction manifest
 }
@@ -1426,7 +1424,7 @@ interface FileSnapshot {
 | **Performance monitoring** | ✅ | ❌ | ❌ | ❌ |
 | **Analytics dashboard** | ✅ | ⚠️ | ❌ | ❌ |
 | **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
-| Auto-compact (78% auto, 85% force) | ✅ | ❌ | ❌ | ❌ |
+| Auto-compact (variable, default 75%) | ✅ | ❌ | ❌ | ❌ |
 | Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
 | Token tracking | ✅ | ✅ | ⚠️ | ✅ |
 | Cost calculation | ✅ | ✅ | ❌ | ❌ |
@@ -1789,7 +1787,7 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
    - **Timeline & checkpoints** - visual conversation state management
    - **CLAUDE.md editor** - in-app project documentation editing
    - 5h + 7-day Anthropic limit tracking (no competitor has this)
-   - Auto-compaction (70% warn, 78% auto, 85% force) - matches Claude Code's 45k token buffer
+   - Auto-compaction (variable threshold, default 75%, user configurable or disable)
    - Crash recovery (auto-save every 5 min)
    - Built-in agents (architect, explorer, implementer, guardian)
    - Custom commands with templates

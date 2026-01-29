@@ -29,11 +29,11 @@ states: created → connecting → active ↔ streaming ↔ idle → disconnecte
 ## context management
 
 ### auto-compaction
-| threshold | action |
-|-----------|--------|
-| 70% | yellow warning |
-| 77.5% | auto-compact triggers |
-| 85% | force compact |
+| setting | description |
+|---------|-------------|
+| threshold | user-configurable (default 75%) |
+| range | 50% to 90% |
+| disable | can be turned off for manual control |
 
 sends `/compact` on next user message. generates context manifest preserving important files/functions/decisions.
 

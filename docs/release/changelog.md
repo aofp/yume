@@ -14,7 +14,7 @@ initial release.
 - window state restoration
 
 ### context management
-- auto-compaction (55% warn, 60% auto, 65% force)
+- auto-compaction (variable threshold, default 75%, user configurable or disable)
 - manifest generation (preserves files/functions/decisions)
 - token tracking (input, output, cache read, cache creation)
 - cost per message
