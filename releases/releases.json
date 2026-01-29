@@ -1,12 +1,32 @@
 {
   "product": "yume",
-  "latest": "0.6.2",
+  "latest": "0.6.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
     {
+      "version": "0.6.3",
+      "date": "2026-01-29",
+      "notes": "fix nvm-installed claude detection on linux, improve process cleanup, fix gemini provider",
+      "releaseNotes": "v0.6.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.6.3_arm64.pkg",
+        "mac": "yume_0.6.3_x64.pkg",
+        "windows": "yume_0.6.3_x64-setup.exe",
+        "linux_deb": "yume_0.6.3_amd64.deb",
+        "linux_rpm": "yume-0.6.3-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "65570a710bd471312d1b1d0110bef0edfcdaf24cdfabc5596c649189c615e727",
+        "mac": "b1a2c447879cf20023802de3f18d5eed150b05ecd98928459b7f3588b2835171",
+        "windows": "e85e0a5a372089309d31bf01d81f89e33d409a796c95c74a98e6d585aa6a347b",
+        "linux_deb": "a87c0a052bd97706dc39b31ba2714d29995c57e27feffa9eb05185bf6d0a928a",
+        "linux_rpm": "8cac70dbf62d85c31220a29c4a534e4d823308fe3831589cbf5af10a9505047a"
+      }
+    },
+    {
       "version": "0.6.2",
       "date": "2026-01-29",
-      "notes": "v0.6.2 release",
+      "notes": "code cleanup and quality improvements, refactor agents",
       "releaseNotes": "v0.6.2-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.6.2_arm64.pkg",
@@ -306,7 +326,7 @@
     {
       "version": "0.4.3",
       "date": "2026-01-24",
-      "notes": "stability improvements and bug fixes",
+      "notes": "add syntax highlighting, fix scroll unstick, hide windows cmd console",
       "releaseNotes": "v0.4.3-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.3_arm64.pkg",
@@ -322,7 +342,7 @@
     {
       "version": "0.4.2",
       "date": "2026-01-23",
-      "notes": "ui polish and performance optimizations",
+      "notes": "refactor chat ui spacing, plugin agent sync, agent status card, focus manager",
       "releaseNotes": "v0.4.2-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.2_arm64.pkg",
@@ -338,7 +358,7 @@
     {
       "version": "0.4.1",
       "date": "2026-01-23",
-      "notes": "agent system refinements and memory improvements",
+      "notes": "add windows support for subprocess spawning",
       "releaseNotes": "v0.4.1-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.4.1_arm64.pkg",
@@ -402,7 +422,7 @@
     {
       "version": "0.3.5",
       "date": "2026-01-22",
-      "notes": "theme system expansion and customization options",
+      "notes": "micro-optimizations, code cleanup, theme refinements",
       "releaseNotes": "v0.3.5-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.5_arm64.pkg",
@@ -418,7 +438,7 @@
     {
       "version": "0.3.4",
       "date": "2026-01-22",
-      "notes": "rate limit display and usage tracking enhancements",
+      "notes": "adjust command autocomplete position, rate limit display, style fixes",
       "releaseNotes": "v0.3.4-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.3.4_arm64.pkg",
@@ -514,7 +534,7 @@
     {
       "version": "0.2.7",
       "date": "2026-01-20",
-      "notes": "memory service improvements",
+      "notes": "fix memory tab crash, filepath fixes, style improvements",
       "releaseNotes": "v0.2.7-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.2.7_arm64.pkg",
@@ -562,7 +582,7 @@
     {
       "version": "0.2.4",
       "date": "2026-01-20",
-      "notes": "UI consistency improvements and bug fixes",
+      "notes": "ui consistency between macos and windows, bug fixes",
       "releaseNotes": "v0.2.4-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.2.4_aarch64.pkg",
@@ -610,7 +630,7 @@
     {
       "version": "0.2.1",
       "date": "2026-01-20",
-      "notes": "v0.2.1 maintenance release",
+      "notes": "minor bug fixes and maintenance",
       "releaseNotes": "v0.2.1-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.2.1_arm64.pkg",
