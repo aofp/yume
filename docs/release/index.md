@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support.
+desktop app for claude cli with multi-provider support. current version: **0.6.4**
 
 ---
 
@@ -48,9 +48,10 @@ unified stream-json protocol. provider switching forks session. macos binaries b
 
 ## background agents
 
-- **queue management** — 4 concurrent, 10min timeout
+- **queue management** — 4 concurrent, no timeout
 - **git isolation** — automatic branch per agent (yume-async-{type}-{id})
 - **merge workflow** — conflict detection, merge/delete operations
+- **streaming isolation** — agents don't interfere with main session
 - **ui** — sliding panel with agent cards, real-time progress
 
 ---
@@ -92,9 +93,11 @@ agents use selected model. synced to `~/.claude/agents/`.
 
 ---
 
-## hooks (9 events)
+## hooks (9 events, 3 active)
 
-`UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `ContextWarning`, `CompactionTrigger`, `Error`
+**active:** `PreToolUse`, `ContextWarning`, `CompactionTrigger`
+
+**defined (not wired):** `UserPromptSubmit`, `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`
 
 js/py/sh scripts with 5s timeout.
 
@@ -197,9 +200,9 @@ sqlite in `~/.yume/yume.db`:
 - rust/tauri 2.9 backend
 - react 19 frontend
 - node.js server (compiled binaries)
-- 152 tauri commands
+- 181+ tauri commands
 - 24 frontend services
-- ~51k lines of code
+- ~83k lines of code (62k ts/tsx + 21k rust)
 
 ---
 

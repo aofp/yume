@@ -48,14 +48,16 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
   - **implementer** - focused code changes, edit/write, minimal diffs
   - **guardian** - reviews for bugs, security, performance after changes
 - **4 concurrent background agents** - async execution with git branch isolation (yume-async-{type}-{id})
-- **10-minute timeout** - per agent with output to ~/.yume/agent-output/
+- **no timeout** - agents run until completion, output to ~/.yume/agent-output/
+- **streaming isolation** - background agents don't interfere with main session
 - **merge conflict detection** - pre-merge checks before integrating agent work
 
-### memory mcp system
-- **persistent knowledge graph** - entities, relations, observations in ~/.yume/memory.jsonl
+### memory v2 system
+- **per-project markdown** - organized files in ~/.yume/memory/ (global + project-specific)
+- **5 importance levels** - ephemeral (1d), low (7d), normal (30d), high (90d), permanent
 - **auto-learning** - extracts patterns from error/fix conversations, architecture decisions
-- **project context** - remembers per-project facts, coding patterns, solutions
-- **cross-session persistence** - knowledge preserved across all sessions
+- **ttl-based expiration** - automatic pruning of outdated entries
+- **mcp integration** - custom yume-mcp-memory.cjs server for claude access
 
 ### multi-provider support
 - **6 models, 3 providers** - via yume-cli shim
@@ -80,7 +82,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 - **bundled yume plugin** - default commands and agents
 
 ### additional features
-- **crash recovery** - 5-min snapshots, 24hr retention, complete session restore
+- **crash recovery** - 30s auto-save, 5-min snapshots, 24hr retention, complete session restore
 - **history rollback** - restore points per message, conflict detection, undo edits
 - **mid-stream context** - real-time token updates during streaming
 - **analytics dashboard** - usage by project/model/date, cost tracking, export
@@ -111,7 +113,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 | feature | cli | cursor | opcode | crystal | yume |
 |---------|-----|--------|--------|---------|------|
 | orchestration flow | ✗ | ✗ | ✗ | ✗ | ✓ auto |
-| memory system | ✗ | ✗ | ✗ | ✗ | ✓ graph |
+| memory system | ✗ | ✗ | ✗ | ✗ | ✓ v2 md |
 | background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
 | multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
@@ -166,8 +168,9 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 **background agents** (4 concurrent, async):
 - git branch isolation: yume-async-{type}-{id}
-- 10-minute timeout per agent
+- no timeout (runs until completion)
 - output to ~/.yume/agent-output/
+- streaming isolation from main session
 - merge conflict detection
 
 ---
@@ -183,14 +186,14 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 ## license
 
-yume is free to download and use with 3 tab limit. upgrade to pro for unlimited tabs ($21 one-time payment).
+yume is free to download and use (trial: 3 tabs, 1 window). upgrade to pro for 99 tabs and 99 windows ($21 one-time payment).
 
 ---
 
 ## links
 
 - **download**: [aofp.github.io/yume](https://aofp.github.io/yume)
-- **docs**: [aofp.github.io/yume/docs/release/viewer.html](https://aofp.github.io/yume/docs/release/viewer.html)
+- **docs**: [aofp.github.io/yume/docs/](https://aofp.github.io/yume/docs/)
 - **issues**: [github.com/aofp/yume/issues](https://github.com/aofp/yume/issues)
 - **claude code cli**: [github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
 

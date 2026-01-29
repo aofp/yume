@@ -1,5 +1,159 @@
 # changelog
 
+## 0.6.4 — january 29, 2026
+
+- variable auto-compact threshold (default 75%)
+- improved streaming isolation for background agents
+- docs updates
+
+## 0.6.3 — january 28, 2026
+
+- memory v2 context injection improvements
+- plugin skills display enhancements
+
+## 0.6.2 — january 28, 2026
+
+- fix agent output file tracking
+- streaming isolation bug fixes
+
+## 0.6.1 — january 28, 2026
+
+- auto-update system (app version check via github pages)
+- claude cli auto-update on startup
+
+## 0.6.0 — january 27, 2026
+
+major release.
+
+### highlights
+- memory v2 system (per-project markdown with ttl)
+- tool selection modal (8 categories)
+- oled theme refinements
+- test infrastructure (vitest 3.x)
+
+### breaking changes
+- memory v1 (jsonl) auto-migrated to v2 (markdown)
+
+---
+
+## 0.5.9 — january 26, 2026
+
+- fix outdated compaction percentages
+- 12 themes (was 10)
+- memory v2 documentation
+
+## 0.5.8 — january 26, 2026
+
+- linux/windows release builds
+- hero text improvements
+
+## 0.5.7 — january 25, 2026
+
+- streaming isolation fix (background agents don't clear main session state)
+- auto-update infrastructure
+- tool reorganization (8 categories)
+- background agent file tracking
+
+## 0.5.6 — january 24, 2026
+
+- memory ttl and auto-pruning
+- multi-query memory search
+- scrolling improvements
+- style fixes
+
+## 0.5.5 — january 23, 2026
+
+- fix concurrent spawn race condition
+- scroll virtualization improvements
+- token counting accuracy
+- diff selection enhancements
+
+## 0.5.4 — january 22, 2026
+
+- improved syntax highlighting
+
+## 0.5.3 — january 21, 2026
+
+- minor release notes fix
+
+## 0.5.2 — january 21, 2026
+
+- improved syntax highlighting
+
+## 0.5.1 — january 20, 2026
+
+- fix diff line number visibility
+- style improvements
+
+## 0.5.0 — january 19, 2026
+
+### highlights
+- bash streaming race fix
+- token display improvements
+- session isolation fixes
+- linux compositing support
+
+---
+
+## 0.4.6 — january 18, 2026
+
+- fix scroll anchoring
+- stop/interrupt button improvements
+- bash output indicator
+
+## 0.4.5 — january 17, 2026
+
+- minor bug fixes
+
+## 0.4.4 — january 16, 2026
+
+- performance improvements
+
+## 0.4.3 — january 15, 2026
+
+- stability improvements
+
+## 0.4.2 — january 14, 2026
+
+- ui refinements
+
+## 0.4.1 — january 13, 2026
+
+- minor fixes
+
+## 0.4.0 — january 12, 2026
+
+major release.
+
+### highlights
+- background agents (4 concurrent)
+- git branch isolation
+- orchestration flow
+
+---
+
+## 0.3.7 — january 11, 2026
+
+- bug fixes
+
+## 0.3.6 — january 10, 2026
+
+- stability improvements
+
+## 0.3.5 — january 9, 2026
+
+- ui improvements
+
+---
+
+## 0.1.6 — january 8, 2026
+
+- early fixes
+
+## 0.1.5 — january 7, 2026
+
+- initial improvements
+
 ## 0.1.0 — january 2026
 
 initial release.
@@ -36,17 +190,17 @@ initial release.
 - plugin install/uninstall/enable/disable
 - component sync to `~/.claude/`
 
-### built-in agents
-- yume-architect (planning)
-- yume-explorer (read-only analysis)
-- yume-implementer (code changes)
-- yume-guardian (review/audit)
-- yume-specialist (domain expertise)
+### built-in agents (4)
+- yume-architect (planning, decomposition)
+- yume-explorer (read-only codebase analysis, sonnet)
+- yume-implementer (focused code changes)
+- yume-guardian (review/audit + domain tasks: tests, docs, devops, data)
 - auto-sync to `~/.claude/agents/`
 - uses selected model
 
-### hooks
-- 9 events: UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
+### hooks (9 defined, 3 active)
+- active: PreToolUse, ContextWarning, CompactionTrigger
+- defined (not wired): UserPromptSubmit, PostToolUse, AssistantResponse, SessionStart, SessionEnd, Error
 - js/py/sh scripts
 - 5s timeout
 - variable substitution
@@ -75,19 +229,22 @@ initial release.
 - toast notifications
 
 ### background agents
-- queue management (4 concurrent, 10min timeout)
+- queue management (4 concurrent, no timeout)
 - git branch isolation (yume-async-{type}-{id})
 - merge/delete branch operations
 - conflict detection before merge
+- streaming isolation (does NOT control main session)
 - sliding panel ui with agent cards
 - real-time progress indicator
 
-### memory mcp server
-- persistent knowledge graph (~/.yume/memory.jsonl)
-- auto-learning from conversations
-- entity/relation/observation model
-- search and retrieval
-- settings tab for management
+### memory v2 system
+- per-project markdown files (~/.yume/memory/)
+- 5 importance levels (1=ephemeral to 5=permanent)
+- ttl-based expiration (1 day to permanent)
+- auto-pruning of expired entries
+- custom mcp server (yume-mcp-memory.cjs)
+- context injection via `<yume-memory>` block
+- 15 tauri commands for full crud
 
 ### file operations
 - fuzzy/glob/substring search
