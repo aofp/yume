@@ -1,12 +1,12 @@
 # Yume Grade Report
 
-*Updated Analysis - January 14, 2026*
+*Updated Analysis - January 28, 2026*
 
 ## Executive Summary
 
-**Overall Grade: B+ (82%)**
+**Overall Grade: B+ (84%)**
 
-Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Gemini integration is actively being worked on via a translation layer (`yume-cli`). Code quality is functional but has accumulated technical debt. Zero tests is the biggest risk.
+Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Gemini integration is actively being worked on via a translation layer (`yume-cli`). Code quality is functional but has accumulated technical debt. Test coverage is growing but needs expansion.
 
 **Recent Market Changes:**
 - Claude Code 2.1.0 (Jan 7, 2026) adds session teleportation, skill hot reload, enhanced hooks
@@ -23,9 +23,9 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Architecture | B+ | Clean three-process model, proper separation |
 | Rust Backend | A- | Excellent patterns, anyhow, tokio, process management |
 | React/TS Quality | C+ | 4600-line god store, works but messy |
-| Testing | F | 0 tests. Critical risk. |
+| Testing | C | 8 test suites via Vitest (config, services, types, utils). Coverage growing. |
 | Features | A | Comprehensive - 12+ unique features |
-| UX/Design | A- | Polished OLED theme, 30 themes, cohesive |
+| UX/Design | A- | Polished OLED theme, 12 themes, cohesive |
 | Maintainability | C | God object, code duplication, magic numbers |
 | Documentation | B | CLAUDE.md thorough, inline docs sparse |
 | Security | C | dangerously-skip-permissions, permissive CSP |
@@ -37,6 +37,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 - 3 platform server files with 90% identical code
 - `any` types scattered in TypeScript
 - Magic numbers hardcoded (200000 context, timeouts)
+- Test coverage exists but needs expansion (8 suites, no Rust tests)
 
 ---
 
@@ -72,7 +73,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Price | $240-2400/yr | $21 one-time | **Yume** |
 | Extensions | VS Code ecosystem | None | Cursor |
 | Multi-Model | GPT, Claude, Gemini | Claude (Gemini in progress) | Cursor |
-| Themes | ~5 | 30 | **Yume** |
+| Themes | ~5 | 12 | **Yume** |
 | Quota Tracking | None | 5h + 7-day | **Yume** |
 | Enterprise | SOC2, SSO | None | Cursor |
 | Debug Mode | Visual debugger | None | Cursor |
@@ -89,12 +90,12 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Auto-Context | Best in class | Manual | Windsurf |
 | Performance | Electron | Native Rust | **Yume** |
 | Price | $180/yr | $21 one-time | **Yume** |
-| Themes | ~3 | 30 | **Yume** |
-| Multi-Agent | Wave 13 git worktrees | 5 built-in agents | Tie |
+| Themes | ~3 | 12 | **Yume** |
+| Multi-Agent | Wave 13 git worktrees | 4 built-in agents | Tie |
 | Context Meter | Yes (Wave 13) | Yes | Tie |
 | Quota Tracking | None | 5h + 7-day | **Yume** |
 | Previews | Website preview in IDE | N/A | Windsurf |
-| Memories | Yes | No | Windsurf |
+| Memories | Yes | Yes (graph + TTL) | Tie |
 | Enterprise | SOC2 coming | None | Windsurf |
 
 **Grade vs Windsurf: B** (downgraded from B+ - Windsurf added context meter, wave 13 improvements)
@@ -109,8 +110,8 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | GitHub Stars | 15K+ | Private | Opcode |
 | CLI Feature Parity | Claims yes | Via wrapper | Opcode |
 | 5h/7d Limits | No | Yes | **Yume** |
-| Built-in Agents | 0 | 5 | **Yume** |
-| Themes | 0 | 30 | **Yume** |
+| Built-in Agents | 0 | 4 | **Yume** |
+| Themes | 0 | 12 | **Yume** |
 | Hook Events | 0 | 9 | **Yume** |
 | Yume Guard | No | Yes | **Yume** |
 | @ Mentions | No | Yes | **Yume** |
@@ -156,7 +157,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Cost Transparency | Per-request | Session totals | Tie |
 | MCP | Can create tools | Uses tools | Cline |
 | Desktop Native | No (extension) | Yes (Tauri) | **Yume** |
-| Themes | VS Code themes | 30 custom | **Yume** |
+| Themes | VS Code themes | 12 custom | **Yume** |
 
 **Grade vs Cline: B** (different integration model)
 
@@ -200,13 +201,13 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 
 1. **5h + 7-day Anthropic limit tracking** - Only yume shows actual subscription limits
 2. **Yume Guard** - Built-in security hook blocking dangerous commands
-3. **5 built-in agents** - architect, explorer, implementer, guardian, specialist
+3. **4 built-in agents** - architect, explorer, implementer, guardian
 4. **@ mention system** - @r, @m, folder navigation with autocomplete
 5. **Stream timers** - Live thinking/bash/compacting durations
 6. **Ultrathink support** - Cmd+K insert + rainbow gradient highlighting
-7. **30 themes** - Far more than any competitor
+7. **12 themes** - Far more than any competitor
 8. **9 hook events** - Most comprehensive hook system
-9. **Auto-compaction** - 60%/65% threshold automation
+9. **Auto-compaction** - 75%/80% dynamic threshold automation
 10. **Crash recovery** - 24hr restoration window
 11. **History/rollback panel** - Visual message history
 12. **Bash mode (!/$)** - Direct terminal prefix
@@ -218,8 +219,8 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Missing Feature | Priority | Competitors Have |
 |-----------------|----------|------------------|
 | Light mode | Low | All |
-| Command palette | Medium | Cursor, Windsurf |
-| Memories (cross-session) | Medium | Cursor, Windsurf |
+| Command palette | ✅ Done | Cmd+P CommandPalette.tsx |
+| Memories (cross-session) | ✅ Done | Memory V2: per-project markdown with TTL, importance, auto-pruning |
 | Session forking | Low | Opcode |
 | Multi-model support | Low | Cursor, Windsurf, Aider |
 | Tab completion | N/A | IDE feature, different product |
@@ -232,13 +233,13 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Area | Grade |
 |------|-------|
 | Code Quality | C+ |
-| Testing | F |
+| Testing | C |
 | Architecture | B+ |
 | Features | A |
 | UX | A- |
-| **Internal Average** | **B-** |
+| **Internal Average** | **B** |
 
-### Competitive Position (Revised January 10, 2026)
+### Competitive Position (Revised January 28, 2026)
 | vs Competitor | Grade | Change |
 |---------------|-------|--------|
 | vs Claude Code CLI 2.1.0 | A- | — |
@@ -252,9 +253,9 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 ### Overall
 | Metric | Grade |
 |--------|-------|
-| Internal Quality | B- (78%) |
+| Internal Quality | B (80%) |
 | Competitive Position | B (83%) |
-| **Combined** | **B+ (81%)** |
+| **Combined** | **B+ (84%)** |
 
 ### Grade Change Summary
 - **Windsurf B+ → B**: Added context window meter, Wave 13 multi-agent improvements
@@ -266,11 +267,11 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 ## Recommendations
 
 ### Critical (Do First)
-1. **Add tests** - At minimum, store logic and rust commands
+1. **Expand test coverage** - 8 Vitest suites exist, add store logic and Rust command tests
 2. **Split god store** - sessionStore, analyticsStore, uiStore, agentStore
 
 ### Important (Market Parity)
-3. **Add command palette** - Standard UX, Cursor/Windsurf have it
+3. ~~**Add command palette**~~ (done - Cmd+P CommandPalette.tsx)
 4. **Add light mode** - Accessibility requirement
 5. Extract shared constants (context window, timeouts, etc.)
 6. Consolidate token tracking to single source of truth
@@ -282,7 +283,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 10. **Enhanced hooks UI** - Support for agent/skill-scoped hooks
 
 ### Nice to Have
-11. Add memories feature (cross-session preferences)
+11. ~~Add memories feature~~ (done - memory graph with TTL, importance, auto-pruning)
 12. Session forking from checkpoints (match Opcode)
 
 ---
@@ -291,7 +292,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 
 **Yume = technically superior Claude Code GUI with 12+ unique features, held back by internal code quality issues.**
 
-Ship it, sell it, but refactor before major feature additions. Zero tests is unacceptable for production software.
+Ship it, sell it, but refactor before major feature additions. Expand test coverage beyond the initial 8 suites.
 
 | Aspect | Verdict |
 |--------|---------|

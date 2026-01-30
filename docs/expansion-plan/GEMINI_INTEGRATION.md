@@ -1,23 +1,23 @@
 # Gemini Integration Plan
 
-> **Last Updated:** 2026-01-28
+> **Last Updated:** 2026-01-29
 > **Implementation Status:** ~85% complete
 
 ## Implementation Summary
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Provider Definition | ✅ Complete | `models.ts` with Gemini 2.5 Flash/Pro |
-| Provider Service | ✅ Complete | Enable/disable via `providersService.ts` |
-| Provider UI | ✅ Complete | Settings tab, selector, no-provider modal |
-| CLI Detection | ✅ Complete | `detect_provider_support` Tauri command |
-| Backend Spawner | ✅ Complete | `yume_cli_spawner.rs` with Gemini enum |
-| yume-cli Provider | ✅ Complete | `src-yume-cli/src/providers/gemini.ts` |
-| Stream Translation | ✅ Complete | Gemini CLI → Claude format in yume-cli |
-| Auth Verification | ❌ Pending | Manual user authentication required |
+| Provider Definition | Done | `models.ts` with Gemini 2.5 Flash/Pro |
+| Provider Service | Done | Enable/disable via `providersService.ts` |
+| Provider UI | Done | Settings tab, selector, no-provider modal |
+| CLI Detection | Done | `detect_provider_support` Tauri command |
+| Backend Spawner | Done | `yume_cli_spawner.rs` with Gemini enum |
+| yume-cli Provider | Done | `src-yume-cli/src/providers/gemini.ts` |
+| Stream Translation | Done | Gemini CLI to Claude format in yume-cli |
+| Auth Verification | Pending | Manual user authentication required |
 
 ## Objective
-Enable Yume to drive Google's Gemini models via the official `gemini` CLI from the `@google/gemini-cli` npm package. A thin `yume-cli` shim spawns the official CLI and translates its stream-json output to Claude-compatible format.
+Enable Yume to drive Google's Gemini models via the official `gemini` CLI (`@google/gemini-cli`). The `yume-cli` shim spawns the official CLI and translates its stream-json output to Claude-compatible format.
 
 ## Integration Strategy (Official CLI + Shim)
 1. **Primary Path:** `yume-cli --provider gemini` spawns the official `gemini` CLI binary.
@@ -188,27 +188,27 @@ Gemini models have massive context windows (up to 1M tokens).
 
 ### Context Window Limits
 
-**Current models in `models.ts`:**
-- `gemini-2.5-pro` (1M context, 8K output, supports thinking)
+**UI models (`models.ts`):**
+- `gemini-2.5-pro` (1M context, 8K output, thinking)
 - `gemini-2.5-flash` (1M context, 8K output)
 
-**Models in yume-cli `gemini.ts`:**
-- `gemini-2.0-flash` (1M context, 8K output)
-- `gemini-2.5-pro` (1M context, 65K output)
-- `gemini-2.5-flash` (1M context, 65K output)
-- `gemini-3-flash` (1M context, 65K output)
-- `gemini-2.0-flash-thinking-exp` (32K context, 8K output)
-- `gemini-1.5-pro` (1M context, 8K output)
-- `gemini-1.5-flash` (1M context, 8K output)
+**Extended models in yume-cli (`gemini.ts`):**
+- `gemini-2.0-flash` (1M/8K)
+- `gemini-2.5-pro` (1M/65K)
+- `gemini-2.5-flash` (1M/65K)
+- `gemini-3-flash` (1M/65K)
+- `gemini-2.0-flash-thinking-exp` (32K/8K)
+- `gemini-1.5-pro` (1M/8K)
+- `gemini-1.5-flash` (1M/8K)
 
-| Model | Input Limit | Output Limit | Compaction Threshold |
-|-------|-------------|--------------|---------------------|
-| gemini-2.5-pro | 1,000,000 | 65,536 | 80% (~800K tokens) |
-| gemini-2.5-flash | 1,000,000 | 65,536 | 80% |
-| gemini-2.0-flash | 1,000,000 | 8,192 | 80% |
-| gemini-2.0-flash-thinking-exp | 32,767 | 8,192 | 60% |
-| gemini-1.5-pro | 1,000,000 | 8,192 | 80% |
-| gemini-1.5-flash | 1,000,000 | 8,192 | 80% |
+| Model | Context | Output | Compaction |
+|-------|---------|--------|------------|
+| gemini-2.5-pro | 1M | 65K | 80% |
+| gemini-2.5-flash | 1M | 65K | 80% |
+| gemini-2.0-flash | 1M | 8K | 80% |
+| gemini-2.0-flash-thinking-exp | 32K | 8K | 60% |
+| gemini-1.5-pro | 1M | 8K | 80% |
+| gemini-1.5-flash | 1M | 8K | 80% |
 
 ### Compaction Strategy
 
@@ -263,42 +263,18 @@ function normalizeGeminiUsage(usage: GeminiUsage): TokenUsage {
   - Link to installation instructions (`npm install -g @google/gemini-cli`)
 - **Event Flow:** Reuse `claude-message:{sessionId}` events to avoid frontend refactors.
 
-## Research Checklist
-- Confirm streaming payload shape (delta vs full content chunks).
-- Confirm function calling format and required fields.
-- Validate usage metadata and token units.
-- Validate stable model identifiers for analytics.
-- Validate rate limit headers and retry semantics.
-- Confirm safety settings defaults and override options.
-
-## Implementation Status
-
-**Completed:**
-1. ✅ `GeminiProvider` class in `src-yume-cli/src/providers/gemini.ts`
-2. ✅ CLI spawner with `--model`, `--output-format stream-json`, `--yolo` flags
-3. ✅ Stream translation layer converting Gemini events to Claude format
-4. ✅ Tool name translation (`run_shell_command` -> `Bash`, etc.)
-5. ✅ Model definitions in both `models.ts` and yume-cli
-6. ✅ Provider service in `providersService.ts` with feature flag support
-
-**Remaining:**
+## Remaining Work
 - Manual auth verification (user must run `gemini auth login` separately)
 - Golden transcript tests across platforms
 
-## User Documentation
+## User Setup
 
-Users will need to:
-1. Install the Gemini CLI globally:
-   ```bash
-   npm install -g @google/gemini-cli
-   ```
+```bash
+# 1. Install Gemini CLI
+npm install -g @google/gemini-cli
 
-2. Authenticate with their Google account:
-   ```bash
-   gemini auth login
-   ```
+# 2. Authenticate
+gemini auth login
+```
 
-3. Select Gemini as their provider in Yume's settings
-4. Choose a Gemini model (2.0 Flash, 2.0 Thinking, 1.5 Pro, 1.5 Flash)
-
-Yume will verify the CLI is installed and authenticated before allowing Gemini sessions to start.
+Then select Gemini as provider in Yume settings. Yume verifies CLI installation and auth status before starting sessions.

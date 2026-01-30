@@ -1,18 +1,18 @@
 # Marketing & Positioning Strategy
 
-*How to position yume in the AI coding tools market*
+*How to position Yume in the AI coding tools market*
 
 ## Market Context
 
-### Developer AI Adoption
+### Developer AI Adoption (2025)
+- 92% use some AI tool
 - 85% regularly use AI tools
 - 62% use at least one coding assistant
-- 92% use some AI tool (any type)
 
 ### Trust Landscape
-- Stack Overflow: Favorable views dropped from 70% → 60%
+- Stack Overflow favorable views: 70% → 60%
 - Only 29% rely on AI output (down from 40%)
-- 46% don't trust AI accuracy
+- 46% distrust AI accuracy
 
 ### Key Insight
 > "Positioning AI as a tool that enhances, rather than replaces, developers resonates strongly"
@@ -32,43 +32,22 @@
 
 ### Yume's Unique Position
 
-```
-"Claude Code, without the lag"
-```
+> "Claude Code, without the lag"
 
-We're not:
-- Another IDE (Cursor already won)
-- A general AI tool (ChatGPT dominates)
-- An IDE plugin (crowded market)
+**We're not:** Another IDE, a general AI tool, or an IDE plugin
 
-We are:
-- The desktop experience for Claude Code
-- Solving the TUI problem specifically
-- For Claude loyalists who hate terminal issues
+**We are:** The native desktop experience for Claude Code, solving TUI issues for Claude loyalists
 
 ---
 
 ## Target Personas
 
-### 1. Frustrated Claude CLI User
-**Who**: Experienced developer, loves Claude, hates TUI lag
-**Pain**: "I spent $50 on Claude API and can barely type"
-**Message**: "Everything you love, nothing that frustrates you"
-
-### 2. Terminal-Averse Claude Fan
-**Who**: Knows Claude is good, intimidated by CLI
-**Pain**: "I want Claude's power but I'm not a terminal person"
-**Message**: "Claude's power, friendly interface"
-
-### 3. IME-Dependent Developer
-**Who**: Japanese, Chinese, Korean developers
-**Pain**: "IME is completely broken in CLI"
-**Message**: "Finally, Claude Code that speaks your language"
-
-### 4. Multi-Project Power User
-**Who**: Consultant, contractor, works on many projects
-**Pain**: "Switching projects in CLI is painful"
-**Message**: "Your projects, organized"
+| Persona | Who | Pain Point | Message |
+|---------|-----|------------|---------|
+| Frustrated CLI User | Experienced dev, loves Claude | TUI lag, input delays | "Everything you love, nothing frustrating" |
+| Terminal-Averse | Knows Claude is good | Intimidated by CLI | "Claude's power, friendly interface" |
+| IME-Dependent | CJK developers | Broken IME in CLI | "Claude Code that speaks your language" |
+| Multi-Project User | Consultant, contractor | Project switching is painful | "Your projects, organized" |
 
 ---
 
@@ -89,86 +68,29 @@ The full power of Claude Code, freed from terminal limitations.
 | Desktop | "Native app, native experience" |
 
 ### Proof Points
-- Native desktop (no terminal rendering)
-- Consistent <50ms input response
+- Native desktop rendering (<50ms input response)
 - Full IME support
-- Session persistence
-- Crash recovery
+- Session persistence with crash recovery
 
 ---
 
 ## Differentiation Strategy
 
-### vs Claude Code CLI
-
-| Aspect | CLI | Yume |
-|--------|-----|----------|
-| UI | Terminal (laggy) | Desktop (smooth) |
-| Input | 10s delays | <50ms |
-| IME | Broken | Native |
-| Sessions | Manual | Visual |
-| Learning | Commands | Intuitive |
-
-**Message**: "All the power, none of the pain"
-
-### vs Cursor
-
-| Aspect | Cursor | Yume |
-|--------|--------|----------|
-| Type | Full IDE | Claude wrapper |
-| Size | Heavy | Lightweight |
-| Model | Multi-model | Claude-focused |
-| Cost | $20/mo | Free + API |
-| Focus | General | Claude-specific |
-
-**Message**: "Claude-native, not IDE bloat"
-
-### vs Aider
-
-| Aspect | Aider | Yume |
-|--------|-------|----------|
-| Interface | CLI | GUI |
-| Model | Any LLM | Claude |
-| Visual | None | Full |
-| Git | Built-in | Via CLI |
-
-**Message**: "Visual interface for the Claude experience"
+| Competitor | Yume Advantage | Message |
+|------------|----------------|---------|
+| Claude Code CLI | Desktop (smooth) vs Terminal (laggy), <50ms vs 10s input, Native IME, Visual sessions | "All the power, none of the pain" |
+| Cursor | Lightweight vs Heavy IDE, $21 one-time vs $20/mo, Claude-focused | "Claude-native, not IDE bloat" |
+| Aider | GUI vs CLI, Visual interface, Native rendering | "Visual interface for the Claude experience" |
 
 ---
 
 ## Go-to-Market Strategy
 
-### Phase 1: Early Adopters (Now)
-**Target**: Claude Code CLI power users frustrated with TUI
-
-**Channels**:
-- Reddit r/ClaudeAI, r/LocalLLaMA
-- Hacker News
-- Twitter/X developer community
-- GitHub Issues/Discussions
-
-**Message**: "Tired of Claude Code lag? Try this."
-
-### Phase 2: Broader Developer Community
-**Target**: Developers interested in Claude but intimidated by CLI
-
-**Channels**:
-- Dev.to articles
-- YouTube tutorials
-- Product Hunt launch
-- Developer podcasts
-
-**Message**: "The easiest way to use Claude for coding"
-
-### Phase 3: International Markets
-**Target**: Japanese, Chinese, Korean developers
-
-**Channels**:
-- Localized landing page
-- Local developer communities
-- Regional tech media
-
-**Message**: "Claude Code with proper input support"
+| Phase | Target | Channels | Message |
+|-------|--------|----------|---------|
+| 1. Early Adopters | CLI power users frustrated with TUI | Reddit (r/ClaudeAI, r/LocalLLaMA), HN, Twitter/X, GitHub | "Tired of Claude Code lag? Try this." |
+| 2. Broader Community | Developers intimidated by CLI | Dev.to, YouTube, Product Hunt, Podcasts | "The easiest way to use Claude for coding" |
+| 3. International | CJK developers | Localized sites, Regional communities | "Claude Code with proper input support" |
 
 ---
 
@@ -200,84 +122,46 @@ The full power of Claude Code, freed from terminal limitations.
 
 ## Pricing Positioning
 
-### Options
+### Current Model: $21 One-Time
 
-| Strategy | Price | Message |
-|----------|-------|---------|
-| Free + BYOK | $0 + API | "Bring your own API key" |
-| Freemium | $0 / $10 | "Free to start, upgrade for more" |
-| Flat rate | $15/mo | "Less than Cursor, Claude-focused" |
+- Maximum adoption with low barrier
+- No subscription fatigue
+- Impulse-buy territory
+- Aligns with developer preference for ownership
 
-### Recommendation
-**Free + BYOK** to start:
-- Maximum adoption
-- No pricing friction
-- Build user base first
-- Monetize later (premium features)
+See [Pricing Analysis](./pricing-analysis.md) for detailed breakdown.
 
 ---
 
 ## Community Building
 
-### Early Actions
-1. **GitHub**: Open issues for feature requests
-2. **Discord**: Community server for support
-3. **Twitter**: Regular updates, engagement
-4. **Blog**: Technical posts, updates
-
-### Long-term
-1. **Contributors**: Accept PRs for minor features
-2. **Plugins**: Enable community extensions
-3. **Themes**: User-created themes
-4. **Translations**: Community localization
+| Phase | Actions |
+|-------|---------|
+| Early | GitHub issues, Discord server, Twitter engagement, Blog posts |
+| Long-term | Accept PRs, Community plugins, User-created themes, Community translations |
 
 ---
 
 ## Success Metrics
 
-### Adoption
-- Downloads per week
-- Daily active users
-- Retention (7-day, 30-day)
-
-### Engagement
-- Average session length
-- Messages per session
-- Features used
-
-### Community
-- GitHub stars
-- Discord members
-- Twitter followers
-
-### Conversion (if freemium)
-- Free → Paid conversion rate
-- ARPU (Average Revenue Per User)
+| Category | Metrics |
+|----------|---------|
+| Adoption | Downloads/week, DAU, Retention (7d, 30d) |
+| Engagement | Session length, Messages/session, Feature usage |
+| Community | GitHub stars, Discord members, Twitter followers |
+| Revenue | Conversion rate, Sales/month |
 
 ---
 
 ## Competitive Intelligence
 
-### Monitor Regularly
-
-1. **Claude Code CLI**
-   - GitHub releases
-   - Issue discussions
-   - User complaints
-
-2. **Cursor**
-   - Feature updates
-   - Pricing changes
-   - User sentiment
-
-3. **Windsurf**
-   - New features
-   - Cognition integration
-
-4. **Market**
-   - New entrants
-   - Funding news
-   - Trend shifts
+| Competitor | Monitor |
+|------------|---------|
+| Claude Code CLI | GitHub releases, Issues, User complaints |
+| Cursor | Features, Pricing, User sentiment |
+| Windsurf | Features, Cognition integration |
+| Opcode | GitHub activity, Feature additions |
+| Market | New entrants, Funding, Trends |
 
 ---
 

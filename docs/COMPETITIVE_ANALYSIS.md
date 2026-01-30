@@ -1,7 +1,6 @@
 # Competitive Analysis 2026
 
-**Last Updated:** January 17, 2026
-**Version:** 1.0.0 (Comprehensive Research Update)
+**Last Updated:** January 29, 2026
 
 ## Executive Summary
 
@@ -9,8 +8,8 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 - **Multi-provider support** (Claude, Gemini, OpenAI via yume-cli shim)
 - **Native desktop experience** with minimal GUI (Tauri 2.x, Rust backend)
 - **Background agents** with queue management (4 concurrent, git branch isolation)
-- **Persistent memory system** via MCP server (auto-learns patterns)
-- **5 specialized AI agents** (architect, explorer, implementer, guardian, specialist)
+- **Memory V2 system** with per-project markdown files (auto-learns patterns)
+- **4 specialized AI agents** (architect, explorer, implementer, guardian)
 - **Plugin ecosystem** with 5 component types (commands, agents, hooks, skills, MCP)
 - **Skills with ReDoS protection** (safe regex-based context injection)
 - **One-time $21 pricing** vs $15-200/month subscriptions
@@ -161,13 +160,13 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 | **Multi-Provider** | ✅ 3 providers | ✅ Multiple | ✅ Multiple | ✅ Any | ✅ Any | ⚠️ Limited | ✅ Multiple |
 | **Background Agents** | ✅ 4 concurrent | ✅ 8 parallel | ✅ Cascade | ✅ | ❌ | ✅ | ❌ |
 | **Git Branch Isolation** | ✅ Auto-branch | ❌ | ❌ | ❌ | ⚠️ Manual | ❌ | ❌ |
-| **Memory System** | ✅ MCP graph | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Memory System** | ✅ V2 markdown + TTL/pruning | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **PR Review** | ❌ | ✅ BugBot | ❌ | ❌ | ❌ | ✅ | ❌ |
 | **Inline Autocomplete** | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ Zeta |
 | **Git Integration** | ⚠️ View only | ✅ | ✅ | ✅ | ✅ Deep | ✅ | ✅ |
 | **Plugin System** | ✅ 5 types | ❌ | ❌ | ✅ | ❌ | ✅ MCP | ❌ |
 | **Skills (Context Inject)** | ✅ ReDoS-safe | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Custom Agents** | ✅ 5 built-in | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Custom Agents** | ✅ 4 built-in | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **Analytics** | ✅ Advanced | ⚠️ Basic | ⚠️ Basic | ❌ | ❌ | ⚠️ Basic | ❌ |
 | **Voice Input** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **Local LLMs** | ❌ | ❌ | ❌ | ✅ | ✅ Ollama | ❌ | ✅ Ollama |
@@ -181,31 +180,32 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 
 ### 1. Background Agents with Git Branch Isolation (UNIQUE)
 **No competitor has automatic git branch isolation for async agents.**
-- 4 concurrent background agents with 10-minute timeout
+- 4 concurrent background agents (`MAX_CONCURRENT_AGENTS`) with no timeout
 - Auto-creates isolated git branches: `yume-async-{agent}-{id}`
 - Review diff vs main before merging
 - Conflict detection and resolution
 - Clean branch cleanup after merge
 
-### 2. Persistent Memory System (UNIQUE APPROACH)
-**Knowledge graph via MCP server with auto-learning.**
-- Storage: `~/.yume/memory.jsonl` (persists across sessions)
-- Auto-extracts patterns from conversations (errors, decisions, architecture)
-- Searchable knowledge graph with entities/relations
-- Context injection for relevant memories
-- Competitors have memory but not MCP-based knowledge graph
+### 2. Memory V2 System (UNIQUE APPROACH)
+**Per-project markdown files with auto-learning.**
+- Storage: `~/.yume/memory/` (global + per-project folders)
+- Per-project: `learnings.md`, `errors.md`, `patterns.md`, `brief.md`
+- Global: `preferences.md`, `patterns.md`
+- TTL-based expiration with 5 importance levels
+- Context injection via `<yume-memory>` block (2000 token budget)
+- Custom MCP server (`yume-mcp-memory.cjs`) writes directly to V2 files
+- Competitors have memory but not project-isolated markdown with TTL
 
 ### 3. Multi-Provider CLI Shim (UNIQUE)
 No other Claude CLI wrapper supports transparent switching between Claude, Gemini, and OpenAI through a unified interface. The yume-cli shim normalizes all provider outputs to Claude-compatible stream-json.
 
-### 4. 5 Specialized Core Agents (UNIQUE)
+### 4. 4 Specialized Core Agents (UNIQUE)
 | Agent | Purpose | Why Different |
 |-------|---------|---------------|
-| yume-architect | Plans, designs, decomposes | Cursor has generic agents |
-| yume-explorer | Read-only codebase exploration | Safe exploration mode |
-| yume-implementer | Focused code changes | Small, incremental edits |
-| yume-guardian | Reviews, audits, verifies | Built-in code review |
-| yume-specialist | Domain-specific tasks | Configurable expertise |
+| yume-architect | Plans, designs, decomposes tasks | Cursor has generic agents |
+| yume-explorer | Read-only codebase exploration (sonnet) | Safe exploration mode |
+| yume-implementer | Small, focused code changes | Incremental edits |
+| yume-guardian | Reviews, audits, verifies + domain tasks (tests, docs, devops, data) | Built-in code review + domain expertise |
 
 ### 5. Plugin System with 5 Component Types (UNIQUE)
 Most comprehensive extensibility framework:
@@ -262,8 +262,8 @@ Per-session tracking of code modifications:
 
 | Feature | Status | Implementation |
 |---------|--------|----------------|
-| **Background/Async Agents** | ✅ COMPLETE | 4 concurrent agents, git branch isolation, 13 Tauri commands |
-| **Memory MCP Server** | ✅ COMPLETE | Knowledge graph in `~/.yume/memory.jsonl`, auto-learning |
+| **Background/Async Agents** | ✅ COMPLETE | 4 concurrent agents, git branch isolation, 14 Tauri commands |
+| **Memory V2 System** | ✅ COMPLETE | Per-project markdown with TTL/importance (5 levels), auto-pruning, context injection |
 | **Skills UI Completion** | ✅ COMPLETE | TriggerEditor, ContentEditor, ReDoS validation |
 
 ### HIGH PRIORITY (Remaining Gaps)
@@ -298,7 +298,7 @@ Per-session tracking of code modifications:
 ### 1. Multi-Agent Systems (1,445% Inquiry Surge - Gartner)
 - Cursor: 8 parallel agents with judging
 - Gartner predicts 40% of enterprise apps will embed agents by end of 2026
-- **Yume Opportunity**: Add parallel execution to existing 5-agent framework
+- **Yume Opportunity**: Add parallel execution to existing 4-agent framework
 
 ### 2. Protocol Standardization
 - **MCP**: Yume already supports
@@ -350,8 +350,8 @@ Per-session tracking of code modifications:
    - $21 one-time vs $240-2400/year subscriptions
    - All local, no cloud lock-in
 
-3. **"5 AI Agents, Zero Configuration"**
-   - Architect, Explorer, Implementer, Guardian, Specialist
+3. **"4 AI Agents, Zero Configuration"**
+   - Architect, Explorer, Implementer, Guardian
    - No prompt engineering required
 
 4. **"Built for Developers Who Track Everything"**
@@ -369,7 +369,7 @@ Per-session tracking of code modifications:
 
 #### Medium Risk
 - **Subscription fatigue backlash**: Some users may resist even $21
-  - *Mitigation*: Generous trial (2 tabs) to prove value
+  - *Mitigation*: Generous trial (3 tabs, 1 window) to prove value
 
 - **Open source competition**: Opcode (19k stars), Continue.dev (26k stars)
   - *Mitigation*: Focus on polish, multi-provider, analytics

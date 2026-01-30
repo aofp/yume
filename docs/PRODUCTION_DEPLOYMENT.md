@@ -1,8 +1,8 @@
 # Yume Production Deployment Guide
 
-**Version:** 0.6.0
+**Version:** 0.6.6
 **Last Updated:** January 29, 2026
-**Status:** Beta
+**Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
 
 ## Table of Contents
 
@@ -33,15 +33,15 @@
 #### Code Review
 ```bash
 # Check for console.log statements
-grep -r "console.log" src/ --exclude-dir=node_modules
+grep -r "console.log" src/ --include="*.ts" --include="*.tsx"
 
 # Check for hardcoded secrets
-grep -r -E "(api_key|secret|password|token)" src/ --exclude-dir=node_modules
+grep -r -E "(api_key|secret|password|token)" src/ --include="*.ts"
 
 # Check for unsafe Rust code
 grep -r "unsafe" src-tauri/src/
 
-# Run type checking (requires tsc to be available)
+# Type checking
 npx tsc --noEmit
 ```
 
@@ -97,18 +97,16 @@ npm run build
 
 - [x] README.md updated
 - [x] CHANGELOG.md current
-- [x] API documentation complete
-- [x] User manual ready
-- [ ] Video tutorials recorded
-- [ ] FAQ compiled
+- [x] API documentation (CLAUDE.md)
+- [ ] Video tutorials
+- [ ] FAQ
 
 ### 1.5 Legal
 
-- [ ] License file included
-- [ ] Third-party licenses documented
-- [ ] Privacy policy written
-- [ ] Terms of service prepared
-- [ ] Copyright notices added
+- [ ] License file
+- [ ] Third-party licenses
+- [ ] Privacy policy
+- [ ] Terms of service
 
 ---
 
@@ -118,42 +116,26 @@ npm run build
 
 #### Required Tools
 ```bash
-# Node.js (v18+)
-node --version
-
-# Rust (latest stable)
-rustc --version
-cargo --version
+# Node.js 18+ and Rust stable
+node --version && rustc --version
 
 # Tauri CLI
 npm install -g @tauri-apps/cli
 
-# Platform-specific tools
 # macOS: Xcode Command Line Tools
 xcode-select --install
 
 # Windows: Visual Studio Build Tools
-# Download from: https://visualstudio.microsoft.com/downloads/
+# https://visualstudio.microsoft.com/downloads/
 ```
 
 ### 2.2 Build Configuration
 
 #### Update Version
-```json
-// package.json
-{
-  "version": "X.Y.Z"
-}
-
-// src-tauri/tauri.conf.json
-{
-  "version": "X.Y.Z"
-}
-
-// src-tauri/Cargo.toml
-[package]
-version = "X.Y.Z"
-```
+Update in three files:
+- `package.json` - `"version": "X.Y.Z"`
+- `src-tauri/tauri.conf.json` - `"version": "X.Y.Z"`
+- `src-tauri/Cargo.toml` - `version = "X.Y.Z"`
 
 #### Production Environment Variables
 ```bash
@@ -165,133 +147,57 @@ RUST_LOG=error
 
 ### 2.3 Build Commands
 
-#### macOS Build
+#### Build Commands by Platform
 ```bash
-# Clean previous builds
-rm -rf dist/ src-tauri/target/
+# Clean and install
+rm -rf dist/ src-tauri/target/ && npm ci
 
-# Install dependencies
-npm ci
-
-# Build Tauri app (includes frontend build, unified binary, and resources)
-# For Apple Silicon (arm64):
+# macOS (arm64 default, or specify x64)
+npm run tauri:build:mac          # alias for arm64
 npm run tauri:build:mac:arm64
-
-# For Intel (x64):
 npm run tauri:build:mac:x64
 
-# Note: npm run tauri:build:mac is an alias for arm64
-# These commands automatically build unified binaries and prepare resources
+# Windows
+npm run tauri:build:win          # x86_64-pc-windows-msvc
+
+# Linux
+npm run tauri:build:linux        # x86_64-unknown-linux-gnu
 ```
 
-#### Windows Build
-```powershell
-# Clean previous builds
-Remove-Item -Recurse -Force dist\
-Remove-Item -Recurse -Force src-tauri\target\
-
-# Install dependencies
-npm ci
-
-# Build Tauri app (includes frontend, unified binary, and resources)
-npm run tauri:build:win
-
-# Note: This command automatically:
-# 1. Builds the unified Windows binary
-# 2. Prepares Windows resources
-# 3. Builds with target x86_64-pc-windows-msvc
-```
-
-#### Linux Build
-```bash
-# Clean previous builds
-rm -rf dist/ src-tauri/target/
-
-# Install dependencies
-npm ci
-
-# Build Tauri app (includes frontend, unified binary, and resources)
-npm run tauri:build:linux
-
-# Note: This command automatically:
-# 1. Builds the unified Linux binary
-# 2. Prepares Linux resources
-# 3. Builds with target x86_64-unknown-linux-gnu
-```
+All commands automatically build unified binaries and prepare resources.
 
 ### 2.4 Server Binary Builds
 
-The Node.js server is compiled into platform-specific binaries using @yao-pkg/pkg. These binaries hide source code and remove the Node.js dependency for end users.
+Node.js server compiled via @yao-pkg/pkg (hides source, removes Node.js dependency).
 
-#### Server-Only Binary Commands (for development/debugging)
+#### Binary Commands
 ```bash
-# Build macOS server binary (arm64 and x64)
+# Unified binaries (server + yume-cli) - recommended
+npm run build:unified:macos    # arm64 + x64
+npm run build:unified:windows  # x64
+npm run build:unified:linux    # x64
+
+# Server-only (for debugging)
 npm run build:server:macos
-
-# Build Windows server binary (x64)
 npm run build:server:windows
-
-# Build Linux server binary (x64)
 npm run build:server:linux
 
-# Build all platform binaries
-npm run build:server:all
+# yume-cli only
+npm run build:yume-cli && npm run build:yume-cli:binary:all
 ```
 
-#### Unified Binary Commands (recommended for production)
-Unified binaries bundle both the server and yume-cli together:
-```bash
-# Build macOS unified binary (arm64 and x64)
-npm run build:unified:macos
+#### Binary Locations (`src-tauri/resources/`)
+| Platform | Binary | Status |
+|----------|--------|--------|
+| macOS arm64 | `yume-bin-macos-arm64` | Bundled |
+| macOS x64 | `yume-bin-macos-x64` | Bundled |
+| Windows | `yume-bin-windows-x64.exe` | Script exists |
+| Linux | `yume-bin-linux-x64` | Script exists |
 
-# Build Windows unified binary (x64)
-npm run build:unified:windows
-
-# Build Linux unified binary (x64)
-npm run build:unified:linux
-```
-
-#### Binary Locations
-After building, binaries are placed in `src-tauri/resources/`:
-- macOS Apple Silicon: `yume-bin-macos-arm64`
-- macOS Intel: `yume-bin-macos-x64`
-- Windows: `yume-bin-windows-x64.exe` (build script exists, not yet bundled)
-- Linux: `yume-bin-linux-x64` (build script exists, not yet bundled)
-
-#### Multi-Provider CLI Shim Binaries
-```bash
-# Build yume-cli bundle first
-npm run build:yume-cli
-
-# Then build platform binaries
-npm run build:yume-cli:binary:macos    # arm64 + x64
-npm run build:yume-cli:binary:win      # Windows x64
-npm run build:yume-cli:binary:linux    # Linux x64
-npm run build:yume-cli:binary:all      # All platforms
-```
-
-Output locations:
-- `yume-cli-macos-arm64`, `yume-cli-macos-x64` - **complete and bundled**
-- `yume-cli-windows-x64.exe` - build script exists
-- `yume-cli-linux-x64` - build script exists
-
-#### MCP Memory Server
-Custom MCP server for Memory V2 system:
-- Source: `src-tauri/resources/yume-mcp-memory.cjs`
-- Automatically copied to `~/.yume/yume-mcp-memory.cjs` on init
-
-#### Fallback .cjs Source Files
-Development source files at project root (NOT in resources/):
-- `server-claude-macos.cjs`
-- `server-claude-windows.cjs`
-- `server-claude-linux.cjs`
-
-**Development workflow:**
+#### Development Workflow
 1. Edit `.cjs` files at project root
-2. Run `npm run build:server:<platform>` to compile
+2. Run `npm run build:server:<platform>`
 3. Restart `npm run tauri:dev`
-
-Dev mode uses compiled binaries from `src-tauri/resources/`, not source files.
 
 ### 2.5 Build Optimization
 
@@ -619,54 +525,13 @@ Yume uses a two-tier update mechanism:
 
 ### 5.3 Package Managers
 
-#### Homebrew (macOS) - Planned
-```ruby
-# yume.rb (not yet published)
-class Yume < Cask
-  desc "Minimal Claude Code UI"
-  homepage "https://github.com/aofp/yume"
-  url "https://github.com/aofp/yume/releases/download/v0.6.0/yume_0.6.0_aarch64.dmg"
-  sha256 "SHA256_HERE"
-  version "0.6.0"
+#### Package Managers (Planned)
 
-  app "yume.app"
-end
-```
+**Homebrew (macOS):** `brew install --cask yume` - Not yet published
 
-#### Chocolatey (Windows) - Planned
-```xml
-<!-- yume.nuspec (not yet published) -->
-<?xml version="1.0"?>
-<package>
-  <metadata>
-    <id>yume</id>
-    <version>0.6.0</version>
-    <title>Yume</title>
-    <authors>aofp</authors>
-    <description>Minimal Claude Code UI</description>
-    <projectUrl>https://github.com/aofp/yume</projectUrl>
-  </metadata>
-</package>
-```
+**Chocolatey (Windows):** `choco install yume` - Not yet published
 
-#### Snap (Linux) - Planned
-```yaml
-# snapcraft.yaml (not yet published)
-name: yume
-version: '0.6.0'
-summary: Minimal Claude Code UI
-description: |
-  Yume is a minimal GUI for Claude CLI with auto-compaction,
-  multi-tab sessions, and background agents.
-
-confinement: strict
-grade: stable
-
-parts:
-  yume:
-    plugin: rust
-    source: .
-```
+**Snap (Linux):** `snap install yume` - Not yet published
 
 ---
 
@@ -693,28 +558,25 @@ MAJOR.MINOR.PATCH
 
 #### Template
 ```markdown
-# Yume v1.0.0
+# Yume vX.Y.Z
 
-Released: January 3, 2025
+Released: [Date]
 
-## ✨ New Features
-- Auto-compaction at 75% context usage (configurable)
-- Crash recovery system
-- Performance monitoring
+## New Features
+- Feature 1
+- Feature 2
 
-## 🐛 Bug Fixes
-- Fixed memory leaks in message buffers
-- Resolved process cleanup issues
+## Bug Fixes
+- Fix 1
 
-## 🔒 Security
-- Enabled Content Security Policy
-- Added input validation
+## Security
+- Security improvement 1
 
-## 💔 Breaking Changes
+## Breaking Changes
 - None
 
-## 📦 Downloads
-- [macOS Universal](link)
+## Downloads
+- [macOS arm64](link) | [macOS x64](link)
 - [Windows x64](link)
 - [Linux AppImage](link)
 ```
@@ -781,8 +643,8 @@ const errors = JSON.parse(
 ### 7.3 Support Infrastructure
 
 #### Support Channels
-1. **GitHub Issues**: https://github.com/aofp/yume/issues
-2. **Documentation**: `docs/` directory in repository
+- **GitHub Issues**: https://github.com/aofp/yume/issues
+- **Documentation**: `docs/` directory
 
 #### Issue Templates
 ```markdown
@@ -916,17 +778,18 @@ sudo apt install fuse libfuse2  # Ubuntu/Debian
 
 ---
 
-## Conclusion
+## Current Build Status
 
-This deployment guide ensures a smooth, secure, and professional release of Yume. Follow each step carefully and maintain a deployment log for future reference.
+| Platform | Status | Output |
+|----------|--------|--------|
+| macOS arm64 | Ready | DMG + PKG |
+| macOS x64 | Ready | DMG + PKG |
+| Windows | Scripts exist | Not bundled |
+| Linux | Scripts exist | Not bundled |
 
-**Current Build Status:**
-- macOS (arm64 + x64): Fully supported with DMG + PKG
-- Windows: Build scripts exist, binaries not yet bundled
-- Linux: Build scripts exist, binaries not yet bundled
+## Key Files
 
-**Key Files Reference:**
-- Build scripts: `scripts/` directory
+- Build scripts: `scripts/`
 - Tauri configs: `src-tauri/tauri.conf.json`, `tauri.arm64.conf.json`, `tauri.x64.conf.json`
 - Rust config: `src-tauri/Cargo.toml`
 - Vite config: `vite.config.mjs`

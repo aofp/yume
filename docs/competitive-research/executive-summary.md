@@ -2,7 +2,7 @@
 
 *Prepared for presentation to Claude Code team*
 
-*January 2026*
+*January 29, 2026*
 
 ---
 
@@ -29,20 +29,20 @@ But terminal rendering issues create real friction for users. We wanted to solve
 ## The Problem We Solve
 
 ### Terminal Flickering (Issue #1913)
-- **700+ upvotes** (and growing), 9+ months open
+- **700+ upvotes**, 9+ months open
 - Technical analysis documented **4,000-6,700 scroll events/second**
-- VS Code/Cursor crashes after 10-20 minutes, **losing unsaved work**
-- Still open as of January 5, 2026
+- VS Code/Cursor integrated terminals still crash
+- Improved in v2.0.72-74 ("Reduced terminal flickering") but not eliminated
 
 ### Root Cause
-Claude Code's React Ink renderer performs full terminal redraws on each streaming chunk. Anthropic rewrote the renderer from scratch (v2.0.72+), which reduced flickering—but IDE-specific issues persist.
+Claude Code's React Ink renderer performs full terminal redraws on each streaming chunk. Anthropic rewrote the renderer in v2.0.10 ("buttery smooth UI") and further improved in v2.0.72+, but IDE-specific issues persist.
 
 ### Why It's Hard to Fix
 The Claude Code team made thoughtful tradeoffs:
 
 > "We value this native experience a lot. We may explore alternate screen mode in the future, but our bar is quite high." — Thariq, Anthropic
 
-They preserved terminal muscle memory (text selection, scrollback, search) rather than taking over the terminal completely. This is the right call for a CLI tool, but introduces rendering complexity.
+They preserved terminal muscle memory (text selection, scrollback, search) rather than taking over the terminal completely.
 
 ---
 
@@ -113,32 +113,34 @@ Everything that makes Claude Code great:
 - ✅ **9-event hook system** (user_prompt_submit, pre/post_tool_use, session_start/end, etc.)
 - ✅ **Drag & drop** (tab reordering, file drops)
 - ✅ **32+ keyboard shortcuts** (keyboard-first design)
-- ✅ **12 themes** (oled optimized)
-- ✅ **5 built-in agents** (architect, explorer, implementer, guardian, specialist)
-- ✅ **Auto-compaction** at 60%/65% thresholds
+- ✅ **12 themes** (OLED optimized)
+- ✅ **4 built-in agents** (architect, explorer, implementer, guardian)
+- ✅ **Auto-compaction** with dynamic thresholds (T-5% warn, T% auto, T+5% force, default T=75%)
 - ✅ **Crash recovery** (auto-save every 5 min)
 - ✅ Session management with tabs
 - ✅ Usage dashboard (full AnalyticsModal)
 - ✅ MCP visual manager (MCPTab)
 - ✅ **Checkpoint + Timeline navigator** (visual git-style UI)
-- ✅ **12 default custom commands** (/code-review, /commit, /pr, etc.)
+- ✅ **Custom commands** (/compact, /init, /commit, /review, /iterate + user-defined)
 - ✅ Virtualized message list (handles long sessions)
 - ✅ Bash mode (!/$) for direct commands
 - ✅ Conversation search
 - ✅ **CLAUDE.md editor** (visual editor with save/discard)
-- ✅ **Command palette** (56 commands, Cmd+P)
+- ✅ **Command palette** (Cmd+P)
 - ✅ **Multi-provider** (Claude + Gemini + OpenAI via yume-cli)
-- ✅ **Background agents** (4 concurrent, git branch isolation)
-- ✅ **Memory MCP server** (persistent knowledge graph)
+- ✅ **Background agents** (4 concurrent, git branch isolation - UNIQUE)
+- ✅ **Memory V2 system** (per-project markdown files, TTL, importance levels, auto-pruning - UNIQUE)
 - ✅ **Skills system** (auto-inject context, ReDoS-safe triggers)
 - ✅ **Plugin system** (5 component types)
 - ✅ **Session changes panel** (track file modifications)
 - ✅ **Line changes tracking** (+added/-removed per session)
 - ✅ **Toast notifications** (success/error/info)
+- ✅ **Auto-update** (app version check + Claude CLI auto-update)
+- ✅ **Voice dictation** (F5)
+- ✅ **Orchestration flow** (understand → decompose → act → verify)
 
-### Future Enhancements
-- Light mode theme
-- System notifications
+### Design Philosophy
+- OLED-optimized dark themes (light mode not planned)
 
 ---
 
@@ -193,7 +195,7 @@ We're not trying to replace CLI power users who love the terminal.
 
 ## About Us
 
-**yume** = Japanese for "loose/relaxed code"
+**yume** = Japanese for "dream"
 
 We're building tools that make AI coding more accessible. This is our first product.
 
@@ -233,6 +235,8 @@ For engineering review, see:
 
 ## Sources
 
+- [Claude Code CHANGELOG.md](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
+- [Boris Cherny - v2.1.0 Announcement (Threads)](https://www.threads.com/@boris_cherny/post/DTOyRyBD018)
 - [How Claude Code is Built - Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/how-claude-code-is-built)
 - [Boris Cherny Interview - Developing.dev](https://www.developing.dev/p/boris-cherny-creator-of-claude-code)
 - [The Signature Flicker - Peter Steinberger](https://steipete.me/posts/2025/signature-flicker)

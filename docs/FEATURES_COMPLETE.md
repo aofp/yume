@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.6.0
-**Last Updated:** January 28, 2026
+**Version:** 0.6.6
+**Last Updated:** January 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -25,7 +25,7 @@
 17. [Analytics & Reporting](#17-analytics--reporting)
 18. [History & Rollback](#18-history--rollback)
 19. [VSCode Extension Integration](#19-vscode-extension-integration)
-20. [Memory MCP System](#20-memory-mcp-system)
+20. [Memory V2 System](#20-memory-v2-system-per-project-markdown)
 21. [Background Agents](#21-background-agents)
 22. [Orchestration Flow](#22-orchestration-flow)
 23. [Auto-Update System](#23-auto-update-system)
@@ -329,10 +329,7 @@ interface TokenStats {
 | Model | Input | Output |
 |-------|-------|--------|
 | Claude Opus 4.5 | $15 | $75 |
-| Claude Sonnet 4 | $3 | $15 |
-| Claude 3.5 Sonnet | $3 | $15 |
-| Claude 3.5 Haiku | $0.80 | $4 |
-| Claude 3 Opus | $15 | $75 |
+| Claude Sonnet 4.5 | $3 | $15 |
 
 **Session Cost Aggregation**:
 - Per-message cost
@@ -437,23 +434,7 @@ function parseMentions(text: string): FileMention[] {
 
 **Location**: `src-tauri/src/hooks/mod.rs`
 
-### 6.2 Hook Configuration
-
-```rust
-pub struct HookConfig {
-    pub name: String,
-    pub trigger: HookTrigger,
-    pub command: String,
-    pub args: Vec<String>,
-    pub working_dir: Option<String>,
-    pub env: HashMap<String, String>,
-    pub blocking: bool,
-    pub timeout: u64, // milliseconds
-    pub enabled: bool,
-}
-```
-
-### 6.3 Available Triggers
+### 6.2 Available Triggers
 
 **9 Hook Events (only 3 active)**:
 
@@ -470,9 +451,9 @@ pub struct HookConfig {
 - `session_end`: Session closed
 - `error`: Error occurred
 
-> **Important:** Only 3 of 9 hooks are actively triggered in the codebase. The other 6 are defined but not wired to any execution path.
+> **Note:** Only 3 of 9 hooks are actively triggered. The other 6 are defined but not wired to any execution path.
 
-### 6.4 Hook Examples
+### 6.3 Hook Examples
 
 **Auto-format Code**:
 ```json
@@ -1424,49 +1405,42 @@ interface FileSnapshot {
 
 ## Feature Comparison Matrix
 
-| Feature | Yume | Opcode | Claudia | Continue |
-|---------|----------|--------|---------|----------|
-| **Auto-update (CLI + app)** | ✅ | ❌ | ❌ | ❌ |
-| **License system (trial/pro)** | ✅ | ❌ | ❌ | ❌ |
-| **Plugin system** | ✅ | ❌ | ❌ | ❌ |
-| **Skills system** | ✅ | ❌ | ❌ | ❌ |
-| **Performance monitoring** | ✅ | ❌ | ❌ | ❌ |
-| **Analytics dashboard** | ✅ | ⚠️ | ❌ | ❌ |
-| **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
-| Auto-compact (75% auto, 80% force) | ✅ | ❌ | ❌ | ❌ |
-| Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
-| Token tracking | ✅ | ✅ | ⚠️ | ✅ |
-| Cost calculation | ✅ | ✅ | ❌ | ❌ |
-| Crash recovery | ✅ | ❌ | ❌ | ❌ |
-| Hook system (9 events) | ✅ | ❌ | ❌ | ⚠️ |
-| MCP support | ✅ | ✅ | ❌ | ❌ |
-| Virtual scrolling | ✅ | ⚠️ | ❌ | ✅ |
-| Git diff viewer | ✅ | ✅ | ❌ | ✅ |
-| 12 themes | ✅ | ❌ | ❌ | ❌ |
-| 4 built-in agents | ✅ | ❌ | ❌ | ❌ |
-| 5 custom commands | ✅ | ❌ | ❌ | ❌ |
-| 30+ keyboard shortcuts | ✅ | ❌ | ❌ | ✅ |
-| Drag & drop tabs | ✅ | ❌ | ❌ | ❌ |
-| History + rollback | ✅ | ✅ | ❌ | ❌ |
-| CLAUDE.md editor | ✅ | ✅ | ❌ | ❌ |
-| No telemetry | ✅ | ✅ | ❌ | ❌ |
-| Compiled server | ✅ | ❌ | ❌ | ❌ |
-| VSCode extension | ✅ | ❌ | ❌ | ✅ |
-| Multi-provider (Claude/Gemini/OpenAI) | ✅ | ❌ | ❌ | ✅ |
-| **Memory system** | ✅ TTL, importance, auto-pruning, multi-query search | ❌ | ❌ | ❌ |
-| Platform support | 3 | 3 | 2 | 3 |
+| Feature | Yume |
+|---------|------|
+| Auto-update (CLI + app) | Yes |
+| License system (trial/pro) | Yes |
+| Plugin system | Yes |
+| Skills system | Yes |
+| Performance monitoring | Yes |
+| Analytics dashboard | Yes |
+| 5h + 7d limit tracking | Yes |
+| Auto-compact (configurable thresholds) | Yes |
+| Multi-session tabs | Yes |
+| Token tracking | Yes |
+| Cost calculation | Yes |
+| Crash recovery | Yes |
+| Hook system (9 events, 3 active) | Yes |
+| MCP support | Yes |
+| Virtual scrolling | Yes |
+| Git diff viewer | Yes |
+| 4 built-in agents | Yes |
+| Custom commands | Yes |
+| 30+ keyboard shortcuts | Yes |
+| History + rollback | Yes |
+| Memory V2 (TTL, auto-pruning) | Yes |
+| Multi-provider (feature-flagged) | Yes |
+| No telemetry | Yes |
+| Platform support | macOS, Windows, Linux |
 
 ## Performance Benchmarks
 
-| Operation | Time | Memory | CPU |
-|-----------|------|--------|-----|
-| Startup | 2.3s | 145MB | 12% |
-| New session | 180ms | +8MB | 5% |
-| Send message | 65ms | +2MB | 3% |
-| Stream 1K tokens | 800ms | +5MB | 8% |
-| Compaction | 3.8s | +15MB | 25% |
-| Search 10K messages | 120ms | +10MB | 15% |
-| Export session | 200ms | +5MB | 10% |
+| Operation | Target | Typical |
+|-----------|--------|---------|
+| Startup | <3s | ~2.3s |
+| New session | <200ms | ~180ms |
+| Send message | <100ms | ~65ms |
+| Compaction | <5s | ~3.8s |
+| Memory (idle) | <200MB | ~145MB |
 
 ## 20. Memory V2 System (Per-Project Markdown)
 
@@ -1781,71 +1755,22 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 
 ## Conclusion
 
-Yume offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
+Yume offers a comprehensive feature set with unique capabilities:
 
-1. **Unique Features**:
-   - **Orchestration flow** - GSD-inspired automatic task decomposition (understand → decompose → act → verify)
-   - **Memory MCP system** - persistent knowledge graph for patterns, error fixes, context
-   - **Background agents** - async execution with git branch isolation (4 concurrent)
-   - **Auto-update** - CLI auto-update on startup + app version check via GitHub Pages
-   - **License system** with trial/pro tiers ($21 one-time)
-   - **Plugin system** - complete extensibility framework (commands, agents, hooks, skills, MCP)
-   - **Skills system** - auto-inject context based on triggers (file extensions, keywords, regex)
-   - **Performance monitoring** - real-time FPS, memory, render time metrics
-   - **Analytics dashboard** - comprehensive usage tracking by project/model/date
-   - **Timeline & checkpoints** - visual conversation state management
-   - **CLAUDE.md editor** - in-app project documentation editing
-   - 5h + 7-day Anthropic limit tracking (no competitor has this)
-   - Auto-compaction (70% warn, 75% auto, 80% force) - dynamic thresholds with configurable T
-   - Crash recovery (auto-save every 5 min)
-   - Built-in agents (architect, explorer, implementer, guardian)
-   - Custom commands with templates
-   - Hook system for behavior customization (9 events)
+**Key Differentiators:**
+- **Orchestration flow** - Automatic task decomposition (understand, decompose, act, verify)
+- **Memory V2 system** - Per-project markdown with TTL-based expiration
+- **Background agents** - Async execution with git branch isolation (4 concurrent)
+- **Plugin system** - Complete extensibility (commands, agents, hooks, skills, MCP)
+- **Auto-compaction** - Dynamic thresholds (70% warn, 75% auto, 80% force)
+- **Performance monitoring** - Real-time FPS, memory, render metrics
+- **Analytics dashboard** - Usage tracking by project/model/date
 
-2. **Performance**:
-   - Virtual scrolling for 1000+ message sessions
-   - Bounded buffers and lazy loading
-   - Native Tauri/Rust backend
-   - Real-time performance monitoring and metrics export
-   - Message virtualization with overscan
+**Technical Strengths:**
+- Virtual scrolling for 1000+ message sessions
+- Bounded buffers and lazy loading
+- Native Tauri/Rust backend
+- No telemetry, local-only operation
+- 4 built-in agents with Claude CLI integration
 
-3. **Privacy**:
-   - No telemetry
-   - Local-only operation
-   - Encrypted license storage
-   - All data stored locally (SQLite database)
-
-4. **Extensibility**:
-   - Plugin system (5 component types)
-   - Skills system (custom + plugin skills)
-   - Hooks (9 event triggers)
-   - MCP support (8M+ servers)
-   - Custom commands with template variables
-
-5. **Polish**:
-   - 12 themes (OLED-optimized)
-   - 30+ keyboard shortcuts
-   - Drag & drop tabs
-   - Git diff viewer
-   - Recent conversations/projects modals
-   - Context bar with visual usage indicator
-   - Adaptive window controls (platform-specific)
-   - Global watermark support
-   - Font picker (mono + sans)
-   - Window transparency control
-
-**Yume vs Opcode**: Opcode is YC-backed but yume is technically superior in almost every category:
-- **Yume has**: License system, plugins, skills, performance monitoring, analytics, history/rollback, CLAUDE.md editor, 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
-- **Opcode has**: Multi-session tabs, basic token tracking (but missing most advanced features above)
-
-**Key Differentiators**:
-1. **Plugin System** - No competitor offers a complete plugin framework with 5 component types
-2. **Skills System** - Unique auto-inject context system based on triggers
-3. **Performance Monitoring** - Only Yume has real-time metrics with export
-4. **Analytics Dashboard** - Most comprehensive usage tracking and reporting
-5. **License Management** - Commercial licensing system with trial/pro tiers
-6. **History & Rollback** - File-aware undo with conflict detection
-
-The combination of advanced features with a focus on performance, privacy, and extensibility makes Yume the most capable Claude GUI available.
-
-**Multi-Provider Support:** Multi-provider support (Gemini/OpenAI) is implemented but disabled by default via feature flags (`PROVIDER_GEMINI_AVAILABLE: false`, `PROVIDER_OPENAI_AVAILABLE: false`). Uses a Claude-compatible stream-json shim (`yume-cli`). Enable in `src/renderer/config/features.ts`.
+**Multi-Provider Support:** Gemini/OpenAI support is implemented but disabled by default via feature flags. Uses `yume-cli` shim with Claude-compatible stream-json output.

@@ -1,8 +1,8 @@
 # Yume API Reference
 
-**Version:** 0.1.0
-**Last Updated:** January 17, 2026
-**Tauri Commands:** 152
+**Version:** 0.6.6
+**Last Updated:** January 2026
+**Tauri Commands:** 199+
 
 ## Table of Contents
 
@@ -19,12 +19,18 @@
    - [Hook Operations](#hook-operations)
    - [Compaction Operations](#compaction-operations)
    - [MCP Operations](#mcp-operations)
+   - [Memory Operations (Legacy V1)](#memory-operations-legacy-v1)
+   - [Memory V2 Operations](#memory-v2-operations)
    - [Agent Management](#agent-management-in-memory)
    - [Claude Agents](#claude-agents-file-based)
    - [Yume Agents Sync](#yume-agents-sync)
    - [Custom Commands](#custom-commands)
    - [VSCode Extension Management](#vscode-extension-management)
    - [App Instance Management](#app-instance-management)
+   - [Background Agent Operations](#background-agent-operations)
+   - [File Content Operations](#file-content-operations)
+   - [Rollback & Conflict Detection](#rollback--conflict-detection)
+   - [Extended Analytics](#extended-analytics)
 2. [Tauri Events API](#tauri-events-api)
 3. [Frontend Services API](#frontend-services-api)
 4. [Store API](#store-api)
@@ -175,6 +181,41 @@ invoke('get_session_output', {
 }) => Promise<string>
 ```
 
+#### `spawn_yume_cli_session`
+Spawns a new yume-cli session for non-Claude providers (Gemini, OpenAI).
+
+```typescript
+invoke('spawn_yume_cli_session', {
+  request: {
+    provider: string,        // "gemini" | "openai"
+    project_path: string,
+    model: string,
+    prompt: string,
+    session_id?: string | null,
+    history_file?: string | null
+  }
+}) => Promise<SpawnSessionResponse>
+```
+
+#### `get_context_breakdown`
+Gets a detailed context breakdown for a Claude session by running `claude context`.
+
+```typescript
+invoke('get_context_breakdown', {
+  sessionId?: string | null,
+  projectPath: string
+}) => Promise<ContextBreakdown>
+```
+
+**Returns:**
+```typescript
+interface ContextBreakdown {
+  total_tokens: number;
+  breakdown: Record<string, number>;  // category -> token count
+  raw_output: string;
+}
+```
+
 #### `get_sessions` (Legacy)
 Returns information about all active sessions. Legacy command maintained for compatibility.
 
@@ -276,20 +317,25 @@ invoke('set_zoom_level', {
 }) => Promise<void>
 ```
 
-#### `set_window_opacity`
-Sets the window opacity (0.65 to 1.0). On Windows, uses SetLayeredWindowAttributes. On macOS/Linux, handled by CSS.
-
-```typescript
-invoke('set_window_opacity', {
-  opacity: number
-}) => Promise<void>
-```
-
 #### `restore_window_focus`
 Restores focus to the application window. Primarily used on Windows after bash command execution to prevent focus loss.
 
 ```typescript
 invoke('restore_window_focus') => Promise<void>
+```
+
+#### `get_macos_focus_state`
+Returns the macOS focus state for debugging. macOS only.
+
+```typescript
+invoke('get_macos_focus_state') => Promise<string>
+```
+
+#### `restore_webview_focus`
+Restores keyboard focus to the WKWebView on macOS when keyboard input stops working.
+
+```typescript
+invoke('restore_webview_focus') => Promise<boolean>
 ```
 
 #### `show_context_menu`
@@ -440,6 +486,15 @@ invoke('execute_command', {
   command: string,
   args: string[]
 }) => Promise<string>
+```
+
+#### `check_cli_installed`
+Checks if a CLI tool is installed on the system. Returns installation info.
+
+```typescript
+invoke('check_cli_installed', {
+  cliName: string  // e.g., "gemini", "codex"
+}) => Promise<object>  // { installed: boolean, path?: string, version?: string }
 ```
 
 ### Settings Management
@@ -606,6 +661,33 @@ Returns git diff numstat for line additions/deletions per file.
 invoke('get_git_diff_numstat', {
   directory: string
 }) => Promise<string>
+```
+
+#### `get_git_branch`
+Returns the current Git branch name.
+
+```typescript
+invoke('get_git_branch', {
+  directory: string
+}) => Promise<string>
+```
+
+#### `get_git_ahead_count`
+Returns how many commits the current branch is ahead of its upstream.
+
+```typescript
+invoke('get_git_ahead_count', {
+  directory: string
+}) => Promise<number>  // i32
+```
+
+#### `cleanup_git_lock`
+Removes a stale `.git/index.lock` file if present.
+
+```typescript
+invoke('cleanup_git_lock', {
+  directory: string
+}) => Promise<string | null>
 ```
 
 ### Bash Execution
@@ -936,9 +1018,9 @@ invoke('update_context_usage', {
 **Action Types:**
 - `"None"` - No action needed
 - `"Notice"` - Notice level (deprecated)
-- `"Warning"` - Warning at 55%
-- `"AutoTrigger"` - Auto-compact at 60%
-- `"Force"` - Force compact at 65%
+- `"Warning"` - Warning at 70%
+- `"AutoTrigger"` - Auto-compact at configurable threshold (default 75%)
+- `"Force"` - Force compact at 85%
 
 #### `save_context_manifest`
 Saves a context manifest for a session.
@@ -1033,8 +1115,8 @@ invoke('update_compaction_config', {
 **Config:**
 ```typescript
 interface CompactionConfig {
-  auto_threshold: number;  // f32, default 0.60
-  force_threshold: number; // f32, default 0.65
+  auto_threshold: number;  // f32, default 0.75 (75%)
+  force_threshold: number; // f32, default 0.80 (80%, auto + 5%)
   preserve_context: boolean;
   generate_manifest: boolean;
 }
@@ -1151,6 +1233,317 @@ Exports MCP configuration as JSON string.
 invoke('mcp_export_config') => Promise<string>  // JSON string
 ```
 
+### Memory Operations (Legacy V1)
+
+These commands manage the legacy persistent knowledge graph stored in `~/.yume/memory.jsonl`. Note: Memory V2 (per-project markdown files in `~/.yume/memory/`) is the current system - see Memory V2 Operations below.
+
+#### `start_memory_server`
+Starts the memory MCP server. Kills orphan processes from previous sessions, performs MCP handshake, and registers with Claude CLI via `claude mcp add`.
+
+```typescript
+invoke('start_memory_server') => Promise<MemoryServerResult>
+```
+
+**Returns:**
+```typescript
+interface MemoryServerResult {
+  success: boolean;
+  error?: string;
+}
+```
+
+#### `stop_memory_server`
+Stops the memory MCP server and removes it from Claude CLI's MCP config.
+
+```typescript
+invoke('stop_memory_server') => Promise<MemoryServerResult>
+```
+
+#### `check_memory_server`
+Checks if the memory MCP server process is still running.
+
+```typescript
+invoke('check_memory_server') => Promise<MemoryServerStatus>
+```
+
+**Returns:**
+```typescript
+interface MemoryServerStatus {
+  running: boolean;
+}
+```
+
+#### `get_memory_file_path`
+Returns the full path to the memory JSONL file (`~/.yume/memory.jsonl`).
+
+```typescript
+invoke('get_memory_file_path') => Promise<string>
+```
+
+#### `memory_create_entities`
+Creates entities in the knowledge graph.
+
+```typescript
+invoke('memory_create_entities', {
+  entities: MemoryEntity[]
+}) => Promise<MemoryServerResult>
+```
+
+**MemoryEntity:**
+```typescript
+interface MemoryEntity {
+  name: string;
+  entityType: string;
+  observations: string[];  // Each prefixed with metadata: [ISO_DATE|importance:N|ttl:N] content
+}
+```
+
+#### `memory_create_relations`
+Creates relations between entities in the knowledge graph.
+
+```typescript
+invoke('memory_create_relations', {
+  relations: MemoryRelation[]
+}) => Promise<MemoryServerResult>
+```
+
+**MemoryRelation:**
+```typescript
+interface MemoryRelation {
+  from: string;
+  to: string;
+  relationType: string;
+}
+```
+
+#### `memory_add_observations`
+Adds observations to an existing entity.
+
+```typescript
+invoke('memory_add_observations', {
+  entityName: string,
+  observations: string[]
+}) => Promise<MemoryServerResult>
+```
+
+#### `memory_search_nodes`
+Searches for nodes in the knowledge graph matching a query.
+
+```typescript
+invoke('memory_search_nodes', {
+  query: string
+}) => Promise<MemoryQueryResult>
+```
+
+**Returns:**
+```typescript
+interface MemoryQueryResult {
+  success: boolean;
+  entities?: MemoryEntity[];
+  relations?: MemoryRelation[];
+  error?: string;
+}
+```
+
+#### `memory_read_graph`
+Reads the entire knowledge graph.
+
+```typescript
+invoke('memory_read_graph') => Promise<MemoryQueryResult>
+```
+
+#### `memory_delete_entity`
+Deletes an entity and its relations from the knowledge graph.
+
+```typescript
+invoke('memory_delete_entity', {
+  entityName: string
+}) => Promise<MemoryServerResult>
+```
+
+#### `memory_prune_old`
+Prunes expired observations based on per-observation TTL metadata. Observations without TTL metadata fall back to `retentionDays`. Entities with all observations expired are removed entirely. Called automatically on startup by the frontend `memoryService.initialize()`.
+
+```typescript
+invoke('memory_prune_old', {
+  retentionDays: number  // u32, fallback retention for observations without TTL
+}) => Promise<MemoryPruneResult>
+```
+
+**Returns:**
+```typescript
+interface MemoryPruneResult {
+  success: boolean;
+  pruned_count: number;  // u32, number of pruned observations
+  error?: string;
+}
+```
+
+**TTL Metadata Format:** `[2026-01-27T00:00:00.000Z|importance:3|ttl:30] observation content`
+- `importance` (1-5): ephemeral(1d), low(7d), normal(30d), high(90d), permanent(no TTL)
+- `ttl`: days until expiration from the observation's timestamp
+
+#### `memory_clear_all`
+Deletes the entire `memory.jsonl` file, clearing all memories.
+
+```typescript
+invoke('memory_clear_all') => Promise<MemoryServerResult>
+```
+
+### Memory V2 Operations
+
+These commands manage the per-project markdown-based memory system stored in `~/.yume/memory/`. This is the current recommended memory system.
+
+#### `memory_v2_init`
+Initializes the Memory V2 system, creating the directory structure.
+
+```typescript
+invoke('memory_v2_init') => Promise<MemoryResult>
+```
+
+#### `memory_v2_add_learning`
+Adds a learning entry to project memory.
+
+```typescript
+invoke('memory_v2_add_learning', {
+  projectPath: string,
+  content: string,
+  importance: number  // 1-5
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_add_error`
+Adds an error/solution entry to project memory.
+
+```typescript
+invoke('memory_v2_add_error', {
+  projectPath: string,
+  errorDesc: string,
+  solution: string,
+  importance: number  // 1-5
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_add_pattern`
+Adds a pattern entry to project memory.
+
+```typescript
+invoke('memory_v2_add_pattern', {
+  projectPath: string,
+  patternName: string,
+  description: string,
+  importance: number  // 1-5
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_set_brief`
+Sets the project brief/overview.
+
+```typescript
+invoke('memory_v2_set_brief', {
+  projectPath: string,
+  brief: string
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_add_preference`
+Adds a global preference entry.
+
+```typescript
+invoke('memory_v2_add_preference', {
+  content: string,
+  importance: number  // 1-5
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_add_global_pattern`
+Adds a global pattern entry.
+
+```typescript
+invoke('memory_v2_add_global_pattern', {
+  patternName: string,
+  description: string,
+  importance: number  // 1-5
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_build_context`
+Builds a context string for Claude from project and global memory.
+
+```typescript
+invoke('memory_v2_build_context', {
+  projectPath: string,
+  tokenBudget?: number  // Default: 2000
+}) => Promise<MemoryContextResult>
+```
+
+**Returns:**
+```typescript
+interface MemoryContextResult {
+  success: boolean;
+  context: string;
+  token_estimate: number;
+  error?: string;
+}
+```
+
+#### `memory_v2_get_project`
+Gets all memory for a project.
+
+```typescript
+invoke('memory_v2_get_project', {
+  projectPath: string
+}) => Promise<ProjectMemory | null>
+```
+
+#### `memory_v2_get_global`
+Gets global memory (preferences and patterns).
+
+```typescript
+invoke('memory_v2_get_global') => Promise<GlobalMemory | null>
+```
+
+#### `memory_v2_list_projects`
+Lists all projects with memory.
+
+```typescript
+invoke('memory_v2_list_projects') => Promise<ProjectMemoryInfo[]>
+```
+
+#### `memory_v2_delete_entry`
+Deletes a specific memory entry.
+
+```typescript
+invoke('memory_v2_delete_entry', {
+  projectPath: string | null,  // null for global entries
+  category: string,            // "learning", "error", "pattern", "preference"
+  entryId: string
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_prune_expired`
+Removes expired entries based on TTL.
+
+```typescript
+invoke('memory_v2_prune_expired') => Promise<number>  // Returns count of pruned entries
+```
+
+#### `memory_v2_clear_project`
+Clears all memory for a project.
+
+```typescript
+invoke('memory_v2_clear_project', {
+  projectPath: string
+}) => Promise<MemoryResult>
+```
+
+#### `memory_v2_get_base_path`
+Gets the base path for memory storage (`~/.yume/memory/`).
+
+```typescript
+invoke('memory_v2_get_base_path') => Promise<string>
+```
+
 ### Agent Management (In-Memory)
 
 These commands manage agents stored in memory for the current session.
@@ -1177,12 +1570,11 @@ interface Agent {
 ```
 
 #### `load_default_agents`
-Loads the 5 Yume Core Agents from `default-agents.json` resource or hardcoded fallback:
+Loads the 4 Yume Core Agents from `default-agents.json` resource or hardcoded fallback:
 - **architect** - Plans, designs, decomposes tasks
 - **explorer** - Finds, reads, understands codebase
 - **implementer** - Codes, edits, builds
 - **guardian** - Reviews, audits, verifies
-- **specialist** - Domain-specific tasks
 
 ```typescript
 invoke('load_default_agents') => Promise<Agent[]>
@@ -1289,7 +1681,7 @@ invoke('delete_project_agent', {
 
 ### Yume Agents Sync
 
-These commands manage syncing the 5 Yume Core Agents to `~/.claude/agents/` for Claude CLI integration.
+These commands manage syncing the 4 Yume Core Agents to `~/.claude/agents/` for Claude CLI integration.
 
 #### `sync_yume_agents`
 Writes or removes yume agent files (`yume-*.md`) to `~/.claude/agents/` based on enabled state. Uses PID tracking to support multiple instances.
@@ -1309,7 +1701,7 @@ invoke('cleanup_yume_agents_on_exit') => Promise<void>
 ```
 
 #### `are_yume_agents_synced`
-Checks if all 5 yume agent files exist in `~/.claude/agents/`.
+Checks if all 4 yume agent files exist in `~/.claude/agents/`.
 
 ```typescript
 invoke('are_yume_agents_synced') => Promise<boolean>
@@ -1703,6 +2095,372 @@ invoke('get_running_instance_count') => Promise<number>
 - Acquire plugin sync lock safely
 - Prevent multi-instance conflicts
 
+### Background Agent Operations
+
+These commands manage background agents that run Claude CLI tasks concurrently (max 4, no timeout).
+
+#### `queue_background_agent`
+Queues a new background agent for execution.
+
+```typescript
+invoke('queue_background_agent', {
+  agentType: string,        // "yume-architect" | "yume-explorer" | "yume-implementer" | "yume-guardian" | custom
+  prompt: string,
+  cwd: string,
+  model: string,
+  useGitBranch: boolean,
+  sessionId?: string | null  // Yume session ID for UI filtering
+}) => Promise<AgentResponse>
+```
+
+**Returns:**
+```typescript
+interface AgentResponse {
+  success: boolean;
+  agent_id?: string;
+  error?: string;
+}
+```
+
+#### `get_agent_queue`
+Returns all background agents across all sessions.
+
+```typescript
+invoke('get_agent_queue') => Promise<AgentInfo[]>
+```
+
+**Returns:**
+```typescript
+interface AgentInfo {
+  id: string;
+  session_id?: string;
+  agent_type: string;
+  prompt: string;
+  cwd: string;
+  model: string;
+  status: string;           // "queued" | "running" | "completed" | "failed" | "cancelled"
+  progress: AgentProgress;
+  git_branch?: string;
+  output_file?: string;
+  created_at: number;       // u64 Unix timestamp
+  started_at?: number;
+  completed_at?: number;
+  error_message?: string;
+}
+
+interface AgentProgress {
+  turn_count: number;
+  current_action: string;
+  last_update: number;      // u64 Unix timestamp
+  tokens_used: number;
+}
+```
+
+#### `get_agents_for_session`
+Returns background agents filtered by session ID.
+
+```typescript
+invoke('get_agents_for_session', {
+  sessionId?: string | null  // null returns all agents
+}) => Promise<AgentInfo[]>
+```
+
+#### `get_background_agent`
+Returns a specific background agent by ID.
+
+```typescript
+invoke('get_background_agent', {
+  agentId: string
+}) => Promise<AgentInfo | null>
+```
+
+#### `cancel_background_agent`
+Cancels a running or queued background agent.
+
+```typescript
+invoke('cancel_background_agent', {
+  agentId: string
+}) => Promise<AgentResponse>
+```
+
+#### `remove_background_agent`
+Removes a completed/failed/cancelled agent. Also cleans up its git branch if present.
+
+```typescript
+invoke('remove_background_agent', {
+  agentId: string
+}) => Promise<AgentResponse>
+```
+
+#### `get_agent_output`
+Reads the output file for a background agent.
+
+```typescript
+invoke('get_agent_output', {
+  agentId: string
+}) => Promise<string>
+```
+
+#### `create_agent_branch`
+Creates a git branch for an agent's isolated work.
+
+```typescript
+invoke('create_agent_branch', {
+  agentId: string
+}) => Promise<AgentResponse>
+```
+
+#### `get_agent_branch_diff`
+Gets the diff between an agent's branch and the main branch.
+
+```typescript
+invoke('get_agent_branch_diff', {
+  agentId: string
+}) => Promise<string>
+```
+
+#### `merge_agent_branch`
+Merges an agent's git branch into the main branch and deletes the agent branch.
+
+```typescript
+invoke('merge_agent_branch', {
+  agentId: string,
+  commitMessage?: string | null
+}) => Promise<AgentResponse>
+```
+
+#### `delete_agent_branch`
+Deletes an agent's git branch without merging.
+
+```typescript
+invoke('delete_agent_branch', {
+  agentId: string
+}) => Promise<AgentResponse>
+```
+
+#### `check_agent_merge_conflicts`
+Checks if merging an agent's branch would cause conflicts.
+
+```typescript
+invoke('check_agent_merge_conflicts', {
+  agentId: string
+}) => Promise<boolean>
+```
+
+#### `cleanup_old_agents`
+Removes completed agents older than 24 hours.
+
+```typescript
+invoke('cleanup_old_agents') => Promise<number>  // u32
+```
+
+#### `update_agent_progress`
+Updates progress information for a running agent.
+
+```typescript
+invoke('update_agent_progress', {
+  agentId: string,
+  turnCount: number,
+  currentAction: string,
+  tokensUsed: number
+}) => Promise<void>
+```
+
+### File Content Operations
+
+These commands provide file system operations beyond search.
+
+#### `write_file_content`
+Writes content to a file, creating parent directories if needed.
+
+```typescript
+invoke('write_file_content', {
+  path: string,
+  content: string
+}) => Promise<void>
+```
+
+#### `read_file_content`
+Reads file content as a string. Returns null if file does not exist.
+
+```typescript
+invoke('read_file_content', {
+  path: string
+}) => Promise<string | null>
+```
+
+#### `read_file_base64`
+Reads a file and returns its content as base64-encoded string.
+
+```typescript
+invoke('read_file_base64', {
+  path: string
+}) => Promise<string>
+```
+
+#### `delete_file`
+Deletes a file from the filesystem.
+
+```typescript
+invoke('delete_file', {
+  path: string
+}) => Promise<void>
+```
+
+#### `list_directory`
+Lists entries in a directory. Returns file/directory names.
+
+```typescript
+invoke('list_directory', {
+  path: string
+}) => Promise<string[]>
+```
+
+#### `write_skill_file`
+Writes a skill markdown file to `~/.yume/skills/{name}.md`.
+
+```typescript
+invoke('write_skill_file', {
+  name: string,
+  content: string
+}) => Promise<void>
+```
+
+#### `remove_skill_file`
+Removes a skill file from `~/.yume/skills/`.
+
+```typescript
+invoke('remove_skill_file', {
+  name: string
+}) => Promise<void>
+```
+
+#### `atomic_file_restore`
+Atomically restores a file's content for rollback operations. Returns previous content for undo.
+
+```typescript
+invoke('atomic_file_restore', {
+  path: string,
+  newContent: string
+}) => Promise<string | null>  // Previous content, null if file didn't exist
+```
+
+#### `atomic_file_delete`
+Atomically deletes a file for rollback operations. Returns previous content for undo.
+
+```typescript
+invoke('atomic_file_delete', {
+  path: string
+}) => Promise<string | null>  // Previous content, null if file didn't exist
+```
+
+#### `detect_provider_support`
+Detects which AI providers are available on the system (checks for claude, gemini, codex CLIs).
+
+```typescript
+invoke('detect_provider_support') => Promise<ProviderSupportStatus>
+```
+
+**Returns:**
+```typescript
+interface ProviderSupportStatus {
+  claude: boolean;
+  gemini: boolean;
+  openai: boolean;
+}
+```
+
+#### `get_webview2_data_path`
+Returns the WebView2 user data path (Windows only).
+
+```typescript
+invoke('get_webview2_data_path') => Promise<string>
+```
+
+#### `clear_webview2_permissions`
+Clears WebView2 permission cache (Windows only). Useful for resetting microphone/camera permissions.
+
+```typescript
+invoke('clear_webview2_permissions') => Promise<string>
+```
+
+### Rollback & Conflict Detection
+
+These commands track file edits across sessions for conflict detection and rollback support.
+
+#### `get_file_mtime`
+Gets the modification time of a file as a Unix timestamp.
+
+```typescript
+invoke('get_file_mtime', {
+  path: string
+}) => Promise<number | null>  // f64 Unix timestamp, null if file doesn't exist
+```
+
+#### `check_file_conflicts`
+Checks if files have been modified since they were last edited by a session.
+
+```typescript
+invoke('check_file_conflicts', {
+  sessionId: string,
+  paths: string[]
+}) => Promise<ConflictCheckResult>
+```
+
+#### `register_file_edit`
+Registers that a session has edited a file (stores path + mtime for conflict tracking).
+
+```typescript
+invoke('register_file_edit', {
+  sessionId: string,
+  path: string,
+  mtime: number
+}) => Promise<void>
+```
+
+#### `get_conflicting_edits`
+Returns all files with potential conflicts for a session.
+
+```typescript
+invoke('get_conflicting_edits', {
+  sessionId: string
+}) => Promise<ConflictInfo[]>
+```
+
+#### `clear_session_edits`
+Clears all edit tracking data for a session.
+
+```typescript
+invoke('clear_session_edits', {
+  sessionId: string
+}) => Promise<void>
+```
+
+### Extended Analytics
+
+These commands manage extended analytics collection for Claude CLI usage.
+
+#### `enable_extended_analytics`
+Enables extended analytics by setting the `CLAUDE_CODE_ENABLE_TELEMETRY` environment variable.
+
+```typescript
+invoke('enable_extended_analytics') => Promise<void>
+```
+
+#### `disable_extended_analytics`
+Disables extended analytics.
+
+```typescript
+invoke('disable_extended_analytics') => Promise<void>
+```
+
+#### `get_claude_cleanup_period`
+Returns the Claude CLI cleanup/retention period in seconds.
+
+```typescript
+invoke('get_claude_cleanup_period') => Promise<number>  // u64
+```
+
 ---
 
 ## Tauri Events API
@@ -1956,11 +2714,127 @@ const prompt = systemPromptService.getActivePrompt();
 // Passed as append_system_prompt to spawn_claude_session
 ```
 
+### MemoryService
+
+**Location:** `src/renderer/services/memoryService.ts`
+
+Manages the persistent knowledge graph with TTL, importance levels, auto-pruning, and multi-query search.
+
+```typescript
+class MemoryService {
+  // Lifecycle
+  initialize(): Promise<void>           // Auto-prunes expired, starts server if enabled
+  start(): Promise<boolean>             // Start MCP server (deduplicates concurrent calls)
+  stop(): Promise<boolean>              // Stop MCP server
+  checkStatus(): Promise<boolean>       // Check if server is running
+
+  // Knowledge Graph
+  createEntities(entities: MemoryEntity[], importance?: ImportanceLevel, ttlDays?: number | null): Promise<boolean>
+  createRelations(relations: MemoryRelation[]): Promise<boolean>
+  addObservations(entityName: string, observations: string[], importance?: ImportanceLevel, ttlDays?: number | null): Promise<boolean>
+  searchNodes(query: string): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }>
+  readGraph(): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }>
+  deleteEntity(entityName: string): Promise<boolean>
+
+  // High-Level Operations
+  remember(projectPath: string, fact: string, category?: string): Promise<boolean>
+  rememberPattern(pattern: string, context: string): Promise<boolean>
+  rememberErrorFix(error: string, solution: string): Promise<boolean>
+  getRelevantMemories(context: string, maxResults?: number): Promise<string>
+  extractLearnings(projectPath: string, userMessage: string, assistantResponse: string): Promise<void>
+
+  // Maintenance
+  pruneExpired(fallbackRetentionDays?: number): Promise<number>
+  getMemoryFilePath(): Promise<string>
+}
+
+// Importance levels (1-5)
+type ImportanceLevel = 1 | 2 | 3 | 4 | 5;
+// 1 = ephemeral (1d TTL), 2 = low (7d), 3 = normal (30d), 4 = high (90d), 5 = permanent
+```
+
+**Key Features:**
+- **Per-observation TTL:** Format `[ISO_DATE|importance:N|ttl:N] content`
+- **Auto-pruning:** Expired observations pruned on `initialize()`
+- **Multi-query search:** Extracts keyword groups, runs parallel searches, ranks by importance
+- **Deduplication:** Concurrent start/stop calls share the same Promise
+
+> **Note:** This is the legacy V1 memory system. Memory V2 (MemoryServiceV2) is now the primary system.
+
+### MemoryServiceV2
+
+**Location:** `src/renderer/services/memoryServiceV2.ts`
+
+Manages per-project markdown-based memory with cross-tab synchronization via Tauri events.
+
+```typescript
+class MemoryServiceV2 {
+  // Lifecycle
+  initialize(): Promise<boolean>         // Init rust state, set up event listener, prune expired
+  cleanup(): Promise<void>               // Remove event listeners
+
+  // Event Subscription
+  onMemoryUpdated(projectId: string, callback: (projectId: string) => void): () => void
+
+  // Write Operations
+  addLearning(projectPath: string, content: string, importance?: ImportanceLevel): Promise<boolean>
+  addError(projectPath: string, errorDesc: string, solution: string, importance?: ImportanceLevel): Promise<boolean>
+  addPattern(projectPath: string, patternName: string, description: string, importance?: ImportanceLevel): Promise<boolean>
+  setBrief(projectPath: string, brief: string): Promise<boolean>
+  addPreference(content: string, importance?: ImportanceLevel): Promise<boolean>
+  addGlobalPattern(patternName: string, description: string, importance?: ImportanceLevel): Promise<boolean>
+
+  // Read Operations
+  getProject(projectPath: string): Promise<ProjectMemory | null>
+  getGlobal(): Promise<GlobalMemory | null>
+  listProjects(): Promise<ProjectMemoryInfo[]>
+  buildContext(projectPath: string, tokenBudget?: number): Promise<{ context: string; tokenEstimate: number }>
+
+  // Maintenance
+  deleteEntry(projectPath: string | null, category: string, entryId: string): Promise<boolean>
+  pruneExpired(): Promise<number>
+  clearProject(projectPath: string): Promise<boolean>
+  getBasePath(): Promise<string>
+}
+
+interface MemoryEntry {
+  id: string;
+  content: string;
+  importance: number;      // 1-5
+  ttl_days: number | null; // null = permanent
+  created_at: string;      // ISO date
+  category: string;        // error, learning, pattern, preference, context
+}
+
+interface ProjectMemory {
+  project_id: string;
+  project_path: string;
+  brief: string;
+  learnings: MemoryEntry[];
+  errors: MemoryEntry[];
+  patterns: MemoryEntry[];
+  last_updated: string | null;
+}
+
+interface GlobalMemory {
+  preferences: MemoryEntry[];
+  patterns: MemoryEntry[];
+}
+```
+
+**Key Features:**
+- **Per-project folders:** `~/.yume/memory/projects/{hash}/`
+- **Global folder:** `~/.yume/memory/global/`
+- **Markdown files:** `learnings.md`, `errors.md`, `patterns.md`, `brief.md`, `preferences.md`
+- **Cross-tab sync:** Tauri `memory-updated` event notifies all tabs of changes
+- **Centralized writer:** Rust service with RwLock prevents race conditions
+- **Atomic writes:** Write to .tmp file, then rename
+
 ### CompactionService
 
 **Location:** `src/renderer/services/compactionService.ts`
 
-Handles context compaction with auto-trigger at 60% (with 38% buffer like Claude Code).
+Handles context compaction with dynamic thresholds (default T=75%: 70% warning, 75% auto-trigger, 80% force).
 
 ```typescript
 class CompactionService {
@@ -1985,8 +2859,8 @@ class CompactionService {
 }
 
 interface CompactionConfig {
-  autoThreshold: number;   // 0.60 (60%)
-  forceThreshold: number;  // 0.65 (65%)
+  autoThreshold: number;   // 0.75 (75%) default
+  forceThreshold: number;  // 0.80 (80%) default, auto + 5%
   preserveContext: boolean;
   generateManifest: boolean;
 }
@@ -2805,22 +3679,22 @@ await invoke('delete_custom_command', {
 ```typescript
 import { invoke } from '@tauri-apps/api/core';
 
-// Update context usage (triggers auto-compaction at 60%)
+// Update context usage (triggers warning at 70%, auto-compact at 75%)
 const action = await invoke('update_context_usage', {
   session_id: sessionId,
-  usage: 0.55  // 55% - warning threshold
+  usage: 0.70  // 70% - warning threshold
 });
 
 // Get compaction configuration
 const config = await invoke('get_compaction_config');
-console.log('Auto threshold:', config.auto_threshold);  // 0.60
-console.log('Force threshold:', config.force_threshold);  // 0.65
+console.log('Auto threshold:', config.auto_threshold);  // 0.75 (75%)
+console.log('Force threshold:', config.force_threshold);  // 0.80 (80%)
 
 // Update compaction configuration
 await invoke('update_compaction_config', {
   config: {
-    auto_threshold: 0.60,       // Auto-compact at 60%
-    force_threshold: 0.65,      // Force compact at 65%
+    auto_threshold: 0.75,       // Auto-compact at 75%
+    force_threshold: 0.80,      // Force compact at 80%
     preserve_context: true,
     generate_manifest: true
   }

@@ -1,7 +1,7 @@
 # Yume Complete Troubleshooting Guide
 
-**Version:** 0.6.0
-**Last Updated:** January 28, 2026
+**Version:** 0.6.6
+**Last Updated:** January 29, 2026
 **Platforms:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -9,16 +9,16 @@
 1. [Installation Issues](#1-installation-issues)
 2. [Startup Problems](#2-startup-problems)
 3. [Claude CLI Issues](#3-claude-cli-issues)
-4. [Session Management Problems](#4-session-management-problems)
+4. [Session Management](#4-session-management-problems)
 5. [Performance Issues](#5-performance-issues)
 6. [UI/Display Problems](#6-uidisplay-problems)
-7. [Network & Connection Issues](#7-network--connection-issues)
-8. [Database & Storage Issues](#8-database--storage-issues)
-9. [Memory & Resource Issues](#9-memory--resource-issues)
-10. [Platform-Specific Issues](#10-platform-specific-issues)
+7. [Network & Connection](#7-network--connection-issues)
+8. [Database & Storage](#8-database--storage-issues)
+9. [Memory & Resources](#9-memory--resource-issues)
+10. [Platform-Specific](#10-platform-specific-issues)
 11. [Advanced Debugging](#11-advanced-debugging)
 12. [Error Codes Reference](#12-error-codes-reference)
-13. [Multi-Provider (Active)](#13-multi-provider-active)
+13. [Multi-Provider](#13-multi-provider-active)
 
 ---
 
@@ -41,8 +41,6 @@ sudo xattr -rd com.apple.quarantine /Applications/Yume.app
 # Solution 3: Allow in System Preferences
 System Preferences > Security & Privacy > General > "Open Anyway"
 ```
-
-**Prevention**: Sign and notarize the app properly
 
 #### Issue: "The application 'Yume' can't be opened"
 
@@ -325,11 +323,14 @@ claude --version
 
 #### Solution:
 ```bash
-# Update Claude CLI (if using npm)
-npm update -g @anthropic-ai/claude-code
+# Update Claude CLI
+claude update
 
-# Yume can also auto-update Claude CLI on startup (enabled by default)
-# Check Settings > Auto-update Claude CLI
+# Or reinstall via npm
+npm install -g @anthropic-ai/claude-code
+
+# Yume auto-updates Claude CLI on startup (enabled by default)
+# Toggle in Settings > Auto-update Claude CLI
 ```
 
 ### 3.3 Authentication Issues
@@ -364,25 +365,16 @@ claude config get api_key
 
 #### Issue: Can't find Claude in WSL
 
-**Complete WSL setup**:
+**WSL setup**:
 ```powershell
-# 1. Enable WSL
-wsl --install
-
-# 2. Set WSL version
-wsl --set-default-version 2
-
-# 3. Install Ubuntu
+# 1. Install WSL with Ubuntu
 wsl --install -d Ubuntu
 
-# 4. Enter WSL
+# 2. Enter WSL and install Claude CLI
 wsl
+npm install -g @anthropic-ai/claude-code
 
-# 5. Install Claude in WSL
-curl -O https://claude-cli-install.sh
-bash claude-cli-install.sh
-
-# 6. Configure path in Yume
+# 3. Configure path in Yume settings
 {
   "claudeBinaryPath": "wsl",
   "wslCommand": "/home/username/.local/bin/claude"
@@ -405,17 +397,12 @@ console.log('Connected:', store.isConnected);
 console.log('Server port:', store.serverPort);
 ```
 
-**Note:** The server runs as a unified binary on each platform:
-- macOS: `yume-bin-macos-arm64` (Apple Silicon) or `yume-bin-macos-x64` (Intel)
-- Windows: `yume-bin-windows-x64.exe` (build script exists, binary not yet bundled)
-- Linux: `yume-bin-linux-x64` (build script exists, binary not yet bundled)
+**Server binaries** (unified binary with server + yume-cli):
+- macOS: `yume-bin-macos-arm64` / `yume-bin-macos-x64` (bundled)
+- Windows: `yume-bin-windows-x64.exe` (build script exists)
+- Linux: `yume-bin-linux-x64` (build script exists)
 
-Multi-provider CLI shim binaries:
-- `yume-cli-macos-arm64` / `yume-cli-macos-x64` - complete
-- `yume-cli-windows-x64.exe` / `yume-cli-linux-x64` - pending
-
-Fallback .cjs files at project root for development:
-- `server-claude-macos.cjs`, `server-claude-windows.cjs`, `server-claude-linux.cjs`
+Development source files at project root: `server-claude-*.cjs`
 
 **2. Test WebSocket connection**:
 ```javascript
@@ -1167,8 +1154,8 @@ echo "=== End Health Check ==="
 
 ### Support Channels
 
-1. **GitHub Issues**: https://github.com/aofp/yume/issues
-2. **Documentation**: See `docs/` directory in the repository
+- **GitHub Issues**: https://github.com/aofp/yume/issues
+- **Documentation**: `docs/` directory in repository
 
 ### Information to Provide
 
@@ -1220,9 +1207,9 @@ copy %LOCALAPPDATA%\yume\logs\server.log yume-debug\
 
 ## 13. Multi-Provider
 
-> **Note:** Multi-provider support is disabled by default via feature flags (`PROVIDER_GEMINI_AVAILABLE: false`, `PROVIDER_OPENAI_AVAILABLE: false`). Enable in `src/renderer/config/features.ts` if needed.
+> **Note:** Multi-provider support is disabled by default (`PROVIDER_GEMINI_AVAILABLE: false`, `PROVIDER_OPENAI_AVAILABLE: false` in `src/renderer/config/features.ts`).
 
-These items apply once Gemini/OpenAI providers are enabled via `yume-cli`.
+These issues apply when Gemini/OpenAI providers are enabled via `yume-cli`.
 
 ### 13.1 `yume-cli` not found
 **Symptoms**: "Provider binary missing" or no output when starting a session  
@@ -1258,4 +1245,4 @@ These items apply once Gemini/OpenAI providers are enabled via `yume-cli`.
 
 ---
 
-This troubleshooting guide covers common issues and known future-provider scenarios. For issues not covered here, please open an issue at https://github.com/aofp/yume/issues with detailed information about your problem.
+For issues not covered here, open an issue at https://github.com/aofp/yume/issues with system info and reproduction steps.

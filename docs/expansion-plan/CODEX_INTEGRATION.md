@@ -1,35 +1,30 @@
 # Codex / OpenAI Integration Plan
 
-> **Last Updated:** 2026-01-28
+> **Last Updated:** 2026-01-29
 > **Implementation Status:** ~85% complete
 
 ## Implementation Summary
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Provider Definition | ✅ Complete | `models.ts` with Codex 5.1 Mini/5.2 |
-| Provider Service | ✅ Complete | Enable/disable via `providersService.ts` |
-| Provider UI | ✅ Complete | Settings tab, selector, no-provider modal |
-| CLI Detection | ✅ Complete | `detect_provider_support` Tauri command |
-| Backend Spawner | ✅ Complete | `yume_cli_spawner.rs` with OpenAI enum |
-| Reasoning Effort | ✅ Complete | `reasoning_effort` param in spawner |
-| yume-cli Provider | ✅ Complete | `src-yume-cli/src/providers/openai.ts` |
-| Stream Translation | ✅ Complete | Codex CLI → Claude format in yume-cli |
-| Auth Verification | ❌ Pending | Manual user authentication required |
+| Provider Definition | Done | `models.ts` with Codex 5.1 Mini/5.2 |
+| Provider Service | Done | Enable/disable via `providersService.ts` |
+| Provider UI | Done | Settings tab, selector, no-provider modal |
+| CLI Detection | Done | `detect_provider_support` Tauri command |
+| Backend Spawner | Done | `yume_cli_spawner.rs` with OpenAI enum |
+| Reasoning Effort | Done | `reasoning_effort` param in spawner |
+| yume-cli Provider | Done | `src-yume-cli/src/providers/openai.ts` |
+| Stream Translation | Done | Codex CLI to Claude format in yume-cli |
+| Auth Verification | Pending | Manual user authentication required |
 
 ## Objective
-Enable Yume to drive OpenAI-compatible models (Codex/GPT-4o/O1) through the official `codex` CLI. A thin `yume-cli` shim spawns the official CLI and translates its stream-json output to Claude-compatible format.
+Enable Yume to drive OpenAI models (Codex/GPT-4o/O1) through the official `codex` CLI. The `yume-cli` shim spawns the official CLI and translates its stream-json output to Claude-compatible format.
 
 ## Integration Strategy (Official CLI + Shim)
 1. **Primary Path:** `yume-cli --provider openai` spawns the official `codex` CLI binary.
 2. **Translation Layer:** `yume-cli` parses the Codex stream-json output and translates it to Claude-compatible format.
 3. **No Direct API Calls:** `yume-cli` does not make REST calls to OpenAI API - it delegates to the official CLI.
 4. **No SDKs in Server:** No `openai` npm package or other SDK usage in Yume's server or Rust core.
-
-**Note:** GitHub Copilot CLI (`gh copilot`) has been removed from the plan due to:
-- Limited capabilities (no file editing, no tool calls)
-- Fragile PTY screen-scraping required
-- OpenAI `codex` CLI provides full functionality
 
 ## Authentication
 Authentication is handled entirely by the official `codex` CLI. Yume does **not** manage API keys.
@@ -178,32 +173,28 @@ If models emit reasoning or "thinking" signals:
 
 ## Context Window Limits
 
-**Current models in `models.ts`:**
-- `gpt-5.1-codex-mini` (200K context, 100K output, reasoning_effort: low)
-- `gpt-5.2-codex` (200K context, 100K output, reasoning_effort: xhigh, supports thinking)
+**UI models (`models.ts`):**
+- `gpt-5.2-codex` (200K/100K, reasoning_effort: xhigh, thinking)
+- `gpt-5.1-codex-mini` (200K/100K, reasoning_effort: low)
 
-**Models supported in yume-cli `openai.ts`:**
-- `gpt-4o` (128K context, 16K output)
-- `gpt-4o-mini` (128K context, 16K output)
-- `o1` (200K context, 100K output)
-- `o1-mini` (128K context, 65K output)
-- `o3-mini` (200K context, 100K output)
+**Extended models in yume-cli (`openai.ts`):**
+- `gpt-4o` (128K/16K)
+- `gpt-4o-mini` (128K/16K)
+- `o1` (200K/100K)
+- `o1-mini` (128K/65K)
+- `o3-mini` (200K/100K)
 
-| Model | Input Limit | Output Limit | Compaction Threshold |
-|-------|-------------|--------------|---------------------|
-| gpt-5.2-codex | 200,000 | 100,000 | 60% (~120K tokens) |
-| gpt-5.1-codex-mini | 200,000 | 100,000 | 60% |
-| gpt-4o | 128,000 | 16,384 | 60% (~77K tokens) |
-| gpt-4o-mini | 128,000 | 16,384 | 60% |
-| o1 | 200,000 | 100,000 | 60% (~120K tokens) |
-| o1-mini | 128,000 | 65,536 | 60% |
-| o3-mini | 200,000 | 100,000 | 60% |
+| Model | Context | Output | Compaction |
+|-------|---------|--------|------------|
+| gpt-5.2-codex | 200K | 100K | 60% |
+| gpt-5.1-codex-mini | 200K | 100K | 60% |
+| gpt-4o | 128K | 16K | 60% |
+| gpt-4o-mini | 128K | 16K | 60% |
+| o1 | 200K | 100K | 60% |
+| o1-mini | 128K | 65K | 60% |
+| o3-mini | 200K | 100K | 60% |
 
-### Compaction Note
-
-OpenAI models have smaller context than Gemini, so compaction behaves more like Claude:
-- Threshold at 60% (same as Claude)
-- O1/O3 reasoning models output can be very long; watch output limits
+Compaction uses 60% threshold (same as Claude). O1/O3 reasoning models have large outputs.
 
 ## Rate Limit Handling
 
@@ -304,22 +295,6 @@ function parseRateLimitHeaders(headers: Headers): RateLimitState {
   - Link to installation instructions (`npm install -g @openai/codex`)
 - **Event Flow:** Reuse `claude-message:{sessionId}` events to avoid frontend refactors.
 
-## Research Checklist
-- Confirm which OpenAI endpoints support tool calls + streaming (Chat vs Responses).
-- Validate usage fields for cost tracking (input/output tokens).
-- Validate model naming conventions (stable IDs for analytics).
-- Confirm rate limits and error codes (429, 503) for retry logic.
-- Confirm partial tool-call JSON chunking behavior.
-
-## Implementation Steps
-1. Install and test the official `codex-cli` package to understand its stream-json format.
-2. Implement CLI spawner in `yume-cli` that launches `codex` binary with appropriate args.
-3. Build stream-json translation layer to convert Codex messages to Claude-compatible format.
-4. Implement CLI detection and auth verification commands.
-5. Wire `yume-cli --provider openai` into Yume's server adapter.
-6. Add UI for CLI installation status and auth verification.
-7. Run golden transcript tests on macOS, Windows, Linux.
-
 ## Implemented Tool Detection (in `openai.ts`)
 
 The OpenAI provider detects tool types from command patterns:
@@ -345,20 +320,18 @@ The codex CLI uses `--json` output format with events like:
 - `item.completed` - content (agent_message, reasoning, command_execution, file_read, etc.)
 - `turn.completed` - usage info
 
-## User Documentation
+## Remaining Work
+- Manual auth verification (user must run `codex login` separately)
+- Golden transcript tests across platforms
 
-Users will need to:
-1. Install the Codex CLI globally:
-   ```bash
-   npm install -g @openai/codex
-   ```
+## User Setup
 
-2. Authenticate with their OpenAI account:
-   ```bash
-   codex login
-   ```
+```bash
+# 1. Install Codex CLI
+npm install -g @openai/codex
 
-3. Select OpenAI as their provider in Yume's settings
-4. Choose an OpenAI model (Codex 5.2, Codex 5.1 Mini)
+# 2. Authenticate
+codex login
+```
 
-Yume will verify the CLI is installed and authenticated before allowing OpenAI sessions to start.
+Then select OpenAI as provider in Yume settings. Yume verifies CLI installation and auth status before starting sessions.

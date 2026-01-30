@@ -1,13 +1,14 @@
 # Competitor Deep Dives
 
-*Last Updated: January 11, 2026 (Added Claudia, Crystal, plugin system)*
+*Last Updated: January 29, 2026*
 
 ## IDE-Based Competitors
 
 ### Cursor
 
 **Type**: AI-augmented IDE (VS Code fork)
-**Valuation**: $29.3B (2025), **$1B+ ARR** (Dec 2025)
+**Valuation**: $29.3B (Jan 2026)
+**ARR**: $1B+ (Dec 2025)
 **Adoption**: 50%+ Fortune 500 companies
 **Funding**: Series D $2.3B (Dec 2025)
 **Price**: $20/mo Pro, $200/mo Ultra, $40/user Teams
@@ -17,7 +18,8 @@
 - **Agent Mode (Cmd+I)**: Plans multi-step tasks, edits multiple files, runs terminal
 - **Composer**: MoE model with codebase-wide semantic search
 - **Background Agents (v0.50)**: Parallel tasks via git worktrees
-- **Bugbot**: Watches code changes, flags potential errors
+- **Bugbot**: Watches code changes, flags potential errors - **70%+ resolution rate, 2M+ PRs/month**
+- **Bugbot Autofix (Beta)**: Auto-spawns Cloud Agent to fix found bugs
 - **Debug Mode (v2.2)**: Generates hypotheses, instruments logging, verifies fixes
 - **Visual Browser Editor (v2.2)**: Design + code with browser sidebar and component tree
 - **Memories**: AI recalls context from previous sessions
@@ -26,14 +28,16 @@
 - **AI Code Reviews**: Find/fix bugs in sidepanel (separate from Bugbot)
 - **Plan Mode**: Inline Mermaid diagrams, send to-dos to new agents
 - **Layout Customization**: 4 default layouts (agent, editor, zen, browser), Cmd+Opt+Tab
+- **Security Hooks**: Semgrep (vulnerability scan), Endor Labs (malicious deps), Snyk (Evo Agent Guard)
 
 **Strengths**:
 - Market leader with massive adoption and $1B+ ARR
 - VS Code extension ecosystem
-- Multi-model support (OpenAI, Claude, Gemini, xAI)
+- Multi-model support: GPT-5.2, Claude Opus 4.5, Gemini 3 Pro, Grok Code
 - Enterprise-ready (SOC 2, SSO)
 - Proprietary speed-optimized models
 - Acquired Graphite for enhanced git workflow
+- Bugbot at 70%+ resolution (up from 52%)
 
 **Weaknesses**:
 - Performance issues persist (freezing, memory leaks)
@@ -44,39 +48,54 @@
 - WSL integration memory issues
 
 **Recent Updates (Jan 2026)**:
-- **Jan 8, 2026**: New CLI controls for models, MCP management, rules, major hooks performance
-- **Jan 6, 2026**: "Hooks for security and platform teams" partnership announcement
-- v2.3 (Dec 2025): Process separation for stability
-- v2.2 (Dec 2025): Debug Mode, Visual Editor, Plan Mode with Mermaid
-- Acquired Graphite (Dec 22, 2025): Enhanced git workflow integration
-- Series D $2.3B, passed $1B ARR (Dec 4, 2025)
+- **Bugbot v11**: Resolution rate 52% → 70%+, bugs flagged 0.4 → 0.7 per run
+- **Bugbot Autofix (Beta)**: Auto-spawns Cloud Agent to fix bugs
+- **Parallel Agent Judging**: Auto-recommends best solution after all agents finish
+- **Security Integrations**: Semgrep, Endor Labs, Snyk hooks partnerships
+- **Debug Mode**: Reproduces and fixes tricky bugs via runtime instrumentation
+- **Plan Mode + Mermaid**: Inline diagrams, send todos to new agents
+- **Browser Layout Editor**: Move elements, update CSS in real-time
+- **Layout Customization**: 4 layouts (agent, editor, zen, browser)
+- Experimenting with agents running autonomously for weeks
+- Acquired Graphite (Dec 22, 2025): Enhanced git workflow
 
 **2026 Roadmap**:
 - Hooks for enterprise security/platform teams
 - Proprietary models optimized for coding
 - Air-gapped enterprise deployments
+- Autonomous long-running agents
 
-**Relevance to Yume**: Cursor's scale proves demand. But performance complaints validate yume's native Rust approach. Their $1B ARR shows market size, but our $21 one-time disrupts their model.
+**Relevance to Yume**: Cursor's scale proves demand. But performance complaints validate yume's native Rust approach. Their $1B ARR shows market size, but our $21 one-time disrupts their model. Security hooks partnerships show enterprise direction.
 
 ---
 
 ### Windsurf
 
-**Type**: AI IDE (VS Code fork, by Windsurf - formerly Codeium)
+**Type**: AI IDE (VS Code fork)
 **Price**: $15/mo Pro, $30/user Teams, $60+/user Enterprise
-**Status**: Company rebranded from Codeium to Windsurf in 2026
+**Status**: Company rebranded from Codeium to Windsurf. **Acquired by OpenAI for $3B** (May 2025)
 
 **Key Features**:
 - **Cascade**: Agent combining copilot + autonomous modes (40% faster time-to-first-commit on 1M+ LOC)
-- **SWE-1.5 Model**: 950 tok/s, near Claude 4.5 performance at 13x speed
-- **Fast Context**: 2,800+ tok/s codebase understanding
+- **SWE-grep**: Fast Context subagent - 2,800+ tok/s, 20x faster code search
 - **Flow (2026)**: Shared workspace where AI finishes your refactors without losing context
-- **Memories**: User rules + auto-generated preferences (now with auto-generate toggle)
+- **Memories**: User rules + auto-generated preferences (auto-generate toggle)
 - **Planning Mode (Wave 10)**: Short/long-term project understanding
 - **Multi-Agent Sessions (Wave 13)**: Parallel agent workflows with git worktrees, side-by-side Cascade panes
 - **Codemaps (Beta)**: Visual code mapping
 - **Lifeguard (Beta)**: In-IDE bug detection
 - **BYOK Claude 4**: Bring your own API key for Sonnet/Opus 4 (including thinking models)
+- **Context Window Usage Meter**: Real-time context % in footer
+- **Voice Input**: Speak into chat
+- **Turbo Mode**: Auto-execute terminal commands
+- **DeepWiki**: Hover over symbols for AI documentation
+- **Vibe and Replace**: AI-powered find and replace
+
+**Model Support (Jan 2026)**:
+- GPT-5.2-Codex (4 reasoning levels: low/medium/high/xhigh)
+- GPT-5.1 / GPT-5.1-Codex (variable thinking)
+- Gemini 3 Flash (Gemini 3 Pro reasoning at Flash speed)
+- Claude Opus 4.5 / Sonnet 4.5 (BYOK)
 
 **Strengths**:
 - Best automatic context selection (no manual @ tagging)
@@ -84,7 +103,7 @@
 - Cleaner UI than Cursor
 - Cheaper pricing ($15 vs $20)
 - Plugins for 40+ IDEs (JetBrains, Vim, XCode)
-- Flow feature for seamless AI collaboration
+- Priority processing for guaranteed ~50 tok/s
 
 **Weaknesses**:
 - Struggles with files >300-500 lines
@@ -92,28 +111,26 @@
 - Credit system discrepancies
 - WSL crashing issues
 - Not SOC2 compliant
-- "Beta experience" feel
+- **Trustpilot skews 1-star** - wasted credits, unstable performance
+- Acquisition integration (OpenAI)
 
 **Recent Updates (Jan 2026)**:
-- **Acquisition by Cognition AI**: Definitive agreement reached; OpenAI and Google were also interested
+- **Acquired by OpenAI for $3B**: Completed May 2025
 - **Context Window Usage Meter**: Real-time meter in footer (REDUCES YUME ADVANTAGE)
-- **Windsurf Previews**: Preview locally run websites in IDE or browser
-- **Voice Input**: Speak into chat instead of typing
-- **Company Rebrand**: Codeium → Windsurf (extension now "Windsurf Plugin")
-- **GPT-5.2**: Available with 0x credits for paid users (limited time)
-- **Gemini 3 Pro**: Low/High available for Trial/Pro/Teams (preview)
-- **Claude 4 BYOK**: Sonnet, Opus, and thinking variants via user API keys
-- **Priority Processing**: 2x rate for GPT-5.1 with ~50 tokens/sec guaranteed
+- **GPT-5.2-Codex**: 4 reasoning effort levels
+- **Gemini 3 Flash**: Pro reasoning at Flash speed
+- **Voice Input**: Speak instead of typing
+- **Turbo Mode**: Auto-execute terminal commands
+- **DeepWiki Integration**: AI-powered code documentation on hover
+- **Vibe and Replace**: AI find/replace transformations
 - Wave 13: Multi-agent with git worktrees, side-by-side Cascade
-- Auto-Generate Memories toggle
+- Priority Processing: 2x rate for ~50 tok/s guaranteed
 - Enterprise .codeiumignore in ~/.codeium/
-- Granular `.windsurf/rules` configuration
+- MCP integrations (GitHub, Slack, Stripe, Figma)
 
-**Recognition**: Named "Leader in 2025 Gartner Magic Quadrant for AI Code Assistants"
+**Recognition**: "Leader in 2025 Gartner Magic Quadrant for AI Code Assistants"
 
-**Corporate History**: OpenAI's $3B acquisition failed; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
-
-**Relevance to Yume**: Windsurf now has context meter (reduces our advantage). Their Wave 13 multi-agent with git worktrees shows market direction. Acquisition uncertainty may affect product direction.
+**Relevance to Yume**: Windsurf now has context meter (reduces our advantage). OpenAI acquisition may shift product direction. Voice input is interesting but niche. Their multi-agent + git worktrees approach validates yume's git branch isolation.
 
 ---
 
@@ -126,12 +143,13 @@
 - 120 FPS rendering (GPUI framework)
 - 58ms response time (vs 97ms VS Code)
 - **Agentic Editing**: Natural language code changes with editable diff view
-- **Edit Prediction**: Multi-line tab completion with Zeta (Zed's own open-source model)
+- **Edit Prediction**: Multi-line tab completion with Zeta (Zed's open-source model)
 - **Inline Transformations**: Send selected code to LLM
 - **Text Threads**: Plain text LLM interface (just an editor)
 - Agent Panel: No pre-indexing required
 - Real-time collaboration built-in
 - Privacy-focused: Code conversations not logged/used for training
+- **Dev Containers (Jan 2026)**: Initial support with Podman
 
 **Strengths**:
 - Fastest editor by far (Rust + GPU)
@@ -140,6 +158,7 @@
 - Growing fast (9% Rust dev adoption)
 - BYOK support + Ollama for local models
 - Privacy by default
+- AI commit messages respect rules files (AGENTS.md)
 
 **Weaknesses**:
 - Smaller extension ecosystem
@@ -147,19 +166,23 @@
 - Fewer AI features than Cursor
 - Prompt limits on free tier
 
-**Recent Updates (2026)**:
-- Agentic editing with editable diff view
-- Zeta open-source language model for Edit Prediction
-- $20/mo Pro plan with 500 prompts
-- Enhanced privacy controls
+**Recent Updates (Jan 2026)**:
+- **Dev Containers**: Initial support with Podman
+- **Zeta Self-Hosted**: No login required for custom Zeta backends
+- **AI Commit Messages**: Now respect rules files (AGENTS.md)
+- Edit Prediction provider config in Settings UI
+- GitHub Enterprise Copilot sign-in improved
+- Ollama auto_discover setting for model filtering
+- Tree view for Git panel
+- SQL syntax highlighting in Python files
 
-**Relevance to Yume**: Zed validates native Rust performance. Their Zeta model and privacy focus are differentiators. Tauri is the right architecture.
+**Relevance to Yume**: Zed validates native Rust performance. Their Zeta model and privacy focus are differentiators. Tauri is the right architecture. Dev Containers support shows enterprise direction.
 
 ---
 
 ## Direct Claude Code GUI Competitors
 
-### Crystal by Stravu (NEW - 2025)
+### Crystal by Stravu
 
 **Type**: Claude Code + Codex GUI (open source, Electron)
 **Price**: Free (MIT License)
@@ -191,7 +214,7 @@
 - ❌ No themes, hooks, or customization
 - ❌ No stream timers or @ mentions
 
-**Relevance to Yume**: Interesting multi-model approach, but different focus. They optimize for parallel agent comparison; we optimize for single-session excellence with Claude. Their git worktree feature is unique but complex.
+**Relevance to Yume**: Interesting multi-model approach, but different focus. They optimize for parallel agent comparison; we optimize for single-session excellence with Claude. Yume's git branch isolation matches their worktree approach.
 
 ---
 
@@ -220,12 +243,13 @@
 
 ---
 
-### Opcode
+### Opcode (Formerly Claudia)
 
 **Type**: Claude Code desktop GUI (open source, Tauri 2)
 **Price**: Free (AGPL license)
-**GitHub**: github.com/winfunc/opcode
+**GitHub**: github.com/winfunc/opcode (19K+ stars)
 **Website**: opcode.sh
+**Status**: Rebranded from Claudia to Opcode (Jan 2026) with complete UI revamp
 
 **Key Features**:
 - Visual project browser (~/.claude/projects/)
@@ -238,21 +262,24 @@
 - CLAUDE.md editor with live preview
 - Session forking from checkpoints
 - SQLite local storage (fully local/self-hosted)
+- **Feature parity with Claude Code 2.1** (claimed)
 
 **Strengths**:
 - Free/open source (AGPL)
+- **19K+ GitHub stars** - strong community
 - CLAUDE.md visual editor with live preview
 - Per-agent permission controls
 - No telemetry (only Claude API calls)
 - Session forking capability
 - Also built on Tauri 2
+- Complete UI revamp (faster, cleaner)
 
 **Weaknesses**:
 - ❌ No 5h/7-day Anthropic limit tracking (only cost)
 - ❌ No hook system (0 events vs yume's 9)
 - ❌ No Yume Guard (built-in security hook)
-- ❌ No themes (yume has 30)
-- ❌ No built-in agents (yume has 5)
+- ❌ No themes (yume has 12)
+- ❌ No built-in agents (yume has 4)
 - ❌ No auto-compaction
 - ❌ No crash recovery
 - ❌ No keyboard-first design (yume has 32+)
@@ -263,33 +290,38 @@
 - ❌ No custom commands with templates
 - ❌ No virtualized message list
 - ❌ No history/rollback panel
+- ❌ No memory system
+- ❌ No multi-provider support
 
 **Yume vs Opcode Summary**:
 | Feature | Yume | Opcode |
 |---------|----------|--------|
 | 5h + 7d limit tracking | ✅ | ❌ |
+| Memory system (TTL, importance) | ✅ | ❌ |
 | Yume Guard | ✅ Built-in security | ❌ |
 | Hook system | ✅ 9 events | ❌ |
 | @ mention system | ✅ @r, @m, folders | ❌ |
 | Stream timers | ✅ Live durations | ❌ |
 | Ultrathink support | ✅ Cmd+K + highlighting | ❌ |
 | History/rollback panel | ✅ | ❌ |
-| Themes | ✅ 30 | ❌ |
-| Built-in agents | ✅ 5 | ❌ |
-| Auto-compaction | ✅ 60%/65% | ❌ |
+| Themes | ✅ 12 | ❌ |
+| Built-in agents | ✅ 4 | ❌ |
+| Auto-compaction | ✅ Dynamic thresholds | ❌ |
 | Crash recovery | ✅ | ❌ |
 | Keyboard shortcuts | ✅ 32+ | ❌ |
-| Custom commands | ✅ 12 defaults | ❌ |
+| Custom commands | ✅ 5 defaults + user-defined | ❌ |
 | Bash mode (!/$) | ✅ | ❌ |
 | Drag & drop | ✅ | ❌ |
+| Multi-provider | ✅ | ❌ |
 | CLAUDE.md editor | ✅ | ✅ |
 | Git diff viewer | ✅ | ✅ |
 | MCP support | ✅ | ✅ |
 | Checkpoints | ✅ | ✅ |
 | Session forking | ❌ | ✅ |
+| GitHub stars | ~100 | 19K+ |
 | Price | $21 one-time | Free |
 
-**Relevance to Yume**: Direct competitor, also Tauri-based. Opcode is free but feature-limited. Yume's paid model funds 15+ unique features they lack. Their session forking is only remaining differentiator (CLAUDE.md editor now in both).
+**Relevance to Yume**: Direct competitor, also Tauri-based. Opcode has community momentum (19K stars) but Yume is technically superior in 15+ categories. Their Jan 2026 rebrand and UI revamp shows active development. Session forking remains their only unique feature.
 
 ---
 
@@ -454,7 +486,7 @@
 **Key Features**:
 - **Coding Agent**: Assign issues from GitHub, Azure Boards, Raycast, Linear, Slack, Teams
 - **Cloud Agent (VS 2026)**: Delegate tasks from Visual Studio, runs in GitHub Actions
-- **Agent Skills**: Folders with instructions/scripts auto-loaded when relevant (Dec 2025)
+- **Agent Skills**: Folders with instructions/scripts auto-loaded when relevant
 - **Agent Mode + MCP**: Independent code translation, auto subtasks, tool calls, self-healing
 - **Multi-Model (Jan 2026)**: GPT-5.2 GA, Claude Opus 4.5 GA, Gemini 3 Flash preview
 - Custom agents for frontend, docs, testing, etc.
@@ -464,7 +496,7 @@
 - Massive ecosystem and GitHub integration
 - Enterprise trusted (VS 2026 GA)
 - Multi-IDE + cloud execution
-- Multi-model support now
+- Multi-model support (GPT-5.2, Claude Opus 4.5, Gemini 3 Flash)
 
 **Weaknesses**:
 - More expensive than competitors
@@ -493,7 +525,7 @@
 - Instant completions
 - Chat + multi-file understanding
 - Highly customizable
-- **NEW: CLI with TUI/Headless Mode** - Can run as coding agent or background agent
+- **CLI with TUI/Headless Mode** - Can run as coding agent or background agent
 - **Custom Assistants** - Multiple assistants with different configurations
 - **Background Agents** - Battle-tested workflows for GitHub, Sentry, Linear
 - **Rules Generation** - AI can write rules for you in agent mode
@@ -506,7 +538,8 @@
 - Open source
 - No vendor lock-in
 - Great for air-gapped environments
-- Now has CLI mode competing with Claude Code
+- CLI mode competing with Claude Code
+- Background agents for workflows
 
 **Weaknesses**:
 - Less polished UX
@@ -548,10 +581,10 @@
 | Tool | Type | Price | Agentic | Tab Complete | Multi-Agent | Native | ARR/Status |
 |------|------|-------|---------|--------------|-------------|--------|------------|
 | **Cursor** | IDE | $20-200/mo | Yes (background) | Yes (250 tok/s) | Yes (8+ parallel) | No (Electron) | $1B+ ARR |
-| **Windsurf** | IDE | $15-60/mo | Yes (Cascade) | Yes | Yes (Wave 13) | No (Electron) | Rebranded |
+| **Windsurf** | IDE | $15-60/mo | Yes (Cascade) | Yes | Yes (Wave 13) | No (Electron) | OpenAI |
 | **Zed** | IDE | Free-$20/mo | Yes | Yes (Zeta) | No | Yes (Rust) | Growing |
 | **Claude Code CLI** | CLI | Pro/Max | Yes (subagents) | No | Yes | Terminal | 80.9% SWE |
-| **Yume** | Desktop | $21 one-time | Yes (via Claude) | No | Yes (5 agents) | Yes (Tauri/Rust) | Indie |
+| **Yume** | Desktop | $21 one-time | Yes (via Claude) | No | Yes (4 agents) | Yes (Tauri/Rust) | Indie |
 | **Opcode** | Desktop | Free | Yes | No | Yes | Yes (Tauri) | OSS |
 | **Aider** | CLI | API costs | Partial | No | No | Terminal/Browser | OSS |
 | **Cline** | Extension | API costs | Yes | No | No | No (VS Code) | OSS |
@@ -569,12 +602,12 @@
 | Cost tracking | ❌ | Partial | ✅ | ❌ | ✅ Full | No |
 | **5h/7d limit tracking** | ❌ | ❌ | ❌ | ❌ | ✅ | **Unique** |
 | Checkpoints | ❌ | ❌ | ✅ | ❌ | ✅ | No |
-| Auto-compact | ❌ | ❌ | ❌ | ❌ | ✅ 60%/65% | **Unique** |
+| Auto-compact | ❌ | ❌ | ❌ | ❌ | ✅ 70%/75%/80% | **Unique** |
 | Analytics | ❌ | ❌ | ✅ Cost | ❌ | ✅ Project+cost | **Advantage** |
 | MCP support | ❌ | ✅ | ✅ | ❌ | ✅ Full UI | No |
-| Themes | ~5 | ~3 | ❌ | ❌ | ✅ **30 themes** | **Advantage** |
-| Built-in agents | ❌ | ❌ | ❌ | ❌ | ✅ **5 agents** | **Unique** |
-| Custom commands | ❌ | ❌ | ❌ | ❌ | ✅ 12 defaults | **Unique** |
+| Themes | ~5 | ~3 | ❌ | ❌ | ✅ **12 themes** | **Advantage** |
+| Built-in agents | ❌ | ❌ | ❌ | ❌ | ✅ **4 agents** | **Unique** |
+| Custom commands | ❌ | ❌ | ❌ | ❌ | ✅ 5 defaults + custom | **Unique** |
 | Hooks system | Partial | ❌ | ❌ | ❌ | ✅ 9 events | **Advantage** |
 | Yume Guard | ❌ | ❌ | ❌ | ❌ | ✅ Security hook | **Unique** |
 | @ mention system | ❌ | ❌ | ❌ | ❌ | ✅ @r, @m, folders | **Unique** |
@@ -585,9 +618,9 @@
 | Crash recovery | ❌ | ❌ | ❌ | ❌ | ✅ | **Unique** |
 | Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ | ✅ 32+ | No |
 | Drag & drop | ✅ | ✅ | ❌ | ❌ | ✅ | No |
-| Light mode | ✅ | ✅ | ? | ? | ❌ | Gap |
-| Memories | ✅ | ✅ | ❌ | ❌ | ❌ | Gap |
-| Command palette | ✅ | ✅ | ❌ | ❌ | ❌ | Gap |
+| Light mode | ✅ | ✅ | ? | ? | ❌ (OLED focus) | Design choice |
+| Memories | ✅ | ✅ | ❌ | ❌ | ✅ Memory V2 | No |
+| Command palette | ✅ | ✅ | ❌ | ❌ | ✅ Cmd+P | No |
 | CLAUDE.md editor | ❌ | ❌ | ✅ | ❌ | ✅ | No |
 | Background agents | ✅ | ✅ | ✅ | ✅ | ✅ Via Claude | No |
 | Multi-model | ❌ | ❌ | ❌ | ✅ Claude+Codex | ❌ | - |
@@ -614,7 +647,7 @@
 | **5h/7d Limit Tracking** | ✅ UNIQUE | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Token Counter** | ✅ Visual | Partial | ❌ | Partial | ✅ | ❌ | ❌ |
 | **Cost Tracking** | ✅ Full | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **Auto-Compaction** | ✅ 60/65% | ✅ 95% | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Auto-Compaction** | ✅ 70%/75%/80% | ✅ 95% | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Usage Analytics** | ✅ project+cost | ✅ /stats heatmap | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **Streak Tracking** | ❌ gap | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Peak Hour Analysis** | ❌ gap | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -625,7 +658,7 @@
 |---------|----------|------------|--------|----------|--------|-----|-------|
 | **@ Mentions** | ✅ @r/@m/folders | Partial | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Ultrathink Support** | ✅ Cmd+K + rainbow | Typing only | ❌ | ❌ | ❌ | ❌ | Partial |
-| **Slash Commands** | ✅ 12+ custom | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Slash Commands** | ✅ 8+ custom | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **Bash Mode (!/$)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **Drag & Drop** | ✅ Files+tabs | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | **Image Paste** | ✅ | ✅ | ✅ | ✅ | ❓ | ✅ | ✅ |
@@ -645,9 +678,9 @@
 
 | Feature | Yume | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
 |---------|----------|------------|--------|----------|--------|-----|-------|
-| **Built-in Agents** | ✅ 5 agents | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Built-in Agents** | ✅ 4 agents | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Custom Agents** | ✅ | ✅ /agents | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **Themes** | ✅ 30 | ❌ terminal | ~5 | ~3 | ❌ | ✅ | ❌ |
+| **Themes** | ✅ 12 | ❌ terminal | ~5 | ~3 | ❌ | ✅ | ❌ |
 | **Font Customization** | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | **Background Opacity** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
@@ -673,9 +706,9 @@
 | Feature | Yume | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
 |---------|----------|------------|--------|----------|--------|-----|-------|
 | **Keyboard Shortcuts** | ✅ 32+ | ~10 | ✅ Many | ✅ | ❌ | ✅ | ~5 |
-| **Light Mode** | ❌ | ❌ | ✅ | ✅ | ❓ | ✅ | ❌ |
-| **Command Palette** | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **Memories** | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Light Mode** | ❌ (OLED focus) | ❌ | ✅ | ✅ | ❓ | ✅ | ❌ |
+| **Command Palette** | ✅ Cmd+P (56 cmds) | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Memories** | ✅ Memory V2 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -687,8 +720,8 @@
 | **Native Performance** | Tauri/Rust, zero flickering, <50ms latency |
 | **5h/7d Limit Tracking** | ONLY tool tracking actual Anthropic subscription limits |
 | **$21 One-Time** | No subscriptions, no recurring fees |
-| **5 Built-in Agents** | architect, explorer, implementer, guardian, specialist |
-| **30 Themes** | More than any competitor |
+| **4 Built-in Agents** | architect, explorer, implementer, guardian |
+| **12 Themes** | More than any competitor |
 | **9 Hook Events** | Most comprehensive hook system |
 | **Yume Guard** | Built-in security blocking dangerous commands |
 | **Stream Timers** | Live thinking/bash/compacting duration |
@@ -700,10 +733,8 @@
 #### Yume Weaknesses
 | Weakness | Competitor Advantage |
 |----------|---------------------|
-| No light mode | Cursor, Windsurf, Zed have it |
-| No command palette | Standard UX pattern missing |
+| No light mode | Cursor, Windsurf, Zed have it (design choice - OLED focus) |
 | No session forking | Opcode can fork from checkpoints |
-| No memories | Cursor/Windsurf persist preferences |
 | No tab completion | IDE feature (different product category) |
 | No activity heatmap | CLI has year/week grid |
 | No streak tracking | CLI tracks current/longest streaks |
@@ -731,17 +762,17 @@
 
 3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yume's $21 one-time is a major differentiator vs Cursor/Windsurf. Opcode is free but has fewer features.
 
-4. **Context memory matters**: Both Cursor and Windsurf added "Memories" - persisting preferences across sessions. Gap for yume.
+4. **Context memory matters**: Both Cursor and Windsurf added "Memories". Yume has Memory V2 system with per-project markdown, TTL, and importance levels - more sophisticated than competitor approaches.
 
 5. **Checkpoint/timeline**: ✅ Both yume and Opcode have this. No longer unique, but still differentiator vs IDEs.
 
-6. **Auto-compaction is unique**: No competitor (including Opcode) auto-compacts at 60%/65%. Genuine yume innovation.
+6. **Auto-compaction is unique**: No competitor (including Opcode) has dynamic auto-compaction thresholds (default: 70% warn, 75% auto, 80% force). Genuine yume innovation.
 
-7. **30 themes vs ~5**: Yume has massively more theming options than any competitor. Opcode has none.
+7. **12 themes vs ~5**: Yume has massively more theming options than any competitor. Opcode has none.
 
-8. **5 built-in agents**: Yume agents (architect, explorer, implementer, guardian, specialist) are unique - Opcode doesn't have this.
+8. **4 built-in agents**: Yume agents (architect, explorer, implementer, guardian) are unique - Opcode doesn't have this.
 
-9. **Custom commands system**: 12 defaults + slash commands with templates - Opcode doesn't have this.
+9. **Custom commands system**: 5 defaults (/compact, /init, /commit, /review, /iterate) + user-defined commands with templates - Opcode doesn't have this.
 
 10. **Hooks system (9 events)**: More comprehensive than any competitor's. Opcode has 0 events.
 
@@ -765,4 +796,4 @@
 
 20. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
 
-21. **Opcode has 15K+ stars but lacks key features**: They have community momentum but yume is technically superior in 12+ categories. Opcode's only advantage is session forking.
+21. **Opcode has 19K+ stars but lacks key features**: They have community momentum but yume is technically superior in 12+ categories. Opcode's only advantage is session forking.

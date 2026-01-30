@@ -1,36 +1,29 @@
 # VSCode Integration Architecture
 
 ## Overview
-Yume integrates with VSCode not just as an external tool, but by embedding its full GUI directly within VSCode's interface. This allows developers to use Yume's advanced features (agents, timeline, diff view) without leaving their editor.
+Yume embeds its full GUI within VSCode via a webview panel. Developers use Yume's features (agents, timeline, diff view) without leaving the editor.
 
 ## Architecture
 
-### 1. The "Headless" Server
-Yume's core logic runs in a local Node.js server (`server-claude-*.cjs`). This server is capable of serving the frontend application via HTTP.
+### 1. Node.js Server
+The local server (`server-claude-*.cjs`) serves the frontend via HTTP:
+- `/vscode-app` - React frontend optimized for VSCode
+- `/vscode-status` - Connection status `{ connected, count }`
+- `/vscode-ui` - Entry point redirecting to `/vscode-app` with query params
 
-*   **Endpoints:**
-    *   `/vscode-app`: Serves the built React frontend optimized for VSCode.
-    *   `/vscode-status`: Returns connection status (`{ connected: boolean, count: number }`).
-    *   `/vscode-ui`: Entry point that redirects to `/vscode-app` with necessary query params.
+### 2. VSCode Extension (`yume-vscode`)
+Lightweight extension acting as container:
+- **Source:** `src-tauri/resources/yume-vscode`
+- **Packaged:** `resources/yume-vscode.vsix`
+- **Function:** Starts/locates Yume server, creates WebviewPanel, loads `http://localhost:<port>/vscode-ui?vscode=1&cwd=<workspace>`
 
-### 2. The VSCode Extension (`yume-vscode`)
-A lightweight VSCode extension (VSIX) acts as the container.
-*   **Location:** `src-tauri/resources/yume-vscode` (source) / `resources/yume-vscode.vsix` (packaged).
-*   **Function:**
-    1.  Starts or locates the Yume server process.
-    2.  Creates a **WebviewPanel** in VSCode.
-    3.  Loads `http://localhost:<port>/vscode-ui?vscode=1&cwd=<workspace>` into the webview.
-    4.  Establishes a communication bridge (if necessary) for specific IDE commands.
-
-### 3. Frontend Adaptations (`src/renderer/`)
-The React application detects it is running inside VSCode via URL parameters (`?vscode=1`).
-
-*   **Detection:** `src/renderer/services/tauriApi.ts` -> `isVSCode()`.
-*   **UI Changes:**
-    *   **Window Controls:** Hides native window controls (traffic lights, title bar) as VSCode handles the window.
-    *   **Context Bar:** Adapts buttons (hides Files/Git buttons if they overlap with VSCode native functionality, creates specific "Open in Editor" actions).
-    *   **Theme:** Syncs with VSCode's current theme (Dark/Light/High Contrast).
-    *   **Status Indicator:** Displays a "VSCode Connected" badge.
+### 3. Frontend Adaptations
+React app detects VSCode mode via `?vscode=1` URL parameter:
+- **Detection:** `tauriApi.ts` - `isVSCode()`
+- **Window Controls:** Hidden (VSCode handles window)
+- **Context Bar:** Adapts buttons, adds "Open in Editor" actions
+- **Theme:** Syncs with VSCode theme (Dark/Light/High Contrast)
+- **Status:** "VSCode Connected" badge
 
 ## Communication Flow
 
@@ -54,13 +47,12 @@ sequenceDiagram
 
 ## Features
 
-*   **Unified Context:** Yume automatically picks up the `cwd` (Current Working Directory) from the VSCode workspace.
-*   **Theme Sync:** Yume's UI blends seamlessly with VSCode's colors.
-*   **Focus Management:** Intelligent focus handling between the editor and the Yume webview.
-*   **Extension Management:**
-    *   Auto-install logic in `src-tauri/src/commands/plugins.rs`.
-    *   Settings toggle to Install/Uninstall the extension directly from Yume.
+- **Unified Context:** Auto-picks `cwd` from VSCode workspace
+- **Theme Sync:** Blends with VSCode colors
+- **Focus Management:** Intelligent focus between editor and webview
+- **Extension Management:** Auto-install via `plugins.rs`, settings toggle to install/uninstall
 
-## Future Improvements
-*   **Direct File Opening:** Allow Yume to click a file reference and open it in the VSCode editor tab (via `vscode-link` protocol or socket message).
-*   **Diagnostics Sync:** Stream VSCode diagnostics (errors/warnings) into Yume context automatically.
+## Future Work
+
+- **Direct File Opening:** Click file reference to open in VSCode editor tab
+- **Diagnostics Sync:** Stream VSCode errors/warnings into Yume context

@@ -1,245 +1,132 @@
-# Provider & Model Reference (Single Source of Truth)
+# Provider & Model Reference
 
-This document consolidates all provider, model, context window, pricing, and capability information. **Update this file when models or pricing change.**
+Single source of truth for providers, models, context limits, and pricing. Update this file when models or pricing change.
 
-> **Last Updated:** 2026-01-28
+> **Last Updated:** 2026-01-29
 
 ## Provider Overview
 
-| Provider | CLI Command | Auth Method | Installation | Status |
-|----------|-------------|-------------|--------------|--------|
-| Claude (Anthropic) | `claude` | Auto on first run | Bundled with Yume | ✅ Production |
-| Gemini (Google) | `yume-cli --provider gemini`<br>(spawns `gemini` CLI) | `gemini auth login` | `npm install -g @google/gemini-cli` | 🚧 85% Complete |
-| OpenAI/Codex | `yume-cli --provider openai`<br>(spawns `codex` CLI) | `codex login` | `npm install -g @openai/codex` | 🚧 85% Complete |
+| Provider | CLI | Auth | Installation | Status |
+|----------|-----|------|--------------|--------|
+| Claude | `claude` | Auto on first run | Bundled | Production |
+| Gemini | `yume-cli --provider gemini` | `gemini auth login` | `npm i -g @google/gemini-cli` | 85% |
+| OpenAI | `yume-cli --provider openai` | `codex login` | `npm i -g @openai/codex` | 85% |
 
-**Feature Flags (in `config/features.ts`):**
-- `PROVIDER_GEMINI_AVAILABLE: false` (disabled by default)
-- `PROVIDER_OPENAI_AVAILABLE: false` (disabled by default)
+**Feature Flags (`config/features.ts`):**
+- `PROVIDER_GEMINI_AVAILABLE: false`
+- `PROVIDER_OPENAI_AVAILABLE: false`
 
 ## Model Registry
 
-### Claude (Anthropic) - Source: `src/renderer/config/models.ts`
+### Claude (Source: `models.ts`)
 
-| Model ID | Short Name | Display Name | Context | Output | Tools | Thinking |
-|----------|-----------|--------------|---------|--------|-------|----------|
-| claude-sonnet-4-5-20250929 | sonnet | Sonnet 4.5 | 200K | 8K | ✅ | ✅ |
-| claude-opus-4-5-20251101 | opus | Opus 4.5 | 200K | 8K | ✅ | ✅ |
+| Model ID | Short | Context | Output | Thinking |
+|----------|-------|---------|--------|----------|
+| claude-sonnet-4-5-20250929 | sonnet | 200K | 8K | Yes |
+| claude-opus-4-5-20251101 | opus | 200K | 8K | Yes |
 
-**Analytics Key Format:** `claude:sonnet-4.5`, `claude:opus-4.5`
+### Gemini (Source: `models.ts`)
 
-### Gemini (Google) - Source: `src/renderer/config/models.ts`
+| Model ID | Short | Context | Output | Thinking |
+|----------|-------|---------|--------|----------|
+| gemini-2.5-pro | gemini-pro | 1M | 8K | Yes |
+| gemini-2.5-flash | gemini-flash | 1M | 8K | No |
 
-| Model ID | Short Name | Display Name | Context | Output | Tools | Thinking |
-|----------|-----------|--------------|---------|--------|-------|----------|
-| gemini-2.5-pro | gemini-pro | Gemini 2.5 Pro | 1M | 8K | ✅ | ✅ |
-| gemini-2.5-flash | gemini-flash | Gemini 2.5 Flash | 1M | 8K | ✅ | ❌ |
+**Extended (yume-cli):** gemini-2.0-flash (1M/8K), gemini-2.0-flash-thinking-exp (32K/8K), gemini-3-flash (1M/65K), gemini-1.5-pro/flash (1M/8K)
 
-**Extended models in yume-cli `gemini.ts`:**
-- gemini-2.0-flash (1M/8K)
-- gemini-2.0-flash-thinking-exp (32K/8K, thinking)
-- gemini-3-flash (1M/65K)
-- gemini-1.5-pro (1M/8K)
-- gemini-1.5-flash (1M/8K)
+### OpenAI (Source: `models.ts`)
 
-**Analytics Key Format:** `gemini:2.5-pro`, `gemini:2.5-flash`
+| Model ID | Short | Context | Output | Reasoning |
+|----------|-------|---------|--------|-----------|
+| gpt-5.2-codex | codex | 200K | 100K | xhigh |
+| gpt-5.1-codex-mini | codex-mini | 200K | 100K | low |
 
-### OpenAI/Codex - Source: `src/renderer/config/models.ts`
-
-| Model ID | Short Name | Display Name | Context | Output | Tools | Reasoning |
-|----------|-----------|--------------|---------|--------|-------|-----------|
-| gpt-5.2-codex | codex | Codex 5.2 | 200K | 100K | ✅ | ✅ (xhigh) |
-| gpt-5.1-codex-mini | codex-mini | Codex 5.1 Mini | 200K | 100K | ✅ | ✅ (low) |
-
-**Extended models in yume-cli `openai.ts`:**
-- gpt-4o (128K/16K)
-- gpt-4o-mini (128K/16K)
-- o1 (200K/100K)
-- o1-mini (128K/65K)
-- o3-mini (200K/100K)
-
-**Analytics Key Format:** `openai:codex-5.2`, `openai:codex-5.1-mini`
+**Extended (yume-cli):** gpt-4o (128K/16K), gpt-4o-mini (128K/16K), o1 (200K/100K), o1-mini (128K/65K), o3-mini (200K/100K)
 
 ## Pricing (per 1M tokens, USD)
 
-### Claude
+| Provider | Model | Input | Output | Notes |
+|----------|-------|-------|--------|-------|
+| Claude | opus-4.5 | $15 | $75 | Cache: $1.50 read, $18.75 write |
+| Claude | sonnet-4.5 | $3 | $15 | Cache: $0.30 read, $3.75 write |
+| Gemini | 2.0-flash | $0.10 | $0.40 | No caching |
+| Gemini | 1.5-pro | $3.50 | $10.50 | >128K: 2x |
+| Gemini | 1.5-flash | $0.075 | $0.30 | >128K: 2x |
+| OpenAI | gpt-4o | $2.50 | $10 | |
+| OpenAI | gpt-4o-mini | $0.15 | $0.60 | |
+| OpenAI | o1 | $15 | $60 | Reasoning = output |
+| OpenAI | o1-mini | $3 | $12 | |
+| OpenAI | o3-mini | $1.10 | $4.40 | |
 
-| Model | Input | Output | Cache Read | Cache Write |
-|-------|-------|--------|------------|-------------|
-| claude:opus-4.5 | $15.00 | $75.00 | $1.50 | $18.75 |
-| claude:sonnet-4.5 | $3.00 | $15.00 | $0.30 | $3.75 |
+## Compaction Thresholds
 
-### Gemini
+| Provider | Model Type | Threshold |
+|----------|------------|-----------|
+| Claude | All | 60% |
+| Gemini | Standard (1M) | 80% |
+| Gemini | Thinking (32K) | 60% |
+| OpenAI | Standard | 60% |
+| OpenAI | O1/O3 | 50% |
 
-| Model | Input | Output | Cache Read | Notes |
-|-------|-------|--------|------------|-------|
-| gemini:2.0-flash | $0.10 | $0.40 | - | No caching |
-| gemini:2.0-thinking | $0.10 | $0.40 | - | Thinking tokens included |
-| gemini:1.5-pro | $3.50 | $10.50 | $0.88 | >128K: 2x price |
-| gemini:1.5-flash | $0.075 | $0.30 | $0.02 | >128K: 2x price |
+## Feature Parity
 
-### OpenAI
-
-| Model | Input | Output | Notes |
-|-------|-------|--------|-------|
-| openai:gpt-4o | $2.50 | $10.00 | |
-| openai:gpt-4o-mini | $0.15 | $0.60 | |
-| openai:o1 | $15.00 | $60.00 | Reasoning tokens billed as output |
-| openai:o1-mini | $3.00 | $12.00 | |
-| openai:o3-mini | $1.10 | $4.40 | |
-
-## Context Compaction Thresholds
-
-| Provider | Model Type | Threshold | Reason |
-|----------|------------|-----------|--------|
-| Claude | All | 60% | Standard - matches Claude Code |
-| Gemini | Standard (1M) | 80% | Large context, rarely needed |
-| Gemini | Thinking (32K) | 60% | Small context, standard |
-| OpenAI | Standard | 60% | Standard |
-| OpenAI | O1/O3 | 50% | Large outputs need buffer |
-
-## Feature Parity Matrix
-
-### Core Features
-
-| Feature | Claude | Gemini | OpenAI | Notes |
-|---------|--------|--------|--------|-------|
-| Text streaming | ✅ | ✅ | ✅ | Required |
-| Tool/function calls | ✅ | ✅ | ✅ | Required |
-| Multi-turn conversation | ✅ | ✅ | ✅ | Required |
-| Session resume | ✅ Native | ✅ Shim | ✅ Shim | Claude uses ~/.claude |
-| Token counting | ✅ | ✅ | ✅ | Tiktoken fallback |
-| Cost tracking | ✅ | ✅ | ✅ | Via result.total_cost_usd |
-
-### Advanced Features
-
-| Feature | Claude | Gemini | OpenAI | Translation Strategy |
-|---------|--------|--------|--------|---------------------|
-| Thinking blocks | ✅ | ⚠️ 2.0-thinking | ⚠️ O1/O3 | Preserve if available, else drop |
-| Extended thinking | ✅ | ❌ | ✅ O1 | Provider-specific |
-| Prompt caching | ✅ | ✅ | ❌ | Ignore cache tokens on switch |
-| MCP support | ✅ | ❌ | ❌ | Claude-only, disable on switch |
-| Artifacts | ✅ | ❌ | ❌ | Inline content on switch |
-| Custom agents | ✅ | ✅ | ✅ | Via system prompt |
-| Skills | ✅ | ✅ | ✅ | Via system prompt injection |
-| Hooks | ✅ | ⚠️ | ⚠️ | PreToolUse/PostToolUse only |
-
-### Input/Output Support
-
-| Feature | Claude | Gemini | OpenAI | Notes |
-|---------|--------|--------|--------|-------|
-| Image input | ✅ | ✅ | ✅ | Base64 required |
-| PDF input | ✅ | ✅ | ❌ | OpenAI lacks native PDF |
-| Image output | ❌ | ✅ | ✅ DALL-E | Via tool |
-| Code execution | ✅ Bash | ❌ | ✅ | Via tool |
-| Web search | ✅ | ✅ Grounding | ✅ Browsing | Provider-specific |
+| Feature | Claude | Gemini | OpenAI |
+|---------|--------|--------|--------|
+| Streaming | Yes | Yes | Yes |
+| Tool calls | Yes | Yes | Yes |
+| Multi-turn | Yes | Yes | Yes |
+| Session resume | Native | Shim | Shim |
+| Thinking blocks | Yes | 2.0-thinking | O1/O3 |
+| Prompt caching | Yes | Yes | No |
+| MCP support | Yes | No | No |
+| Image input | Yes | Yes | Yes |
+| PDF input | Yes | Yes | No |
+| Custom agents | Yes | Yes | Yes |
+| Skills | Yes | Yes | Yes |
 
 ## Tool Compatibility
 
-### Core Tools (All Providers)
+**Core Tools (all providers):** Read, Write, Edit, MultiEdit, Glob, Grep, LS, Bash
 
-These tools must work identically across all providers:
+**Extended Tools:**
+| Tool | Claude | Gemini | OpenAI |
+|------|--------|--------|--------|
+| WebFetch | Yes | Yes | Yes |
+| WebSearch | Yes | Yes | Yes |
+| NotebookEdit | Yes | Yes | Yes |
+| Task | Yes | Partial | Partial |
+| LSP | Yes | No | No |
 
-| Tool | Claude | Gemini | OpenAI | Schema |
-|------|--------|--------|--------|--------|
-| Read | ✅ | ✅ | ✅ | `{ file_path }` |
-| Write | ✅ | ✅ | ✅ | `{ file_path, content }` |
-| Edit | ✅ | ✅ | ✅ | `{ file_path, old_string, new_string }` |
-| MultiEdit | ✅ | ✅ | ✅ | `{ file_path, edits[] }` |
-| Glob | ✅ | ✅ | ✅ | `{ pattern, path? }` |
-| Grep | ✅ | ✅ | ✅ | `{ pattern, path? }` |
-| LS | ✅ | ✅ | ✅ | `{ path? }` |
-| Bash | ✅ | ✅ | ✅ | `{ command }` |
+## Authentication
 
-### Extended Tools
+| Provider | Setup |
+|----------|-------|
+| Claude | `claude` (auto-auth on first run) |
+| Gemini | `npm i -g @google/gemini-cli && gemini auth login` |
+| OpenAI | `npm i -g @openai/codex && codex login` |
 
-| Tool | Claude | Gemini | OpenAI | Notes |
-|------|--------|--------|--------|-------|
-| WebFetch | ✅ | ✅ | ✅ | |
-| WebSearch | ✅ | ✅ | ✅ | Different backends |
-| NotebookEdit | ✅ | ✅ | ✅ | |
-| Task (subagents) | ✅ | ⚠️ | ⚠️ | Simulated via nested calls |
-| TodoWrite | ✅ | ✅ | ✅ | |
-| LSP | ✅ | ❌ | ❌ | Claude-only |
-| Skill | ✅ | ✅ | ✅ | |
-| KillShell | ✅ | ✅ | ✅ | |
-
-## Authentication Methods
-
-### Claude
-```bash
-# Auto-authenticates on first run
-claude
-# Follow the prompts to authenticate with Anthropic
-```
-
-### Gemini
-```bash
-# 1. Install the official Gemini CLI
-npm install -g @google/gemini-cli
-
-# 2. Authenticate with Google
-gemini auth login
-# Opens browser for OAuth authentication
-
-# 3. Verify authentication
-gemini auth status
-```
-
-**Note:** Yume does not manage Gemini authentication. Users authenticate separately with the official `gemini` CLI.
-
-### OpenAI/Codex
-```bash
-# 1. Install the official Codex CLI
-npm install -g @openai/codex
-
-# 2. Authenticate with OpenAI
-codex login
-# Follow prompts to authenticate
-
-# 3. Verify authentication (check if logged in)
-codex --help  # Should show user info if logged in
-```
-
-**Note:** Yume does not manage OpenAI authentication. Users authenticate separately with the official `codex` CLI.
+Yume does not manage Gemini/OpenAI auth. Users authenticate via official CLIs.
 
 ## Rate Limits
 
-| Provider | Requests/min | Tokens/min | Strategy |
-|----------|-------------|------------|----------|
-| Claude | ~60 | ~100K | Generous |
-| Gemini | ~60 | ~1M | Very generous |
-| OpenAI Tier 1 | 500 | 30K | Aggressive |
-| OpenAI Tier 4+ | 10K | 800K | More headroom |
-| Azure OpenAI | Varies | Varies | Per deployment |
+| Provider | Requests/min | Tokens/min |
+|----------|-------------|------------|
+| Claude | ~60 | ~100K |
+| Gemini | ~60 | ~1M |
+| OpenAI Tier 1 | 500 | 30K |
+| OpenAI Tier 4+ | 10K | 800K |
 
-## Provider-Specific Considerations
+## Provider Notes
 
-### Claude
-- Native session files in `~/.claude/projects/`
-- Full MCP support
-- Extended thinking with budget control
-- Artifact generation
+**Claude:** Native sessions in `~/.claude/projects/`, full MCP, extended thinking, artifacts
 
-### Gemini
-- Massive context (1M tokens)
-- Native grounding/search
-- Context caching supported
-- No native session persistence (yume-cli handles)
+**Gemini:** 1M context, grounding/search, context caching, no native sessions (yume-cli handles)
 
-### OpenAI
-- Aggressive rate limiting (especially Tier 1-2)
-- O1/O3 reasoning tokens billed as output
-- No prompt caching
-- Assistants API optional (not used by yume-cli)
+**OpenAI:** Aggressive rate limiting (Tier 1-2), O1/O3 reasoning billed as output, no caching
 
-## Updating This Document
+## Maintenance
 
 When models or pricing change:
-
-1. Update the model registry table
-2. Update pricing table
-3. Update `src/renderer/config/models.ts` to match
-4. Update `src/renderer/config/pricing.ts` (if exists)
-5. Run golden transcript tests
-
-**Last Updated:** 2026-01-28
+1. Update tables in this document
+2. Update `src/renderer/config/models.ts`
+3. Run golden transcript tests

@@ -1,7 +1,7 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.6.0
-**Last Updated:** January 28, 2026
+**Version:** 0.6.6
+**Last Updated:** January 2026
 **Status:** Production Ready
 
 ## Table of Contents
@@ -95,7 +95,7 @@ See `docs/expansion-plan/ARCHITECTURE_OVERVIEW.md` and `docs/expansion-plan/PROT
 
 ```rust
 // Core Application Entry
-lib.rs                  // Main application setup, window management
+lib.rs                  // Main application setup, window management, background agent monitoring
 main.rs                 // Entry point, initializes Tauri
 app.rs                  // App metadata constants (APP_ID, APP_NAME, APP_IDENTIFIER)
 
@@ -105,7 +105,6 @@ claude_binary.rs        // Binary detection and validation
 claude_session.rs       // Session state management
 claude_spawner.rs       // Process spawning, IPC, --append-system-prompt injection
 agents.rs               // In-memory agent CRUD (4 yume core agents)
-                        // Sync to ~/.claude/agents/ via commands/mod.rs
 
 // Server Management
 logged_server.rs        // Server process management (spawns compiled binaries)
@@ -117,25 +116,29 @@ db/mod.rs               // SQLite database (sessions, messages, analytics)
 config.rs               // Production configuration
 
 // Commands (src-tauri/src/commands/)
-commands/mod.rs         // Main command handlers (file ops, agents, etc.)
-commands/claude_commands.rs    // Claude session spawning
-commands/claude_info.rs        // Claude CLI info retrieval
-commands/claude_detector.rs    // Claude CLI detection
-commands/database.rs           // Database operations
-commands/hooks.rs              // Hook execution
-commands/compaction.rs         // Compaction triggers
-commands/mcp.rs                // MCP server management
-commands/custom_commands.rs    // Custom command utilities
+commands/mod.rs               // Main handlers (file ops, agents, settings, git, bash)
+commands/claude_commands.rs   // Claude session spawning (11 commands)
+commands/claude_info.rs       // CLI info, usage stats, API limits
+commands/claude_detector.rs   // CLI detection, WSL checks
+commands/database.rs          // Database operations (12 commands)
+commands/hooks.rs             // Hook execution (4 commands)
+commands/compaction.rs        // Compaction triggers (9 commands)
+commands/mcp.rs               // MCP server management (6 commands)
+commands/custom_commands.rs   // Custom command utilities
+commands/memory.rs            // Legacy memory graph (12 commands)
+commands/memory_v2.rs         // Memory V2 markdown system (15 commands)
+commands/background_agents.rs // Agent queue IPC (14 commands)
+commands/plugins.rs           // Plugin management (20+ commands)
 
 // Advanced Features
-compaction/mod.rs       // Auto-compaction at configurable thresholds (default 75%/80%)
+compaction/mod.rs       // Auto-compaction at configurable thresholds
+background_agents.rs    // Agent queue manager (4 concurrent, no timeout)
 hooks/mod.rs            // Hook system for customization
 mcp/mod.rs              // Model Context Protocol support
 crash_recovery.rs       // Session recovery after crashes
 
 // Utilities
 stream_parser.rs        // JSON stream parsing with token accumulation
-// NOTE: websocket/mod.rs removed (was unused - app uses Node.js Socket.IO server instead)
 process/mod.rs          // Process utilities
 process/registry.rs     // Process registry and management
 ```
@@ -880,13 +883,7 @@ impl ServerProcessGuard {
 **Location**: `src-tauri/src/commands/memory.rs`, `src/renderer/services/memoryService.ts`
 **Storage**: `~/.yume/memory.jsonl` (deprecated, auto-migrated to V2)
 
-The legacy memory graph stores entities, relations, and observations as a knowledge graph managed via Tauri invoke commands. This system is deprecated in favor of Memory V2.
-
-**Commands (12):**
-- `start_memory_server`, `stop_memory_server`, `check_memory_server`, `get_memory_file_path`
-- `memory_create_entities`, `memory_create_relations`, `memory_add_observations`
-- `memory_search_nodes`, `memory_read_graph`, `memory_delete_entity`
-- `memory_prune_old`, `memory_clear_all`
+The legacy memory graph stored entities, relations, and observations as a knowledge graph. This system is deprecated; Memory V2 is the current system.
 
 ### 7.4 Memory System V2 (Per-Project Markdown)
 
@@ -1114,30 +1111,29 @@ Features:
 
 ### Build Commands
 
-**Development**:
 ```bash
-npm run dev          # Start dev server
-npm run tauri dev    # Start Tauri dev
-npm test             # Run vitest test suites
-```
+# Development
+npm run tauri:dev              # Dev mode (auto-builds server if missing)
+npm run dev:frontend           # Frontend only (Vite)
+npm run test                   # Run vitest test suites
 
-**Production**:
-```bash
-npm run tauri:build:mac  # Build for macOS
-npm run tauri:build:win  # Build for Windows
-npm run tauri:build:linux # Build for Linux
+# Production
+npm run tauri:build:mac        # macOS .dmg (ARM64)
+npm run tauri:build:mac:x64    # macOS x64
+npm run tauri:build:win        # Windows .msi/.exe
+npm run tauri:build:linux      # Linux .AppImage/.deb
 ```
 
 ### Distribution
 
-**macOS**: DMG installer with background image  
-**Windows**: MSI/NSIS installer with uninstaller  
-**Linux**: AppImage, DEB, RPM packages
+- **macOS**: DMG installer (ARM64 and x64)
+- **Windows**: MSI/NSIS installer
+- **Linux**: AppImage, DEB, RPM packages
 
 ### Code Signing
 
-**macOS**: Requires Apple Developer Certificate ($99/year)
-**Windows**: Requires EV Certificate ($300-600/year)
+- **macOS**: Apple Developer Certificate ($99/year)
+- **Windows**: EV Certificate ($300-600/year)
 
 ### Test Infrastructure
 

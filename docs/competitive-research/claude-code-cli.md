@@ -1,12 +1,14 @@
 # Claude Code CLI - Deep Analysis
 
-*Last Updated: January 14, 2026*
+*Last Updated: January 28, 2026*
 
 *Our primary competitor and the tool yume wraps*
 
 ## Overview
 
 Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It lives in the terminal, understands codebases, and executes commands through natural language.
+
+**Current Version**: v2.1.11 (Jan 17, 2026)
 
 ## Strengths
 
@@ -19,6 +21,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - **CLAUDE.md**: Project-specific context automatically loaded
 - **Skills system**: Extensible capabilities via user-defined skills
 - **Hooks**: Auto-trigger actions (tests after changes, lint before commits)
+- **LSP Tool**: Go-to-definition, find references, hover documentation
 
 ### Model Quality
 - Powered by Claude 4.5 Opus (best-in-class reasoning)
@@ -26,23 +29,43 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - Strong multi-file understanding
 - Excellent code generation quality
 - Deep git workflow integration (90%+ of engineers use Claude for git)
+- **Opus 4.5 now available to Pro users**
 
-### Recent Improvements (Dec 2025 - Jan 2026)
-- **v2.0.74**: Reduced terminal flickering, new syntax highlighting engine
-- **v2.0.72**: Reduced terminal flickering, 3x faster @ mention suggestions
-- **v2.0.68**: Fixed IME for Chinese/Japanese/Korean, fixed CJK word navigation
-- **v2.0.67**: Fixed non-Latin text handling (Cyrillic, Greek, Arabic, Hebrew, Thai)
-- Background agents, named sessions, model switching (alt+p)
-- **`/stats` command**: Activity heatmap (year grid), streak tracking, peak hour analysis, longest session, fun token comparisons
-- Enterprise managed settings
+### v2.1.x Major Release (Jan 8-17, 2026) - 1,096 commits
+- **Shift+Enter for newlines** - Works with zero setup
+- **Hooks in frontmatter** - Add hooks directly to agents & skills frontmatter
+- **Skills improvements**: Forked context, hot reload, custom agent support, invoke with /
+- **Agents don't stop on deny** - Agents continue when you deny a tool use
+- **Language configuration** - Model responds in your language (Japanese, Spanish, etc.)
+- **Wildcard tool permissions** - e.g., `Bash(*-h*)`
+- **`/teleport`** - Send session to claude.ai/code
+- **LSP Tool** - Code intelligence (go-to-definition, find references, hover docs)
+- **PR review status** - Colored dot in prompt footer (approved/changes requested/pending/draft)
+- **Windows Package Manager** - winget installation support
+- **Setup hook event** - Triggered via --init, --init-only, --maintenance
+- **Hook timeout increase** - 60 seconds → 10 minutes
+- **Clickable file paths** - OSC 8 hyperlinks in terminals that support it
+- **Image source metadata** - Claude knows where dragged images originated
+
+### v2.0.x Improvements (Dec 2025 - Jan 2026)
+- **v2.0.74**: LSP tool, terminal-setup for Kitty/Alacritty/Zed/Warp
+- **v2.0.72**: Reduced flickering, Claude in Chrome (Beta)
+- **v2.0.70**: 3x improved memory usage, wildcard MCP tool permissions
+- **v2.0.68**: Fixed IME for Chinese/Japanese/Korean
+- **v2.0.67**: Thinking mode enabled by default for Opus 4.5
+- **v2.0.64**: `/stats` with heatmap, streaks, named sessions, `.claude/rules/` support
+- **v2.0.60**: Background agent support
+- **v2.0.58**: Opus 4.5 for Pro users
+- **v2.0.51**: Opus 4.5 launch, Claude Code for Desktop
 
 ### Major 2025 Platform Updates (176 updates shipped)
-- **Claude Agent SDK**: Renamed from Claude Code SDK; programmatic access to Claude Code capabilities
-- **Skills System**: Dynamic loading of specialized instructions via `/skills` command
+- **Claude Agent SDK**: Renamed from Claude Code SDK
+- **Plugin System**: Extend with custom commands, agents, hooks, MCP servers
+- **Skills System**: Dynamic loading of specialized instructions
 - **Custom Subagents**: `/agents` command for specialized parallel tasks
 - **LSP Integration**: Real-time diagnostics and improved code accuracy
 - **CLAUDE.md Imports**: `@path/to/file.md` syntax for modular instructions
-- **Ultrathink Mode**: Advanced reasoning triggered by "think" or "ultrathink" in prompts
+- **Ultrathink Mode**: Advanced reasoning triggered by "think" or "ultrathink"
 - **Status Line**: Customizable terminal prompt for context awareness
 - **Chrome Extension**: Browser control via Claude Code for web automation
 
@@ -51,7 +74,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - SDKs available for all major languages
 - 8M+ downloads (80x growth in 5 months)
 - Now the de-facto standard for AI-tool connections
-- Security concerns raised about unauthenticated servers (July 2025)
+- OAuth for MCP servers now supported
 
 ### 2026 Roadmap (Announced)
 - "Long running" agents for extended autonomous tasks
@@ -65,17 +88,26 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 
 ## Critical Weaknesses (Yume's Opportunity)
 
-### 1. TUI Rendering Issues (CRITICAL - Still Unresolved Jan 2026)
+### 1. TUI Rendering Issues (Improved but Not Solved)
+
+**Status**: v2.0.72+ "Reduced terminal flickering" - improved but not eliminated
 
 **Root Cause**: Full terminal redraw architecture
 
 > "Claude Code performs a full terminal redraw on every chunk of streaming output rather than doing incremental updates." - Technical analysis documented **4,000 to 6,700 scroll events per second**.
 
-**The Flickering Problem (700+ upvotes and growing, 9+ months unfixed)**:
-- VS Code/Cursor: Terminal crashes after 10-20 minutes, **loses all unsaved work**
+**The Flickering Problem (700+ upvotes, 9+ months)**:
+- VS Code/Cursor: Terminal crashes after 10-20 minutes
 - Standalone terminals: Strobe-light effects, erratic scrollbar
 - Can spawn **up to 7 parallel processes** eating CPU
-- **Accessibility hazard**: WCAG warns against >3 flashes/second; Claude does thousands
+- **Accessibility hazard**: WCAG warns against >3 flashes/second
+
+**Recent Fixes (v2.0.72-74, v2.1.x)**:
+- "Rewrote terminal renderer for buttery smooth UI" (v2.0.10)
+- "Reduced terminal flickering" (v2.0.72)
+- IME fixes for CJK languages
+- Clickable hyperlinks for file paths (OSC 8)
+- Still issues in VS Code/Cursor integrated terminals
 
 **Open Issues (Jan 2026 - Total: 4,711 open)**:
 
@@ -86,28 +118,16 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 | #17249 | Prompt Hooks Memory Leak - 800MB+ logs, infinite retries | **Critical** |
 | #17248 | Stream JSON Output Stops - stdout halts mid-session | Open |
 | #17241 | Claude Violates claude.md Rules - ignores constraints | Open |
-| #17237 | Feature: PreCompact/PostCompact hooks | Feature Request |
-| #17235 | Resume Command Hangs - 30-60s blank terminal freeze | Open |
-| #17236 | Feedback Window Auto-closes while user types | Open |
-| #17232 | Numpad Enter Key Bug - inserts `[57414u` | Open |
-| #17227 | Auto-scroll After Response - 3-5 second delay | Open |
 | #13797 | Creates issues in wrong repo - exposes sensitive info | **Critical** |
 | #11237 | **CATASTROPHIC**: git checkout without approval, lost 4 days work | **Critical** |
 | #10794 | Critical: Flickering causes complete VS Code crashes | Open |
 | #14552 | CLI input lag in extended sessions | Open |
-| #6788 | Claude is straight up broken again | Patterns |
-
-**Partial Fixes in v2.0.72-74**:
-- "Reduced terminal flickering" (but not eliminated)
-- IME fixes for CJK languages
-- Still no fundamental architecture fix
 
 **Required Workarounds**:
 - Use external terminals (Terminal.app, iTerm2), avoid VS Code
 - Limit scrollback to 500 lines
 - Run `/clear` frequently
 - Keep sessions short
-- Disable GPU acceleration
 
 ### 2. No Visual File Browser
 - Pure terminal = no visual file tree navigation
@@ -128,19 +148,18 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - No crash recovery UI
 - Resume command hangs 30-60 seconds
 
-### 6. Context Compaction Issues (Critical)
+### 6. Context Compaction Issues (Improved)
 
 **The "Groundhog Day" Effect**:
-> "After context compaction, Claude Code is definitely dumber—it doesn't know what files it was looking at and needs to re-read them. It will make mistakes you specifically corrected again earlier in the session."
+> "After context compaction, Claude Code is definitely dumber—it doesn't know what files it was looking at and needs to re-read them."
 
-**Key Problems**:
-- Auto-compact at 95% is often too late - developers recommend 85-90%
-- No way to "protect" critical context from being compacted
-- No PreCompact/PostCompact hooks (feature request #17237)
-- Bug #13929: Auto-compact fails when conversation exceeds limit, blocking manual /compact
-- Users report "racing against compaction to document what Claude just did"
+**CLI Changes**:
+- Auto-compact warning threshold raised from 60% to 80% (v1.0.51)
+- "Made auto-compacting instant" (v2.0.64)
+- PreCompact hook added (v1.0.48)
+- Still no way to "protect" critical context
 
-**Yume Advantage**: Auto-compact at 55%/60%/65% thresholds - far ahead of CLI's 95%
+**Yume Advantage**: Auto-compact at 75%/80% thresholds with visual warning at 70% - proactive vs reactive
 
 ### 7. Usage Limits & Visibility
 
@@ -195,19 +214,36 @@ Claude Code CLI requires a Claude subscription:
 - No additional API costs
 - No recurring fees
 
-## What Yume Must Solve
+## What Yume Solves (All Implemented)
 
-1. **Eliminate TUI lag** - Native desktop UI, no terminal rendering
-2. **Smooth input** - No input lag regardless of session length
-3. **Visual file management** - Tree view, drag-drop, visual diffs
-4. **Session persistence** - Visual history, easy project switching
-5. **Crash recovery** - Auto-save, session restore
-6. **IME support** - Proper Japanese/Chinese input handling
+| Problem | CLI Status | Yume Status |
+|---------|------------|-------------|
+| TUI lag/flicker | Improved, not solved | ✅ Native rendering, zero flicker |
+| Input lag | Issues in long sessions | ✅ Consistent <100ms |
+| Visual file management | No tree view | ✅ Files panel with git status |
+| Session persistence | `/resume`, `/continue` | ✅ Visual history, tab-based |
+| Crash recovery | None | ✅ Auto-save every 5 min |
+| IME support | Fixed in v2.0.68 | ✅ Native OS IME |
+| Context visibility | `/usage`, `/context` | ✅ Always-visible bar + 5h/7d limits |
+| Hooks | 9 events (v2.1.x) | ✅ 9 events + visual UI |
+| Skills | Hot reload, forked context | ✅ ReDoS-safe triggers |
+| Memory | None (relies on CLAUDE.md) | ✅ Memory V2 (per-project markdown) |
+
+## Features CLI Has That Yume Leverages
+
+| CLI Feature | Yume Integration |
+|-------------|------------------|
+| LSP Tool (v2.0.74) | Passed through |
+| /teleport (v2.1.x) | Available via CLI |
+| Plugin system | Yume has own system |
+| Skills with frontmatter | Yume extends with triggers |
+| Background agents | Yume adds git branch isolation |
+| PR review status | Passed through |
 
 ## Sources
 
-- [GitHub Issue #8618](https://github.com/anthropics/claude-code/issues/8618)
-- [GitHub Issue #14552](https://github.com/anthropics/claude-code/issues/14552)
-- [GitHub Issue #3045](https://github.com/anthropics/claude-code/issues/3045)
+- [GitHub CHANGELOG.md](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
+- [Boris Cherny on Threads](https://www.threads.com/@boris_cherny) - v2.1.0 announcement
+- [GitHub Issue #1913](https://github.com/anthropics/claude-code/issues/1913) - Flickering
 - [Peter Steinberger - The Signature Flicker](https://steipete.me/posts/2025/signature-flicker)
 - [Anthropic Engineering - Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)

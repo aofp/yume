@@ -1,12 +1,11 @@
 # Feature Gap Analysis & Improvement Opportunities
 
-*Last Updated: January 10, 2026*
+*Last Updated: January 28, 2026*
 
 ## Executive Summary
 
-Yume has achieved **complete feature parity and superiority**. We have unique features no competitor offers. Only 2 remaining gaps:
-1. **Command palette** (Cmd+P or Cmd+Shift+K)
-2. **Light mode**
+Yume has achieved **complete feature parity and superiority**. We have 15+ unique features no competitor offers. Only 1 remaining gap:
+1. **Light mode** (low priority - accessibility only)
 
 ---
 
@@ -42,10 +41,10 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 
 | Feature | Description | Yume Status |
 |---------|-------------|-----------------|
-| Parallel agents visual | See multiple agents working | ✅ AgentsModal + 5 built-in |
+| Parallel agents visual | See multiple agents working | ✅ AgentsModal + 4 built-in |
 | Agent activity timeline | Visual history of agent actions | ✅ Enabled |
 | Checkpoint visual UI | Time-travel through changes | ✅ CheckpointButton + Timeline |
-| Theme support | Dark/light/custom themes | ✅ **30 themes** (dark only) |
+| Theme support | Dark/light/custom themes | ✅ **12 themes** (dark only) |
 | Syntax highlighting | In code blocks | ✅ Implemented |
 | Markdown rendering | Pretty message display | ✅ Implemented |
 | Keyboard shortcuts | Power user efficiency | ✅ 32+ shortcuts |
@@ -58,7 +57,8 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 | Git panel | Visual git changes | ✅ With +/- line stats |
 | History panel | Message rollback | ✅ Implemented |
 | Background opacity | Window transparency | ✅ Implemented |
-| Command palette | Quick actions (Cmd+K) | ❌ Not implemented (Cmd+K used for ultrathink) |
+| Command palette | Quick actions (Cmd+P) | ✅ Implemented |
+| Memory V2 | Per-project markdown files | ✅ Implemented |
 | Light mode | Light theme option | ❌ Not implemented |
 
 ---
@@ -77,12 +77,12 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 | Checkpoints | Yes | No | No | Yes | ✅ Visual UI |
 | Timeline UI | No | No | No | Yes | ✅ Yes |
 | MCP | Yes | No | No | Yes | ✅ Full UI |
-| Built-in agents | No | No | No | No | ✅ **5 agents** |
+| Built-in agents | No | No | No | No | ✅ **4 agents** |
 | Custom commands | No | No | No | No | ✅ **Yes** |
-| Hooks system | Partial | Partial | No | No | ✅ **9 events** |
+| Hooks system | Partial | Partial | No | No | ✅ **9 events (3 active)** |
 | Security guard | No | No | No | No | ✅ **Yume Guard** |
-| Themes | No | ~5 | ~3 | No | ✅ **30 themes** |
-| Auto-compaction | Yes | No | No | No | ✅ 60%/65% |
+| Themes | No | ~5 | ~3 | No | ✅ **12 themes** |
+| Auto-compaction | Yes | No | No | No | ✅ 75%/80% |
 | Crash recovery | No | No | No | No | ✅ **UNIQUE** |
 | Keyboard shortcuts | No | Yes | Yes | No | ✅ **32+** |
 | Drag & drop | No | Yes | Yes | No | ✅ Yes |
@@ -92,8 +92,9 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 | Stream timers | No | No | No | No | ✅ **UNIQUE** |
 | Git panel | No | Yes | Yes | ? | ✅ Yes |
 | History panel | No | No | No | ? | ✅ **UNIQUE** |
+| Memory V2 | No | No | No | No | ✅ **UNIQUE** |
 | Light mode | No | Yes | Yes | ? | ❌ No |
-| Command palette | No | Yes | Yes | No | ❌ No |
+| Command palette | No | Yes | Yes | No | ✅ Yes |
 
 ---
 
@@ -103,40 +104,31 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 |---------|-------------|
 | **5h + 7-day limit tracking** | Visual quota bars in context bar |
 | **Yume Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
-| **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
+| **4 built-in agents** | architect, explorer, implementer, guardian |
 | **@ mention system** | @r (recent files), @m (modified files), folder navigation |
 | **Stream timers** | Live thinking/bash/compacting duration |
 | **History/rollback panel** | Visual message history navigation |
 | **Ultrathink highlighting** | Rainbow gradient when typing ultrathink |
 | **Cmd+K ultrathink** | Quick insert thinking mode prefix |
-| **30 themes** | Way more than any competitor |
-| **9 hook events** | Most comprehensive hook system |
+| **Memory V2** | Per-project markdown files with TTL, importance, auto-prune |
+| **12 themes** | Way more than any competitor |
+| **9 hook events (3 active)** | pre_tool_use, context_warning, compaction_trigger |
 | **Crash recovery** | Auto-save with 24hr restoration window |
 | **$21 one-time** | vs $240-2400/year subscriptions |
 
 ---
 
-## Remaining Gaps (2 items)
+## Remaining Gaps (1 item)
 
-### 1. Command Palette
-
-**Status**: Shortcut reserved (Cmd+P), implementation pending
-
-**Why it matters**: Standard UX pattern (VS Code, Slack, Notion, Linear)
-
-**Shortcut**: Cmd+P (reserved). Sessions browser moved to Cmd+J.
-
-**Effort**: Medium (2-3 days)
-
----
-
-### 2. Light Mode
+### 1. Light Mode
 
 **Status**: Not implemented
 
 **Why it matters**: Accessibility requirement
 
-**Effort**: Low (1 day - infrastructure exists with 30 themes)
+**Effort**: Low (1 day - infrastructure exists with 12 themes)
+
+**Priority**: Low - dark mode is standard for developers
 
 ---
 
@@ -156,25 +148,26 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 
 ### Phase 3: Power Features (P1-P2) ✅ COMPLETE
 1. ✅ Checkpoint/timeline UI
-2. ✅ Visual agent status (AgentsModal + 5 built-in)
+2. ✅ Visual agent status (AgentsModal + 4 built-in)
 3. ✅ Conversation search
 4. ✅ Custom commands system (/clear, /model, /title, /init, /compact)
-5. ✅ Hooks system (9 events + Yume Guard)
+5. ✅ Hooks system (9 events defined, 3 active: pre_tool_use, context_warning, compaction_trigger)
 6. ✅ @ mention system (@r, @m, folders)
 7. ✅ Ultrathink support (Cmd+K + highlighting)
 8. ✅ Git panel with line stats
 9. ✅ History/rollback panel
-10. ⬜ Command palette
+10. ✅ Command palette (Cmd+P)
+11. ✅ Memory V2 per-project markdown system
 
 ### Phase 4: Advanced (P2) ✅ MOSTLY COMPLETE
 1. ✅ MCP visual manager
 2. ✅ 32+ keyboard shortcuts
-3. ✅ 30 themes (dark mode only)
+3. ✅ 12 themes (dark mode only)
 4. ✅ Font customization
 5. ✅ System prompts
 6. ✅ Background opacity
 7. ✅ Stream indicators with timers
-8. ⬜ Light mode
+8. ⬜ Light mode (only remaining gap)
 
 ---
 
@@ -189,13 +182,13 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 - Git diff viewer
 - Git panel with +/- stats
 - Window state persistence
-- 30 themes
-- 5 built-in yume agents
+- 12 themes
+- 4 built-in yume agents
 - Custom slash commands
-- 9 hook events + Yume Guard
+- 9 hook events (3 active) + yume-guardian agent
 - MCP visual manager
 - Checkpoints + Timeline
-- Auto-compaction at 60%/65%
+- Auto-compaction at 75%/80%
 - Crash recovery (24hr)
 - Font customization
 - System prompts selector
@@ -207,9 +200,8 @@ Yume has achieved **complete feature parity and superiority**. We have unique fe
 - Bash mode (!/$)
 - Background opacity
 
-### ⬜ Remaining (4 days of work)
-1. Light mode (1 day)
-2. Command palette (2-3 days)
+### ⬜ Remaining (1 day of work)
+1. Light mode (1 day - low priority)
 
 ---
 

@@ -1,14 +1,14 @@
 # Yume Master Documentation Index
 
-**Created:** January 3, 2025
-**Updated:** January 28, 2026
-**Version:** 0.6.0
+**Created:** January 2025
+**Updated:** January 2026
+**Version:** 0.6.6
 **Total Documentation:** 11 core guides + 19 expansion plan docs + competitive research suite
-**Coverage:** Core codebase + competitive analysis + multi-provider expansion + background agents + Memory V2 system + test infrastructure documented
+**Coverage:** Core codebase, competitive analysis, multi-provider expansion, background agents, Memory V2 system, test infrastructure
 
 ---
 
-## 📚 Complete Documentation Suite
+## Complete Documentation Suite
 
 ### 1. [COMPLETE_ARCHITECTURE.md](COMPLETE_ARCHITECTURE.md)
 **Size:** ~8,500 words  
@@ -72,7 +72,7 @@
 **Depth:** Complete API documentation
 
 #### API Categories:
-1. **Tauri Commands** (183+ commands)
+1. **Tauri Commands** (199+ commands)
    - Session management
    - File operations
    - Claude binary detection
@@ -315,7 +315,7 @@
 
 ---
 
-## 🔮 Future Expansion Plans (Yume 2.0)
+## Future Expansion Plans (Yume 2.0)
 
 ### [Expansion Plan](expansion-plan/ARCHITECTURE_OVERVIEW.md)
 **Status:** ~95% COMPLETE (macOS ready, Windows/Linux build scripts exist)
@@ -378,7 +378,7 @@
 
 ---
 
-## 🔬 Deep Technical Analysis
+## Deep Technical Analysis
 
 ### Architectural Innovations
 
@@ -493,10 +493,10 @@ let force_threshold = threshold + 0.05;    // 80%
 **The Challenge**: External servers add complexity and require Node.js
 **Our Solution**: Compile server to platform-specific binaries using @yao-pkg/pkg
 
-Server binaries are stored in `src-tauri/resources/` for each platform using unified binary architecture:
-- `yume-bin-macos-arm64` / `yume-bin-macos-x64` for macOS (combines server + yume-cli)
-- `yume-cli-macos-arm64` / `yume-cli-macos-x64` shell wrappers that invoke `yume-bin-* cli`
-- Windows/Linux binaries: Build scripts exist but binaries not yet compiled
+Server binaries are stored in `src-tauri/resources/`:
+- `yume-bin-macos-arm64` / `yume-bin-macos-x64` (macOS, combines server + yume-cli)
+- `yume-cli-macos-arm64` / `yume-cli-macos-x64` shell wrappers
+- Windows/Linux: Build scripts exist but binaries not yet compiled
 
 **Benefits**:
 - No Node.js required for end users
@@ -516,25 +516,23 @@ Server binaries are stored in `src-tauri/resources/` for each platform using uni
 
 #### Yume Agents System
 
-**4 Built-in Agents** synced to `~/.claude/agents/yume-*.md`. All agents automatically use the **currently selected model** (opus or sonnet):
+**4 Built-in Agents** synced to `~/.claude/agents/yume-*.md`:
 
 | Agent | Purpose |
 |-------|---------|
 | `yume-architect` | Plans, designs, decomposes tasks |
 | `yume-explorer` | Codebase exploration (sonnet, read-only) |
 | `yume-implementer` | Small, focused code changes |
-| `yume-guardian` | Code review and auditing + domain tasks (tests, docs, devops, data) |
+| `yume-guardian` | Review, verify + domain tasks (tests, docs, devops) |
 
 **Background Agents** (Async Execution):
-- 4 concurrent agents max (`MAX_CONCURRENT_AGENTS`)
+- 4 concurrent agents max
 - Git branch isolation (`yume-async-{type}-{id}`)
 - No timeout per agent
-- Uses Claude CLI directly with `--dangerously-skip-permissions` (NOT yume-cli)
+- Uses Claude CLI with `--dangerously-skip-permissions`
 - Output to `~/.yume/agent-output/`
 - 14 Tauri commands for lifecycle management
 - Streaming isolation: does NOT control main CLI streaming state
-- Subagent results (with `parent_tool_use_id`) excluded from clearing streaming
-- Debounce timing: 700ms macOS, 2000ms Windows
 
 #### Memory V2 System
 - **Per-project markdown:** `~/.yume/memory/` with global + project folders
@@ -569,7 +567,7 @@ Server binaries are stored in `src-tauri/resources/` for each platform using uni
 
 ---
 
-## 🚀 Using This Documentation
+## Using This Documentation
 
 ### For Developers
 1. Start with [COMPLETE_ARCHITECTURE.md](COMPLETE_ARCHITECTURE.md)
@@ -593,7 +591,7 @@ Server binaries are stored in `src-tauri/resources/` for each platform using uni
 
 ---
 
-## 📈 Documentation Maintenance
+## Documentation Maintenance
 
 ### Update Triggers
 - New feature additions
@@ -613,13 +611,12 @@ Server binaries are stored in `src-tauri/resources/` for each platform using uni
 - Update dates
 
 ### Review Schedule
-- Weekly: README updates
 - Monthly: Feature documentation
 - Quarterly: Architecture review
-- Yearly: Complete overhaul
+- As needed: README updates
 
 ---
 
 ## Conclusion
 
-This documentation suite covers the core aspects of Yume - architecture, features, API reference, deployment, and troubleshooting. For questions or clarifications, refer to the specific guides listed above.
+This documentation suite covers the core aspects of Yume: architecture, features, API reference, deployment, and troubleshooting. Refer to the specific guides listed above for detailed information.

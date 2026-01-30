@@ -19,9 +19,9 @@
 
 ## Strategic Decision: Leverage Official CLIs
 We have evaluated different approaches for multi-provider support:
-*   **Option 1: Direct REST integration** - Would require API key management, tool execution, and full agent loop implementation.
+*   **Option 1: Direct REST integration** - Requires API key management, tool execution, and full agent loop.
 *   **Option 2: Wrap existing CLIs** - Screen scraping is fragile and breaks on updates.
-*   **Decision:** **Spawn official CLIs and translate their output** (`@google/gemini-cli`, `codex` CLI).
+*   **Decision:** **Spawn official CLIs and translate their output** (`@google/gemini-cli`, `@openai/codex`).
 
 This approach:
 - Delegates authentication to official CLIs (no API key storage)
@@ -36,7 +36,7 @@ A Node.js binary bundled with Yume that provides a **universal agent interface**
 1.  **CLI Spawning:** Launches the official CLI binary for the selected provider (`gemini`, `codex`).
 2.  **Stream Reading:** Reads line-delimited JSON from the CLI's stdout.
 3.  **Protocol Translation:** Converts provider-specific stream-json to Claude-compatible format.
-4.  **Agent Loop:** Implements Think → Act → Observe cycle with safety limits (50 turns, 10min timeout).
+4.  **Agent Loop:** Implements Think → Act → Observe cycle with safety limits (50 turns max).
 5.  **Local Tool Execution:** Provides fallback tool executors (Bash, Read, Write, Edit, Glob, Grep, LS).
 6.  **Plugin System:** Loads agents and skills from `~/.yume/plugins/`.
 7.  **Session Persistence:** Stores sessions in `~/.yume/sessions/{provider}/`.
@@ -143,14 +143,14 @@ Yume's backend already parses Claude stream-json. The shim must **match that pro
 
 **Note:** Codex uses `--full-auto` for auto-approval and `detectToolFromCommand()` maps bash commands (cat → Read, grep → Grep, etc.) to Claude tool types for proper UI rendering.
 
-## Why this is the Best Approach
-1.  **No Auth Management:** Official CLIs handle authentication - we never touch API keys.
-2.  **Official Tool Support:** CLIs implement tools natively - we don't need to reimplement Read/Write/Edit/etc.
-3.  **Reduced Maintenance:** Provider updates are handled by official CLIs, not our codebase.
-4.  **Simpler Code:** Pure translation logic is much simpler than full agent loop + REST integration.
-5.  **Speed:** No PTY overhead. Direct stdio streaming.
-6.  **Compatibility:** Claude-compatible stream-json keeps Tauri + frontend code intact across providers.
-7.  **User Control:** Users authenticate with official CLIs using standard methods (OAuth, API keys, etc.).
+## Why This Approach
+1.  **No Auth Management:** Official CLIs handle authentication.
+2.  **Official Tool Support:** CLIs implement tools natively.
+3.  **Reduced Maintenance:** Provider updates handled by official CLIs.
+4.  **Simpler Code:** Pure translation logic.
+5.  **Speed:** Direct stdio streaming, no PTY overhead.
+6.  **Compatibility:** Claude-compatible stream-json keeps Tauri + frontend intact.
+7.  **User Control:** Standard auth methods (OAuth, API keys, etc.).
 
 ## Cross-Platform Notes
 - Use native path separators when executing tools.
@@ -183,7 +183,6 @@ The `yume_cli_spawner.rs` module handles:
 The agent loop in `core/agent-loop.ts` implements:
 
 - **MAX_TURNS:** 50 iterations maximum
-- **MAX_DURATION_MS:** 10 minutes overall timeout
 - **MAX_HISTORY_MESSAGES:** 100 messages (auto-compaction when exceeded)
 
 These limits prevent runaway sessions and unbounded resource consumption.

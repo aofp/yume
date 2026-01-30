@@ -1,12 +1,12 @@
 # Competitive Research Overview
 
-*Last Updated: January 11, 2026*
+*Last Updated: January 29, 2026*
 
 > **For Claude Code Team**: See [Executive Summary](./executive-summary.md) for a presentation-ready overview.
 
 ## Market Landscape
 
-The AI coding assistant market in 2025 is dominated by three categories:
+The AI coding assistant market in 2026 is dominated by three categories:
 
 | Category | Tools | Approach |
 |----------|-------|----------|
@@ -15,13 +15,13 @@ The AI coding assistant market in 2025 is dominated by three categories:
 | **Extensions** | Copilot, Continue, Cline | IDE plugins/extensions |
 | **Desktop GUIs** | **Yume**, Opcode, Claudia, Crystal | Native wrappers for Claude CLI |
 
-## Key Stats (2025)
+## Key Stats (2025-2026)
 
 - 85% of developers regularly use AI tools for coding
 - 62% rely on at least one AI coding assistant
 - 9 out of 10 AI users save at least 1 hour/week
 - 1 in 5 saves 8+ hours/week
-- $4.86B market size (2023), growing 27.1% annually
+- $4.86B market size (2023), projected 27.1% annual growth
 - 46% don't trust AI output accuracy (up from 31%)
 - 66% cite "almost right" code as biggest frustration
 
@@ -51,15 +51,15 @@ The AI coding assistant market in 2025 is dominated by three categories:
 ✅ **Complete**:
 - Native rendering (no flickering/lag)
 - 32+ keyboard shortcuts
-- 30 dark themes
-- 5 built-in agents (architect, explorer, implementer, guardian, specialist)
+- 12 dark themes
+- 4 built-in agents (architect, explorer, implementer, guardian)
 - 9 hook events + Yume Guard (built-in security)
 - Checkpoints + Timeline UI
 - Files panel with git status
 - Git panel with +/- line stats
 - History/rollback panel
 - @ mentions (@r recent, @m modified, folders)
-- / commands (/clear, /model, /title, /init, /compact + custom)
+- / commands (/clear, /model, /title, /init, /compact, /commit, /review, /iterate + custom)
 - Ultrathink support (Cmd+K insert + rainbow highlighting)
 - Stream timers (thinking, bash, compacting)
 - 5h + 7-day Anthropic limit tracking (UNIQUE)
@@ -74,8 +74,7 @@ The AI coding assistant market in 2025 is dominated by three categories:
 - **Skills system** (auto-inject context based on triggers)
 - **Performance monitoring** (FPS, memory, render time)
 
-⬜ **Remaining**:
-- Light mode (1 day)
+**Note**: Light mode is not planned (OLED dark themes are the focus).
 
 ### Primary Competitor: Claude Code CLI
 
@@ -130,14 +129,14 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | **Skills system** | Auto-inject context based on triggers (file ext, keywords, regex) |
 | **5h + 7-day limit tracking** | Visual quota bars in context bar |
 | **Yume Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
-| **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
+| **4 built-in agents** | architect, explorer, implementer, guardian |
 | **@ mention system** | @r (recent), @m (modified), folder navigation |
 | **Stream timers** | Live thinking/bash/compacting duration |
 | **History/rollback panel** | Visual message history navigation |
 | **Ultrathink highlighting** | Rainbow gradient + Cmd+K insert |
-| **Command palette** | 56 commands across 10 categories |
+| **Command palette** | Cmd+P access to commands |
 | **Background agents** | 4 concurrent with git branch isolation |
-| **Memory MCP server** | Auto-learning knowledge graph |
+| **Memory V2 system** | Per-project markdown with TTL, importance levels, auto-pruning |
 | **12 themes** | OLED optimized dark themes |
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration |
@@ -151,8 +150,8 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | Plugin/Skills System | ✅ | ❌ | ❌ | ❌ |
 | 5h/7d Limit Tracking | ✅ | ❌ | ❌ | ❌ |
 | Yume Guard | ✅ | ❌ | ❌ | ❌ |
-| 5 Built-in Agents | ✅ | ❌ | ❌ | ❌ |
-| 30 Themes | ✅ | ❌ | ❌ | ❌ |
+| 4 Built-in Agents | ✅ | ❌ | ❌ | ❌ |
+| 12 Themes | ✅ | ❌ | ❌ | ❌ |
 | 9 Hook Events | ✅ | ❌ | ❌ | ❌ |
 | Stream Timers | ✅ | ❌ | ❌ | ❌ |
 | @ Mentions | ✅ | ❌ | ❌ | ❌ |
@@ -160,8 +159,8 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | Ultrathink Support | ✅ | ❌ | ❌ | ❌ |
 | Multi-Provider | ✅ (Claude+Gemini+OpenAI) | ❌ | ❌ | ✅ (Claude+Codex) |
 | Background Agents | ✅ (4 concurrent, git isolation) | ❌ | ❌ | ❌ |
-| Memory System | ✅ (MCP knowledge graph) | ❌ | ❌ | ❌ |
-| Command Palette | ✅ (56 commands) | ❌ | ❌ | ❌ |
+| Memory System | ✅ (V2 per-project markdown) | ❌ | ❌ | ❌ |
+| Command Palette | ✅ (Cmd+P) | ❌ | ❌ | ❌ |
 | YC Backed | ❌ | ❌ | ✅ | ❌ |
 | Price | $21 | Free | Free | Free |
 | Framework | Tauri | Tauri | Tauri | Electron |

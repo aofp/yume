@@ -1,25 +1,25 @@
 # Yume Roadmap
 
-**Last Updated:** January 17, 2026
-**Version:** 2.0 (Post-Competitive Analysis)
+**Last Updated:** January 29, 2026
+**Version:** 0.6.6
 
 ---
 
 ## Current State: What Makes Yume Unique
 
-### Complete Feature Summary (v1.1)
+### Complete Feature Summary (v0.6.6)
 
 | Category | Feature | Competitor Comparison |
 |----------|---------|----------------------|
-| **Background Agents** | 4 concurrent with git branch isolation | UNIQUE - no competitor has auto git branch isolation |
-| **Memory System** | MCP knowledge graph with auto-learning | UNIQUE APPROACH - competitors don't use MCP-based graph |
-| **Multi-Provider** | Claude + Gemini + OpenAI via yume-cli | UNIQUE - no other Claude wrapper |
-| **Agents** | 5 specialized agents (architect/explorer/implementer/guardian/specialist) | More focused than Cursor's generic agents |
+| **Background Agents** | 4 concurrent with git branch isolation (no timeout) | UNIQUE - no competitor has auto git branch isolation |
+| **Memory V2** | Per-project markdown files with TTL, importance, auto-prune | UNIQUE APPROACH - `~/.yume/memory/` per-project folders |
+| **Multi-Provider** | Claude + Gemini + OpenAI via yume-cli (feature-flagged off) | UNIQUE architecture - no other Claude wrapper |
+| **4 Core Agents** | yume-architect, yume-explorer, yume-implementer, yume-guardian | More focused than Cursor's generic agents |
 | **Plugin System** | 5 components (commands/agents/hooks/skills/mcp) | UNIQUE - most comprehensive |
 | **Skills** | ReDoS-protected regex triggers, context injection | UNIQUE - no competitor validates regex safety |
 | **UCF** | Unified Conversation Format for portability | UNIQUE |
 | **Analytics** | Per-project/model/date breakdowns | Better than competitors |
-| **Context** | 55/60/65% thresholds, 5h/7d rate limits | Matches Claude Code |
+| **Context** | 70/78/85% thresholds, 5h/7d rate limits | More proactive than Claude Code's 80%/95% |
 | **Pricing** | $21 one-time | 79-96% cheaper than annual subscriptions |
 
 ---
@@ -30,29 +30,38 @@
 **Status:** FULLY IMPLEMENTED AND DOCUMENTED
 
 **Implementation:**
-- `background_agents.rs` (580 lines) - Agent queue manager (MAX_CONCURRENT=4, 10min timeout)
-- `git_manager.rs` (329 lines) - Git branch operations for isolated agent work
-- `commands/background_agents.rs` (397 lines) - 13 Tauri commands for agent lifecycle
-- yume-cli extended with `--async`, `--output-file`, `--git-branch` flags
-- `AgentQueuePanel.tsx` (347 lines) - Sliding panel UI with agent cards
-- `ProgressIndicator.tsx` (55 lines) - Real-time progress display
-- `backgroundAgentService.ts` (340 lines) - Event-driven service with Tauri listeners
+- `background_agents.rs` - Agent queue manager (MAX_CONCURRENT_AGENTS=4, NO timeout)
+- `git_manager.rs` - Git branch operations for isolated agent work
+- `commands/background_agents.rs` - 14 Tauri commands for agent lifecycle
+- `backgroundAgentService.ts` - Event-driven service with Tauri listeners
+- Streaming isolation: background agents do NOT control main CLI streaming state
+- Uses Claude CLI directly with `--dangerously-skip-permissions`
+- Status flow: `Queued` -> `Running` -> `Completed`/`Failed`/`Cancelled`
 
 **Unique Feature:** Auto git branch isolation (`yume-async-{agent}-{id}`) - no competitor has this
 
 ---
 
-### ✅ Memory MCP Server System (COMPLETE)
+### ✅ Memory V2 System (COMPLETE)
 **Status:** FULLY IMPLEMENTED AND DOCUMENTED
 
 **Implementation:**
-- `commands/memory.rs` (486 lines) - 10 Tauri commands for MCP server
-- `memoryService.ts` (433 lines) - Frontend service with auto-learning
-- Storage: `~/.yume/memory.jsonl` (persistent knowledge graph)
-- Auto-extracts patterns from conversations (errors, decisions)
-- Context injection for relevant memories
+- `commands/memory_v2.rs` - 17 Tauri commands for per-project markdown system
+- `memoryServiceV2.ts` - Event-driven service with cross-tab sync
+- Storage: `~/.yume/memory/` with per-project folders
+  - `global/preferences.md` - User preferences across all projects
+  - `global/patterns.md` - Global coding patterns
+  - `projects/{hash}/learnings.md` - Project-specific learnings
+  - `projects/{hash}/errors.md` - Error -> solution mappings
+  - `projects/{hash}/patterns.md` - Project patterns
+  - `projects/{hash}/brief.md` - Project overview
+- **Entry format (Markdown)**: `## 2026-01-28T10:00:00Z | importance:4 | ttl:90 | id:abc123`
+- **Importance levels (1-5)**: Ephemeral (1d), Low (7d), Normal (30d), High (90d), Permanent
+- **Auto-pruning**: Expired entries pruned on startup
+- **Context injection**: `<yume-memory>` block with token budget (default 2000)
+- **MCP Server**: Custom `yume-mcp-memory.cjs` with tools: `add_observations`, `search_nodes`, `read_graph`
 
-**Unique Feature:** MCP-based knowledge graph with auto-learning - unique approach
+**Unique Feature:** Per-project markdown files with TTL, importance, auto-learning - no competitor has this approach
 
 ---
 
@@ -223,30 +232,28 @@
 
 ## Success Metrics
 
-### v1.0 Launch (Current)
-- ✅ Multi-provider support complete
-- ✅ 5 agents implemented
-- ✅ Plugin system with 5 components
-- ✅ Analytics dashboard
-- ✅ Context compaction
+### v0.6.6 (Current)
+- ✅ Multi-provider architecture complete (Claude active; Gemini + OpenAI via yume-cli feature-flagged off)
+- ✅ 4 core agents (yume-architect, yume-explorer, yume-implementer, yume-guardian)
+- ✅ Plugin system with 5 components (commands/agents/hooks/skills/mcp)
+- ✅ Analytics dashboard with cost tracking
+- ✅ Context compaction (70% warn, 75% auto, 80% force)
+- ✅ Memory V2 per-project markdown system
+- ✅ Background agents (4 concurrent, no timeout)
+- ✅ Skills UI with ReDoS protection
+- ✅ Crash recovery (24hr window)
+- ✅ Command palette (Cmd+P)
+- ✅ 32+ keyboard shortcuts
 
-### v1.1 Target (Background Agents) ✅ COMPLETE
-- [x] Async agent execution (4 concurrent, 10min timeout)
-- [x] Agent progress UI (AgentQueuePanel, ProgressIndicator)
-- [x] Git branch integration (auto-branch isolation)
-- [x] Memory MCP server system
-- [x] Skills UI complete (TriggerEditor, ContentEditor, ReDoS)
+### v0.7+ Target
 - [ ] PR review via guardian agent
-
-### v1.2 Target (IDE Parity)
 - [ ] Inline code suggestions
-- [ ] Git commit/push
-- [ ] Checkpoint system active
+- [ ] Full git commit/push UI
 
-### v2.0 Target (Local Models)
+### v0.8+ Target (Local Models)
 - [ ] Ollama integration
 - [ ] ACP protocol support
-- [ ] Full Windows/Linux support
+- [ ] Full Windows/Linux unified binary support
 
 ---
 
@@ -254,27 +261,30 @@
 
 | Metric | Yume | Cursor | Windsurf |
 |--------|------|--------|----------|
-| **Background Agents** | ✅ 4 concurrent | ✅ 8 parallel | ✅ Cascade |
+| **Background Agents** | ✅ 4 concurrent (no timeout) | ✅ 8 parallel | ✅ Cascade |
 | **Git Branch Isolation** | ✅ UNIQUE | ❌ | ❌ |
-| **Memory System** | ✅ MCP graph | ✅ | ✅ |
-| **Skills/Context Inject** | ✅ ReDoS-safe | ❌ | ❌ |
+| **Memory V2** | ✅ Per-project markdown | ✅ | ✅ |
+| **Skills/Context Inject** | ✅ ReDoS-protected | ❌ | ❌ |
 | **PR Review** | ❌ (roadmap) | ✅ BugBot | ❌ |
 | **Inline Suggestions** | ❌ (roadmap) | ✅ | ✅ |
-| **Multi-Provider** | ✅ | ✅ | ✅ |
-| **5 Specialized Agents** | ✅ | ❌ | ❌ |
+| **Multi-Provider** | ✅ (arch ready, flagged off) | ✅ | ✅ |
+| **4 Core Agents** | ✅ | ❌ | ❌ |
 | **Plugin System** | ✅ 5 types | ❌ | ❌ |
 | **One-Time Price** | ✅ $21 | ❌ $240/yr | ❌ $180/yr |
 
 **Yume's UNIQUE advantages (competitors lack):**
 1. ✅ Git branch isolation for async agents
-2. ✅ MCP-based persistent knowledge graph with auto-learning
+2. ✅ Memory V2 per-project markdown with TTL/importance/auto-prune
 3. ✅ Skills with ReDoS protection
-4. ✅ 5 specialized agents (not generic)
+4. ✅ 4 core agents (architect, explorer, implementer, guardian)
 5. ✅ Plugin system with 5 component types
 6. ✅ UCF (Unified Conversation Format)
 7. ✅ One-time $21 pricing
+8. ✅ 5h/7d Anthropic limit tracking
+9. ✅ Crash recovery (24hr window)
 
 **Remaining gaps:**
 1. PR review (leverage guardian agent)
 2. Inline suggestions (table stakes)
 3. Full git commit/push UI
+4. Light mode (accessibility)

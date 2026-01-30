@@ -106,21 +106,23 @@ Things that add significant value:
 - Navigation (prev/next)
 - Keyboard shortcut: Cmd/Ctrl+F
 
-### P3: Differentiators ⚠️ PARTIAL
+### P3: Differentiators ✅ MOSTLY COMPLETE
 
 Unique features competitors don't have:
 
-#### Checkpoint Timeline ⚠️ (Code exists, disabled)
+#### Checkpoint Timeline ⚠️ (Code exists, listeners disabled)
 - CheckpointButton.tsx, TimelineNavigator.tsx exist
-- checkpointService.ts has listeners disabled
-- Feature flags enabled but UI commented out
-- **Action**: Enable and test
+- checkpointService.ts has socket listeners disabled (line 54-118)
+- Feature flag ENABLE_CHECKPOINTS: true
+- **Action**: Re-enable socket listeners and test
 
-#### Agent Activity View ⚠️ (Partial)
-- AgentsModal exists with 5 built-in yume agents
-- Custom agent creation (global/project scoped)
-- Agent enable/disable toggle
-- Relies on Claude's native Task tool for execution
+#### Background Agents ✅ (COMPLETE)
+- 4 concurrent agents with no timeout (MAX_CONCURRENT_AGENTS=4)
+- Git branch isolation (`yume-async-{agent}-{id}`)
+- 4 core agents: yume-architect, yume-explorer, yume-implementer, yume-guardian
+- Status flow: Queued -> Running -> Completed/Failed/Cancelled
+- Streaming isolation: background agents do NOT control main CLI streaming state (debounce: 700ms macOS, 2000ms Windows)
+- Uses Claude CLI directly with `--dangerously-skip-permissions`
 
 #### MCP Visual Manager ✅ (MCPTab)
 - Add/remove MCP servers
@@ -128,6 +130,12 @@ Unique features competitors don't have:
 - Server scopes (local/project/user)
 - Environment variable configuration
 - Connection testing
+
+#### Memory V2 ✅ (COMPLETE)
+- Per-project markdown files in `~/.yume/memory/`
+- TTL, importance levels, auto-pruning
+- Custom MCP server (`yume-mcp-memory.cjs`)
+- Context injection with token budget
 
 ---
 
@@ -149,8 +157,7 @@ Low effort, high impact:
 |---------|--------|--------|
 | Light mode | Low | Medium |
 | System notifications | Low | Medium |
-| Command palette | Medium | High |
-| Enable checkpoints | Low | High |
+| Enable checkpoint listeners | Low | High |
 
 ---
 
@@ -184,13 +191,16 @@ Low effort, high impact:
 - [x] Keyboard shortcuts (full system)
 - [x] Theme system (dark + color customization)
 
-### Phase 4: Differentiate (P3) ⚠️ PARTIAL
+### Phase 4: Differentiate (P3) ✅ MOSTLY COMPLETE
 *Goal: Unique value*
 
-- [~] Checkpoint timeline (code exists, disabled)
-- [~] Agent activity view (AgentsModal exists)
+- [~] Checkpoint timeline (code exists, socket listeners disabled)
+- [x] Background agents (4 concurrent, no timeout, git branch isolation)
 - [x] MCP visual manager (MCPTab)
+- [x] Memory V2 per-project markdown system
+- [x] Command palette (Cmd+P)
 - [ ] Split views
+- [ ] Light mode
 
 ---
 

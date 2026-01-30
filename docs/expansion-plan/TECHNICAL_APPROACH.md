@@ -1,12 +1,12 @@
 # Technical Approach: Multi-Provider Translation Layer
 
-This document outlines the **recommended** technical approach for adding Gemini and OpenAI/Codex support while keeping Yume's existing Claude-compatible stream-json pipeline intact.
+Technical approach for adding Gemini and OpenAI/Codex support while preserving Yume's Claude-compatible stream-json pipeline.
 
-## 1. Goals and Non-Negotiable Invariants
-- Preserve the existing stream parser (`src-tauri/src/stream_parser.rs`).
-- Preserve the existing event flow (`claude-message:{sessionId}`) during migration.
-- Do not store provider API keys inside Yume (env vars or CLI auth only).
-- Maintain consistent UI behavior (tool approvals, streaming, analytics).
+## 1. Goals and Invariants
+- Preserve the existing stream parser (`src-tauri/src/stream_parser.rs`)
+- Preserve the existing event flow (`claude-message:{sessionId}`)
+- No provider API keys stored in Yume (delegate to official CLIs)
+- Consistent UI behavior (tool approvals, streaming, analytics)
 
 ## 2. Current Baseline (Claude)
 Yume expects line-delimited JSON objects with `type` fields that match Claude CLI output. Any new provider must **emit the same schema** to avoid UI and parser changes.
@@ -155,8 +155,8 @@ Minimum tests:
 
 Run the full matrix on macOS, Windows, Linux.
 
-## 16. Open Questions (Research)
+## 16. Open Questions
 - Gemini streaming deltas and function-call formats
-- OpenAI Responses vs Chat Completions tool-call behavior
+- OpenAI tool-call behavior differences
 - Token usage fidelity across providers
-- Best default compaction strategy per model family
+- Optimal compaction thresholds per model family

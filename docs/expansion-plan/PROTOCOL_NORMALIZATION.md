@@ -1,7 +1,7 @@
 # Protocol Normalization Strategy
 
 ## Objective
-To ensure Yume works with Gemini and Codex the same way it works with Claude CLI, all provider output must be translated into the **exact stream-json format** Yume already parses (`src-tauri/src/stream_parser.rs`). The translation layer (in `yume-cli` or a server adapter) must emit the same line-delimited JSON objects Claude produces.
+All provider output must be translated into the **exact stream-json format** Yume already parses (`src-tauri/src/stream_parser.rs`). The translation layer (`yume-cli`) emits the same line-delimited JSON objects Claude produces.
 
 ## 1. Canonical Stream JSON (Yume Contract)
 Yume's current pipeline expects one JSON object per line on stdout with a required `type` field. The translator must **emit Claude-compatible messages**, not ad-hoc JSON.
@@ -33,7 +33,7 @@ Yume's current pipeline expects one JSON object per line on stdout with a requir
 
 ### Example Line-Delimited Stream
 ```json
-{"type":"system","subtype":"init","session_id":"sess_123","model":"gemini-1.5-pro","cwd":"/repo","permissionMode":"default","tools":["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"]}
+{"type":"system","subtype":"init","session_id":"sess_123","model":"gemini-2.5-pro","cwd":"/repo","permissionMode":"default","tools":["Read","Write","Edit","MultiEdit","Glob","Grep","LS","Bash"]}
 {"type":"text","content":"Sure, I can help with that."}
 {"type":"tool_use","id":"call_1","name":"Edit","input":{"file_path":"src/app.tsx","old_string":"foo","new_string":"bar"}}
 {"type":"tool_result","tool_use_id":"call_1","content":"ok"}
@@ -92,30 +92,22 @@ If you implement these modes in the shim, make sure they **degrade** safely to `
 
 ## 3. Provider Mappings
 
-### Gemini (Type A: Shim-as-Agent)
-**Source:** Gemini REST streaming.
+### Gemini (via @google/gemini-cli)
+**Source:** Gemini CLI stream output.
 
 Mapping:
 - `content.parts[].text` -> `text`
 - `functionCall` -> `tool_use`
-  - If Gemini does not return IDs, generate: `call_gemini_<monotonic_counter>`.
-- Usage metadata (if provided) -> `usage`
+  - If Gemini does not return IDs, generate: `call_gemini_<counter>`.
+- Usage metadata -> `usage`
 
-### OpenAI / Codex (Type A: Shim-as-Agent)
-**Source:** OpenAI streaming APIs.
+### OpenAI / Codex (via @openai/codex)
+**Source:** Codex CLI stream output.
 
 Mapping:
-- `delta.content` -> `text`
-- `tool_calls` -> `tool_use` (buffer partial JSON until valid)
-- Final usage -> `usage` and `result`
-
-### GitHub Copilot CLI (Type B: Shim-as-Driver, Fallback Only)
-**Source:** `gh copilot` TUI via PTY.
-
-Mapping (heuristic, fragile):
-- Detect suggested commands and convert them into `tool_use` of type `Bash`.
-- Gate execution behind Yume's approval UI, then capture output as `tool_result`.
-- Use `text` for plain assistant output.
+- `item.completed.text` -> `text`
+- `command_execution` -> `tool_use` (map to Read/Write/Bash via `detectToolFromCommand`)
+- `turn.completed.usage` -> `usage` and `result`
 
 ## 4. Errors, Interrupts, and Retry Semantics
 - **Auth failures:** Emit `system` with `subtype: "error"` and a human-readable message.

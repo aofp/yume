@@ -9,6 +9,7 @@ Memory V2 replaces the legacy MCP-based memory system with:
 - **Markdown format**: Human-readable, editable files
 - **TTL support**: Automatic expiration based on importance
 - **Custom MCP server**: Agent writes directly to V2 files
+- **Cross-tab sync**: Event broadcasting via Tauri events
 
 ## Storage Structure
 
@@ -19,6 +20,7 @@ Memory V2 replaces the legacy MCP-based memory system with:
 │   └── patterns.md       # Global coding patterns
 └── projects/
     └── {hash}-{basename}/
+        ├── meta.json     # Project path metadata (for recovery)
         ├── brief.md      # Project overview (plain text, no entry format)
         ├── learnings.md  # Project-specific learnings
         ├── errors.md     # Error → solution mappings
@@ -29,7 +31,7 @@ Memory V2 replaces the legacy MCP-based memory system with:
 - Hash: djb2 hash of full path (8 hex chars)
 - Basename: Last path component (max 20 chars)
 
-**Note:** The `context.md` file mentioned in code comments is not actually used. The context block is built dynamically via `memory_v2_build_context`.
+Context is built dynamically via `memory_v2_build_context` (no `context.md` file).
 
 ## Entry Format
 
@@ -55,13 +57,11 @@ Prefer functional components over class components.
 
 ## MCP Server
 
-Custom MCP server (`yume-mcp-memory.cjs`) replaces npm `@modelcontextprotocol/server-memory`.
+Custom MCP server replaces npm `@modelcontextprotocol/server-memory`.
 
-### Registration
-
-```bash
-claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs
-```
+- **Source**: `src-tauri/resources/yume-mcp-memory.cjs`
+- **Runtime**: Copied to `~/.yume/yume-mcp-memory.cjs` on init
+- **Registration**: `claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs`
 
 ### Tools
 
@@ -71,7 +71,7 @@ claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs
 | `search_nodes` | Search memories by query |
 | `read_graph` | Read all memories |
 
-### add_observations
+### add_observations Example
 
 ```json
 {
@@ -92,28 +92,23 @@ claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs
 
 ## Tauri Commands (15)
 
-### Initialization
-- `memory_v2_init` - Initialize service, migrate V1
-
-### Adding Entries
-- `memory_v2_add_learning(project_path, content, importance)` - Add learning
-- `memory_v2_add_error(project_path, error_desc, solution, importance)` - Add error fix
-- `memory_v2_add_pattern(project_path, pattern_name, description, importance)` - Add pattern
-- `memory_v2_set_brief(project_path, brief)` - Set project brief
-- `memory_v2_add_preference(content, importance)` - Add global preference
-- `memory_v2_add_global_pattern(pattern_name, description, importance)` - Add global pattern
-
-### Reading
-- `memory_v2_get_project(project_path)` - Get project memories
-- `memory_v2_get_global()` - Get global memories
-- `memory_v2_list_projects()` - List all projects
-- `memory_v2_build_context(project_path, query, token_budget)` - Build context block
-
-### Management
-- `memory_v2_delete_entry(project_path, entry_id)` - Delete entry (project_path can be null for global)
-- `memory_v2_prune_expired()` - Remove expired entries
-- `memory_v2_clear_project(project_path)` - Clear project memories
-- `memory_v2_get_base_path()` - Get base storage path
+| Command | Description |
+|---------|-------------|
+| `memory_v2_init` | Initialize service, migrate V1 |
+| `memory_v2_add_learning` | Add learning (project_path, content, importance) |
+| `memory_v2_add_error` | Add error fix (project_path, error_desc, solution, importance) |
+| `memory_v2_add_pattern` | Add pattern (project_path, pattern_name, description, importance) |
+| `memory_v2_set_brief` | Set project brief (project_path, brief) |
+| `memory_v2_add_preference` | Add global preference (content, importance) |
+| `memory_v2_add_global_pattern` | Add global pattern (pattern_name, description, importance) |
+| `memory_v2_get_project` | Get project memories (project_path) |
+| `memory_v2_get_global` | Get global memories |
+| `memory_v2_list_projects` | List all projects with memory |
+| `memory_v2_build_context` | Build context block (project_path, query, token_budget) |
+| `memory_v2_delete_entry` | Delete entry (project_path or null for global, entry_id) |
+| `memory_v2_prune_expired` | Remove expired entries |
+| `memory_v2_clear_project` | Clear project memories (project_path) |
+| `memory_v2_get_base_path` | Get base storage path
 
 ## Context Injection
 
@@ -155,56 +150,49 @@ On first `memory_v2_init`:
 
 ## UI (MemoryTab)
 
-Settings → Memory tab shows:
-- **Global section**: Preferences, patterns
-- **Current project**: Learnings, errors, patterns, brief
-- **All projects**: Expandable list
+Settings → Memory tab displays:
+- **Global**: Preferences and patterns
+- **Current project**: Brief, learnings, errors, patterns
+- **All projects**: Expandable list with entry counts
 
-Features:
-- Add entries with importance selection
-- Delete entries
-- Edit in place (future)
-- View entry timestamps and TTL
+Features: Add entries (with importance), delete entries, view timestamps/TTL. Edit in place is planned.
 
 ## Architecture
 
-```
-Agent (Claude CLI)
-    ↓ MCP protocol (JSON-RPC/stdio)
-yume-mcp-memory.cjs
-    ↓ Direct file I/O
-~/.yume/memory/*.md
+Two write paths, one storage:
 
-UI (MemoryTab) / memoryServiceV2.ts
-    ↓ Tauri IPC (invoke)
-memory_v2.rs (Rust)
-    ↓ RwLock state, atomic writes
-~/.yume/memory/*.md
-    ↓ memory-updated event
-UI (all tabs notified)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Agent (Claude CLI)          UI (MemoryTab)                 │
+│         ↓                          ↓                        │
+│  MCP (JSON-RPC/stdio)      Tauri IPC (invoke)               │
+│         ↓                          ↓                        │
+│  yume-mcp-memory.cjs       memory_v2.rs (Rust)              │
+│         ↓                          ↓                        │
+│         └──────────┬───────────────┘                        │
+│                    ↓                                        │
+│         ~/.yume/memory/*.md (atomic writes)                 │
+│                    ↓                                        │
+│         memory-updated event → all tabs                     │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 **Cross-tab sync**: `memory-updated` Tauri event broadcasts changes with project ID payload.
 
-**Frontend service**: `memoryServiceV2.ts` wraps all Tauri commands and provides:
+**Rust service** (`memory_v2.rs`): Centralized state with RwLock, atomic file writes (write to `.tmp`, then rename).
+
+**Frontend service** (`memoryServiceV2.ts`):
 - Event subscription via `onMemoryUpdated(projectId, callback)`
 - High-level operations (`extractLearnings`, `getRelevantMemories`, `remember`)
 - Automatic pruning on startup
 
 ## File Atomicity
 
-All writes use atomic rename:
-1. Write to `{file}.tmp`
-2. Rename to `{file}`
+All writes use atomic rename: write to `{file}.md.tmp`, then rename to `{file}.md`. Prevents corruption on crash.
 
-Prevents corruption on crash.
+## V1 Deprecation
 
-## Deprecation
-
-**V1 is fully deprecated and auto-migrates to V2.**
-
-V1 (`@modelcontextprotocol/server-memory`) is no longer used:
-- No longer registered as MCP server
-- `memory_add_observations` command returns success but no-ops
-- Existing V1 data (`~/.yume/memory.jsonl`) auto-migrates to V2 on first init
+V1 (`@modelcontextprotocol/server-memory`) is fully deprecated:
+- Existing data (`~/.yume/memory.jsonl`) auto-migrates to V2 on first init
 - Backup created at `memory.jsonl.bak`
+- Legacy `memory_add_observations` command no-ops (returns success for compatibility)

@@ -510,7 +510,7 @@ See [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) for complete feature matrix
 | Text messages | ✅ | ✅ | ✅ | Direct |
 | Tool calling | ✅ | ✅ | ✅ | ID remapping |
 | System prompt | Via param | systemInstruction | First message | Adapt per provider |
-| Thinking blocks | ✅ | ⚠️ 2.5-pro | ⚠️ Codex 5.2 | See Reasoning section |
+| Thinking blocks | ✅ | ⚠️ gemini-2.5-pro | ⚠️ gpt-5.2-codex | See Reasoning section |
 | Artifacts | ✅ | ❌ | ❌ | Inline as code block |
 | Images in input | ✅ | ✅ | ✅ | Direct |
 | Images in output | ❌ | ✅ | ✅ | Preserve if available |
@@ -540,20 +540,20 @@ Different providers have different "thinking" capabilities. This section details
 | Provider | Model | Thinking Type | Format | Controllable |
 |----------|-------|---------------|--------|--------------|
 | Claude | All | Extended Thinking | `{ type: "thinking", thinking: "..." }` | Budget param |
-| Gemini | 2.0-thinking | Thoughts | `{ thoughts: [...] }` in response | ❌ |
-| Gemini | Others | ❌ None | - | - |
-| OpenAI | O1/O3 | Reasoning | Hidden by default, tokens billed | ❌ |
-| OpenAI | GPT-4o | ❌ None | - | - |
+| Gemini | gemini-2.5-pro | Thoughts | `{ thoughts: [...] }` in response | ❌ |
+| Gemini | gemini-2.5-flash | ❌ None | - | - |
+| OpenAI | gpt-5.2-codex | Reasoning | Hidden by default, tokens billed | ❌ |
+| OpenAI | gpt-5.1-codex-mini | ❌ None | - | - |
 
 ### Translation Matrix
 
-| From → To | Claude Thinking | Gemini Thinking | O1 Reasoning |
-|-----------|-----------------|-----------------|--------------|
+| From → To | Claude Thinking | Gemini Thinking | Codex Reasoning |
+|-----------|-----------------|-----------------|-----------------|
 | **Claude** | ✅ Preserve | ⚠️ Convert to text | ⚠️ Convert to text |
-| **Gemini 2.0-thinking** | ⚠️ Convert to thinking block | ✅ Preserve | ⚠️ Convert to text |
-| **Gemini Standard** | ❌ Drop (no equivalent) | - | ❌ Drop |
-| **O1/O3** | ⚠️ Hidden (not exposed in API) | ⚠️ Hidden | ✅ Preserve |
-| **GPT-4o** | ❌ Drop (no equivalent) | ❌ Drop | - |
+| **gemini-2.5-pro** | ⚠️ Convert to thinking block | ✅ Preserve | ⚠️ Convert to text |
+| **gemini-2.5-flash** | ❌ Drop (no equivalent) | - | ❌ Drop |
+| **gpt-5.2-codex** | ⚠️ Hidden (not exposed in API) | ⚠️ Hidden | ✅ Preserve |
+| **gpt-5.1-codex-mini** | ❌ Drop (no equivalent) | ❌ Drop | - |
 
 ### Implementation
 
@@ -564,7 +564,7 @@ interface ThinkingContent {
   text: string;
   provider: 'claude' | 'gemini' | 'openai';
   model?: string;
-  hidden?: boolean;  // For O1/O3 where reasoning is billed but not shown
+  hidden?: boolean;  // For reasoning models where reasoning is billed but not shown
 }
 
 function translateThinking(
@@ -610,10 +610,10 @@ function translateThinking(
 
 function checkThinkingSupport(provider: ProviderType, model: string): boolean {
   if (provider === 'claude') return true;
-  if (provider === 'gemini' && model.includes('thinking')) return true;
-  if (provider === 'openai' && (model.startsWith('o1') || model.startsWith('o3'))) {
-    // O1/O3 have reasoning but it's hidden - treat as partial support
-    return false; // Can't inject thinking into O1/O3
+  if (provider === 'gemini' && model.includes('2.5-pro')) return true;
+  if (provider === 'openai' && model.includes('5.2')) {
+    // Codex 5.2 has reasoning but it's hidden - treat as partial support
+    return false; // Can't inject thinking into reasoning models
   }
   return false;
 }
@@ -621,25 +621,25 @@ function checkThinkingSupport(provider: ProviderType, model: string): boolean {
 
 ### User Warning Examples
 
-**Claude → GPT-4o:**
+**Claude → gpt-5.1-codex-mini:**
 ```
 ⚠️ Thinking blocks will be affected
    • 5 thinking blocks found in conversation
-   • GPT-4o does not support thinking/reasoning
+   • gpt-5.1-codex-mini does not support thinking/reasoning
    • Options:
      ○ Drop: Remove thinking blocks (recommended)
      ○ Convert: Show as "[Previous reasoning]..." text
 ```
 
-**Claude → O1:**
+**Claude → gpt-5.2-codex:**
 ```
 ℹ️ Reasoning model selected
-   • O1 has its own internal reasoning (hidden from output)
+   • Codex 5.2 has its own internal reasoning (hidden from output)
    • 5 Claude thinking blocks will be dropped
-   • O1 will generate new reasoning for its responses
+   • Model will generate new reasoning for its responses
 ```
 
-**Gemini 2.0-thinking → Claude:**
+**gemini-2.5-pro → Claude:**
 ```
 ✓ Thinking blocks compatible
    • 3 Gemini thought blocks will convert to Claude thinking format
@@ -763,24 +763,23 @@ Complete list of warnings shown to users based on switch direction:
 | Caching | ℹ️ Info | "Prompt cache will reset" |
 | Context | ✓ OK | "Context fits (45K → 1M)" |
 
-### Claude → OpenAI (GPT-4o)
+### Claude → OpenAI (gpt-5.1-codex-mini)
 
 | Feature | Warning Level | Message |
 |---------|---------------|---------|
 | Thinking blocks | ⚠️ Warning | "X thinking blocks will be dropped" |
 | Artifacts | ⚠️ Warning | "X artifacts will be inlined" |
 | MCP tools | ⚠️ Warning | "MCP tools not available" |
-| PDF input | ⚠️ Warning | "PDF attachments not supported" |
-| Context | ⚠️ Warning | "Context may need summarization (150K → 128K)" |
+| Context | ✓ OK | "Context fits (200K → 200K)" |
 
-### Claude → OpenAI (O1/O3)
+### Claude → OpenAI (gpt-5.2-codex)
 
 | Feature | Warning Level | Message |
 |---------|---------------|---------|
-| Thinking blocks | ℹ️ Info | "Claude thinking replaced by O1 reasoning" |
+| Thinking blocks | ℹ️ Info | "Claude thinking replaced by Codex reasoning" |
 | Artifacts | ⚠️ Warning | "X artifacts will be inlined" |
-| Output length | ℹ️ Info | "O1 can output up to 100K tokens" |
-| Tool calls | ⚠️ Warning | "O1 tool call format differs" |
+| Output length | ℹ️ Info | "Codex can output up to 100K tokens" |
+| Tool calls | ⚠️ Warning | "Codex tool call format differs" |
 
 ### Gemini → Claude
 
@@ -794,7 +793,7 @@ Complete list of warnings shown to users based on switch direction:
 
 | Feature | Warning Level | Message |
 |---------|---------------|---------|
-| DALL-E images | ℹ️ Info | "Generated images preserved as URLs" |
+| Generated images | ℹ️ Info | "Generated images preserved as URLs" |
 | Browsing results | ⚠️ Warning | "Web browsing results preserved as context only" |
 
 ## Context Management
@@ -907,7 +906,7 @@ function estimateTokens(messages: UnifiedMessage[]): number {
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│ Switch to Gemini 3 Pro?                                       │
+│ Switch to Gemini 2.5 Pro?                                     │
 ├───────────────────────────────────────────────────────────────┤
 │                                                               │
 │ This conversation will continue with Gemini. Here's what     │
@@ -931,7 +930,7 @@ function estimateTokens(messages: UnifiedMessage[]): number {
 │ │ ☐ Preserve system prompt                                │  │
 │ └─────────────────────────────────────────────────────────┘  │
 │                                                               │
-│              [Cancel]              [Switch to Gemini]         │
+│             [Cancel]             [Switch to Gemini]           │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -949,7 +948,7 @@ In the chat view, provider switches are shown:
 │ [tool: Edit src/auth.ts]                                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│           ─── Switched to Gemini 3 Pro ───                     │
+│           ─── Switched to Gemini 2.5 Pro ───                   │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │ [Gemini badge] Continuing from where we left off...            │
