@@ -1,8 +1,46 @@
 {
   "product": "yume",
-  "latest": "0.6.4",
+  "latest": "0.6.6",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.6.6",
+      "date": "2026-01-29",
+      "notes": "compaction service improvements, settings ui enhancements",
+      "releaseNotes": "v0.6.6-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.6.6_arm64.pkg",
+        "mac": "yume_0.6.6_x64.pkg",
+        "windows": "yume_0.6.6_x64-setup.exe",
+        "linux_deb": "yume_0.6.6_amd64.deb",
+        "linux_rpm": "yume-0.6.6-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "0a61f10639ca2fa8a66257db92f7d8a9b6760d99862c50aa8a7f586da86e39c0",
+        "mac": "cd22afcc919611c8bdd635f6b69d7f8cac73f764f49c00adc41d4ad4e436963a",
+        "windows": "ad342a216062be0e9243fda8b1a8aed44f4c26337c3f8dd7ebbc52b0b2b4b40c",
+        "linux_deb": "fa75ca2083e2b094959f418f83a0fd63b7ad706975f57d952542744deda0b0ec",
+        "linux_rpm": "7fb5403db6a18ff6dac742a774c2d261ec96c450d3d7a417ec14049011d9a882"
+      }
+    },
+    {
+      "version": "0.6.5",
+      "date": "2026-01-29",
+      "notes": "minor fixes and improvements",
+      "releaseNotes": "v0.6.5-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.6.5_arm64.pkg",
+        "windows": "yume_0.6.5_x64-setup.exe",
+        "linux_deb": "yume_0.6.5_amd64.deb",
+        "linux_rpm": "yume-0.6.5-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "db8e540bb30bbc699bca6830e05327a32580a80ddfbdca260a9aa106910348ea",
+        "windows": "3aeaeeb7ec693046415e3051287c4e7a131c79efa3ef805bed253234d92cbb31",
+        "linux_deb": "fa5947b15947f501a80c4dc5cabd6bea26419c00679e3d9c0c853c4fb893d90f",
+        "linux_rpm": "b8a4e09e4c873a59f7c8a544892c021f82ab96161ee5773962340fa4e519204d"
+      }
+    },
     {
       "version": "0.6.4",
       "date": "2026-01-29",
