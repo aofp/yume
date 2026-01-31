@@ -1,8 +1,22 @@
 {
   "product": "yume",
-  "latest": "0.7.3",
+  "latest": "0.7.4",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.7.4",
+      "date": "2026-01-31",
+      "notes": "fix memory tab not showing memories added via mcp server",
+      "releaseNotes": "v0.7.4-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.7.4_arm64.pkg",
+        "mac": "yume_0.7.4_x64.pkg"
+      },
+      "checksums": {
+        "mac_arm": "588f770802bfdefa27bbdcd89a91f72d3b7786313b3fa6ba0e1e63d1d6002ea2",
+        "mac": "33fc024817d9f5da6515e8660d53978b512a1706212d5fa7c78afa42f7b4c643"
+      }
+    },
     {
       "version": "0.7.3",
       "date": "2026-01-31",
