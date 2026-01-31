@@ -6,7 +6,7 @@
     {
       "version": "0.7.2",
       "date": "2026-01-31",
-      "notes": "improved thinking streaming with better token display",
+      "notes": "fix thinking token counter not updating during extended thinking, improve real-time streaming display",
       "releaseNotes": "v0.7.2-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.7.2_arm64.pkg",
@@ -20,7 +20,7 @@
     {
       "version": "0.7.1",
       "date": "2026-01-31",
-      "notes": "rebuild with updated checksums, no code changes from 0.7.0",
+      "notes": "fix thinking blocks: multiple blocks per session, content not updating, truncation issues, first thinking_delta creating new message",
       "releaseNotes": "v0.7.1-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.7.1_arm64.pkg",
