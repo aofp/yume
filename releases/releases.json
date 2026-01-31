@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.7.2",
+  "latest": "0.7.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.7.3",
+      "date": "2026-01-31",
+      "notes": "real-time thinking display - all thinking steps stream live as they happen",
+      "releaseNotes": "v0.7.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.7.3_arm64.pkg",
+        "mac": "yume_0.7.3_x64.pkg",
+        "windows": "yume_0.7.3_x64-setup.exe",
+        "linux_deb": "yume_0.7.3_amd64.deb",
+        "linux_rpm": "yume-0.7.3-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "1d994359655c74608c9017f4d652846527c14be26c9577a12bd2549dd64e12c5",
+        "mac": "2888d874a7b2481433745f8a2d063ebd58c907f75b48ad83192e1d15cb5db033",
+        "windows": "8ce0d5abe050f888f2acfcd5eb2e1f6523ec87bd4cf02941e559834607810df6",
+        "linux_deb": "b464f6dd1d7f323fcaa7072fc86c4c6119192fcb14897550c3ab200e33405b9a",
+        "linux_rpm": "c05daf6715e2bad49cc17e871d3434e2df52879d0c606f789535a19b87ef94c9"
+      }
+    },
     {
       "version": "0.7.2",
       "date": "2026-01-31",
