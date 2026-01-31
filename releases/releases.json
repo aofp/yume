@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.6.7",
+  "latest": "0.7.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.7.0",
+      "date": "2026-01-31",
+      "notes": "fix thinking blocks ui, windows proxy improvements, socket error filtering, use default 30d analytics",
+      "releaseNotes": "v0.7.0-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.7.0_arm64.pkg",
+        "mac": "yume_0.7.0_x64.pkg",
+        "windows": "yume_0.7.0_x64-setup.exe",
+        "linux_deb": "yume_0.7.0_amd64.deb",
+        "linux_rpm": "yume-0.7.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "9fd707d1133d552b39892210f621eb420cd25f651264e7ffeb179e09e606dfe7",
+        "mac": "5143c364631162b4f465fcd096b964e18d217ca2947a2267f8017bceca40516a",
+        "windows": "968044742dad270de776055e395df575bd49e4dc033c18a90070deb0dc9e3261",
+        "linux_deb": "a5b715a8d6bc1b83825e387e83838a593c1be1366ce7b72ee8030f04c94683ac",
+        "linux_rpm": "7db79caf6f934cd8bb3c89f10901c22a9a7f6e2725f5641c18db05b7e6320b14"
+      }
+    },
     {
       "version": "0.6.7",
       "date": "2026-01-30",
