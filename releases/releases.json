@@ -1,12 +1,26 @@
 {
   "product": "yume",
-  "latest": "0.7.1",
+  "latest": "0.7.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
     {
+      "version": "0.7.2",
+      "date": "2026-01-31",
+      "notes": "improved thinking streaming with better token display",
+      "releaseNotes": "v0.7.2-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.7.2_arm64.pkg",
+        "mac": "yume_0.7.2_x64.pkg"
+      },
+      "checksums": {
+        "mac_arm": "cf453a00f668c65eda57c4acb7e40d19cd70a5805a29c2ff77fd127ebcab9037",
+        "mac": "b0137ff04238d67f4702e9eb9472905f8203a44bbda2d87bb98c368bc3a1c137"
+      }
+    },
+    {
       "version": "0.7.1",
       "date": "2026-01-31",
-      "notes": "",
+      "notes": "rebuild with updated checksums, no code changes from 0.7.0",
       "releaseNotes": "v0.7.1-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.7.1_arm64.pkg",
