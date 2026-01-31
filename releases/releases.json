@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.6.6",
+  "latest": "0.6.7",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.6.7",
+      "date": "2026-01-30",
+      "notes": "acp protocol, sandbox security, tool permissions editor, analytics performance fix",
+      "releaseNotes": "v0.6.7-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.6.7_arm64.pkg",
+        "mac": "yume_0.6.7_x64.pkg",
+        "windows": "yume_0.6.7_x64-setup.exe",
+        "linux_deb": "yume_0.6.7_amd64.deb",
+        "linux_rpm": "yume-0.6.7-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "07dc2bfbb19d9a51a3f8049e522071e0e1f9793049c24af966572a26c11fbab9",
+        "mac": "722eef09a6ca20a73af10dc5296c775ee03ee97eaae66c7ccb9107c6575eedf1",
+        "windows": "ba4f1593f957740292062f0f162d34d31f646e08184c6f19e76b68a8e4a4cabe",
+        "linux_deb": "9467954a4587a78056096a2d80fc2e0c72703fbe864ba7ba208d53eb947433b2",
+        "linux_rpm": "31bb362feb7c09a2c1c14b839a6e1f9dc5573c4baf5c81143d5128ed5ef849ce"
+      }
+    },
     {
       "version": "0.6.6",
       "date": "2026-01-29",

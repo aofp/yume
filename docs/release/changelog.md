@@ -1,38 +1,49 @@
 # changelog
 
+## 0.6.7 — january 30, 2026
+
+- acp protocol support
+- sandbox security improvements
+- tool permissions editor with allow/deny patterns
+- tools modal improvements
+- analytics performance fix (removed 60d/90d aggregations)
+
+## 0.6.6 — january 29, 2026
+
+- compaction service improvements
+- settings ui enhancements
+
+## 0.6.5 — january 29, 2026
+
+- minor fixes and improvements
+
 ## 0.6.4 — january 29, 2026
 
-- variable auto-compact threshold (default 75%)
-- improved streaming isolation for background agents
-- docs updates
+- intelligent followup queueing with silent interrupt
+- improved shutdown handling
+- scroll virtualizer improvements
+- ui tweaks
 
-## 0.6.3 — january 28, 2026
+## 0.6.3 — january 29, 2026
 
-- memory v2 context injection improvements
-- plugin skills display enhancements
+- fix nvm-installed claude detection on linux
+- improve process cleanup
+- fix gemini provider
 
-## 0.6.2 — january 28, 2026
+## 0.6.2 — january 29, 2026
 
-- fix agent output file tracking
-- streaming isolation bug fixes
+- code cleanup and quality improvements
+- refactor agents
 
 ## 0.6.1 — january 28, 2026
 
-- auto-update system (app version check via github pages)
-- claude cli auto-update on startup
+- variable auto-compact threshold (default 75%)
 
-## 0.6.0 — january 27, 2026
+## 0.6.0 — january 28, 2026
 
-major release.
-
-### highlights
-- memory v2 system (per-project markdown with ttl)
-- tool selection modal (8 categories)
-- oled theme refinements
-- test infrastructure (vitest 3.x)
-
-### breaking changes
-- memory v1 (jsonl) auto-migrated to v2 (markdown)
+- context bar improvements
+- analytics chart fixes
+- compaction service updates
 
 ---
 
