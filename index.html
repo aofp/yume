@@ -34,6 +34,19 @@
             --text-dimmer: #555;
             --green: #4a4;
             --red: #a44;
+            /* theme accent colors */
+            --theme-yume: #c4b5ff;
+            --theme-void: #b6b6de;
+            --theme-cobalt: #82aaff;
+            --theme-slate: #61afef;
+            --theme-arctic: #8fb8c8;
+            --theme-synth: #36d7e6;
+            --theme-mint: #9df5bd;
+            --theme-grove: #afff76;
+            --theme-ochre: #ffc85b;
+            --theme-bourbon: #dec891;
+            --theme-burnt: #d57b60;
+            --theme-rose: #e890a0;
         }
 
         html { scroll-behavior: smooth; }
@@ -551,6 +564,35 @@
             color: var(--text-dim);
             font-size: 14px;
         }
+        .feature-card--exclusive {
+            position: relative;
+        }
+        .feature-card--exclusive::after {
+            content: 'yume only';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            opacity: 0.6;
+        }
+        .feature-card--exclusive:hover::after {
+            opacity: 1;
+        }
+        .feature-card--hero {
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.06) 0%, var(--card) 100%);
+            border-color: rgba(var(--accent-rgb), 0.25);
+        }
+        .feature-card--hero h3 {
+            color: var(--accent);
+            font-size: 1.2rem;
+        }
+        .feature-card--hero:hover {
+            border-color: rgba(var(--accent-rgb), 0.6);
+            box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.1);
+        }
 
         /* tech */
         .tech-grid {
@@ -734,6 +776,43 @@
             color: var(--text-dim);
             font-size: 13px;
         }
+        .agents-callout {
+            margin-top: 40px;
+            padding: 24px 28px;
+            background: rgba(var(--accent-rgb), 0.04);
+            border: 1px solid rgba(var(--accent-rgb), 0.15);
+            border-radius: 12px;
+            text-align: center;
+            position: relative;
+        }
+        .agents-callout::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.3), transparent);
+        }
+        .agents-callout-title {
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .agents-callout-title .ti {
+            color: var(--accent);
+            opacity: 0.7;
+        }
+        .agents-callout-desc {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
 
         /* themes showcase */
         .themes-showcase {
@@ -900,6 +979,16 @@
             color: var(--accent);
             position: relative;
         }
+        .comparison-header div:last-child::before {
+            content: '★';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--accent);
+            opacity: 0.7;
+        }
         .comparison-row {
             display: grid;
             grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
@@ -927,8 +1016,12 @@
         .comparison-row:hover .check { transform: scale(1.1); }
         .comparison-row div:last-child,
         .comparison-header div:last-child {
-            background: linear-gradient(180deg, rgba(187, 153, 255, 0.08) 0%, rgba(187, 153, 255, 0.03) 100%);
+            background: rgba(187, 153, 255, 0.05);
             border-left: 1px solid rgba(var(--accent-rgb), 0.15);
+        }
+        .comparison-header div:last-child {
+            background: rgba(187, 153, 255, 0.1);
+            box-shadow: inset 0 2px 0 rgba(var(--accent-rgb), 0.4);
         }
         .comparison-row div:last-child {
             font-weight: 500;
@@ -1039,10 +1132,6 @@
             height: auto;
             display: block;
             border-bottom: 1px solid var(--border);
-            transition: transform 0.4s ease;
-        }
-        .screenshot-card:hover img {
-            transform: scale(1.02);
         }
         .screenshot-label {
             padding: 16px;
@@ -1513,7 +1602,7 @@
             </div>
 
             <div class="features-grid">
-                <div class="feature-card" style="grid-column: span 2;">
+                <div class="feature-card feature-card--hero" style="grid-column: span 2;">
                     <i class="ti ti-arrow-iteration icon"></i>
                     <h3>understand → decompose → act → verify</h3>
                     <p>cli claude dives in blind. mistakes happen. you fix them. repeat. yume enforces a smarter loop: plan first, break it down, execute carefully, verify the result. same claude, better outcomes.</p>
@@ -1560,7 +1649,7 @@
                     <h3>zero flickering. finally.</h3>
                     <p>700+ devs upvoted the flickering issue. anthropic hasn't fixed it. we did. native rendering means zero terminal artifacts. your eyes will thank you.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-eye icon"></i>
                     <h3>watch claude think live</h3>
                     <p>cli shows thinking after it's done. yume streams every word as claude reasons—watch the thought process unfold in real-time, not after the fact.</p>
@@ -1645,12 +1734,12 @@
                     <h3>stream timers</h3>
                     <p>cli gives no feedback during long waits. yume shows live duration for thinking, bash, and compaction. know exactly what's happening.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-brain icon"></i>
                     <h3>claude that actually remembers</h3>
                     <p>cli forgets everything between sessions. yume's memory persists your architecture, patterns, and preferences forever.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-users icon"></i>
                     <h3>do 4 things at once</h3>
                     <p>run 4 agents in parallel on isolated branches. test, refactor, write docs, review—all at once.</p>
@@ -1680,12 +1769,12 @@
                     <h3>project browser</h3>
                     <p>browse all projects and sessions. search, filter, see git changes.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-restore icon"></i>
                     <h3>never lose work again</h3>
                     <p>cli crash = lost session. no recovery. yume auto-saves every 5 minutes with 24-hour retention. power outage? mac restart? pick up exactly where you left off.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-arrow-back-up icon"></i>
                     <h3>undo claude's mistakes</h3>
                     <p>tracks every file change per message. one click to roll back to any point.</p>
@@ -1695,7 +1784,7 @@
                     <h3>mid-stream context</h3>
                     <p>live token count as claude responds. always know exactly where you stand.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-layout-grid icon"></i>
                     <h3>tabs + windows</h3>
                     <p>cli is single-session. yume gives you unlimited tabs, multiple windows, drag tabs between windows. work on multiple projects at once.</p>
@@ -1760,33 +1849,33 @@
             </div>
 
             <div class="agents-grid">
-                <div class="agent-card">
-                    <i class="ti ti-sitemap icon"></i>
-                    <div class="agent-name">architect</div>
+                <div class="agent-card" style="--agent-color: var(--theme-cobalt);">
+                    <i class="ti ti-sitemap icon" style="color: var(--theme-cobalt);"></i>
+                    <div class="agent-name" style="color: var(--theme-cobalt);">architect</div>
                     <div class="agent-desc">think before coding. breaks complex tasks into steps. catches problems before they happen.</div>
                 </div>
-                <div class="agent-card">
-                    <i class="ti ti-search icon"></i>
-                    <div class="agent-name">explorer</div>
+                <div class="agent-card" style="--agent-color: var(--theme-synth);">
+                    <i class="ti ti-search icon" style="color: var(--theme-synth);"></i>
+                    <div class="agent-name" style="color: var(--theme-synth);">explorer</div>
                     <div class="agent-desc">read-only reconnaissance. learns your codebase structure before any changes are made.</div>
                 </div>
-                <div class="agent-card">
-                    <i class="ti ti-code icon"></i>
-                    <div class="agent-name">implementer</div>
+                <div class="agent-card" style="--agent-color: var(--theme-grove);">
+                    <i class="ti ti-code icon" style="color: var(--theme-grove);"></i>
+                    <div class="agent-name" style="color: var(--theme-grove);">implementer</div>
                     <div class="agent-desc">surgical precision. one change at a time. minimal diffs that won't break your codebase.</div>
                 </div>
-                <div class="agent-card">
-                    <i class="ti ti-shield-check icon"></i>
-                    <div class="agent-name">guardian</div>
+                <div class="agent-card" style="--agent-color: var(--theme-rose);">
+                    <i class="ti ti-shield-check icon" style="color: var(--theme-rose);"></i>
+                    <div class="agent-name" style="color: var(--theme-rose);">guardian</div>
                     <div class="agent-desc">automatic code review. catches bugs, security holes, and performance issues before they ship.</div>
                 </div>
             </div>
 
-            <div style="margin-top: 40px; padding: 20px; background: rgba(var(--accent-rgb), 0.05); border: 1px solid rgba(var(--accent-rgb), 0.2); border-radius: 12px; text-align: center;">
-                <p style="color: var(--accent); font-size: 15px; font-weight: 600; margin-bottom: 6px;">
-                    <i class="ti ti-users" style="margin-right: 8px;"></i>run 4 agents simultaneously
+            <div class="agents-callout">
+                <p class="agents-callout-title">
+                    <i class="ti ti-users"></i>run 4 agents simultaneously
                 </p>
-                <p style="color: var(--text-dim); font-size: 13px;">
+                <p class="agents-callout-desc">
                     each agent works on an isolated git branch. refactor, test, document, and review—all in parallel. no waiting.
                 </p>
             </div>
@@ -1797,20 +1886,20 @@
         <div class="container">
             <div class="themes-showcase">
                 <h2>your eyes, your rules</h2>
-                <p style="color: var(--text-dim); margin-top: 12px;">cli terminal theming is a mess of escape codes. yume gives you pure black oled default, 12 built-in themes, and infinite custom color combinations. code at 2am without eye strain.</p>
+                <p style="color: var(--text-dim); margin-top: 12px;">12 built-in themes with oled-black backgrounds. sorted by hue from violet to pink. custom themes supported.</p>
                 <div class="theme-swatches">
-                    <div class="theme-swatch" style="background: #000000;" title="OLED Black"></div>
-                    <div class="theme-swatch" style="background: #bb99ff;" title="Purple Dream"></div>
-                    <div class="theme-swatch" style="background: #4ecdc4;" title="Teal Wave"></div>
-                    <div class="theme-swatch" style="background: #ff6b6b;" title="Coral Sunset"></div>
-                    <div class="theme-swatch" style="background: #ffd93d;" title="Golden Hour"></div>
-                    <div class="theme-swatch" style="background: #6bcb77;" title="Forest Green"></div>
-                    <div class="theme-swatch" style="background: #4d96ff;" title="Ocean Blue"></div>
-                    <div class="theme-swatch" style="background: #ff9f43;" title="Warm Orange"></div>
-                    <div class="theme-swatch" style="background: #ee5a24;" title="Ember Red"></div>
-                    <div class="theme-swatch" style="background: #a55eea;" title="Violet"></div>
-                    <div class="theme-swatch" style="background: #26de81;" title="Mint"></div>
-                    <div class="theme-swatch" style="background: #fd79a8;" title="Rose"></div>
+                    <div class="theme-swatch" style="background: #c4b5ff;" title="yume"></div>
+                    <div class="theme-swatch" style="background: #b6b6de;" title="void"></div>
+                    <div class="theme-swatch" style="background: #82aaff;" title="cobalt"></div>
+                    <div class="theme-swatch" style="background: #61afef;" title="slate"></div>
+                    <div class="theme-swatch" style="background: #8fb8c8;" title="arctic"></div>
+                    <div class="theme-swatch" style="background: #36d7e6;" title="synth"></div>
+                    <div class="theme-swatch" style="background: #9df5bd;" title="mint"></div>
+                    <div class="theme-swatch" style="background: #afff76;" title="grove"></div>
+                    <div class="theme-swatch" style="background: #ffc85b;" title="ochre"></div>
+                    <div class="theme-swatch" style="background: #dec891;" title="bourbon"></div>
+                    <div class="theme-swatch" style="background: #d57b60;" title="burnt"></div>
+                    <div class="theme-swatch" style="background: #e890a0;" title="rose"></div>
                 </div>
             </div>
         </div>
@@ -2032,6 +2121,9 @@
                 <a href="https://github.com/aofp/yume/issues" target="_blank">issues</a> &bull;
                 <a href="https://github.com/anthropics/claude-code" target="_blank">claude code cli</a>
             </p>
+            <p style="margin-bottom: 8px; font-size: 12px; color: var(--text-dimmer);">
+                built with tauri + rust. native performance, zero telemetry.
+            </p>
             <p>© 2026 aofp. made with claude code + yume.</p>
         </div>
     </footer>
@@ -2109,8 +2201,34 @@
                         this.opacity = Math.random() * 0.2 + 0.12; // 0.12-0.32
                     }
 
-                    // Fixed purple hue with slight variation
-                    this.hue = 268 + Math.random() * 6; // 268-274
+                    // Mostly purple, occasional accent colors from theme palette
+                    const colorRoll = Math.random();
+                    if (colorRoll < 0.65) {
+                        // 65%: purple/violet (yume theme)
+                        this.hue = 268 + Math.random() * 6;
+                        this.sat = 70;
+                        this.light = 70;
+                    } else if (colorRoll < 0.75) {
+                        // 10%: cyan (synth theme)
+                        this.hue = 185 + Math.random() * 10;
+                        this.sat = 75;
+                        this.light = 55;
+                    } else if (colorRoll < 0.85) {
+                        // 10%: pink (rose theme)
+                        this.hue = 350 + Math.random() * 10;
+                        this.sat = 65;
+                        this.light = 72;
+                    } else if (colorRoll < 0.92) {
+                        // 7%: mint/green (mint theme)
+                        this.hue = 145 + Math.random() * 10;
+                        this.sat = 70;
+                        this.light = 75;
+                    } else {
+                        // 8%: blue (cobalt theme)
+                        this.hue = 225 + Math.random() * 10;
+                        this.sat = 100;
+                        this.light = 75;
+                    }
 
                     // Glow multiplier - smaller particles glow more
                     this.glowMultiplier = this.size < 50 ? 2 : 1.5;
@@ -2135,8 +2253,8 @@
                         this.x, this.y, 0,
                         this.x, this.y, glowRadius
                     );
-                    gradient.addColorStop(0, `hsla(${this.hue}, 70%, 70%, ${this.opacity})`);
-                    gradient.addColorStop(0.4, `hsla(${this.hue}, 60%, 50%, ${this.opacity * 0.5})`);
+                    gradient.addColorStop(0, `hsla(${this.hue}, ${this.sat}%, ${this.light}%, ${this.opacity})`);
+                    gradient.addColorStop(0.4, `hsla(${this.hue}, ${this.sat * 0.85}%, ${this.light * 0.7}%, ${this.opacity * 0.5})`);
                     gradient.addColorStop(1, 'transparent');
                     ctx.fillStyle = gradient;
                     ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
@@ -2169,12 +2287,17 @@
                 'elevated',
                 'but better',
                 'for real this time',
-                'but max level',
+                'max level',
                 'minus the pain',
                 'in the 40-watt range',
                 'final form',
                 'fully operational',
-                'unbound'
+                'unbound',
+                'done right',
+                'without the jank',
+                'unchained',
+                'as intended',
+                'reimagined'
             ];
             const el = document.getElementById('hero-catchphrase');
             if (!el) return;
@@ -2206,21 +2329,23 @@
 
             function typeOut(callback) {
                 const text = el.textContent.replace('|', '');
-                let i = text.length;
+                const words = text.split(' ');
 
                 el.appendChild(cursor);
 
-                function deleteChar() {
-                    if (i > 0) {
-                        el.textContent = text.substring(0, i - 1);
+                function deleteWord() {
+                    if (words.length > 0) {
+                        words.pop();
+                        el.textContent = words.join(' ');
                         el.appendChild(cursor);
-                        i--;
-                        setTimeout(deleteChar, 25 + Math.random() * 15);
+                        setTimeout(deleteWord, 60 + Math.random() * 40);
                     } else {
+                        el.textContent = '';
+                        el.appendChild(cursor);
                         callback();
                     }
                 }
-                deleteChar();
+                deleteWord();
             }
 
             function typeIn(text, callback) {
@@ -2233,7 +2358,13 @@
                         el.textContent = text.substring(0, i + 1);
                         el.appendChild(cursor);
                         i++;
-                        setTimeout(addChar, 35 + Math.random() * 30);
+                        // human-like timing: base delay + random variance + occasional pause
+                        let delay = 40 + Math.random() * 60;
+                        // occasional longer pause (10% chance)
+                        if (Math.random() < 0.1) delay += 80 + Math.random() * 60;
+                        // slight pause after space
+                        if (text[i - 1] === ' ') delay += 30;
+                        setTimeout(addChar, delay);
                     } else {
                         // fade cursor smoothly after typing complete
                         cursor.style.transition = 'opacity 0.3s ease-out';
