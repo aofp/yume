@@ -2054,7 +2054,7 @@
     </script>
 
     <script>
-        // Hero catchphrase rotation
+        // Hero catchphrase rotation with typewriter effect
         (function() {
             const phrases = [
                 'like a dream',
@@ -2062,53 +2062,100 @@
                 'elevated',
                 'but better',
                 'for real this time',
-                'max level',
+                'but max level',
                 'minus the pain',
-                'in the 40-watt range'
+                'in the 40-watt range',
+                'final form',
+                'fully operational',
+                'unbound'
             ];
             const el = document.getElementById('hero-catchphrase');
             if (!el) return;
 
-            let lastFour = [0]; // start with 'supercharged' (index 0)
+            let lastFour = [0];
             let currentIndex = 0;
+            let isTyping = false;
+
+            // create cursor element
+            const cursor = document.createElement('span');
+            cursor.className = 'typewriter-cursor';
+            cursor.textContent = '|';
+            cursor.style.cssText = 'opacity: 1; animation: blink 0.7s infinite; margin-left: 2px;';
+
+            // add cursor blink animation
+            const style = document.createElement('style');
+            style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
+            document.head.appendChild(style);
 
             function getNextIndex() {
-                // filter out last 4 used indices
                 const available = phrases
                     .map((_, i) => i)
                     .filter(i => !lastFour.includes(i));
-
-                // pick random from available
                 const nextIndex = available[Math.floor(Math.random() * available.length)];
-
-                // update history (keep only last 4)
                 lastFour.push(nextIndex);
                 if (lastFour.length > 4) lastFour.shift();
-
                 return nextIndex;
             }
 
-            function rotateCatchphrase() {
-                // fade out
-                el.classList.remove('fade-in');
-                el.classList.add('fade-out');
+            function typeOut(callback) {
+                const text = el.textContent.replace('|', '');
+                let i = text.length;
 
-                setTimeout(() => {
-                    // change text
-                    currentIndex = getNextIndex();
-                    el.textContent = phrases[currentIndex];
+                el.appendChild(cursor);
 
-                    // fade in
-                    el.classList.remove('fade-out');
-                    el.classList.add('fade-in');
-                }, 400);
+                function deleteChar() {
+                    if (i > 0) {
+                        el.textContent = text.substring(0, i - 1);
+                        el.appendChild(cursor);
+                        i--;
+                        setTimeout(deleteChar, 30 + Math.random() * 20);
+                    } else {
+                        callback();
+                    }
+                }
+                deleteChar();
             }
 
-            // start with fade-in class
-            el.classList.add('fade-in');
+            function typeIn(text, callback) {
+                let i = 0;
+                el.textContent = '';
+                el.appendChild(cursor);
 
-            // rotate every 3 seconds
-            setInterval(rotateCatchphrase, 3000);
+                function addChar() {
+                    if (i < text.length) {
+                        el.textContent = text.substring(0, i + 1);
+                        el.appendChild(cursor);
+                        i++;
+                        setTimeout(addChar, 40 + Math.random() * 40);
+                    } else {
+                        // hide cursor after typing complete
+                        setTimeout(() => {
+                            cursor.style.opacity = '0';
+                            callback();
+                        }, 500);
+                    }
+                }
+                addChar();
+            }
+
+            function rotateCatchphrase() {
+                if (isTyping) return;
+                isTyping = true;
+                cursor.style.opacity = '1';
+
+                typeOut(() => {
+                    currentIndex = getNextIndex();
+                    typeIn(phrases[currentIndex], () => {
+                        isTyping = false;
+                    });
+                });
+            }
+
+            // initial state
+            el.textContent = phrases[0];
+
+            // rotate every 5 seconds
+            setInterval(rotateCatchphrase, 5000);
         })();
     </script>
 
