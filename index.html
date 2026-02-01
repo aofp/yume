@@ -238,7 +238,7 @@
         }
         .hero-sub {
             font-size: 1.25rem;
-            color: var(--text-dim);
+            color: rgba(255, 255, 255, 0.7);
             max-width: 600px;
             margin: 0 auto 40px;
         }
@@ -1326,14 +1326,14 @@
                 <img src="assets/yume.png" alt="yume" class="hero-logo">
             </div>
             <h1>claude code,<br><span class="hero-catchphrase" id="hero-catchphrase">supercharged</span></h1>
-            <p class="hero-sub">orchestration. memory. background agents.<br>30+ features the cli doesn't have. same claude, zero compromises.</p>
+            <p class="hero-sub">orchestration. memory. background agents.<br>lightning fast. 30+ features the cli doesn't have.<br>same claude, zero compromises.</p>
             <div class="hero-ctas">
                 <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
                 <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
                 <a href="#" class="btn download-btn" id="dl-win" data-os="win">download for windows</a>
                 <a href="#" class="btn download-btn" id="dl-linux" data-os="linux">download for linux</a>
             </div>
-            <p class="other-platforms" id="other-platforms" style="margin-top: 16px; font-size: 13px; color: var(--text-dimmer);"></p>
+            <p class="other-platforms" id="other-platforms" style="margin-top: 16px; font-size: 13px; color: rgba(255, 255, 255, 0.5);"></p>
         </div>
     </section>
 
@@ -1588,6 +1588,11 @@
                     <h3>mid-stream context</h3>
                     <p>live token count as claude responds. always know exactly where you stand.</p>
                 </div>
+                <div class="feature-card">
+                    <i class="ti ti-layout-grid icon"></i>
+                    <h3>tabs + windows</h3>
+                    <p>cli is single-session. yume gives you unlimited tabs, multiple windows, drag tabs between windows. work on multiple projects at once.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -1749,7 +1754,7 @@
                     <div class="shortcut-keys"><span class="key">⌘</span><span class="key">Y</span></div>
                 </div>
                 <div class="shortcut-item">
-                    <span class="shortcut-action">agents</span>
+                    <span class="shortcut-action">new window</span>
                     <div class="shortcut-keys"><span class="key">⌘</span><span class="key">N</span></div>
                 </div>
                 <div class="shortcut-item">
@@ -2052,14 +2057,14 @@
         // Hero catchphrase rotation
         (function() {
             const phrases = [
-                'supercharged',
                 'like a dream',
                 'perfected',
-                'without the pain',
-                'done right',
-                'as it should be',
-                'that just works',
-                'finally fixed'
+                'elevated',
+                'but better',
+                'for real this time',
+                'max level',
+                'minus the pain',
+                'in the 40-watt range'
             ];
             const el = document.getElementById('hero-catchphrase');
             if (!el) return;
