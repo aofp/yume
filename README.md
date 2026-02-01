@@ -33,6 +33,24 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 
 ---
 
+## how it works
+
+yume is **not** an alternate harness or api wrapper. we spawn the **official claude code cli** as a subprocess.
+
+```
+yume app → spawns real cli binary → cli handles auth → anthropic servers
+```
+
+this is fundamentally different from tools that spoof headers to bypass api pricing. yume:
+- runs the actual `claude` binary installed on your machine
+- uses your existing claude pro/max subscription
+- never touches anthropic's api directly
+- maintains 100% cli compatibility (subagents, mcp, hooks, skills, claude.md all work)
+
+think of it like **iterm vs terminal.app** - a different frontend for the same tool.
+
+---
+
 ## features
 
 ### orchestration flow (unique to yume)
