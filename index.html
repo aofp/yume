@@ -207,11 +207,11 @@
 
         /* particle canvas */
         #particles {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 400px;
+            height: 600px;
             pointer-events: none;
             z-index: 0;
             opacity: 0.6;
@@ -349,45 +349,86 @@
             }
         }
         .tech-card {
-            background: var(--card);
+            background: linear-gradient(135deg, var(--card) 0%, #0d0d12 100%);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
+            border-radius: 16px;
+            padding: 28px 24px;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .tech-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.4), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .tech-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
         .tech-card:hover {
-            border-color: rgba(var(--accent-rgb), 0.5);
-            background: rgba(var(--accent-rgb), 0.03);
-            transform: translateY(-2px);
+            border-color: rgba(var(--accent-rgb), 0.4);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(var(--accent-rgb), 0.12);
+        }
+        .tech-card:hover::before {
+            opacity: 1;
+        }
+        .tech-card:hover::after {
+            opacity: 1;
         }
         .tech-card .icon {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             color: var(--accent);
-            margin-bottom: 8px;
-            opacity: 0.6;
+            margin-bottom: 12px;
+            opacity: 0.5;
+            transition: all 0.3s ease;
         }
         .tech-card:hover .icon {
             opacity: 1;
+            transform: scale(1.15);
+            filter: drop-shadow(0 0 8px rgba(var(--accent-rgb), 0.5));
         }
         .tech-value {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
             color: var(--accent);
             font-family: 'Agave', monospace;
             margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+        .tech-card:hover .tech-value {
+            text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.5);
         }
         .tech-label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-dimmer);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
+            letter-spacing: 1.5px;
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
         }
         .tech-detail {
             font-size: 13px;
             color: var(--text-dim);
-            line-height: 1.5;
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
         }
 
         /* agents */
@@ -442,16 +483,64 @@
 
         /* themes showcase */
         .themes-showcase {
-            background: var(--card);
+            background: linear-gradient(135deg, var(--card) 0%, #0d0d14 100%);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 40px;
+            border-radius: 20px;
+            padding: 48px 40px;
             text-align: center;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .themes-showcase::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.3), transparent);
+        }
+        .themes-showcase::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% -20%, rgba(var(--accent-rgb), 0.06) 0%, transparent 70%);
+            pointer-events: none;
         }
         .themes-showcase:hover {
             border-color: rgba(var(--accent-rgb), 0.4);
-            box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.1);
+            box-shadow: 0 0 40px rgba(var(--accent-rgb), 0.12);
+        }
+        .themes-showcase h2 {
+            position: relative;
+            z-index: 1;
+        }
+        .themes-showcase p {
+            position: relative;
+            z-index: 1;
+        }
+        .theme-swatches {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        .theme-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .theme-swatch:hover {
+            transform: scale(1.2);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 12px currentColor;
         }
 
         /* keyboard shortcuts */
@@ -593,6 +682,10 @@
             transition: all 0.2s ease;
         }
         .release-downloads a:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .release-toggle button:hover {
             border-color: var(--accent);
             color: var(--accent);
         }
@@ -759,20 +852,24 @@
             .section { padding: 40px 0; }
             .hero { padding: 40px 0 32px; }
             .hero-logo { width: 64px; height: 64px; margin-bottom: 16px; }
+            .hero-logo-container { margin-bottom: 20px; }
+            .orb { width: 80px; height: 80px; margin-top: -40px; margin-left: -40px; }
             .hero h1 { font-size: 1.6rem; margin-bottom: 12px; }
             .hero-sub { font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5; }
+            .hero-badge { font-size: 11px; padding: 5px 12px; }
             .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
-            .hero-ctas .btn { width: 100%; max-width: 280px; text-align: center; }
+            .hero-ctas .btn { width: 100%; max-width: 280px; text-align: center; min-height: 48px; display: flex; align-items: center; justify-content: center; }
 
+            /* stats - 2 columns for better readability on small screens */
             .stats {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
                 padding: 20px 0;
             }
-            .stat { padding: 8px 4px; }
-            .stat-value { font-size: 0.9rem; word-break: break-word; }
-            .stat-label { font-size: 10px; }
+            .stat { padding: 12px 8px; }
+            .stat-value { font-size: 1rem; word-break: break-word; }
+            .stat-label { font-size: 11px; }
 
             .section-header h2 { font-size: 1.3rem; }
             .section-header p { font-size: 0.85rem; }
@@ -791,21 +888,36 @@
             .tech-value { font-size: 1.4rem; }
 
             .release { padding: 16px; }
-            .release-downloads { gap: 6px; }
-            .release-downloads a { padding: 5px 10px; font-size: 0.8rem; }
+            .release-downloads { gap: 8px; }
+            .release-downloads a { padding: 8px 12px; font-size: 0.8rem; min-height: 40px; display: inline-flex; align-items: center; }
 
             .shortcuts-grid { grid-template-columns: 1fr; }
-            .shortcut-item { padding: 10px 12px; }
+            .shortcut-item { padding: 12px 14px; min-height: 48px; }
             .shortcut-action { font-size: 13px; }
-            .key { padding: 3px 6px; font-size: 11px; }
+            .key { padding: 4px 8px; font-size: 11px; }
 
             .pricing-card { padding: 24px 16px; border-radius: 16px; }
             .pricing-title { font-size: 1.2rem; }
             .pricing-price { font-size: 2.5rem; }
             .pricing-features li { padding: 8px 0; font-size: 0.9rem; }
 
+            /* comparison table - smaller min-width for small phones */
+            .comparison-header, .comparison-row { min-width: 520px; }
+
             footer { padding: 24px 0; }
             footer p { font-size: 12px; }
+            footer a { padding: 8px 4px; }
+        }
+
+        /* extra small phones (320px) */
+        @media (max-width: 360px) {
+            .container { padding: 0 10px; }
+            .hero h1 { font-size: 1.4rem; }
+            .hero-sub { font-size: 0.85rem; }
+            .hero-ctas .btn { font-size: 13px; padding: 12px 16px; }
+            .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .stat-value { font-size: 0.9rem; }
+            .comparison-header, .comparison-row { min-width: 480px; }
         }
     </style>
 </head>
@@ -835,8 +947,8 @@
                 <div class="orb orb-3"></div>
                 <img src="assets/yume.png" alt="yume" class="hero-logo">
             </div>
-            <h1>claude code,<br><span>without the pain</span></h1>
-            <p class="hero-sub">tired of flickering, input lag, and crashes?<br>yume fixes all of it—and adds orchestration, memory, background agents, and 30+ features the cli doesn't have.<br>same claude. way better experience.</p>
+            <h1>claude code,<br><span>supercharged</span></h1>
+            <p class="hero-sub">orchestration. memory. background agents. 30+ features the cli doesn't have.<br>same claude, zero compromises.</p>
             <div class="hero-ctas">
                 <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
                 <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
@@ -849,24 +961,24 @@
 
     <section class="stats">
         <div class="stat">
-            <div class="stat-value">0</div>
-            <div class="stat-label">flickering</div>
+            <div class="stat-value">zero</div>
+            <div class="stat-label">flicker</div>
         </div>
         <div class="stat">
-            <div class="stat-value">&lt;50ms</div>
-            <div class="stat-label">input latency</div>
+            <div class="stat-value">instant</div>
+            <div class="stat-label">input</div>
         </div>
         <div class="stat">
-            <div class="stat-value">0</div>
-            <div class="stat-label">crashes</div>
+            <div class="stat-value">rock solid</div>
+            <div class="stat-label">stability</div>
         </div>
         <div class="stat">
-            <div class="stat-value">memory</div>
-            <div class="stat-label">that persists</div>
+            <div class="stat-value">persistent</div>
+            <div class="stat-label">memory</div>
         </div>
         <div class="stat">
-            <div class="stat-value">4</div>
-            <div class="stat-label">background agents</div>
+            <div class="stat-value">4 parallel</div>
+            <div class="stat-label">agents</div>
         </div>
         <div class="stat">
             <div class="stat-value">free</div>
@@ -905,35 +1017,35 @@
     <section class="section" id="orchestration">
         <div class="container">
             <div class="section-header">
-                <h2>stop babysitting claude</h2>
-                <p>without orchestration, you're the project manager. with yume, claude manages itself.</p>
+                <h2>let claude manage itself</h2>
+                <p>you describe what. yume figures out how.</p>
             </div>
 
             <div class="features-grid">
                 <div class="feature-card" style="grid-column: span 2;">
                     <i class="ti ti-arrow-iteration icon"></i>
                     <h3>understand → decompose → act → verify</h3>
-                    <p>cli claude dives straight into coding without thinking. it makes mistakes. you fix them. repeat. yume's orchestration makes claude plan first, break tasks into steps, execute carefully, then verify its own work. you describe what you want—claude figures out how.</p>
+                    <p>cli claude dives in blind. mistakes happen. you fix them. repeat. yume enforces a smarter loop: plan first, break it down, execute carefully, verify the result. same claude, better outcomes.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-sitemap icon"></i>
-                    <h3>architect agent</h3>
-                    <p>cli claude starts coding immediately, often going down wrong paths. architect forces it to plan first—breaking complex tasks into steps, identifying risks before you waste tokens.</p>
+                    <h3>architect</h3>
+                    <p>plans before coding. breaks complex tasks into steps. identifies risks before you waste tokens.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-search icon"></i>
-                    <h3>explorer agent</h3>
-                    <p>cli claude modifies files it doesn't understand. explorer is read-only—it searches, reads, learns your codebase structure before any changes happen.</p>
+                    <h3>explorer</h3>
+                    <p>read-only reconnaissance. searches, reads, and learns your codebase before any changes happen.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-code icon"></i>
-                    <h3>implementer agent</h3>
-                    <p>cli claude makes sweeping changes across multiple files at once. implementer does one thing at a time—small, precise edits with minimal diffs.</p>
+                    <h3>implementer</h3>
+                    <p>one thing at a time. small, precise edits. minimal diffs. no sweeping changes across files.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-shield-check icon"></i>
-                    <h3>guardian agent</h3>
-                    <p>cli claude ships bugs to production. guardian reviews every significant change—catching security holes, performance issues, and logic errors automatically.</p>
+                    <h3>guardian</h3>
+                    <p>catches bugs before they ship. security holes, performance issues, logic errors—found automatically.</p>
                 </div>
             </div>
         </div>
@@ -1000,12 +1112,12 @@
                 <div class="feature-card">
                     <i class="ti ti-puzzle icon"></i>
                     <h3>extend without coding</h3>
-                    <p>cli extensibility requires writing code. yume's plugin system lets you install commands, agents, hooks, and skills with a click. community plugins coming soon.</p>
+                    <p>one-click install for commands, agents, hooks, and skills. no code required.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-wand icon"></i>
                     <h3>context that auto-loads</h3>
-                    <p>tired of explaining your tech stack every session? skills auto-inject context when you work on certain files. open a .tsx file, react knowledge loads automatically.</p>
+                    <p>skills auto-inject context based on file types. open .tsx, react knowledge loads. open .rs, rust patterns appear.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-shield icon"></i>
@@ -1030,12 +1142,7 @@
                 <div class="feature-card">
                     <i class="ti ti-chart-bar icon"></i>
                     <h3>know where your tokens go</h3>
-                    <p>cli gives you no visibility into usage. yume's analytics show tokens by project, model, and date. see which projects cost the most. optimize your workflow.</p>
-                </div>
-                <div class="feature-card">
-                    <i class="ti ti-clock icon"></i>
-                    <h3>stream timers</h3>
-                    <p>live duration for thinking, bash, compacting. see exactly how long each step takes.</p>
+                    <p>token usage by project, model, and date. see what costs the most.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-at icon"></i>
@@ -1045,12 +1152,12 @@
                 <div class="feature-card">
                     <i class="ti ti-brain icon"></i>
                     <h3>claude that actually remembers</h3>
-                    <p>cli claude forgets everything between sessions. you explain the same architecture, preferences, and patterns over and over. yume's memory system learns from your project—error fixes, decisions, coding style—and persists it forever.</p>
+                    <p>cli forgets everything between sessions. yume's memory persists your architecture, patterns, and preferences forever.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-users icon"></i>
                     <h3>do 4 things at once</h3>
-                    <p>cli claude is single-threaded—you wait while it works. yume runs 4 background agents in parallel on isolated git branches. run tests while refactoring while writing docs while reviewing code. stop waiting.</p>
+                    <p>run 4 agents in parallel on isolated branches. test, refactor, write docs, review—all at once.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-switch-horizontal icon"></i>
@@ -1073,19 +1180,14 @@
                     <p>model context protocol server integration. extend claude with external tools and data sources.</p>
                 </div>
                 <div class="feature-card">
-                    <i class="ti ti-activity icon"></i>
-                    <h3>performance monitoring</h3>
-                    <p>real-time fps, memory, render time tracking. metrics export. debug and optimize your workflow.</p>
-                </div>
-                <div class="feature-card">
                     <i class="ti ti-info-circle icon"></i>
-                    <h3>session stats modal</h3>
-                    <p>detailed session statistics. context usage visualization. token breakdown. cost tracking. cmd+. to open.</p>
+                    <h3>session stats</h3>
+                    <p>context usage, token breakdown, cost tracking at a glance. cmd+.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-folder icon"></i>
-                    <h3>projects modal</h3>
-                    <p>comprehensive project and session browser. infinite scroll. search filtering. git changes count. session title persistence.</p>
+                    <h3>project browser</h3>
+                    <p>browse all projects and sessions. search, filter, see git changes.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-restore icon"></i>
@@ -1095,12 +1197,12 @@
                 <div class="feature-card">
                     <i class="ti ti-arrow-back-up icon"></i>
                     <h3>undo claude's mistakes</h3>
-                    <p>claude broke your code? cli gives you git reset or manual fixes. yume tracks every file change per message—one click rolls back to any point in the conversation.</p>
+                    <p>tracks every file change per message. one click to roll back to any point.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-live-view icon"></i>
                     <h3>mid-stream context</h3>
-                    <p>real-time token updates during streaming. see accurate context percentage as claude responds. auto-compact can trigger mid-stream if needed.</p>
+                    <p>live token count as claude responds. always know exactly where you stand.</p>
                 </div>
             </div>
         </div>
@@ -1157,36 +1259,39 @@
     <section class="section" id="agents">
         <div class="container">
             <div class="section-header">
-                <h2>specialized agents, not generic prompts</h2>
-                <p>cli claude does everything with one mindset. yume's agents are purpose-built—each constrained to do one job well.</p>
+                <h2>a team of specialists, not one generalist</h2>
+                <p>cli claude tries to do everything at once—and fails at half of it. yume deploys purpose-built agents that each do one job exceptionally well.</p>
             </div>
 
             <div class="agents-grid">
                 <div class="agent-card">
                     <i class="ti ti-sitemap icon"></i>
                     <div class="agent-name">architect</div>
-                    <div class="agent-desc">plans, decomposes, identifies risks. todowrite tracking.</div>
+                    <div class="agent-desc">think before coding. breaks complex tasks into steps. catches problems before they happen.</div>
                 </div>
                 <div class="agent-card">
                     <i class="ti ti-search icon"></i>
                     <div class="agent-name">explorer</div>
-                    <div class="agent-desc">read-only. glob, grep, read. understands codebase.</div>
+                    <div class="agent-desc">read-only reconnaissance. learns your codebase structure before any changes are made.</div>
                 </div>
                 <div class="agent-card">
                     <i class="ti ti-code icon"></i>
                     <div class="agent-name">implementer</div>
-                    <div class="agent-desc">edit, write. focused changes. minimal diffs.</div>
+                    <div class="agent-desc">surgical precision. one change at a time. minimal diffs that won't break your codebase.</div>
                 </div>
                 <div class="agent-card">
                     <i class="ti ti-shield-check icon"></i>
                     <div class="agent-name">guardian</div>
-                    <div class="agent-desc">reviews for bugs, security, performance issues.</div>
+                    <div class="agent-desc">automatic code review. catches bugs, security holes, and performance issues before they ship.</div>
                 </div>
             </div>
 
-            <div style="margin-top: 32px; text-align: center;">
-                <p style="color: var(--text-dim); font-size: 14px;">
-                    + 4 concurrent background agents with git branch isolation. parallel async workflows.
+            <div style="margin-top: 40px; padding: 20px; background: rgba(var(--accent-rgb), 0.05); border: 1px solid rgba(var(--accent-rgb), 0.2); border-radius: 12px; text-align: center;">
+                <p style="color: var(--accent); font-size: 15px; font-weight: 600; margin-bottom: 6px;">
+                    <i class="ti ti-users" style="margin-right: 8px;"></i>run 4 agents simultaneously
+                </p>
+                <p style="color: var(--text-dim); font-size: 13px;">
+                    each agent works on an isolated git branch. refactor, test, document, and review—all in parallel. no waiting.
                 </p>
             </div>
         </div>
@@ -1197,6 +1302,20 @@
             <div class="themes-showcase">
                 <h2>your eyes, your rules</h2>
                 <p style="color: var(--text-dim); margin-top: 12px;">cli terminal theming is a mess of escape codes. yume gives you pure black oled default, 12 built-in themes, and infinite custom color combinations. code at 2am without eye strain.</p>
+                <div class="theme-swatches">
+                    <div class="theme-swatch" style="background: #000000;" title="OLED Black"></div>
+                    <div class="theme-swatch" style="background: #bb99ff;" title="Purple Dream"></div>
+                    <div class="theme-swatch" style="background: #4ecdc4;" title="Teal Wave"></div>
+                    <div class="theme-swatch" style="background: #ff6b6b;" title="Coral Sunset"></div>
+                    <div class="theme-swatch" style="background: #ffd93d;" title="Golden Hour"></div>
+                    <div class="theme-swatch" style="background: #6bcb77;" title="Forest Green"></div>
+                    <div class="theme-swatch" style="background: #4d96ff;" title="Ocean Blue"></div>
+                    <div class="theme-swatch" style="background: #ff9f43;" title="Warm Orange"></div>
+                    <div class="theme-swatch" style="background: #ee5a24;" title="Ember Red"></div>
+                    <div class="theme-swatch" style="background: #a55eea;" title="Violet"></div>
+                    <div class="theme-swatch" style="background: #26de81;" title="Mint"></div>
+                    <div class="theme-swatch" style="background: #fd79a8;" title="Rose"></div>
+                </div>
             </div>
         </div>
     </section>
@@ -1277,21 +1396,22 @@
                     <div>crystal</div>
                     <div style="color: var(--accent);">yume</div>
                 </div>
+                <!-- yume-only features first -->
                 <div class="comparison-row">
                     <div>orchestration flow</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> auto</div>
+                    <div><span class="check">✓</span> 4 agents</div>
                 </div>
                 <div class="comparison-row">
-                    <div>memory system</div>
+                    <div>persistent memory</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> v2</div>
+                    <div><span class="check">✓</span> per-project</div>
                 </div>
                 <div class="comparison-row">
                     <div>background agents</div>
@@ -1299,16 +1419,42 @@
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> 4 async</div>
+                    <div><span class="check">✓</span> 4 parallel</div>
                 </div>
                 <div class="comparison-row">
-                    <div>limits always visible</div>
-                    <div>/usage</div>
+                    <div>plugins + skills</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> always</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> extensible</div>
                 </div>
+                <!-- pain points yume fixes -->
+                <div class="comparison-row">
+                    <div>no flickering</div>
+                    <div><span class="cross">✗</span> 700+ issues</div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span></div>
+                </div>
+                <div class="comparison-row">
+                    <div>input latency</div>
+                    <div><span class="cross">✗</span> 10s+</div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span> &lt;50ms</div>
+                </div>
+                <div class="comparison-row">
+                    <div>crash recovery</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> 24hr</div>
+                </div>
+                <!-- features where yume has an edge -->
                 <div class="comparison-row">
                     <div>real-time thinking</div>
                     <div><span class="cross">✗</span></div>
@@ -1318,61 +1464,39 @@
                     <div><span class="check">✓</span> streaming</div>
                 </div>
                 <div class="comparison-row">
-                    <div>plugin/skills system</div>
+                    <div>usage limits visible</div>
+                    <div>/usage cmd</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> unique</div>
+                    <div><span class="check">✓</span> always</div>
                 </div>
                 <div class="comparison-row">
-                    <div>4 built-in agents</div>
+                    <div>file change rollback</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span> per-msg</div>
                 </div>
                 <div class="comparison-row">
-                    <div>crash recovery</div>
+                    <div>themes</div>
+                    <div><span class="cross">✗</span></div>
+                    <div>~5</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span></div>
+                    <div><span class="check">✓</span> 12 + custom</div>
                 </div>
+                <!-- tech comparison -->
                 <div class="comparison-row">
-                    <div>@ mentions</div>
-                    <div>partial</div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> @r @m</div>
-                </div>
-                <div class="comparison-row">
-                    <div>stream timers</div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> live</div>
-                </div>
-                <div class="comparison-row">
-                    <div>native app</div>
+                    <div>app framework</div>
                     <div>terminal</div>
                     <div>electron</div>
                     <div>tauri</div>
                     <div>electron</div>
                     <div><span class="check">✓</span> tauri</div>
                 </div>
-                <div class="comparison-row">
-                    <div>full customization</div>
-                    <div><span class="cross">✗</span></div>
-                    <div>~5 themes</div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> 12 + ∞</div>
-                </div>
+                <!-- price last for impact -->
                 <div class="comparison-row">
                     <div>price</div>
                     <div>pro/max</div>
@@ -1421,14 +1545,27 @@
             const canvas = document.getElementById('particles');
             const ctx = canvas.getContext('2d');
             let particles = [];
-            const particleCount = 40;
+            // Reduce particle count on mobile for better performance
+            const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+            const particleCount = isMobile ? 15 : 40;
 
             function resize() {
                 canvas.width = window.innerWidth;
-                canvas.height = 400;
+                canvas.height = 600;
             }
             resize();
             window.addEventListener('resize', resize);
+
+            // Scroll-based opacity fade
+            function updateOpacity() {
+                const scrollY = window.scrollY;
+                const fadeStart = 0;
+                const fadeEnd = 400;
+                const opacity = Math.max(0, 0.6 * (1 - (scrollY - fadeStart) / (fadeEnd - fadeStart)));
+                canvas.style.opacity = opacity;
+            }
+            window.addEventListener('scroll', updateOpacity);
+            updateOpacity();
 
             class Particle {
                 constructor() {
@@ -1439,17 +1576,39 @@
                 reset() {
                     this.x = Math.random() * canvas.width;
                     this.y = canvas.height + 20;
-                    this.size = Math.random() * 3 + 1;
-                    this.speedY = Math.random() * 0.5 + 0.2;
-                    this.speedX = (Math.random() - 0.5) * 0.3;
-                    this.opacity = Math.random() * 0.5 + 0.1;
+
+                    // Base size with more variety (1-7)
+                    let baseSize = Math.random() * 6 + 1;
+
+                    // 10% chance of hero particle (2-3x larger)
+                    this.isHero = Math.random() < 0.1;
+                    if (this.isHero) {
+                        baseSize *= (Math.random() + 2); // 2-3x multiplier
+                    }
+                    this.size = baseSize;
+
+                    // Speed inversely proportional to size (larger = slower, more ethereal)
+                    const sizeNormalized = this.size / 20; // normalize to 0-1 range
+                    this.speedY = (Math.random() * 0.4 + 0.15) * (1 - sizeNormalized * 0.7);
+                    this.speedX = (Math.random() - 0.5) * 0.3 * (1 - sizeNormalized * 0.5);
+
+                    // Hero particles are more visible
+                    this.opacity = this.isHero
+                        ? Math.random() * 0.3 + 0.25
+                        : Math.random() * 0.5 + 0.1;
                     this.hue = Math.random() * 30 + 260; // purple range
+
+                    // Glow radius multiplier varies with size (smaller = tighter glow, larger = softer spread)
+                    this.glowMultiplier = this.isHero
+                        ? 4 + Math.random() * 2
+                        : 2 + (this.size / 7) * 2;
                 }
 
                 update() {
                     this.y -= this.speedY;
                     this.x += this.speedX;
-                    this.x += Math.sin(this.y * 0.01) * 0.3; // gentle wave
+                    // Gentler wave for larger particles
+                    this.x += Math.sin(this.y * 0.01) * (0.3 / (1 + this.size * 0.1));
 
                     if (this.y < -20) {
                         this.reset();
@@ -1458,15 +1617,16 @@
 
                 draw() {
                     ctx.beginPath();
+                    const glowRadius = this.size * this.glowMultiplier;
                     const gradient = ctx.createRadialGradient(
                         this.x, this.y, 0,
-                        this.x, this.y, this.size * 3
+                        this.x, this.y, glowRadius
                     );
                     gradient.addColorStop(0, `hsla(${this.hue}, 70%, 70%, ${this.opacity})`);
                     gradient.addColorStop(0.4, `hsla(${this.hue}, 60%, 50%, ${this.opacity * 0.5})`);
                     gradient.addColorStop(1, 'transparent');
                     ctx.fillStyle = gradient;
-                    ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
@@ -1513,8 +1673,15 @@
             return `${baseUrl}/${filename}`;
         }
 
-        function renderReleases(releases) {
+        let allReleases = [];
+        let showingAll = false;
+        const INITIAL_COUNT = 5;
+
+        function renderReleases(releases, showAll = false) {
+            allReleases = releases;
+            showingAll = showAll;
             const container = document.getElementById('releases-list');
+            const displayReleases = showAll ? releases : releases.slice(0, INITIAL_COUNT);
 
             // Detect user's platform
             const ua = navigator.userAgent.toLowerCase();
@@ -1540,7 +1707,7 @@
                 return `https://github.com/aofp/yume/releases/download/v${version}/${file}`;
             };
 
-            container.innerHTML = releases.map(r => {
+            let html = displayReleases.map(r => {
                 let downloadLinks = '';
 
                 // Only show download buttons if downloads exist
@@ -1577,6 +1744,24 @@
                     </div>
                 `;
             }).join('');
+
+            // Add show more/less button if there are more than INITIAL_COUNT releases
+            if (releases.length > INITIAL_COUNT) {
+                const remaining = releases.length - INITIAL_COUNT;
+                html += `
+                    <div class="release-toggle" style="padding: 16px; text-align: center; border-top: 1px solid var(--border);">
+                        <button onclick="toggleReleases()" style="background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 8px 20px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; transition: all 0.2s ease;">
+                            ${showAll ? 'show less' : `show ${remaining} more`}
+                        </button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function toggleReleases() {
+            renderReleases(allReleases, !showingAll);
         }
 
         function updateDownloadButtons(latestRelease) {
