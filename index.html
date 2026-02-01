@@ -302,6 +302,77 @@
             margin: 0 auto;
         }
 
+        /* section variations */
+        .section--accent-top {
+            border-top: 1px solid transparent;
+            background-image: linear-gradient(var(--bg), var(--bg)),
+                              linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.4), transparent);
+            background-origin: padding-box, border-box;
+            background-clip: padding-box, border-box;
+        }
+
+        .section--left-header .section-header {
+            text-align: left;
+            max-width: 600px;
+        }
+        .section--left-header .section-header p {
+            margin: 0;
+        }
+        .section--left-header .section-header h2 {
+            position: relative;
+            padding-left: 20px;
+        }
+        .section--left-header .section-header h2::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .section--gradient-sweep {
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.03) 0%, transparent 50%, transparent 100%);
+        }
+
+        .section--subtle-glow {
+            position: relative;
+        }
+        .section--subtle-glow::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.3), transparent);
+        }
+
+        .section--diagonal {
+            background: linear-gradient(165deg, #080810 0%, #050505 40%, #050508 100%);
+        }
+
+        .section--boxed .section-header {
+            background: rgba(var(--accent-rgb), 0.03);
+            border: 1px solid rgba(var(--accent-rgb), 0.1);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 48px;
+        }
+
+        .section--numbered .section-header h2::before {
+            content: attr(data-number);
+            display: block;
+            font-size: 0.7rem;
+            color: var(--accent);
+            opacity: 0.6;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -997,7 +1068,7 @@
         </div>
     </section>
 
-    <section class="section" id="screenshots" style="background: #050505;">
+    <section class="section section--gradient-sweep" id="screenshots" style="background: #050505;">
         <div class="container">
             <div class="section-header">
                 <h2>designed for long coding sessions</h2>
@@ -1025,7 +1096,7 @@
         </div>
     </section>
 
-    <section class="section" id="orchestration">
+    <section class="section section--left-header section--accent-top" id="orchestration">
         <div class="container">
             <div class="section-header">
                 <h2>let claude manage itself</h2>
@@ -1062,7 +1133,7 @@
         </div>
     </section>
 
-    <section class="section" id="features" style="background: #050505;">
+    <section class="section section--subtle-glow" id="features" style="background: #050505;">
         <div class="container">
             <div class="section-header">
                 <h2>the cli is broken. yume fixes it.</h2>
@@ -1224,10 +1295,10 @@
         </div>
     </section>
 
-    <section class="section" id="tech" style="background: #050505;">
+    <section class="section section--diagonal section--numbered" id="tech">
         <div class="container">
             <div class="section-header">
-                <h2>native performance, not electron bloat</h2>
+                <h2 data-number="// SPECS">native performance, not electron bloat</h2>
                 <p>built with tauri + rust. 10x lighter than electron apps. starts instantly. uses minimal memory.</p>
             </div>
 
@@ -1272,7 +1343,7 @@
         </div>
     </section>
 
-    <section class="section" id="agents">
+    <section class="section section--boxed" id="agents">
         <div class="container">
             <div class="section-header">
                 <h2>a team of specialists, not one generalist</h2>
@@ -1313,7 +1384,7 @@
         </div>
     </section>
 
-    <section class="section" id="themes">
+    <section class="section section--accent-top" id="themes">
         <div class="container">
             <div class="themes-showcase">
                 <h2>your eyes, your rules</h2>
@@ -1336,7 +1407,7 @@
         </div>
     </section>
 
-    <section class="section" style="background: #050505;">
+    <section class="section section--left-header" style="background: #050505;">
         <div class="container">
             <div class="section-header">
                 <h2>built for keyboard power users</h2>
@@ -1396,7 +1467,7 @@
         </div>
     </section>
 
-    <section class="section">
+    <section class="section section--subtle-glow">
         <div class="container">
             <div class="section-header">
                 <h2>why settle for less?</h2>
@@ -1526,7 +1597,7 @@
     </section>
 
 
-    <section class="section" id="releases">
+    <section class="section section--gradient-sweep" id="releases" style="background: #050505;">
         <div class="container">
             <div class="section-header">
                 <h2>releases</h2>
@@ -1561,9 +1632,9 @@
             const canvas = document.getElementById('particles');
             const ctx = canvas.getContext('2d');
             let particles = [];
-            // Fewer large particles for subtle effect
+            // More particles for better coverage
             const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
-            const particleCount = isMobile ? 8 : 20;
+            const particleCount = isMobile ? 15 : 35;
 
             function resize() {
                 canvas.width = window.innerWidth;
@@ -1589,41 +1660,58 @@
                 }
 
                 reset() {
-                    this.x = Math.random() * canvas.width;
-                    this.y = canvas.height + 100;
+                    // Distribute across width with some clustering
+                    const section = Math.floor(Math.random() * 5);
+                    const sectionWidth = canvas.width / 5;
+                    this.x = section * sectionWidth + Math.random() * sectionWidth;
+                    this.y = canvas.height + 50 + Math.random() * 100;
 
-                    // All large particles (50-300px)
+                    // Wide size variance - more smaller ones
                     const roll = Math.random();
-                    if (roll < 0.3) {
-                        // 30%: massive orbs (200-300px)
-                        this.size = Math.random() * 100 + 200;
-                    } else if (roll < 0.7) {
-                        // 40%: large orbs (100-200px)
-                        this.size = Math.random() * 100 + 100;
-                    } else {
-                        // 30%: medium-large orbs (50-100px)
+                    if (roll < 0.1) {
+                        // 10%: massive orbs (180-280px)
+                        this.size = Math.random() * 100 + 180;
+                    } else if (roll < 0.25) {
+                        // 15%: large orbs (100-180px)
+                        this.size = Math.random() * 80 + 100;
+                    } else if (roll < 0.5) {
+                        // 25%: medium orbs (50-100px)
                         this.size = Math.random() * 50 + 50;
+                    } else if (roll < 0.75) {
+                        // 25%: small orbs (25-50px)
+                        this.size = Math.random() * 25 + 25;
+                    } else {
+                        // 25%: tiny orbs (10-25px)
+                        this.size = Math.random() * 15 + 10;
                     }
 
-                    // Slow ethereal movement
-                    this.speedY = Math.random() * 0.15 + 0.05; // 0.05-0.2
-                    this.speedX = (Math.random() - 0.5) * 0.05;
+                    // Speed varies with size - smaller = faster
+                    const sizeFactor = 1 - (this.size / 280); // 0 for largest, ~1 for smallest
+                    this.speedY = 0.1 + sizeFactor * 0.4 + Math.random() * 0.15; // 0.1-0.65
+                    this.speedX = (Math.random() - 0.5) * 0.08;
 
-                    // Visible but soft opacity
-                    this.opacity = Math.random() * 0.15 + 0.08; // 0.08-0.23
+                    // Opacity varies - larger = more subtle
+                    if (this.size > 150) {
+                        this.opacity = Math.random() * 0.08 + 0.04; // 0.04-0.12
+                    } else if (this.size > 80) {
+                        this.opacity = Math.random() * 0.12 + 0.08; // 0.08-0.2
+                    } else {
+                        this.opacity = Math.random() * 0.2 + 0.12; // 0.12-0.32
+                    }
 
-                    // Fixed purple hue with very slight variation
-                    this.hue = 268 + Math.random() * 4; // 268-272
+                    // Fixed purple hue with slight variation
+                    this.hue = 268 + Math.random() * 6; // 268-274
 
-                    // Soft glow
-                    this.glowMultiplier = 1.5;
+                    // Glow multiplier - smaller particles glow more
+                    this.glowMultiplier = this.size < 50 ? 2 : 1.5;
                 }
 
                 update() {
                     this.y -= this.speedY;
                     this.x += this.speedX;
-                    // Gentle wave
-                    this.x += Math.sin(this.y * 0.003) * 0.08;
+                    // Wave intensity based on size - smaller = more drift
+                    const waveIntensity = this.size < 50 ? 0.15 : (this.size < 100 ? 0.1 : 0.05);
+                    this.x += Math.sin(this.y * 0.004) * waveIntensity;
 
                     if (this.y < -this.size * 2) {
                         this.reset();
