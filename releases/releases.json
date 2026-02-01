@@ -1,8 +1,26 @@
 {
   "product": "yume",
-  "latest": "0.8.0",
+  "latest": "0.8.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.1",
+      "date": "2026-02-01",
+      "notes": "remove deprecated checkpoint/timeline/memoryv1, fix compaction bugs, cross-window settings sync, spawn retry fixes",
+      "releaseNotes": "v0.8.1-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.1_arm64.pkg",
+        "mac": "yume_0.8.1_x64.pkg",
+        "windows": "yume_0.8.1_x64-setup.exe",
+        "linux_deb": "yume_0.8.1_amd64.deb"
+      },
+      "checksums": {
+        "mac_arm": "5a7c70fd78caa6cb0fb9710c35f63f1d2fa840e79e0bfad10e71cbeffeff8735",
+        "mac": "234fc96cdbb1940a49d1169b8bbe172991f8be1b05138d41ee70f05d08dff5ae",
+        "windows": "f9cd46bef4f3d914b1f7d0d786f83f58ecd74863beaefce01a36b27efe043123",
+        "linux_deb": "a7d6de501d448f8312af321ac29642ec922d4c6c07c1c7966821d72028fefd1e"
+      }
+    },
     {
       "version": "0.8.0",
       "date": "2026-02-01",
