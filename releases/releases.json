@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.8.2",
+  "latest": "0.8.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.3",
+      "date": "2026-02-01",
+      "notes": "fix compaction tests, formatResetTime threshold, race conditions in streaming/spawn/session updates",
+      "releaseNotes": "v0.8.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.3_arm64.pkg",
+        "mac": "yume_0.8.3_x64.pkg",
+        "windows": "yume_0.8.3_x64-setup.exe",
+        "linux_deb": "yume_0.8.3_amd64.deb",
+        "linux_rpm": "yume-0.8.3-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "64099d3c6374d03846bbdfa3e124fffd72b8c35e8eb1c67a7ff268204fd3b9f7",
+        "mac": "7b18feecde7b4edb71f7bbf34bb544499ad0966f2502c1eec60f36e31fca65cb",
+        "windows": "3fa5de15115c17bafb4e6fbcf1f0c2775197daf565b310cb2cbb1c1592dc26ca",
+        "linux_deb": "deec5304f31defca432b2cd1ae76b9188ae145c79e142ebcffa72294e052132e",
+        "linux_rpm": "20af32ccf56188c199dbe93ece1ac3e2cecece9c15ea9c5f444dc7298bab3e85"
+      }
+    },
     {
       "version": "0.8.2",
       "date": "2026-02-01",
