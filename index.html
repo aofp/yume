@@ -533,12 +533,14 @@
             font-size: 1.5rem;
             color: var(--accent);
             margin-bottom: 12px;
-            opacity: 0.8;
-            transition: all 0.2s ease;
+            opacity: 0.7;
+            transition: all 0.25s ease;
+            display: inline-block;
         }
         .feature-card:hover .icon {
             opacity: 1;
-            transform: scale(1.1);
+            transform: scale(1.15) rotate(-5deg);
+            filter: drop-shadow(0 0 8px rgba(var(--accent-rgb), 0.4));
         }
         .feature-card h3 {
             font-size: 1.1rem;
@@ -628,9 +630,16 @@
             position: relative;
             z-index: 1;
             transition: all 0.3s ease;
+            animation: techPulse 4s ease-in-out infinite;
+        }
+        @keyframes techPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
         .tech-card:hover .tech-value {
-            text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.5);
+            text-shadow: 0 0 25px rgba(var(--accent-rgb), 0.6);
+            animation: none;
+            opacity: 1;
         }
         .tech-label {
             font-size: 11px;
@@ -671,28 +680,55 @@
             border-radius: 10px;
             padding: 20px;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 40%,
+                rgba(var(--accent-rgb), 0.03) 50%,
+                transparent 60%
+            );
+            transform: rotate(45deg) translateY(100%);
+            transition: transform 0.6s ease;
+        }
+        .agent-card:hover::before {
+            transform: rotate(45deg) translateY(-100%);
         }
         .agent-card:hover {
             border-color: rgba(var(--accent-rgb), 0.5);
             background: rgba(var(--accent-rgb), 0.05);
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
         .agent-card .icon {
             font-size: 1.8rem;
             color: var(--accent);
             margin-bottom: 10px;
             opacity: 0.7;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
         .agent-card:hover .icon {
             opacity: 1;
-            transform: scale(1.1);
+            transform: scale(1.15) rotate(5deg);
+            filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.4));
         }
         .agent-name {
             color: var(--accent);
             font-weight: 600;
             margin-bottom: 6px;
+            transition: text-shadow 0.2s ease;
+        }
+        .agent-card:hover .agent-name {
+            text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.3);
         }
         .agent-desc {
             color: var(--text-dim);
@@ -752,14 +788,42 @@
             height: 32px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
+            position: relative;
+        }
+        .theme-swatch::before {
+            content: attr(title);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+        }
+        .theme-swatch:hover::before {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
         .theme-swatch:hover {
-            transform: scale(1.2);
-            border-color: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 0 12px currentColor;
+            transform: scale(1.3) translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 20px currentColor, 0 4px 12px rgba(0,0,0,0.3);
         }
+        .theme-swatch:nth-child(odd) { animation: swatchFloat 3s ease-in-out infinite; }
+        .theme-swatch:nth-child(even) { animation: swatchFloat 3s ease-in-out infinite 1.5s; }
+        @keyframes swatchFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .theme-swatch:hover { animation: none; }
 
         /* keyboard shortcuts */
         .shortcuts-grid {
@@ -771,7 +835,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
+            padding: 14px 18px;
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -784,20 +848,31 @@
         .shortcut-item:hover .key {
             border-color: var(--accent);
             color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.1);
+            box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.2), inset 0 -2px 0 rgba(0,0,0,0.2);
+            transform: translateY(-1px);
         }
-        .shortcut-action { color: var(--text-dim); font-size: 14px; }
+        .shortcut-action { color: var(--text-dim); font-size: 14px; transition: color 0.2s ease; }
+        .shortcut-item:hover .shortcut-action { color: var(--text); }
         .shortcut-keys {
             display: flex;
             gap: 4px;
         }
         .key {
-            background: #1a1a1a;
+            background: linear-gradient(180deg, #222 0%, #1a1a1a 100%);
             border: 1px solid #333;
-            padding: 4px 8px;
-            border-radius: 4px;
+            border-bottom-width: 3px;
+            padding: 5px 10px;
+            border-radius: 5px;
             font-family: 'Agave', monospace;
             font-size: 12px;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .key:active {
+            transform: translateY(2px);
+            border-bottom-width: 1px;
+            box-shadow: none;
         }
 
         /* comparison */
@@ -806,6 +881,7 @@
             border: 1px solid var(--border);
             border-radius: 16px;
             overflow: hidden;
+            position: relative;
         }
         .comparison-header {
             display: grid;
@@ -820,17 +896,22 @@
             font-size: 0.85rem;
         }
         .comparison-header div:first-child { text-align: left; padding-left: 16px; }
+        .comparison-header div:last-child {
+            color: var(--accent);
+            position: relative;
+        }
         .comparison-row {
             display: grid;
             grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
             border-bottom: 1px solid var(--border);
-        }
-        .comparison-row:last-child { border-bottom: none; }
-        .comparison-row {
             transition: background 0.15s ease;
         }
+        .comparison-row:last-child { border-bottom: none; }
         .comparison-row:hover {
             background: rgba(var(--accent-rgb), 0.03);
+        }
+        .comparison-row:hover div:first-child {
+            color: var(--text);
         }
         .comparison-row div {
             padding: 12px 8px;
@@ -838,13 +919,22 @@
             align-items: center;
             justify-content: center;
             font-size: 0.85rem;
+            transition: all 0.15s ease;
         }
         .comparison-row div:first-child { justify-content: flex-start; color: var(--text-dim); padding-left: 16px; }
-        .check { color: var(--green); font-size: 18px; padding-right: 4px; }
-        .cross { color: var(--red); font-size: 18px; padding-right: 4px; }
+        .check { color: var(--green); font-size: 18px; padding-right: 4px; transition: transform 0.2s ease; }
+        .cross { color: var(--red); font-size: 18px; padding-right: 4px; opacity: 0.6; }
+        .comparison-row:hover .check { transform: scale(1.1); }
         .comparison-row div:last-child,
         .comparison-header div:last-child {
-            background: rgba(187, 153, 255, 0.05);
+            background: linear-gradient(180deg, rgba(187, 153, 255, 0.08) 0%, rgba(187, 153, 255, 0.03) 100%);
+            border-left: 1px solid rgba(var(--accent-rgb), 0.15);
+        }
+        .comparison-row div:last-child {
+            font-weight: 500;
+        }
+        .comparison-row:hover div:last-child {
+            background: rgba(187, 153, 255, 0.12);
         }
         .comparison-simple .comparison-header,
         .comparison-simple .comparison-row {
@@ -924,18 +1014,35 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+        .screenshot-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
         .screenshot-card:hover {
             border-color: rgba(var(--accent-rgb), 0.5);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(var(--accent-rgb), 0.1);
+        }
+        .screenshot-card:hover::after {
+            opacity: 1;
         }
         .screenshot-card img {
             width: 100%;
             height: auto;
             display: block;
             border-bottom: 1px solid var(--border);
+            transition: transform 0.4s ease;
+        }
+        .screenshot-card:hover img {
+            transform: scale(1.02);
         }
         .screenshot-label {
             padding: 16px;
@@ -943,6 +1050,10 @@
             font-size: 14px;
             color: var(--text-dim);
             font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .screenshot-card:hover .screenshot-label {
+            color: var(--accent);
         }
 
         /* pricing */
@@ -1003,12 +1114,13 @@
         .pricing-features .check { font-size: 14px; }
 
         /* ===== ENTRANCE ANIMATIONS ===== */
+        /* Using snappy cubic-bezier for professional feel */
 
         /* Hero entrance - staggered from different directions */
         .hero-logo-container {
             opacity: 0;
-            transform: scale(0.8) translateY(-20px);
-            animation: heroLogoIn 600ms ease-out 100ms forwards;
+            transform: scale(0.85) translateY(-15px);
+            animation: heroLogoIn 500ms cubic-bezier(0.16, 1, 0.3, 1) 80ms forwards;
         }
         @keyframes heroLogoIn {
             to { opacity: 1; transform: scale(1) translateY(0); }
@@ -1016,8 +1128,8 @@
 
         .hero h1 {
             opacity: 0;
-            transform: translateY(30px);
-            animation: heroTitleIn 500ms ease-out 350ms forwards;
+            transform: translateY(25px);
+            animation: heroTitleIn 450ms cubic-bezier(0.16, 1, 0.3, 1) 280ms forwards;
         }
         @keyframes heroTitleIn {
             to { opacity: 1; transform: translateY(0); }
@@ -1025,8 +1137,8 @@
 
         .hero-sub {
             opacity: 0;
-            transform: translateY(20px);
-            animation: heroSubIn 450ms ease-out 550ms forwards;
+            transform: translateY(18px);
+            animation: heroSubIn 400ms cubic-bezier(0.16, 1, 0.3, 1) 450ms forwards;
         }
         @keyframes heroSubIn {
             to { opacity: 1; transform: translateY(0); }
@@ -1034,8 +1146,8 @@
 
         .hero-ctas {
             opacity: 0;
-            transform: translateY(25px);
-            animation: heroCTAIn 400ms ease-out 750ms forwards;
+            transform: translateY(20px);
+            animation: heroCTAIn 380ms cubic-bezier(0.16, 1, 0.3, 1) 600ms forwards;
         }
         @keyframes heroCTAIn {
             to { opacity: 1; transform: translateY(0); }
@@ -1043,7 +1155,7 @@
 
         .other-platforms {
             opacity: 0;
-            animation: fadeIn 300ms ease-out 950ms forwards;
+            animation: fadeIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 780ms forwards;
         }
         @keyframes fadeIn {
             to { opacity: 1; }
@@ -1052,104 +1164,104 @@
         /* Header entrance */
         header {
             opacity: 0;
-            transform: translateY(-15px);
-            animation: headerIn 400ms ease-out 50ms forwards;
+            transform: translateY(-12px);
+            animation: headerIn 350ms cubic-bezier(0.16, 1, 0.3, 1) 0ms forwards;
         }
         @keyframes headerIn {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Stats entrance - stagger each stat */
-        .stats .stat:nth-child(1) { opacity: 0; transform: translateY(20px); animation: statIn 350ms ease-out 900ms forwards; }
-        .stats .stat:nth-child(2) { opacity: 0; transform: translateY(20px); animation: statIn 350ms ease-out 970ms forwards; }
-        .stats .stat:nth-child(3) { opacity: 0; transform: translateY(20px); animation: statIn 350ms ease-out 1040ms forwards; }
-        .stats .stat:nth-child(4) { opacity: 0; transform: translateY(20px); animation: statIn 350ms ease-out 1110ms forwards; }
-        .stats .stat:nth-child(5) { opacity: 0; transform: translateY(20px); animation: statIn 350ms ease-out 1180ms forwards; }
-        .stats .stat:nth-child(6) { opacity: 0; transform: translateY(20px); animation: statIn 350ms ease-out 1250ms forwards; }
+        /* Stats entrance - tighter stagger */
+        .stats .stat:nth-child(1) { opacity: 0; transform: translateY(15px); animation: statIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 750ms forwards; }
+        .stats .stat:nth-child(2) { opacity: 0; transform: translateY(15px); animation: statIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 800ms forwards; }
+        .stats .stat:nth-child(3) { opacity: 0; transform: translateY(15px); animation: statIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 850ms forwards; }
+        .stats .stat:nth-child(4) { opacity: 0; transform: translateY(15px); animation: statIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 900ms forwards; }
+        .stats .stat:nth-child(5) { opacity: 0; transform: translateY(15px); animation: statIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 950ms forwards; }
+        .stats .stat:nth-child(6) { opacity: 0; transform: translateY(15px); animation: statIn 300ms cubic-bezier(0.16, 1, 0.3, 1) 1000ms forwards; }
         @keyframes statIn {
             to { opacity: 1; transform: translateY(0); }
         }
 
         /* ===== SCROLL-IN ANIMATIONS ===== */
 
-        /* Base state for scroll animations */
+        /* Base state for scroll animations - snappy timing */
         .scroll-in {
             opacity: 0;
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .scroll-in.visible {
             opacity: 1;
             transform: translate(0, 0) scale(1) !important;
         }
 
-        /* Different scroll-in directions */
-        .scroll-in--up { transform: translateY(40px); }
-        .scroll-in--down { transform: translateY(-30px); }
-        .scroll-in--left { transform: translateX(-40px); }
-        .scroll-in--right { transform: translateX(40px); }
-        .scroll-in--scale { transform: scale(0.92); }
+        /* Different scroll-in directions - tighter transforms */
+        .scroll-in--up { transform: translateY(30px); }
+        .scroll-in--down { transform: translateY(-25px); }
+        .scroll-in--left { transform: translateX(-30px); }
+        .scroll-in--right { transform: translateX(30px); }
+        .scroll-in--scale { transform: scale(0.94); }
         .scroll-in--fade { transform: none; }
 
-        /* Section headers - slide up */
+        /* Section headers - snappy slide up */
         .section-header {
             opacity: 0;
-            transform: translateY(35px);
-            transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+            transform: translateY(28px);
+            transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .section-header.visible {
             opacity: 1;
             transform: translateY(0);
         }
 
-        /* Feature cards - staggered pop in */
+        /* Feature cards - snappy pop in */
         .feature-card, .tech-card, .agent-card, .screenshot-card {
             opacity: 0;
-            transform: translateY(30px) scale(0.97);
-            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+            transform: translateY(24px) scale(0.98);
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .feature-card.visible, .tech-card.visible, .agent-card.visible, .screenshot-card.visible {
             opacity: 1;
             transform: translateY(0) scale(1);
         }
 
-        /* Comparison table - slide in from right */
+        /* Comparison table - snappy slide from right */
         .comparison {
             opacity: 0;
-            transform: translateX(30px);
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            transform: translateX(25px);
+            transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1), transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .comparison.visible {
             opacity: 1;
             transform: translateX(0);
         }
 
-        /* Shortcuts grid - fade up */
+        /* Shortcuts grid - quick fade up */
         .shortcut-item {
             opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+            transform: translateY(16px);
+            transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .shortcut-item.visible {
             opacity: 1;
             transform: translateY(0);
         }
 
-        /* Releases - slide from left */
+        /* Releases - snappy slide from left */
         .releases {
             opacity: 0;
-            transform: translateX(-25px);
-            transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+            transform: translateX(-20px);
+            transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .releases.visible {
             opacity: 1;
             transform: translateX(0);
         }
 
-        /* Themes showcase - scale in */
+        /* Themes showcase - snappy scale in */
         .themes-showcase {
             opacity: 0;
-            transform: scale(0.95);
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            transform: scale(0.96);
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .themes-showcase.visible {
             opacity: 1;
@@ -1592,6 +1704,16 @@
                     <i class="ti ti-layout-grid icon"></i>
                     <h3>tabs + windows</h3>
                     <p>cli is single-session. yume gives you unlimited tabs, multiple windows, drag tabs between windows. work on multiple projects at once.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="ti ti-filter icon"></i>
+                    <h3>tool picker</h3>
+                    <p>cli gives claude all tools. yume lets you pick exactly which tools claude can use per session. restrict to read-only, disable bash, your rules.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="ti ti-copy icon"></i>
+                    <h3>one-click copy</h3>
+                    <p>cli makes you select text manually. yume adds copy buttons to every code block, command, and file path. one click, done.</p>
                 </div>
             </div>
         </div>
@@ -2080,11 +2202,11 @@
             const cursor = document.createElement('span');
             cursor.className = 'typewriter-cursor';
             cursor.textContent = '|';
-            cursor.style.cssText = 'opacity: 1; animation: blink 0.7s infinite; margin-left: 2px;';
+            cursor.style.cssText = 'opacity: 1; animation: cursorBlink 0.6s ease-in-out infinite; margin-left: 1px; font-weight: 400;';
 
-            // add cursor blink animation
+            // add smoother cursor blink animation
             const style = document.createElement('style');
-            style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
+            style.textContent = '@keyframes cursorBlink { 0%, 40% { opacity: 1; } 50%, 90% { opacity: 0; } 100% { opacity: 1; } }';
             document.head.appendChild(style);
 
             function getNextIndex() {
@@ -2108,7 +2230,7 @@
                         el.textContent = text.substring(0, i - 1);
                         el.appendChild(cursor);
                         i--;
-                        setTimeout(deleteChar, 30 + Math.random() * 20);
+                        setTimeout(deleteChar, 25 + Math.random() * 15);
                     } else {
                         callback();
                     }
@@ -2126,13 +2248,14 @@
                         el.textContent = text.substring(0, i + 1);
                         el.appendChild(cursor);
                         i++;
-                        setTimeout(addChar, 40 + Math.random() * 40);
+                        setTimeout(addChar, 35 + Math.random() * 30);
                     } else {
-                        // hide cursor after typing complete
+                        // fade cursor smoothly after typing complete
+                        cursor.style.transition = 'opacity 0.3s ease-out';
                         setTimeout(() => {
                             cursor.style.opacity = '0';
                             callback();
-                        }, 500);
+                        }, 400);
                     }
                 }
                 addChar();
@@ -2187,38 +2310,38 @@
             // Observe section headers
             document.querySelectorAll('.section-header').forEach(el => observer.observe(el));
 
-            // Observe and stagger feature cards per section
+            // Observe and stagger feature cards per section - tighter stagger
             document.querySelectorAll('.features-grid').forEach(grid => {
                 const cards = grid.querySelectorAll('.feature-card');
-                addStaggeredDelay(cards, 50, 50);
+                addStaggeredDelay(cards, 30, 35);
                 cards.forEach(el => observer.observe(el));
             });
 
-            // Observe and stagger tech cards
+            // Observe and stagger tech cards - snappy
             document.querySelectorAll('.tech-grid').forEach(grid => {
                 const cards = grid.querySelectorAll('.tech-card');
-                addStaggeredDelay(cards, 80, 70);
+                addStaggeredDelay(cards, 40, 50);
                 cards.forEach(el => observer.observe(el));
             });
 
-            // Observe and stagger agent cards
+            // Observe and stagger agent cards - quick cascade
             document.querySelectorAll('.agents-grid').forEach(grid => {
                 const cards = grid.querySelectorAll('.agent-card');
-                addStaggeredDelay(cards, 60, 80);
+                addStaggeredDelay(cards, 30, 60);
                 cards.forEach(el => observer.observe(el));
             });
 
-            // Observe and stagger screenshot cards
+            // Observe and stagger screenshot cards - moderate
             document.querySelectorAll('.screenshots-grid').forEach(grid => {
                 const cards = grid.querySelectorAll('.screenshot-card');
-                addStaggeredDelay(cards, 100, 120);
+                addStaggeredDelay(cards, 50, 80);
                 cards.forEach(el => observer.observe(el));
             });
 
-            // Observe and stagger shortcut items
+            // Observe and stagger shortcut items - rapid fire
             document.querySelectorAll('.shortcuts-grid').forEach(grid => {
                 const items = grid.querySelectorAll('.shortcut-item');
-                addStaggeredDelay(items, 30, 40);
+                addStaggeredDelay(items, 20, 25);
                 items.forEach(el => observer.observe(el));
             });
 
