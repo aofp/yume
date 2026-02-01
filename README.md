@@ -106,7 +106,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **mid-stream context** - real-time token updates during streaming
 - **analytics dashboard** - usage by project/model/date, cost tracking, export
 - **voice dictation** - F5 to toggle, native speech-to-text
-- **@ mention system** - @r recent, @m modified, folder navigation
+- **@ mention system** - @ shows recent/modified files with autocomplete, folder navigation
 
 ### customization
 - **12 themes, infinite combinations** - accents, backgrounds, foregrounds fully customizable
@@ -140,7 +140,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
 | 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
 | crash recovery | ✗ | ✗ | ✗ | ✗ | ✓ 24hr |
-| @ mentions | partial | ✗ | ✗ | ✗ | ✓ @r @m |
+| @ mentions | partial | ✗ | ✗ | ✗ | ✓ |
 | stream timers | ✗ | ✗ | ✗ | ✗ | ✓ live |
 | native app | terminal | electron | tauri | electron | ✓ tauri |
 | customization | ✗ | ~5 themes | ✗ | ✗ | ✓ ∞ |

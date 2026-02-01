@@ -58,7 +58,7 @@ The AI coding assistant market in 2026 is dominated by three categories:
 - Files panel with git status
 - Git panel with +/- line stats
 - History/rollback panel
-- @ mentions (@r recent, @m modified, folders)
+- @ mentions (@ shows recent/modified with autocomplete, folders)
 - / commands (/clear, /model, /title, /init, /compact, /commit, /review, /iterate + custom)
 - Ultrathink support (Cmd+K insert + rainbow highlighting)
 - Stream timers (thinking, bash, compacting)
@@ -87,7 +87,7 @@ The AI coding assistant market in 2026 is dominated by three categories:
 | Poor visual feedback | Hard to track context, tokens | Always-visible context bar with 5h/7d limits |
 | JSON config editing | MCP, hooks require file editing | Visual UI forms |
 | No thinking timer | Can't see how long thinking takes | Live stream timers |
-| No @ mentions | Must type full paths | @r recent, @m modified, folder navigation |
+| No @ mentions | Must type full paths | @ shows recent/modified with autocomplete, folder navigation |
 
 Note: Many GitHub issues are model behavior or user errors, not CLI bugs. We can't fix those.
 

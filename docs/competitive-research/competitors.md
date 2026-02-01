@@ -1088,7 +1088,7 @@
 | **9 Hook Events** | Most comprehensive hook system |
 | **Yume Guard** | Built-in security blocking dangerous commands |
 | **Stream Timers** | Live thinking/bash/compacting duration |
-| **@ Mention System** | @r recent, @m modified, folder navigation |
+| **@ Mention System** | @ shows recent/modified with autocomplete, folder navigation |
 | **Memory V2** | Per-project markdown with TTL and importance levels |
 | **Crash Recovery** | Auto-save with 24hr window |
 | **History/Rollback** | Visual message history with rollback |

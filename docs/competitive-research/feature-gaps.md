@@ -51,7 +51,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | Custom commands | Slash commands with templates | ✅ /clear, /model, /title, /init, /compact + custom |
 | Font customization | Monospace + UI fonts | ✅ Comic Mono/Neue |
 | System prompts | Custom system prompts | ✅ Implemented |
-| Smart file mentions | @r recent, @m modified | ✅ Full @ mention system |
+| Smart file mentions | @ shows recent/modified with autocomplete | ✅ Full @ mention system |
 | Ultrathink support | Extended thinking mode | ✅ Cmd+K insert + rainbow highlighting |
 | Stream indicators | Activity timers | ✅ Thinking/bash/compacting timers |
 | **Thinking streaming** | Live extended thinking display | ✅ **UNIQUE** - not even CLI has this |
