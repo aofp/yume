@@ -1,9 +1,9 @@
 # Yume Project Status
 
-**Date:** January 29, 2026
-**Version:** 0.6.6
+**Date:** January 31, 2026
+**Version:** 0.7.3
 **Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
-**Tauri Commands:** 183+ registered across 10+ modules
+**Tauri Commands:** 228 registered across 15 modules
 
 ## Executive Summary
 
@@ -28,28 +28,31 @@ Yume is a GUI for Claude CLI with intelligent context management that auto-compa
 - **Analytics dashboard** - Usage analytics with breakdowns
 - **Compiled binaries** - No Node.js dependency for users
 - **Memory V2** - Per-project markdown with TTL/importance (`~/.yume/memory/`)
-- **Auto-update Claude CLI** - Runs `claude update` on startup (default: enabled)
+- **Smart Claude CLI update** - Checks npm registry first, only updates if needed
 - **Background agents** - 4 concurrent, no timeout, git branch isolation
-- **Hooks** - 9 defined, 3 active (`pre_tool_use`, `context_warning`, `compaction_trigger`)
+- **Hooks** - 9 defined, 4 active (`pre_tool_use`, `context_warning`, `compaction_trigger`, `user_prompt_submit`)
 - **yume-cli** - Multi-provider shim (Gemini, OpenAI)
 - **Orchestration** - 4 core agents (architect, explorer, implementer, guardian)
 - **Timeline UI** - Checkpoint navigation with UCF persistence
+- **Thinking streaming** - Live extended thinking display (UNIQUE - not even CLI has this)
 - **Test infrastructure** - Vitest 3.x, 8 test suites
+- **ACP support** - Agent Client Protocol for external agents (14 commands)
+- **Sandbox security** - Process isolation for secure execution (7 commands)
+- **Analytics hourly/streaks** - Detailed usage patterns and activity streaks
 
 ### Remaining Issues
 1. **Code signing** - Certificates needed for macOS/Windows
 2. **Windows/Linux binaries** - Build scripts exist, not yet built
-3. **Console.log cleanup** - Production code cleanup needed
-4. **Platform testing** - More WSL/Linux testing required
-5. **Hooks incomplete** - 6/9 events defined but not triggered
-6. **Checkpoint listeners** - Feature flag enabled, socket listeners disabled
-7. **Provider flags** - Gemini/OpenAI disabled by default
-8. **Test coverage** - Expand beyond current 8 test suites
+3. **Platform testing** - More WSL/Linux testing required
+4. **Hooks incomplete** - 6/9 events defined but not triggered
+5. **Checkpoint listeners** - Feature flag enabled, socket listeners disabled
+6. **Provider flags** - Gemini/OpenAI disabled by default
+7. **Test coverage** - Expand beyond current 8 test suites
 
 ### Code Metrics
 - **Lines of Code:** ~83,000 (62k TypeScript/TSX + 21k Rust)
-- **Tauri Commands:** 183+ across 10+ modules
-- **Test Suites:** 8 (config, services, types, utils)
+- **Tauri Commands:** 199+ across 12+ modules
+- **Test Suites:** 37 (config: 5, services: 23, types: 3, stores: 1, utils: 5)
 
 ## Architecture
 
@@ -89,12 +92,11 @@ Yume is a GUI for Claude CLI with intelligent context management that auto-compa
 
 **Costs:** ~$500/year essential (certificates, hosting)
 
-**Revenue:** $21 one-time, target 1,000 sales Year 1 ($21,000)
+**Model:** Freeware with optional Pro upgrade ($29 one-time)
 
 **Competition:**
-- Opcode: Free - we offer premium features
-- Claudia: $20 - we offer more features at $21
-- Cursor/Windsurf: $240-2400/year - we are 90%+ cheaper one-time
+- Opcode: Free - we're also free, plus more features
+- Cursor/Windsurf: $240-2400/year subscriptions - Yume is free
 
 ## Risk Assessment
 
@@ -118,7 +120,7 @@ Yume is a GUI for Claude CLI with intelligent context management that auto-compa
 
 **Launch Strategy:**
 - Soft launch with "Beta" badge
-- $21 one-time (no subscription)
+- Freeware model (Pro $29 optional)
 - Market auto-compact and plugin system
 - Target: Claude Discord, AI developers
 
@@ -144,4 +146,4 @@ Strong technical foundation with unique auto-compact feature. Requires 2-3 weeks
 **Decisions Pending:**
 - Certificate budget ($400-700)
 - Crash reporting service (Sentry/Rollbar)
-- [x] Pricing: $21 one-time
+- [x] Pricing: $29 one-time

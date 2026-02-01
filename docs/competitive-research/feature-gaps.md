@@ -1,6 +1,6 @@
 # Feature Gap Analysis & Improvement Opportunities
 
-*Last Updated: January 28, 2026*
+*Last Updated: January 31, 2026*
 
 ## Executive Summary
 
@@ -54,6 +54,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | Smart file mentions | @r recent, @m modified | ✅ Full @ mention system |
 | Ultrathink support | Extended thinking mode | ✅ Cmd+K insert + rainbow highlighting |
 | Stream indicators | Activity timers | ✅ Thinking/bash/compacting timers |
+| **Thinking streaming** | Live extended thinking display | ✅ **UNIQUE** - not even CLI has this |
 | Git panel | Visual git changes | ✅ With +/- line stats |
 | History panel | Message rollback | ✅ Implemented |
 | Background opacity | Window transparency | ✅ Implemented |
@@ -89,6 +90,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | Font customization | No | Yes | No | No | ✅ Yes |
 | @ mentions | No | No | No | No | ✅ **UNIQUE** |
 | Ultrathink support | CLI typing | No | No | No | ✅ **Cmd+K + highlighting** |
+| **Thinking streaming** | No | No | No | No | ✅ **UNIQUE** |
 | Stream timers | No | No | No | No | ✅ **UNIQUE** |
 | Git panel | No | Yes | Yes | ? | ✅ Yes |
 | History panel | No | No | No | ? | ✅ **UNIQUE** |
@@ -109,12 +111,13 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | **Stream timers** | Live thinking/bash/compacting duration |
 | **History/rollback panel** | Visual message history navigation |
 | **Ultrathink highlighting** | Rainbow gradient when typing ultrathink |
+| **Thinking streaming** | Live extended thinking display - see Claude's reasoning in real-time |
 | **Cmd+K ultrathink** | Quick insert thinking mode prefix |
 | **Memory V2** | Per-project markdown files with TTL, importance, auto-prune |
 | **12 themes** | Way more than any competitor |
 | **9 hook events (3 active)** | pre_tool_use, context_warning, compaction_trigger |
 | **Crash recovery** | Auto-save with 24hr restoration window |
-| **$21 one-time** | vs $240-2400/year subscriptions |
+| **Freeware** | vs $240-2400/year subscriptions |
 
 ---
 

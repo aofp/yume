@@ -191,7 +191,7 @@ sqlite in `~/.yume/yume.db`:
 ## pricing
 
 - **trial** — free, 3 tabs, 1 window
-- **pro** — $21 once, 99 tabs, 99 windows
+- **pro** — $29 once, 99 tabs, 99 windows
 
 ---
 

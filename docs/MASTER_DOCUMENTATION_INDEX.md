@@ -2,7 +2,7 @@
 
 **Created:** January 2025
 **Updated:** January 2026
-**Version:** 0.6.6
+**Version:** 0.6.7
 **Total Documentation:** 11 core guides + 19 expansion plan docs + competitive research suite
 **Coverage:** Core codebase, competitive analysis, multi-provider expansion, background agents, Memory V2 system, test infrastructure
 
@@ -260,7 +260,7 @@
    - Complete plugin ecosystem
    - Performance monitoring
    - History & rollback
-   - Sustainable pricing ($21 one-time)
+   - Sustainable pricing ($29 one-time)
    - OLED black theme
 
 4. **Strategic Gaps & Opportunities**

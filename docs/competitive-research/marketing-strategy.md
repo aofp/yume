@@ -79,7 +79,7 @@ The full power of Claude Code, freed from terminal limitations.
 | Competitor | Yume Advantage | Message |
 |------------|----------------|---------|
 | Claude Code CLI | Desktop (smooth) vs Terminal (laggy), <50ms vs 10s input, Native IME, Visual sessions | "All the power, none of the pain" |
-| Cursor | Lightweight vs Heavy IDE, $21 one-time vs $20/mo, Claude-focused | "Claude-native, not IDE bloat" |
+| Cursor | Lightweight vs Heavy IDE, Free vs $20/mo, Claude-focused | "Claude-native, not IDE bloat" |
 | Aider | GUI vs CLI, Visual interface, Native rendering | "Visual interface for the Claude experience" |
 
 ---
@@ -122,11 +122,11 @@ The full power of Claude Code, freed from terminal limitations.
 
 ## Pricing Positioning
 
-### Current Model: $21 One-Time
+### Current Model: Freeware + Optional Pro
 
-- Maximum adoption with low barrier
+- **Free**: Maximum adoption, zero barrier, easy word-of-mouth
+- **Pro ($29 one-time)**: For power users wanting 99 tabs/windows
 - No subscription fatigue
-- Impulse-buy territory
 - Aligns with developer preference for ownership
 
 See [Pricing Analysis](./pricing-analysis.md) for detailed breakdown.

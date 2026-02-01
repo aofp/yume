@@ -2,7 +2,7 @@
 
 *Prepared for presentation to Claude Code team*
 
-*January 29, 2026*
+*January 31, 2026*
 
 ---
 
@@ -10,7 +10,7 @@
 
 **Yume** is a native desktop GUI for Claude Code CLI. It wraps the existing Claude Code CLI to provide a flicker-free, lag-free desktop experience while preserving all of Claude Code's capabilities.
 
-**Pricing**: $21 one-time purchase (uses user's existing Claude Pro/Max subscription)
+**Pricing**: Freeware (Pro license $29 for extended limits)
 
 ---
 
@@ -138,6 +138,7 @@ Everything that makes Claude Code great:
 - ✅ **Auto-update** (app version check + Claude CLI auto-update)
 - ✅ **Voice dictation** (F5)
 - ✅ **Orchestration flow** (understand → decompose → act → verify)
+- ✅ **Thinking streaming** (live extended thinking display - UNIQUE, not even CLI has this)
 
 ### Design Philosophy
 - OLED-optimized dark themes (light mode not planned)
@@ -159,18 +160,19 @@ We're not trying to replace CLI power users who love the terminal.
 
 ## Business Model
 
-### Why $21 One-Time?
+### Why Freeware + Pro Upgrade?
 
 | Approach | Why We Chose It |
 |----------|-----------------|
+| **Freeware** | Zero barrier to entry, easy word-of-mouth adoption |
 | **Not subscription** | Developers hate subscription fatigue |
 | **Not API-based** | Uses existing Claude subscription |
-| **Not free** | We need to sustain development |
-| **Low price** | $21 is impulse-buy, not budget decision |
+| **Pro optional** | $29 for power users who need more tabs/windows |
 | **One-time** | Ownership > renting |
 
 ### Revenue Model
-- $21 per license
+- Free: 3 tabs, 1 window (generous for most users)
+- Pro: $29 one-time (99 tabs/windows for power users)
 - No recurring fees
 - No API markup
 - No upsells

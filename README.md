@@ -188,7 +188,7 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 ## license
 
-yume is free to download and use (trial: 3 tabs, 1 window). upgrade to pro for 99 tabs and 99 windows ($21 one-time payment).
+yume is free to download and use (trial: 3 tabs, 1 window). upgrade to pro for 99 tabs and 99 windows ($29 one-time payment).
 
 ---
 

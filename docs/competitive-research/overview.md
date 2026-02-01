@@ -107,7 +107,7 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 
 ### Extended Research
 - [User Sentiment](./user-sentiment.md) - Reddit/HN/GitHub complaints, pain points
-- [Pricing Analysis](./pricing-analysis.md) - $21 one-time model analysis
+- [Pricing Analysis](./pricing-analysis.md) - $29 one-time model analysis
 - [Enterprise Features](./enterprise-features.md) - SOC2, SSO, compliance
 - [Emerging Trends](./emerging-trends.md) - New tools, market dynamics
 - [Technical Architecture](./technical-architecture.md) - Tauri, tree-sitter, performance
@@ -141,7 +141,7 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration |
 | **Performance monitoring** | Real-time FPS, memory, render time |
-| **$21 one-time** | vs $240-2400/year subscriptions |
+| **Freeware** | vs $240-2400/year subscriptions |
 
 ## Direct Competitors Comparison (Desktop GUIs)
 
@@ -162,5 +162,5 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | Memory System | ✅ (V2 per-project markdown) | ❌ | ❌ | ❌ |
 | Command Palette | ✅ (Cmd+P) | ❌ | ❌ | ❌ |
 | YC Backed | ❌ | ❌ | ✅ | ❌ |
-| Price | $21 | Free | Free | Free |
+| Price | Free | Free | Free | Free |
 | Framework | Tauri | Tauri | Tauri | Electron |

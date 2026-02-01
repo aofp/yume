@@ -1,20 +1,26 @@
 {
   "product": "yume",
-  "latest": "0.7.4",
+  "latest": "0.8.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
     {
-      "version": "0.7.4",
-      "date": "2026-01-31",
-      "notes": "fix memory tab not showing memories added via mcp server",
-      "releaseNotes": "v0.7.4-release-notes.md",
+      "version": "0.8.0",
+      "date": "2026-02-01",
+      "notes": "cross-window settings sync, tab detach to new window, spawn retry fixes, 4k scroll fix, style improvements",
+      "releaseNotes": "v0.8.0-release-notes.md",
       "downloads": {
-        "mac_arm": "yume_0.7.4_arm64.pkg",
-        "mac": "yume_0.7.4_x64.pkg"
+        "mac_arm": "yume_0.8.0_arm64.pkg",
+        "mac": "yume_0.8.0_x64.pkg",
+        "windows": "yume_0.8.0_x64-setup.exe",
+        "linux_deb": "yume_0.8.0_amd64.deb",
+        "linux_rpm": "yume-0.8.0-1.x86_64.rpm"
       },
       "checksums": {
-        "mac_arm": "588f770802bfdefa27bbdcd89a91f72d3b7786313b3fa6ba0e1e63d1d6002ea2",
-        "mac": "33fc024817d9f5da6515e8660d53978b512a1706212d5fa7c78afa42f7b4c643"
+        "mac_arm": "153bc51211d83e4a30b86a51bf3287a9662cb0bbfe6ef0b0c2d790690b6a3536",
+        "mac": "05c7b69c384cb30c14c2f07bebce8580b75d426da0c30cf4703e0fe23b1bae82",
+        "windows": "6e3676c200b03f4b85d1db1e86a6d8262efdab83198708e0ed5c0e8596e2b3eb",
+        "linux_deb": "55db67fa3ab43a8d90b5596f3f4c45d74ae5fb1afdf5aa3a647de7acc1f8c9d2",
+        "linux_rpm": "e6309d0b582418806d5cf9602ade37d4f8e45e98cde613b50c8e4828565d6e44"
       }
     },
     {

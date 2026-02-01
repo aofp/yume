@@ -1,6 +1,6 @@
 # Yume Complete Troubleshooting Guide
 
-**Version:** 0.6.6
+**Version:** 0.6.7
 **Last Updated:** January 29, 2026
 **Platforms:** macOS, Windows, Linux
 
@@ -241,8 +241,8 @@ export WEBKIT_DISABLE_COMPOSITING_MODE=1
 
 **1. Safe mode start**:
 ```bash
-# Start with minimal configuration
-yume --safe-mode --disable-gpu --no-sandbox
+# NOTE: Yume does not have --safe-mode flag
+# For troubleshooting, clear all config and cache (see commands below)
 ```
 
 **2. Clear all cache and config**:
@@ -318,7 +318,7 @@ export PATH="$PATH:/path/to/claude/directory"
 claude --version
 
 # Note: Yume works with Claude CLI version 1.0.0 and above
-# Yume auto-updates Claude CLI on startup by default
+# Yume smart-updates Claude CLI on startup (checks npm registry first)
 ```
 
 #### Solution:
@@ -329,9 +329,18 @@ claude update
 # Or reinstall via npm
 npm install -g @anthropic-ai/claude-code
 
-# Yume auto-updates Claude CLI on startup (enabled by default)
+# Yume smart-updates Claude CLI on startup (enabled by default)
+# Checks npm registry API first - only updates if new version available
 # Toggle in Settings > Auto-update Claude CLI
 ```
+
+**Note**: Yume detects Claude from many sources (priority order):
+- `CLAUDE_PATH` environment variable
+- NVM versions (`~/.nvm/versions/node/*/bin/claude`)
+- fnm versions (`~/.local/share/fnm/node-versions/*/installation/bin/claude`)
+- User npm (`~/.npm-global/bin/claude`, `~/.local/bin/claude`)
+- System npm (`/usr/local/bin/claude`)
+- Homebrew, Volta, asdf, mise, proto, yarn, pnpm, bun
 
 ### 3.3 Authentication Issues
 
@@ -996,8 +1005,10 @@ export YUME_DEBUG=true
 export NODE_ENV=development
 export DEBUG=*
 
-# Launch with debugging
-yume --debug --verbose --log-level=trace
+# NOTE: CLI flags --safe-mode, --debug, --verbose, --log-level are NOT implemented
+# Use environment variables instead:
+export RUST_LOG=trace
+export YUME_DEBUG=true
 ```
 
 ### 11.2 Logging Configuration
@@ -1029,11 +1040,8 @@ yume --debug --verbose --log-level=trace
 
 **Enable remote debugging**:
 ```bash
-# Start with remote debugging
-yume --remote-debugging-port=9222
-
-# Connect Chrome DevTools
-chrome://inspect/#devices
+# NOTE: Remote debugging not available via CLI flag
+# Use Chrome DevTools via F12 or Cmd+Option+I instead
 ```
 
 ### 11.4 Core Dumps

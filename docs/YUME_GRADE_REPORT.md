@@ -70,7 +70,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Market Position | $29B, 50% F500 | Indie | Cursor |
 | Performance | Electron memory issues | Native Rust | **Yume** |
 | Tab Completion | 250 tok/s | N/A (different product) | Cursor |
-| Price | $240-2400/yr | $21 one-time | **Yume** |
+| Price | $240-2400/yr | Free | **Yume** |
 | Extensions | VS Code ecosystem | None | Cursor |
 | Multi-Model | GPT, Claude, Gemini | Claude (Gemini in progress) | Cursor |
 | Themes | ~5 | 12 | **Yume** |
@@ -89,7 +89,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | UX Polish | Excellent | Excellent | Tie |
 | Auto-Context | Best in class | Manual | Windsurf |
 | Performance | Electron | Native Rust | **Yume** |
-| Price | $180/yr | $21 one-time | **Yume** |
+| Price | $180/yr | Free | **Yume** |
 | Themes | ~3 | 12 | **Yume** |
 | Multi-Agent | Wave 13 git worktrees | 4 built-in agents | Tie |
 | Context Meter | Yes (Wave 13) | Yes | Tie |
@@ -106,7 +106,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 
 | Aspect | Opcode | Yume | Winner |
 |--------|--------|----------|--------|
-| Price | Free | $21 | Opcode |
+| Price | Free | Free | Tie |
 | GitHub Stars | 15K+ | Private | Opcode |
 | CLI Feature Parity | Claims yes | Via wrapper | Opcode |
 | 5h/7d Limits | No | Yes | **Yume** |
@@ -152,7 +152,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 
 | Aspect | Cline | Yume | Winner |
 |--------|-------|----------|--------|
-| Price | API costs only | $21 + API | Cline |
+| Price | API costs only | Free | **Yume** |
 | IDE Integration | Full VS Code | Standalone | Cline |
 | Cost Transparency | Per-request | Session totals | Tie |
 | MCP | Can create tools | Uses tools | Cline |
@@ -299,4 +299,4 @@ Ship it, sell it, but refactor before major feature additions. Expand test cover
 | Would I use it? | Yes |
 | Would I recommend it? | Yes, for Claude users |
 | Would I maintain it? | Yes, with refactoring |
-| Worth $21? | Absolutely |
+| Worth $29? | Absolutely |

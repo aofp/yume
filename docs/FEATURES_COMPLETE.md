@@ -1,6 +1,6 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.6.6
+**Version:** 0.6.7
 **Last Updated:** January 2026
 **Platform:** macOS, Windows, Linux
 
@@ -29,6 +29,9 @@
 21. [Background Agents](#21-background-agents)
 22. [Orchestration Flow](#22-orchestration-flow)
 23. [Auto-Update System](#23-auto-update-system)
+24. [ACP (Agent Client Protocol)](#24-acp-agent-client-protocol)
+25. [Sandbox Security](#25-sandbox-security)
+26. [Analytics Enhancements](#26-analytics-enhancements)
 
 ## 1. Core Features
 
@@ -71,6 +74,7 @@ pub struct ClaudeSpawner {
 - Subagents support (/agents command)
 - CLAUDE.md imports with `@path/to/file.md` syntax
 - Ultrathink mode support ("think"/"ultrathink" prompts)
+- **Thinking streaming** - Live extended thinking display (UNIQUE - not even CLI has this)
 - MCP with 8M+ server integrations
 
 **CLI Arguments**:
@@ -436,22 +440,22 @@ function parseMentions(text: string): FileMention[] {
 
 ### 6.2 Available Triggers
 
-**9 Hook Events (only 3 active)**:
+**9 Hook Events (4 active)**:
 
 *Active hooks (wired to execution paths):*
+- `user_prompt_submit`: Before user message sent **(ACTIVE)**
 - `pre_tool_use`: Before tool execution **(ACTIVE)**
 - `context_warning`: Context threshold exceeded **(ACTIVE)**
 - `compaction_trigger`: Before auto-compaction **(ACTIVE)**
 
 *Defined but not currently called:*
-- `user_prompt_submit`: Before user message sent
 - `post_tool_use`: After tool execution
 - `assistant_response`: After assistant response
 - `session_start`: New session created
 - `session_end`: Session closed
 - `error`: Error occurred
 
-> **Note:** Only 3 of 9 hooks are actively triggered. The other 6 are defined but not wired to any execution path.
+> **Note:** Only 4 of 9 hooks are actively triggered. The other 5 are defined but not wired to any execution path.
 
 ### 6.3 Hook Examples
 
@@ -973,11 +977,11 @@ use windows::Win32::*;
 
 ### 14.1 Overview
 
-**Description**: Commercial licensing system with trial and Pro tiers.
+**Description**: Freeware with optional Pro license for extended limits.
 
 **Pricing**:
-- **Trial**: Free (3 tabs, 1 window)
-- **Pro**: $21 one-time (99 tabs, 99 windows)
+- **Free**: All features (3 tabs total)
+- **Pro**: $29 one-time (99 tabs, 99 windows)
 
 ### 14.2 Implementation
 
@@ -1710,17 +1714,19 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 
 ## 23. Auto-Update System
 
-### 23.1 Claude CLI Auto-Update
+### 23.1 Claude CLI Smart Update
 
-**Description**: Automatically runs `claude update` on app startup to keep the CLI current.
+**Description**: Automatically checks for Claude CLI updates on startup, only updating if a new version is available.
 
-**Location**: `src/renderer/stores/claudeCodeStore.ts`
+**Location**: `src-tauri/src/commands/claude_info.rs`
 
 **Features**:
 - Toggle in Settings (General tab): "auto-update claude" (default: on)
-- Runs `claude update` via bash on app start
-- Parses output for version info and update status
+- Smart version check via npm registry API (no npm CLI required)
+- Compares local version against `https://registry.npmjs.org/@anthropic-ai/claude-code/latest`
+- Only runs update if version mismatch detected
 - Non-blocking: runs in background without interrupting user flow
+- Supports npm, yarn, pnpm, bun installs
 
 ### 23.2 App Version Check
 
@@ -1739,19 +1745,95 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 
 **Framework:** Vitest 3.x with jsdom environment (`vitest.config.ts`)
 
-**8 Test Suites:**
-| Category | File | Coverage |
-|----------|------|----------|
-| Config | `app.test.ts` | App name, version, ID derivation |
-| Config | `tools.test.ts` | Tool definitions validation |
-| Services | `licenseManager.test.ts` | License validation, trial/pro |
-| Types | `ucf.test.ts` | UCF format validation |
-| Utils | `chatHelpers.test.ts` | Chat utility functions |
-| Utils | `helpers.test.ts` | General helper functions |
-| Utils | `performance.test.ts` | Performance utilities |
-| Utils | `regexValidator.test.ts` | ReDoS pattern validation |
+**37 Test Suites:**
+| Category | Count | Examples |
+|----------|-------|----------|
+| Config | 5 | app, features, models, themes, tools |
+| Services | 23 | licenseManager, versionCheck, hooksService, memoryServiceV2, etc. |
+| Types | 3 | backgroundAgents, skill, ucf |
+| Stores | 1 | claudeCodeStore |
+| Utils | 5 | chatHelpers, helpers, performance, regexValidator, structuredLogger |
 
 **Setup:** `src/test/setup.ts` mocks Tauri APIs for test isolation
+
+## 24. ACP (Agent Client Protocol)
+
+**Description**: External agent connections via standardized protocol for connecting third-party AI agents.
+
+**Location**: `src-tauri/src/acp/` (module), `src-tauri/src/commands/acp.rs` (commands)
+
+**14 Commands**:
+| Command | Description |
+|---------|-------------|
+| `acp_init` | Initialize ACP client |
+| `acp_list_agents` | List available agents |
+| `acp_connect_agent` | Connect to an agent |
+| `acp_disconnect_agent` | Disconnect from an agent |
+| `acp_create_session` | Create agent session |
+| `acp_send_prompt` | Send prompt to agent |
+| `acp_cancel` | Cancel running request |
+| `acp_get_status` | Get agent status |
+| `acp_get_session` | Get session info |
+| `acp_list_sessions` | List all sessions |
+| `acp_add_agent` | Add agent to config |
+| `acp_remove_agent` | Remove agent |
+| `acp_set_agent_enabled` | Enable/disable agent |
+| `acp_get_config_path` | Get config file path |
+
+**Cleanup**: `cleanup_acp()` called on app exit to close all connections.
+
+## 25. Sandbox Security
+
+**Description**: Process isolation for secure execution of CLI commands and tools.
+
+**Location**: `src-tauri/src/sandbox/` (module), `src-tauri/src/commands/sandbox.rs` (commands)
+
+**State Management**:
+- `SandboxSettings` stored in `AppState` with RwLock for thread-safe access
+- Settings include: enabled flag, allowed paths, protected credential paths
+
+**7 Commands**:
+| Command | Description |
+|---------|-------------|
+| `get_sandbox_status` | Check if sandbox is active |
+| `get_sandbox_settings` | Get current settings |
+| `set_sandbox_enabled` | Toggle sandbox on/off |
+| `set_sandbox_settings` | Update full settings |
+| `get_sandbox_config` | Get config object |
+| `get_protected_credential_paths` | List protected paths |
+| `test_sandbox_path_access` | Test if path is accessible |
+
+## 26. Analytics Enhancements
+
+### 26.1 Hourly Statistics
+
+**Description**: Track usage patterns by hour of day (00-23).
+
+**Location**: `server-claude-*.cjs` (analytics endpoint)
+
+**Data Structure**:
+```javascript
+byHour: {
+  "00": { sessions: 0, messages: 0, tokens: 0 },
+  "01": { sessions: 0, messages: 0, tokens: 0 },
+  // ... through "23"
+}
+```
+
+### 26.2 Activity Streaks
+
+**Description**: Track consecutive days of usage for gamification/motivation.
+
+**Data Structure**:
+```javascript
+streaks: {
+  current: 5,      // Current consecutive days
+  longest: 12,     // Longest streak ever
+  lastActiveDate: "2026-01-30"
+}
+```
+
+**Calculation**: Analyzes `byDate` to find consecutive days with tokens > 0.
 
 ## Conclusion
 

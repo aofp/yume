@@ -12,7 +12,7 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 - **4 specialized AI agents** (architect, explorer, implementer, guardian)
 - **Plugin ecosystem** with 5 component types (commands, agents, hooks, skills, MCP)
 - **Skills with ReDoS protection** (safe regex-based context injection)
-- **One-time $21 pricing** vs $15-200/month subscriptions
+- **Freeware** with optional $29 Pro upgrade (vs $15-200/month subscriptions)
 - **Advanced analytics** with per-project/model/date breakdowns
 
 ---
@@ -172,7 +172,7 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 | **Local LLMs** | ❌ | ❌ | ❌ | ✅ | ✅ Ollama | ❌ | ✅ Ollama |
 | **Collaboration** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ CRDTs |
 | **Open Source** | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| **One-Time Price** | ✅ $21 | ❌ | ❌ | ✅ Free | ✅ Free | ❌ | ✅ Free |
+| **One-Time Price** | ✅ Free | ❌ | ❌ | ✅ Free | ✅ Free | ❌ | ✅ Free |
 
 ---
 
@@ -229,14 +229,16 @@ Provider-agnostic conversation format enabling:
 - Tool translation with status tracking
 - History format conversion (JSONL ↔ JSON)
 
-### 8. One-Time Pricing (COMPETITIVE MOAT)
-| Competitor | Annual Cost | Yume Savings |
-|------------|-------------|--------------|
-| Cursor Pro | $240 | 91% |
-| Windsurf Pro | $180 | 88% |
-| Copilot Pro | $100 | 79% |
-| Copilot Pro+ | $468 | 96% |
-| **Yume Pro** | **$21 once** | **Lifetime** |
+### 8. Freeware Model (COMPETITIVE MOAT)
+Yume is **free to use** with a generous trial (3 tabs, 1 window). Pro license ($29 one-time) unlocks power user limits (99 tabs/windows).
+
+| Competitor | Annual Cost | Yume Advantage |
+|------------|-------------|----------------|
+| Cursor Pro | $240/year | Yume is free |
+| Windsurf Pro | $180/year | Yume is free |
+| Copilot Pro | $100/year | Yume is free |
+| Copilot Pro+ | $468/year | Yume is free |
+| **Yume** | **Free** | Pro: $29 once (optional) |
 
 ### 9. Advanced Analytics Dashboard (RARE)
 Only desktop Claude wrapper with:
@@ -334,11 +336,11 @@ Per-session tracking of code modifications:
 - Native desktop experience over browser/IDE extensions
 - Comprehensive analytics for cost tracking
 - Plugin extensibility without code changes
-- One-time payment over subscriptions
+- Free software (freeware model lowers barrier to adoption)
 
 **Secondary:**
 - Teams evaluating Claude CLI wrappers
-- Developers burned by subscription fatigue
+- Developers burned by subscription fatigue (freeware = easy word-of-mouth)
 
 ### Key Messaging
 
@@ -347,8 +349,8 @@ Per-session tracking of code modifications:
    - Unified interface, no provider lock-in
 
 2. **"Own Your AI Coding Environment"**
-   - $21 one-time vs $240-2400/year subscriptions
-   - All local, no cloud lock-in
+   - Free to use, Pro upgrade optional ($29 once)
+   - No subscriptions, no cloud lock-in
 
 3. **"4 AI Agents, Zero Configuration"**
    - Architect, Explorer, Implementer, Guardian
@@ -368,11 +370,8 @@ Per-session tracking of code modifications:
   - *Mitigation*: yume-cli abstraction layer provides buffer
 
 #### Medium Risk
-- **Subscription fatigue backlash**: Some users may resist even $21
-  - *Mitigation*: Generous trial (3 tabs, 1 window) to prove value
-
 - **Open source competition**: Opcode (19k stars), Continue.dev (26k stars)
-  - *Mitigation*: Focus on polish, multi-provider, analytics
+  - *Mitigation*: Focus on polish, multi-provider, analytics, freeware model for adoption
 
 #### Low Risk
 - **IDE extension dominance**: Users may prefer integrated workflow

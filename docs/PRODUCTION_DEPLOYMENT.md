@@ -1,6 +1,6 @@
 # Yume Production Deployment Guide
 
-**Version:** 0.6.6
+**Version:** 0.6.7
 **Last Updated:** January 29, 2026
 **Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
 
@@ -69,6 +69,9 @@ npm run build
 - Types: `ucf.test.ts`
 - Utils: `chatHelpers.test.ts`, `helpers.test.ts`, `performance.test.ts`, `regexValidator.test.ts`
 
+#### macOS Hardened Runtime
+**Important:** The production Tauri configs (`tauri.arm64.conf.json`, `tauri.x64.conf.json`) should have `hardenedRuntime: true` in the macOS bundle config for notarization.
+
 #### Manual Testing Checklist
 - [ ] Fresh installation on clean system
 - [ ] Session creation and management
@@ -132,10 +135,13 @@ xcode-select --install
 ### 2.2 Build Configuration
 
 #### Update Version
-Update in three files:
+Update in five files:
 - `package.json` - `"version": "X.Y.Z"`
 - `src-tauri/tauri.conf.json` - `"version": "X.Y.Z"`
+- `src-tauri/tauri.arm64.conf.json` - `"version": "X.Y.Z"`
+- `src-tauri/tauri.x64.conf.json` - `"version": "X.Y.Z"`
 - `src-tauri/Cargo.toml` - `version = "X.Y.Z"`
+- `version.txt` - `X.Y.Z`
 
 #### Production Environment Variables
 ```bash

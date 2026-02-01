@@ -1,6 +1,6 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.6.6
+**Version:** 0.6.7
 **Last Updated:** January 2026
 **Status:** Production Ready
 
@@ -129,6 +129,8 @@ commands/memory.rs            // Legacy memory graph (12 commands)
 commands/memory_v2.rs         // Memory V2 markdown system (15 commands)
 commands/background_agents.rs // Agent queue IPC (14 commands)
 commands/plugins.rs           // Plugin management (20+ commands)
+commands/acp.rs               // ACP agent management (14 commands)
+commands/sandbox.rs           // Sandbox security (7 commands)
 
 // Advanced Features
 compaction/mod.rs       // Auto-compaction at configurable thresholds
@@ -552,6 +554,7 @@ Recovery paths:
 - Active text selection detection prevents scroll interruption
 - State snapshot save/restore for tab switching
 - Inline indicators: thinking timer, bash timer, compacting timer, agent status cards
+- **Thinking streaming**: Live extended thinking content display (UNIQUE - not even CLI has this)
 - Todo/task progress and streaming token count in thinking indicator
 - Followup message preview during compaction
 - BashOutputStream integration for live bash output
@@ -682,18 +685,18 @@ class HooksService {
 }
 ```
 
-Available Hook Events (9 total, **only 3 active**):
+Available Hook Events (9 total, **4 active**):
 - `pre_tool_use`: Intercept tool calls before execution **(ACTIVE)**
 - `context_warning`: Context usage alerts **(ACTIVE)**
 - `compaction_trigger`: Custom compaction behavior **(ACTIVE)**
-- `user_prompt_submit`: Modify/block user messages before sending *(defined, not called)*
+- `user_prompt_submit`: Modify/block user messages before sending **(ACTIVE)**
 - `post_tool_use`: Process tool results after execution *(defined, not called)*
 - `assistant_response`: Process Claude responses *(defined, not called)*
 - `session_start`: Session initialization *(defined, not called)*
 - `session_end`: Session cleanup *(defined, not called)*
 - `error`: Error handling *(defined, not called)*
 
-> **Note:** Only 3 of 9 hooks are actively triggered in the codebase. The other 6 are defined but not currently wired to any execution path.
+> **Note:** Only 4 of 9 hooks are actively triggered in the codebase. The other 5 are defined but not currently wired to any execution path.
 
 ## 5. Process Communication Architecture
 
@@ -1141,15 +1144,12 @@ npm run tauri:build:linux      # Linux .AppImage/.deb
 **Config:** `vitest.config.ts` with path aliases (`@/` → `src/renderer/`, `@shared/` → `src/shared/`)
 **Setup:** `src/test/setup.ts` with Tauri API mocks
 
-**Test Suites (8 files):**
-- `src/renderer/config/__tests__/app.test.ts` - App configuration
-- `src/renderer/config/__tests__/tools.test.ts` - Tools configuration
-- `src/renderer/services/__tests__/licenseManager.test.ts` - License management
-- `src/renderer/types/__tests__/ucf.test.ts` - UCF type validation
-- `src/renderer/utils/__tests__/chatHelpers.test.ts` - Chat utilities
-- `src/renderer/utils/__tests__/helpers.test.ts` - General helpers
-- `src/renderer/utils/__tests__/performance.test.ts` - Performance utilities
-- `src/renderer/utils/__tests__/regexValidator.test.ts` - ReDoS validation
+**Test Suites (37 files):**
+- `src/renderer/config/__tests__/` - 4 files (app, features, models, themes, tools)
+- `src/renderer/services/__tests__/` - 23 files (all services)
+- `src/renderer/types/__tests__/` - 3 files (backgroundAgents, skill, ucf)
+- `src/renderer/stores/__tests__/` - 1 file (claudeCodeStore)
+- `src/renderer/utils/__tests__/` - 6 files (chatHelpers, helpers, performance, regexValidator, structuredLogger)
 
 ## Performance Benchmarks
 

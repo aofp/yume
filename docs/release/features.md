@@ -542,7 +542,7 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 | tier | tabs | windows | price |
 |------|------|---------|-------|
 | trial | 3 | 1 | free |
-| pro | 99 | 99 | $21 |
+| pro | 99 | 99 | $29 |
 
 ### validation
 - server validation (configured per installation)

@@ -24,7 +24,7 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 | 12 themes | OLED-optimized (vs Cursor ~5, Windsurf ~3, Opcode 0) |
 | 9 hook events | 3 active: pre_tool_use, context_warning, compaction_trigger |
 | Crash recovery | Auto-save with 24hr restoration |
-| $21 one-time | vs $240-2400/year subscriptions |
+| Freeware | vs $240-2400/year subscriptions |
 | Plugin system | Commands, agents, hooks, skills, MCP extensibility |
 | UCF format | Unified Conversation Format for portability |
 
@@ -65,9 +65,9 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 | Competitor | Yume Message |
 |------------|--------------|
 | Claude Code CLI | All the power, none of the lag, plus 15+ unique features |
-| Cursor | Claude-native, no IDE bloat, $21 one-time vs $240+/year |
+| Cursor | Claude-native, no IDE bloat, free vs $240+/year |
 | Windsurf | Stable pricing, 15+ unique features |
-| Opcode | Memory, limits, agents, themes, hooks, crash recovery. Worth $21. |
+| Opcode | Memory, limits, agents, themes, hooks, crash recovery. And it's free. |
 | Aider | Visual interface + memory + agents |
 | Cline | Desktop-native, not VS Code dependent |
 
@@ -88,7 +88,7 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 | Reliability | "An interface that just works" |
 | Limits | "Track your 5h + 7-day limits" |
 | Agents | "4 specialized AI agents built-in" |
-| Value | "$21 one-time vs subscriptions" |
+| Value | "Free vs subscriptions" |
 | Security | "Yume Guard protects from dangerous commands" |
 
 **Taglines:** "Claude Code, Unchained" | "All the Power, None of the Lag"

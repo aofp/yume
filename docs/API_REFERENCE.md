@@ -1,8 +1,8 @@
 # Yume API Reference
 
-**Version:** 0.6.6
+**Version:** 0.6.7
 **Last Updated:** January 2026
-**Tauri Commands:** 199+
+**Tauri Commands:** 228+
 
 ## Table of Contents
 
@@ -434,6 +434,23 @@ interface ClaudeUsageLimits {
   seven_day_sonnet?: UsageLimit | null;
   subscription_type?: string | null;
   rate_limit_tier?: string | null;
+}
+```
+
+#### `update_claude_cli`
+Smart Claude CLI updater that checks npm registry first.
+```typescript
+invoke('update_claude_cli') => Promise<ClaudeUpdateResult>
+```
+
+**Returns:**
+```typescript
+interface ClaudeUpdateResult {
+  success: boolean;
+  updated: boolean;
+  message: string;
+  old_version?: string;
+  new_version?: string;
 }
 ```
 
@@ -2461,6 +2478,201 @@ Returns the Claude CLI cleanup/retention period in seconds.
 invoke('get_claude_cleanup_period') => Promise<number>  // u64
 ```
 
+### ACP (Agent Client Protocol)
+
+External agent connections via standardized protocol.
+
+#### `acp_init`
+Initialize ACP manager and load configs.
+```typescript
+invoke('acp_init') => Promise<AcpResponse>
+```
+
+**Returns:**
+```typescript
+interface AcpResponse {
+  success: boolean;
+  error: string | null;
+}
+```
+
+#### `acp_list_agents`
+List all configured ACP agents with their connection status.
+```typescript
+invoke('acp_list_agents') => Promise<AcpAgentInfo[]>
+```
+
+**Returns:**
+```typescript
+interface AcpAgentInfo {
+  id: string;
+  name: string;
+  command: string;
+  args: string[];
+  enabled: boolean;
+  status: string;
+}
+```
+
+#### `acp_connect_agent`
+Connect to a specific ACP agent.
+```typescript
+invoke('acp_connect_agent', { agentId: string }) => Promise<AcpResponse>
+```
+
+#### `acp_disconnect_agent`
+Disconnect from an ACP agent.
+```typescript
+invoke('acp_disconnect_agent', { agentId: string }) => Promise<AcpResponse>
+```
+
+#### `acp_create_session`
+Create a new session with an ACP agent.
+```typescript
+invoke('acp_create_session', { agentId: string, cwd: string }) => Promise<string>
+```
+
+#### `acp_send_prompt`
+Send a prompt to an ACP session.
+```typescript
+invoke('acp_send_prompt', { sessionId: string, prompt: string }) => Promise<AcpResponse>
+```
+
+#### `acp_cancel`
+Cancel an ongoing operation in an ACP session.
+```typescript
+invoke('acp_cancel', { sessionId: string }) => Promise<AcpResponse>
+```
+
+#### `acp_get_status`
+Get status of an ACP agent.
+```typescript
+invoke('acp_get_status', { agentId: string }) => Promise<string>
+```
+
+#### `acp_get_session`
+Get session info.
+```typescript
+invoke('acp_get_session', { sessionId: string }) => Promise<AcpSessionInfo | null>
+```
+
+**Returns:**
+```typescript
+interface AcpSessionInfo {
+  session_id: string;
+  agent_id: string;
+  cwd: string;
+  created_at: number;
+  status: string;
+}
+```
+
+#### `acp_list_sessions`
+List all ACP sessions.
+```typescript
+invoke('acp_list_sessions') => Promise<AcpSessionInfo[]>
+```
+
+#### `acp_add_agent`
+Add a new ACP agent configuration.
+```typescript
+invoke('acp_add_agent', {
+  id: string,
+  name: string,
+  command: string,
+  args: string[],
+  cwd?: string,
+  env?: Record<string, string>
+}) => Promise<AcpResponse>
+```
+
+#### `acp_remove_agent`
+Remove an ACP agent configuration.
+```typescript
+invoke('acp_remove_agent', { agentId: string }) => Promise<AcpResponse>
+```
+
+#### `acp_set_agent_enabled`
+Enable or disable an ACP agent.
+```typescript
+invoke('acp_set_agent_enabled', { agentId: string, enabled: boolean }) => Promise<AcpResponse>
+```
+
+#### `acp_get_config_path`
+Get the config file path.
+```typescript
+invoke('acp_get_config_path') => Promise<string>
+```
+
+### Sandbox Security
+
+Process isolation for secure execution.
+
+#### `get_sandbox_status`
+Get the current sandbox status for the platform.
+```typescript
+invoke('get_sandbox_status') => Promise<SandboxStatus>
+```
+
+**Returns:**
+```typescript
+interface SandboxStatus {
+  available: boolean;
+  enabled: boolean;
+  platform: string;
+}
+```
+
+#### `get_sandbox_settings`
+Get the current sandbox settings.
+```typescript
+invoke('get_sandbox_settings') => Promise<SandboxSettings>
+```
+
+**Returns:**
+```typescript
+interface SandboxSettings {
+  enabled: boolean;
+  allow_network: boolean;
+  allow_spawn: boolean;
+  deny_credentials: boolean;
+}
+```
+
+#### `set_sandbox_enabled`
+Set sandbox enabled state.
+```typescript
+invoke('set_sandbox_enabled', { enabled: boolean }) => Promise<void>
+```
+
+#### `set_sandbox_settings`
+Update full sandbox settings.
+```typescript
+invoke('set_sandbox_settings', { settings: SandboxSettings }) => Promise<void>
+```
+
+#### `get_sandbox_config`
+Get the sandbox configuration for a specific project.
+```typescript
+invoke('get_sandbox_config', { projectPath: string }) => Promise<SandboxConfig>
+```
+
+#### `get_protected_credential_paths`
+Get credential paths that are protected by the sandbox.
+```typescript
+invoke('get_protected_credential_paths') => Promise<string[]>
+```
+
+#### `test_sandbox_path_access`
+Test if a path would be allowed by the sandbox.
+```typescript
+invoke('test_sandbox_path_access', {
+  path: string,
+  projectPath: string,
+  settings: SandboxSettings
+}) => Promise<boolean>
+```
+
 ---
 
 ## Tauri Events API
@@ -2495,7 +2707,8 @@ listen(`claude-message:${sessionId}`, (event) => {
 - `result` - Completion with usage stats
 - `error` - Error message
 - `system` - System messages (subtype: session_id, etc.)
-- `thinking` - Thinking indicator
+- `thinking` - Extended thinking content (streamed in real-time - UNIQUE feature)
+- `thinking_delta` - Incremental thinking content updates
 
 #### `claude-error:{sessionId}`
 Emitted on session errors.

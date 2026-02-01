@@ -45,7 +45,7 @@ $500/mo dropped to $20/mo with v2.0. Uses "Agent Compute Units" (1 ACU = 15 min 
 |------|-------------|
 | GitHub Copilot Business | $114,000 |
 | Cursor Business | $192,000 |
-| Windsurf Team | $210,000 |
+| Windsurf Team | $290,000 |
 | Tabnine Enterprise | $234,000 |
 
 ---
@@ -78,16 +78,17 @@ $500/mo dropped to $20/mo with v2.0. Uses "Agent Compute Units" (1 ACU = 15 min 
 
 ## Yume Pricing Model
 
-### $21 One-Time Purchase
+### Freeware with Pro Upgrade
 
-**Flow:** $21 one-time → Uses Claude Code CLI → No API costs, uses existing subscription
+**Flow:** Free app → Uses Claude Code CLI → No API costs, uses existing subscription
 
 | Component | Cost |
 |-----------|------|
-| Yume app | $21 once |
+| Yume app | Free (3 tabs) |
+| Pro license | $29 once (99 tabs) |
 | Claude usage | Pro $20/mo or Max $100-200/mo (to Anthropic) |
 
-**Why it works:** No surprise bills, simple ownership, impulse-buy territory, aligns incentives.
+**Why it works:** No barrier to entry, try before you buy, Pro upgrade for power users.
 
 ### Competitive Comparison
 
@@ -97,15 +98,14 @@ $500/mo dropped to $20/mo with v2.0. Uses "Agent Compute Units" (1 ACU = 15 min 
 | Copilot Pro | Subscription | $228 |
 | Windsurf | Subscription | $180 |
 | Cline | BYOK | Free + API |
-| **Yume** | One-time | **$21** |
+| **Yume** | Freeware | **Free** |
 
 ### Value Proposition
 
-> "Pay $21 once. Use your Claude subscription without the lag."
+> "Free to use. Pro license $29 for extended limits."
 
 For Claude Pro users:
-- Year 1: $21 + $240 = $261
-- Year 2+: $0 + $240 = $240 (same as Cursor, but with Claude's power)
+- Year 1+: $0 + $240 = $240 (cheaper than Cursor, with Claude's power)
 
 ---
 

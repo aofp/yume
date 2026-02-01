@@ -16,7 +16,7 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 **Sections Added**:
 
 #### License Management System
-- Trial vs Pro pricing ($21 one-time payment)
+- Trial vs Pro pricing ($29 one-time payment)
 - Server-side validation with 5-minute cache
 - Encrypted storage using XOR cipher
 - Auto-revalidation every 30 minutes

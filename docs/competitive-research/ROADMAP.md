@@ -1,13 +1,13 @@
 # Yume Roadmap
 
 **Last Updated:** January 29, 2026
-**Version:** 0.6.6
+**Version:** 0.6.7
 
 ---
 
 ## Current State: What Makes Yume Unique
 
-### Complete Feature Summary (v0.6.6)
+### Complete Feature Summary (v0.6.7)
 
 | Category | Feature | Competitor Comparison |
 |----------|---------|----------------------|
@@ -20,7 +20,7 @@
 | **UCF** | Unified Conversation Format for portability | UNIQUE |
 | **Analytics** | Per-project/model/date breakdowns | Better than competitors |
 | **Context** | 70/78/85% thresholds, 5h/7d rate limits | More proactive than Claude Code's 80%/95% |
-| **Pricing** | $21 one-time | 79-96% cheaper than annual subscriptions |
+| **Pricing** | Freeware (Pro $29 optional) | Free vs $240-2400/year subscriptions |
 
 ---
 
@@ -232,7 +232,7 @@
 
 ## Success Metrics
 
-### v0.6.6 (Current)
+### v0.6.7 (Current)
 - ✅ Multi-provider architecture complete (Claude active; Gemini + OpenAI via yume-cli feature-flagged off)
 - ✅ 4 core agents (yume-architect, yume-explorer, yume-implementer, yume-guardian)
 - ✅ Plugin system with 5 components (commands/agents/hooks/skills/mcp)
@@ -270,7 +270,7 @@
 | **Multi-Provider** | ✅ (arch ready, flagged off) | ✅ | ✅ |
 | **4 Core Agents** | ✅ | ❌ | ❌ |
 | **Plugin System** | ✅ 5 types | ❌ | ❌ |
-| **One-Time Price** | ✅ $21 | ❌ $240/yr | ❌ $180/yr |
+| **Freeware** | ✅ Free (Pro $29 optional) | ❌ $240/yr | ❌ $180/yr |
 
 **Yume's UNIQUE advantages (competitors lack):**
 1. ✅ Git branch isolation for async agents
@@ -279,7 +279,7 @@
 4. ✅ 4 core agents (architect, explorer, implementer, guardian)
 5. ✅ Plugin system with 5 component types
 6. ✅ UCF (Unified Conversation Format)
-7. ✅ One-time $21 pricing
+7. ✅ Freeware model (Pro $29 optional)
 8. ✅ 5h/7d Anthropic limit tracking
 9. ✅ Crash recovery (24hr window)
 

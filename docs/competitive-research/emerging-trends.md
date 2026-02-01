@@ -200,7 +200,7 @@ This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific 
 
 | Advantage | Why It Matters | Competitor Status |
 |-----------|----------------|-------------------|
-| **$21 one-time** | No subscription fatigue | Cursor: $20-200/mo, Windsurf: $15-60/mo |
+| **Freeware** | No subscription fatigue | Cursor: $20-200/mo, Windsurf: $15-60/mo |
 | **Auto-compact 75%/80%** | No one else does this | **UNIQUE** |
 | **Native Rust** | Performance validated | Cursor has memory issues |
 | **80.9% SWE-bench** | Claude leads benchmarks | We're Claude-native |

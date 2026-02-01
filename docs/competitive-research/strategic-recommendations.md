@@ -27,7 +27,7 @@ Yume is the most feature-complete Claude Code UI available. 15+ unique features,
 | 12 themes | OLED-optimized (vs Cursor ~5, Windsurf ~3, Opcode 0) |
 | 9 hook events | 3 active: pre_tool_use, context_warning, compaction_trigger |
 | Crash recovery | Auto-save with 24hr restoration |
-| $21 one-time | vs $240-2400/year subscriptions |
+| Freeware | vs $240-2400/year subscriptions |
 
 ### Remaining Gap
 
@@ -63,7 +63,7 @@ Yume is the most feature-complete Claude Code UI available. 15+ unique features,
 ### What Yume IS
 - Native desktop experience for Claude Code CLI
 - Solves terminal flicker (GitHub #1913)
-- One-time purchase ($21), no telemetry
+- Free to use (Pro $29 optional), no telemetry
 - 15+ unique features
 
 ### What Yume is NOT
@@ -77,7 +77,7 @@ Yume is the most feature-complete Claude Code UI available. 15+ unique features,
 
 **Key Points:**
 1. Solves #1 Claude Code complaint (flicker)
-2. $21 one-time vs $20-200/mo subscriptions
+2. Free vs $20-200/mo subscriptions (Pro $29 optional)
 3. Native Rust performance
 4. 15+ unique features
 
@@ -87,7 +87,7 @@ Yume is the most feature-complete Claude Code UI available. 15+ unique features,
 
 | Competitor | Threat | Their Weaknesses | We Win On |
 |------------|--------|------------------|-----------|
-| Cursor ($29.3B) | Low | Performance issues, expensive, subscription fatigue | Native performance, $21 one-time, no telemetry |
+| Cursor ($29.3B) | Low | Performance issues, expensive, subscription fatigue | Native performance, freeware, no telemetry |
 | Windsurf | Low | Beta feel, acquisition uncertainty, files >300 lines struggle | Stability, features, pricing |
 | Opcode (15K stars) | Medium | Missing: Memory, git isolation, limit tracking, agents, themes, hooks, crash recovery | 15+ features they lack |
 | Claude Desktop | Medium | Risk: Anthropic releases official GUI | Stay complementary, unique features |

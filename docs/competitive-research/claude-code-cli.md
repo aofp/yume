@@ -209,7 +209,8 @@ Claude Code CLI requires a Claude subscription:
 - Weekly usage safeguards apply
 - Extra usage available with prepay
 
-**Yume Model**: $21 one-time purchase
+**Yume Model**: Freeware
+- Free to use (Pro $29 optional for power users)
 - Uses user's existing Claude Pro/Max subscription
 - No additional API costs
 - No recurring fees

@@ -11,8 +11,8 @@ no. independent.
 **need anthropic subscription?**
 yes. yume is just the interface.
 
-**what's the $21 for?**
-pro license: 99 tabs instead of 2. one-time payment.
+**what's the $29 for?**
+pro license: 99 tabs instead of 3. one-time payment.
 
 ---
 
@@ -43,7 +43,7 @@ chmod +x yume-*.AppImage
 ## usage
 
 **only 3 tabs?**
-trial mode (3 tabs, 1 window). pro is $21 (99 tabs, 99 windows).
+trial mode (3 tabs, 1 window). pro is $29 (99 tabs, 99 windows).
 
 **where are conversations saved?**
 `~/.claude/projects/` — same as claude cli
