@@ -1107,25 +1107,10 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-        }
-        .screenshot-card::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
+            transition: all 0.3s ease;
         }
         .screenshot-card:hover {
-            border-color: rgba(var(--accent-rgb), 0.5);
-            transform: translateY(-6px) scale(1.01);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(var(--accent-rgb), 0.1);
-        }
-        .screenshot-card:hover::after {
-            opacity: 1;
+            border-color: rgba(var(--accent-rgb), 0.4);
         }
         .screenshot-card img {
             width: 100%;
@@ -2201,34 +2186,10 @@
                         this.opacity = Math.random() * 0.2 + 0.12; // 0.12-0.32
                     }
 
-                    // Mostly purple, occasional accent colors from theme palette
-                    const colorRoll = Math.random();
-                    if (colorRoll < 0.65) {
-                        // 65%: purple/violet (yume theme)
-                        this.hue = 268 + Math.random() * 6;
-                        this.sat = 70;
-                        this.light = 70;
-                    } else if (colorRoll < 0.75) {
-                        // 10%: cyan (synth theme)
-                        this.hue = 185 + Math.random() * 10;
-                        this.sat = 75;
-                        this.light = 55;
-                    } else if (colorRoll < 0.85) {
-                        // 10%: pink (rose theme)
-                        this.hue = 350 + Math.random() * 10;
-                        this.sat = 65;
-                        this.light = 72;
-                    } else if (colorRoll < 0.92) {
-                        // 7%: mint/green (mint theme)
-                        this.hue = 145 + Math.random() * 10;
-                        this.sat = 70;
-                        this.light = 75;
-                    } else {
-                        // 8%: blue (cobalt theme)
-                        this.hue = 225 + Math.random() * 10;
-                        this.sat = 100;
-                        this.light = 75;
-                    }
+                    // purple yume accent color
+                    this.hue = 268 + Math.random() * 6;
+                    this.sat = 70;
+                    this.light = 70;
 
                     // Glow multiplier - smaller particles glow more
                     this.glowMultiplier = this.size < 50 ? 2 : 1.5;
@@ -2293,10 +2254,7 @@
                 'final form',
                 'fully operational',
                 'unbound',
-                'done right',
-                'without the jank',
                 'unchained',
-                'as intended',
                 'reimagined'
             ];
             const el = document.getElementById('hero-catchphrase');
