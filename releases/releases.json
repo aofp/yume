@@ -1,8 +1,26 @@
 {
   "product": "yume",
-  "latest": "0.8.1",
+  "latest": "0.8.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.2",
+      "date": "2026-02-01",
+      "notes": "fix macos focus loss, agent spawn race conditions, session id/token counting fixes, compact_boundary support, dependency updates",
+      "releaseNotes": "v0.8.2-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.2_arm64.pkg",
+        "mac": "yume_0.8.2_x64.pkg",
+        "windows": "yume_0.8.2_x64-setup.exe",
+        "linux_deb": "yume_0.8.2_amd64.deb"
+      },
+      "checksums": {
+        "mac_arm": "041b12f5f8abb5d119fcb156a357eba9a2a282d15076fdf4cf42a05d616b15c4",
+        "mac": "720b7cf0c8afd2d6df59971a3ccea8eb660a5e445aa30a87f795a032546493e2",
+        "windows": "fc217823be267a64a89f0993da29d01edb807d7de3ee8eba67b5715233416800",
+        "linux_deb": "af51f05572487c2b5009d09a2bc3e1efc1ec3af832e44fdf1700ece8811ee15c"
+      }
+    },
     {
       "version": "0.8.1",
       "date": "2026-02-01",
