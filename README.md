@@ -70,7 +70,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 ### core features
 - **persistent rate limit visibility** - 5h and 7d limits always visible, no /usage needed
 - **zero visual artifacts** - native rendering eliminates terminal flickering
-- **flicker-free thinking** - smooth thinking display without terminal artifacts
+- **live thinking stream** - watch claude reason word-by-word, not after the fact
 - **keyboard-first** - 32+ shortcuts, full mouse-free navigation
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
@@ -117,7 +117,7 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 | memory system | ✗ | ✗ | ✗ | ✗ | ✓ v2 md |
 | background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
 | multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models |
-| flicker-free thinking | flickers | ✓ | ✓ | ✓ | ✓ |
+| live thinking stream | ✗ after | ✗ | ✗ | ✗ | ✓ word-by-word |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
 | 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
