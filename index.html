@@ -207,16 +207,14 @@
 
         /* particle canvas */
         #particles {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
             z-index: 0;
             opacity: 0.6;
-            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
-            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
         }
         .hero h1 {
             font-size: clamp(2.5rem, 6vw, 4rem);
@@ -1556,24 +1554,20 @@
 
             function resize() {
                 canvas.width = window.innerWidth;
-                canvas.height = document.documentElement.scrollHeight;
+                canvas.height = window.innerHeight;
             }
             resize();
             window.addEventListener('resize', resize);
 
-            // Scroll-based opacity fade
+            // Scroll-based opacity fade - fade out as user scrolls
             function updateOpacity() {
                 const scrollY = window.scrollY;
-                const fadeStart = 0;
-                const fadeEnd = 600;
-                const opacity = Math.max(0, 0.6 * (1 - (scrollY - fadeStart) / (fadeEnd - fadeStart)));
+                const fadeEnd = 800;
+                const opacity = Math.max(0, 0.6 * (1 - scrollY / fadeEnd));
                 canvas.style.opacity = opacity;
             }
             window.addEventListener('scroll', updateOpacity);
             updateOpacity();
-
-            // Resize on content changes
-            window.addEventListener('load', resize);
 
             class Particle {
                 constructor() {
