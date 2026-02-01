@@ -211,12 +211,12 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 600px;
+            height: 100%;
             pointer-events: none;
             z-index: 0;
             opacity: 0.6;
-            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0) 100%);
-            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
         }
         .hero h1 {
             font-size: clamp(2.5rem, 6vw, 4rem);
@@ -948,7 +948,7 @@
                 <img src="assets/yume.png" alt="yume" class="hero-logo">
             </div>
             <h1>claude code,<br><span>supercharged</span></h1>
-            <p class="hero-sub">orchestration. memory. background agents. 30+ features the cli doesn't have.<br>same claude, zero compromises.</p>
+            <p class="hero-sub">orchestration. memory. background agents.<br>30+ features the cli doesn't have. same claude, zero compromises.</p>
             <div class="hero-ctas">
                 <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
                 <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
@@ -1148,6 +1148,11 @@
                     <i class="ti ti-at icon"></i>
                     <h3>@ mention system</h3>
                     <p>@r for recent files. @m for modified files. folder navigation. fast file references.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="ti ti-clock icon"></i>
+                    <h3>stream timers</h3>
+                    <p>cli gives no feedback during long waits. yume shows live duration for thinking, bash, and compaction. know exactly what's happening.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-brain icon"></i>
@@ -1551,7 +1556,7 @@
 
             function resize() {
                 canvas.width = window.innerWidth;
-                canvas.height = 600;
+                canvas.height = document.documentElement.scrollHeight;
             }
             resize();
             window.addEventListener('resize', resize);
@@ -1560,12 +1565,15 @@
             function updateOpacity() {
                 const scrollY = window.scrollY;
                 const fadeStart = 0;
-                const fadeEnd = 400;
+                const fadeEnd = 600;
                 const opacity = Math.max(0, 0.6 * (1 - (scrollY - fadeStart) / (fadeEnd - fadeStart)));
                 canvas.style.opacity = opacity;
             }
             window.addEventListener('scroll', updateOpacity);
             updateOpacity();
+
+            // Resize on content changes
+            window.addEventListener('load', resize);
 
             class Particle {
                 constructor() {
@@ -1575,42 +1583,62 @@
 
                 reset() {
                     this.x = Math.random() * canvas.width;
-                    this.y = canvas.height + 20;
+                    this.y = canvas.height + 50;
 
-                    // Base size with more variety (1-7)
-                    let baseSize = Math.random() * 6 + 1;
-
-                    // 10% chance of hero particle (2-3x larger)
-                    this.isHero = Math.random() < 0.1;
-                    if (this.isHero) {
-                        baseSize *= (Math.random() + 2); // 2-3x multiplier
+                    // Size distribution with massive variance
+                    const roll = Math.random();
+                    if (roll < 0.02) {
+                        // 2% chance: massive orbs (150-300px)
+                        this.size = Math.random() * 150 + 150;
+                        this.isMassive = true;
+                        this.isHero = false;
+                    } else if (roll < 0.08) {
+                        // 6% chance: large orbs (50-150px)
+                        this.size = Math.random() * 100 + 50;
+                        this.isMassive = false;
+                        this.isHero = true;
+                    } else if (roll < 0.25) {
+                        // 17% chance: medium orbs (15-50px)
+                        this.size = Math.random() * 35 + 15;
+                        this.isMassive = false;
+                        this.isHero = false;
+                    } else {
+                        // 75% chance: tiny particles (1-15px)
+                        this.size = Math.random() * 14 + 1;
+                        this.isMassive = false;
+                        this.isHero = false;
                     }
-                    this.size = baseSize;
 
                     // Speed inversely proportional to size (larger = slower, more ethereal)
-                    const sizeNormalized = this.size / 20; // normalize to 0-1 range
-                    this.speedY = (Math.random() * 0.4 + 0.15) * (1 - sizeNormalized * 0.7);
-                    this.speedX = (Math.random() - 0.5) * 0.3 * (1 - sizeNormalized * 0.5);
+                    const sizeNormalized = Math.min(this.size / 300, 1);
+                    this.speedY = (Math.random() * 0.4 + 0.1) * (1 - sizeNormalized * 0.85);
+                    this.speedX = (Math.random() - 0.5) * 0.2 * (1 - sizeNormalized * 0.7);
 
-                    // Hero particles are more visible
-                    this.opacity = this.isHero
-                        ? Math.random() * 0.3 + 0.25
-                        : Math.random() * 0.5 + 0.1;
+                    // Opacity: massive orbs very subtle, small particles more visible
+                    if (this.isMassive) {
+                        this.opacity = Math.random() * 0.08 + 0.03; // very subtle
+                    } else if (this.isHero) {
+                        this.opacity = Math.random() * 0.15 + 0.08;
+                    } else if (this.size > 15) {
+                        this.opacity = Math.random() * 0.2 + 0.1;
+                    } else {
+                        this.opacity = Math.random() * 0.4 + 0.15;
+                    }
+
                     this.hue = Math.random() * 30 + 260; // purple range
 
-                    // Glow radius multiplier varies with size (smaller = tighter glow, larger = softer spread)
-                    this.glowMultiplier = this.isHero
-                        ? 4 + Math.random() * 2
-                        : 2 + (this.size / 7) * 2;
+                    // Glow multiplier
+                    this.glowMultiplier = this.isMassive ? 1.2 : (this.isHero ? 1.5 : 2);
                 }
 
                 update() {
                     this.y -= this.speedY;
                     this.x += this.speedX;
                     // Gentler wave for larger particles
-                    this.x += Math.sin(this.y * 0.01) * (0.3 / (1 + this.size * 0.1));
+                    const waveIntensity = this.isMassive ? 0.05 : (this.isHero ? 0.1 : 0.3);
+                    this.x += Math.sin(this.y * 0.005) * waveIntensity;
 
-                    if (this.y < -20) {
+                    if (this.y < -this.size * 2) {
                         this.reset();
                     }
                 }
