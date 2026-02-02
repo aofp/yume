@@ -1,6 +1,6 @@
 # Yume Production Deployment Guide
 
-**Version:** 0.6.7
+**Version:** 0.8.5
 **Last Updated:** January 29, 2026
 **Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
 
@@ -632,9 +632,6 @@ const errors = JSON.parse(
 
 # Database location (all platforms)
 ~/.yume/yume.db
-
-# Memory V2 storage (all platforms)
-~/.yume/memory/
 ```
 
 ### 7.2 Performance Monitoring

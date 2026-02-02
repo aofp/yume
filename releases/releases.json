@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.8.3",
+  "latest": "0.8.4",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.4",
+      "date": "2026-02-02",
+      "notes": "fix streaming stuck state, retryable end timers, resource leak fixes",
+      "releaseNotes": "v0.8.4-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.4_arm64.pkg",
+        "mac": "yume_0.8.4_x64.pkg",
+        "windows": "yume_0.8.4_x64-setup.exe",
+        "linux_deb": "yume_0.8.4_amd64.deb",
+        "linux_rpm": "yume-0.8.4-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "97bb8d259326d133fc1ac926e6fbd98d8a3659c61bb531d5ea0e0c57fef93c6c",
+        "mac": "c2b9c72418cadf0f5e9a3db4ba03ff02e1da1c96ce55f58b87f136a69a3da8d4",
+        "windows": "c97b13162b2099273e39558161da00451a6ee5bc00361a26695331c1d78d5b85",
+        "linux_deb": "97d94a0aad07fa5a8f937171486ee62dfbb893f114da0071b36c700d789265ef",
+        "linux_rpm": "0e8e2d866c43a52348eaa7a97f6681678c803eb66e73efa7a6b4465c87452d2d"
+      }
+    },
     {
       "version": "0.8.3",
       "date": "2026-02-01",

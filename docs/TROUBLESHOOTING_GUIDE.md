@@ -1,6 +1,6 @@
 # Yume Complete Troubleshooting Guide
 
-**Version:** 0.6.7
+**Version:** 0.8.5
 **Last Updated:** January 29, 2026
 **Platforms:** macOS, Windows, Linux
 

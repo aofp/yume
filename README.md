@@ -3,7 +3,7 @@
 <div align="center">
   <img src="assets/yume.png" alt="yume logo" width="120">
   <h3>claude code, unchained</h3>
-  <p>orchestration flow. memory system. background agents.<br>4 built-in agents. plugins & skills.</p>
+  <p>orchestration flow. background agents. interleaved thinking.<br>4 built-in agents. plugins & skills.</p>
   <p>
     <a href="https://aofp.github.io/yume">Download</a>
   </p>
@@ -70,13 +70,6 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **streaming isolation** - background agents don't interfere with main session
 - **merge conflict detection** - pre-merge checks before integrating agent work
 
-### memory v2 system
-- **per-project markdown** - organized files in ~/.yume/memory/ (global + project-specific)
-- **5 importance levels** - ephemeral (1d), low (7d), normal (30d), high (90d), permanent
-- **auto-learning** - extracts patterns from error/fix conversations, architecture decisions
-- **ttl-based expiration** - automatic pruning of outdated entries
-- **mcp integration** - custom yume-mcp-memory.cjs server for claude access
-
 ### multi-provider support
 - **6 models, 3 providers** - via yume-cli shim
   - claude sonnet 4.5, opus 4.5
@@ -88,7 +81,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 ### core features
 - **persistent rate limit visibility** - 5h and 7d limits always visible, no /usage needed
 - **zero visual artifacts** - native rendering eliminates terminal flickering
-- **live thinking stream** - watch claude reason word-by-word, not after the fact
+- **interleaved thinking toggle** - watch claude reason live, word-by-word, with on/off control
 - **keyboard-first** - 32+ shortcuts, full mouse-free navigation
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
@@ -132,10 +125,9 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 | feature | cli | cursor | opcode | crystal | yume |
 |---------|-----|--------|--------|---------|------|
 | orchestration flow | ✗ | ✗ | ✗ | ✗ | ✓ auto |
-| memory system | ✗ | ✗ | ✗ | ✗ | ✓ v2 md |
 | background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
+| interleaved thinking | ✗ after | ✗ | ✗ | ✗ | ✓ live toggle |
 | multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models |
-| live thinking stream | ✗ after | ✗ | ✗ | ✗ | ✓ word-by-word |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
 | 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |

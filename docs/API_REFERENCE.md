@@ -1,8 +1,8 @@
 # Yume API Reference
 
-**Version:** 0.6.7
+**Version:** 0.8.5
 **Last Updated:** January 2026
-**Tauri Commands:** 228+
+**Tauri Commands:** 230
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@
    - [Compaction Operations](#compaction-operations)
    - [MCP Operations](#mcp-operations)
    - [Memory Operations (Legacy V1)](#memory-operations-legacy-v1)
-   - [Memory V2 Operations](#memory-v2-operations)
+   - [Memory Operations (Deprecated)](#memory-operations-deprecated)
    - [Agent Management](#agent-management-in-memory)
    - [Claude Agents](#claude-agents-file-based)
    - [Yume Agents Sync](#yume-agents-sync)
@@ -1250,9 +1250,9 @@ Exports MCP configuration as JSON string.
 invoke('mcp_export_config') => Promise<string>  // JSON string
 ```
 
-### Memory Operations (Legacy V1)
+### Memory Operations (Deprecated)
 
-These commands manage the legacy persistent knowledge graph stored in `~/.yume/memory.jsonl`. Note: Memory V2 (per-project markdown files in `~/.yume/memory/`) is the current system - see Memory V2 Operations below.
+Memory operations have been deprecated. Users can install their own memory MCP servers if needed (e.g., `mcp-memory-service`). The following legacy commands are no longer available:
 
 #### `start_memory_server`
 Starts the memory MCP server. Kills orphan processes from previous sessions, performs MCP handshake, and registers with Claude CLI via `claude mcp add`.
@@ -1379,7 +1379,7 @@ invoke('memory_delete_entity', {
 ```
 
 #### `memory_prune_old`
-Prunes expired observations based on per-observation TTL metadata. Observations without TTL metadata fall back to `retentionDays`. Entities with all observations expired are removed entirely. Called automatically on startup by the frontend `memoryService.initialize()`.
+Prunes expired observations based on per-observation TTL metadata. Observations without TTL metadata fall back to `retentionDays`. Entities with all observations expired are removed entirely.
 
 ```typescript
 invoke('memory_prune_old', {
@@ -1407,159 +1407,7 @@ Deletes the entire `memory.jsonl` file, clearing all memories.
 invoke('memory_clear_all') => Promise<MemoryServerResult>
 ```
 
-### Memory V2 Operations
-
-These commands manage the per-project markdown-based memory system stored in `~/.yume/memory/`. This is the current recommended memory system.
-
-#### `memory_v2_init`
-Initializes the Memory V2 system, creating the directory structure.
-
-```typescript
-invoke('memory_v2_init') => Promise<MemoryResult>
-```
-
-#### `memory_v2_add_learning`
-Adds a learning entry to project memory.
-
-```typescript
-invoke('memory_v2_add_learning', {
-  projectPath: string,
-  content: string,
-  importance: number  // 1-5
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_add_error`
-Adds an error/solution entry to project memory.
-
-```typescript
-invoke('memory_v2_add_error', {
-  projectPath: string,
-  errorDesc: string,
-  solution: string,
-  importance: number  // 1-5
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_add_pattern`
-Adds a pattern entry to project memory.
-
-```typescript
-invoke('memory_v2_add_pattern', {
-  projectPath: string,
-  patternName: string,
-  description: string,
-  importance: number  // 1-5
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_set_brief`
-Sets the project brief/overview.
-
-```typescript
-invoke('memory_v2_set_brief', {
-  projectPath: string,
-  brief: string
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_add_preference`
-Adds a global preference entry.
-
-```typescript
-invoke('memory_v2_add_preference', {
-  content: string,
-  importance: number  // 1-5
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_add_global_pattern`
-Adds a global pattern entry.
-
-```typescript
-invoke('memory_v2_add_global_pattern', {
-  patternName: string,
-  description: string,
-  importance: number  // 1-5
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_build_context`
-Builds a context string for Claude from project and global memory.
-
-```typescript
-invoke('memory_v2_build_context', {
-  projectPath: string,
-  tokenBudget?: number  // Default: 2000
-}) => Promise<MemoryContextResult>
-```
-
-**Returns:**
-```typescript
-interface MemoryContextResult {
-  success: boolean;
-  context: string;
-  token_estimate: number;
-  error?: string;
-}
-```
-
-#### `memory_v2_get_project`
-Gets all memory for a project.
-
-```typescript
-invoke('memory_v2_get_project', {
-  projectPath: string
-}) => Promise<ProjectMemory | null>
-```
-
-#### `memory_v2_get_global`
-Gets global memory (preferences and patterns).
-
-```typescript
-invoke('memory_v2_get_global') => Promise<GlobalMemory | null>
-```
-
-#### `memory_v2_list_projects`
-Lists all projects with memory.
-
-```typescript
-invoke('memory_v2_list_projects') => Promise<ProjectMemoryInfo[]>
-```
-
-#### `memory_v2_delete_entry`
-Deletes a specific memory entry.
-
-```typescript
-invoke('memory_v2_delete_entry', {
-  projectPath: string | null,  // null for global entries
-  category: string,            // "learning", "error", "pattern", "preference"
-  entryId: string
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_prune_expired`
-Removes expired entries based on TTL.
-
-```typescript
-invoke('memory_v2_prune_expired') => Promise<number>  // Returns count of pruned entries
-```
-
-#### `memory_v2_clear_project`
-Clears all memory for a project.
-
-```typescript
-invoke('memory_v2_clear_project', {
-  projectPath: string
-}) => Promise<MemoryResult>
-```
-
-#### `memory_v2_get_base_path`
-Gets the base path for memory storage (`~/.yume/memory/`).
-
-```typescript
-invoke('memory_v2_get_base_path') => Promise<string>
-```
+> **Note:** Memory V1 and V2 systems have been deprecated. For persistent memory, users can install third-party MCP servers like `mcp-memory-service`.
 
 ### Agent Management (In-Memory)
 
@@ -2926,122 +2774,6 @@ interface SystemPromptSettings {
 const prompt = systemPromptService.getActivePrompt();
 // Passed as append_system_prompt to spawn_claude_session
 ```
-
-### MemoryService
-
-**Location:** `src/renderer/services/memoryService.ts`
-
-Manages the persistent knowledge graph with TTL, importance levels, auto-pruning, and multi-query search.
-
-```typescript
-class MemoryService {
-  // Lifecycle
-  initialize(): Promise<void>           // Auto-prunes expired, starts server if enabled
-  start(): Promise<boolean>             // Start MCP server (deduplicates concurrent calls)
-  stop(): Promise<boolean>              // Stop MCP server
-  checkStatus(): Promise<boolean>       // Check if server is running
-
-  // Knowledge Graph
-  createEntities(entities: MemoryEntity[], importance?: ImportanceLevel, ttlDays?: number | null): Promise<boolean>
-  createRelations(relations: MemoryRelation[]): Promise<boolean>
-  addObservations(entityName: string, observations: string[], importance?: ImportanceLevel, ttlDays?: number | null): Promise<boolean>
-  searchNodes(query: string): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }>
-  readGraph(): Promise<{ entities: MemoryEntity[]; relations: MemoryRelation[] }>
-  deleteEntity(entityName: string): Promise<boolean>
-
-  // High-Level Operations
-  remember(projectPath: string, fact: string, category?: string): Promise<boolean>
-  rememberPattern(pattern: string, context: string): Promise<boolean>
-  rememberErrorFix(error: string, solution: string): Promise<boolean>
-  getRelevantMemories(context: string, maxResults?: number): Promise<string>
-  extractLearnings(projectPath: string, userMessage: string, assistantResponse: string): Promise<void>
-
-  // Maintenance
-  pruneExpired(fallbackRetentionDays?: number): Promise<number>
-  getMemoryFilePath(): Promise<string>
-}
-
-// Importance levels (1-5)
-type ImportanceLevel = 1 | 2 | 3 | 4 | 5;
-// 1 = ephemeral (1d TTL), 2 = low (7d), 3 = normal (30d), 4 = high (90d), 5 = permanent
-```
-
-**Key Features:**
-- **Per-observation TTL:** Format `[ISO_DATE|importance:N|ttl:N] content`
-- **Auto-pruning:** Expired observations pruned on `initialize()`
-- **Multi-query search:** Extracts keyword groups, runs parallel searches, ranks by importance
-- **Deduplication:** Concurrent start/stop calls share the same Promise
-
-> **Note:** This is the legacy V1 memory system. Memory V2 (MemoryServiceV2) is now the primary system.
-
-### MemoryServiceV2
-
-**Location:** `src/renderer/services/memoryServiceV2.ts`
-
-Manages per-project markdown-based memory with cross-tab synchronization via Tauri events.
-
-```typescript
-class MemoryServiceV2 {
-  // Lifecycle
-  initialize(): Promise<boolean>         // Init rust state, set up event listener, prune expired
-  cleanup(): Promise<void>               // Remove event listeners
-
-  // Event Subscription
-  onMemoryUpdated(projectId: string, callback: (projectId: string) => void): () => void
-
-  // Write Operations
-  addLearning(projectPath: string, content: string, importance?: ImportanceLevel): Promise<boolean>
-  addError(projectPath: string, errorDesc: string, solution: string, importance?: ImportanceLevel): Promise<boolean>
-  addPattern(projectPath: string, patternName: string, description: string, importance?: ImportanceLevel): Promise<boolean>
-  setBrief(projectPath: string, brief: string): Promise<boolean>
-  addPreference(content: string, importance?: ImportanceLevel): Promise<boolean>
-  addGlobalPattern(patternName: string, description: string, importance?: ImportanceLevel): Promise<boolean>
-
-  // Read Operations
-  getProject(projectPath: string): Promise<ProjectMemory | null>
-  getGlobal(): Promise<GlobalMemory | null>
-  listProjects(): Promise<ProjectMemoryInfo[]>
-  buildContext(projectPath: string, tokenBudget?: number): Promise<{ context: string; tokenEstimate: number }>
-
-  // Maintenance
-  deleteEntry(projectPath: string | null, category: string, entryId: string): Promise<boolean>
-  pruneExpired(): Promise<number>
-  clearProject(projectPath: string): Promise<boolean>
-  getBasePath(): Promise<string>
-}
-
-interface MemoryEntry {
-  id: string;
-  content: string;
-  importance: number;      // 1-5
-  ttl_days: number | null; // null = permanent
-  created_at: string;      // ISO date
-  category: string;        // error, learning, pattern, preference, context
-}
-
-interface ProjectMemory {
-  project_id: string;
-  project_path: string;
-  brief: string;
-  learnings: MemoryEntry[];
-  errors: MemoryEntry[];
-  patterns: MemoryEntry[];
-  last_updated: string | null;
-}
-
-interface GlobalMemory {
-  preferences: MemoryEntry[];
-  patterns: MemoryEntry[];
-}
-```
-
-**Key Features:**
-- **Per-project folders:** `~/.yume/memory/projects/{hash}/`
-- **Global folder:** `~/.yume/memory/global/`
-- **Markdown files:** `learnings.md`, `errors.md`, `patterns.md`, `brief.md`, `preferences.md`
-- **Cross-tab sync:** Tauri `memory-updated` event notifies all tabs of changes
-- **Centralized writer:** Rust service with RwLock prevents race conditions
-- **Atomic writes:** Write to .tmp file, then rename
 
 ### CompactionService
 

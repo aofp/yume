@@ -1,6 +1,6 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.6.7
+**Version:** 0.8.5
 **Last Updated:** January 2026
 **Status:** Production Ready
 
@@ -124,17 +124,16 @@ commands/database.rs          // Database operations (12 commands)
 commands/hooks.rs             // Hook execution (4 commands)
 commands/compaction.rs        // Compaction triggers (9 commands)
 commands/mcp.rs               // MCP server management (6 commands)
-commands/custom_commands.rs   // Custom command utilities
-commands/memory.rs            // Legacy memory graph (12 commands)
-commands/memory_v2.rs         // Memory V2 markdown system (15 commands)
+commands/custom_commands.rs   // Custom command utilities (7 commands)
+commands/settings.rs          // Cross-window settings sync (6 commands)
 commands/background_agents.rs // Agent queue IPC (14 commands)
-commands/plugins.rs           // Plugin management (20+ commands)
+commands/plugins.rs           // Plugin management (21 commands)
 commands/acp.rs               // ACP agent management (14 commands)
 commands/sandbox.rs           // Sandbox security (7 commands)
 
 // Advanced Features
 compaction/mod.rs       // Auto-compaction at configurable thresholds
-background_agents.rs    // Agent queue manager (4 concurrent, no timeout)
+background_agents.rs    // Agent queue manager (4 concurrent, 30-min timeout)
 hooks/mod.rs            // Hook system for customization
 mcp/mod.rs              // Model Context Protocol support
 crash_recovery.rs       // Session recovery after crashes
@@ -881,72 +880,19 @@ impl ServerProcessGuard {
 }
 ```
 
-### 7.3 Memory System V1 (Legacy - Deprecated)
+### 7.3 MCP Support
 
-**Location**: `src-tauri/src/commands/memory.rs`, `src/renderer/services/memoryService.ts`
-**Storage**: `~/.yume/memory.jsonl` (deprecated, auto-migrated to V2)
+Yume supports MCP (Model Context Protocol) servers via Claude CLI integration. Users can install their own memory MCP servers (e.g., `mcp-memory-service`) through the MCP tab in settings.
 
-The legacy memory graph stored entities, relations, and observations as a knowledge graph. This system is deprecated; Memory V2 is the current system.
+**Features:**
+- Full Claude CLI MCP ecosystem compatibility
+- Server management UI in settings
+- Support for stdio and SSE transports
+- Servers stored in `~/.claude.json`
 
-### 7.4 Memory System V2 (Per-Project Markdown)
+> **Note:** Built-in memory systems (V1/V2) have been deprecated. Users can install third-party MCP servers for persistent memory functionality.
 
-**Location**: `src-tauri/src/commands/memory_v2.rs`, `src/renderer/services/memoryServiceV2.ts`
-**Storage**: `~/.yume/memory/`
-
-Memory V2 uses per-project markdown files instead of a global JSONL graph. This provides better organization and human-readable storage.
-
-**Storage Structure:**
-```
-~/.yume/memory/
-  global/
-    preferences.md    # User preferences across all projects
-    patterns.md       # Global coding patterns
-  projects/{hash}/
-    learnings.md      # Project-specific learnings
-    errors.md         # Error -> solution mappings
-    patterns.md       # Project patterns
-    brief.md          # Project overview
-```
-
-**MCP Server:** Custom `yume-mcp-memory.cjs` (replaces npm `@modelcontextprotocol/server-memory`)
-- Source: `src-tauri/resources/yume-mcp-memory.cjs`
-- Copied to: `~/.yume/yume-mcp-memory.cjs` on init
-- Registration: `claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs`
-- Tools: `add_observations`, `search_nodes`, `read_graph`
-
-**Architecture:** Centralized Rust service with RwLock state
-- Single writer prevents race conditions across tabs
-- Atomic file writes (write to .tmp, then rename)
-- Event broadcasting via `memory-updated` Tauri event
-
-**Entry Format (Markdown):**
-```markdown
-## 2026-01-28T10:00:00Z | importance:4 | ttl:90 | id:abc123
-Uses Zustand for state management
-```
-
-**Importance Levels (5 tiers):**
-| Level | Value | TTL | Use Case |
-|-------|-------|-----|----------|
-| Ephemeral | 1 | 1 day | Temporary context, scratch notes |
-| Low | 2 | 7 days | Short-term references |
-| Normal | 3 | 30 days | Standard learnings, patterns |
-| High | 4 | 90 days | Architecture decisions, key fixes |
-| Permanent | 5 | No TTL | Critical knowledge, never expires |
-
-**Commands (15):**
-- `memory_v2_init`, `memory_v2_add_learning`, `memory_v2_add_error`
-- `memory_v2_add_pattern`, `memory_v2_set_brief`, `memory_v2_add_preference`
-- `memory_v2_add_global_pattern`, `memory_v2_build_context`
-- `memory_v2_get_project`, `memory_v2_get_global`, `memory_v2_list_projects`
-- `memory_v2_delete_entry`, `memory_v2_prune_expired`, `memory_v2_clear_project`
-- `memory_v2_get_base_path`
-
-**Context Injection:** `<yume-memory>` block with token budget (default 2000)
-
-**Migration:** V1 (`memory.jsonl`) auto-migrates to V2 on init, backed up to `.jsonl.bak`
-
-### 7.5 Error Recovery
+### 7.4 Error Recovery
 
 Multiple layers of error handling:
 
@@ -956,7 +902,7 @@ Multiple layers of error handling:
 4. **Crash Recovery**: Session restoration
 5. **Retry Logic**: Automatic reconnection
 
-### 7.6 Security Features
+### 7.5 Security Features
 
 **Content Security Policy** (`tauri.conf.json`):
 ```json

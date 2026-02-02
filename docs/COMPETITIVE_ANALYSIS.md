@@ -1,6 +1,6 @@
 # Competitive Analysis 2026
 
-**Last Updated:** January 29, 2026
+**Last Updated:** January 31, 2026
 
 ## Executive Summary
 
@@ -8,11 +8,11 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 - **Multi-provider support** (Claude, Gemini, OpenAI via yume-cli shim)
 - **Native desktop experience** with minimal GUI (Tauri 2.x, Rust backend)
 - **Background agents** with queue management (4 concurrent, git branch isolation)
-- **Memory V2 system** with per-project markdown files (auto-learns patterns)
+- **MCP support** for user-installable memory servers
 - **4 specialized AI agents** (architect, explorer, implementer, guardian)
 - **Plugin ecosystem** with 5 component types (commands, agents, hooks, skills, MCP)
 - **Skills with ReDoS protection** (safe regex-based context injection)
-- **Freeware** with optional $29 Pro upgrade (vs $15-200/month subscriptions)
+- **One-time $29 pricing** vs $15-200/month subscriptions
 - **Advanced analytics** with per-project/model/date breakdowns
 
 ---
@@ -180,26 +180,16 @@ Yume is a standalone desktop wrapper for Claude CLI, differentiated from IDE ext
 
 ### 1. Background Agents with Git Branch Isolation (UNIQUE)
 **No competitor has automatic git branch isolation for async agents.**
-- 4 concurrent background agents (`MAX_CONCURRENT_AGENTS`) with no timeout
+- 4 concurrent background agents (`MAX_CONCURRENT_AGENTS`) with 30-min timeout
 - Auto-creates isolated git branches: `yume-async-{agent}-{id}`
 - Review diff vs main before merging
 - Conflict detection and resolution
 - Clean branch cleanup after merge
 
-### 2. Memory V2 System (UNIQUE APPROACH)
-**Per-project markdown files with auto-learning.**
-- Storage: `~/.yume/memory/` (global + per-project folders)
-- Per-project: `learnings.md`, `errors.md`, `patterns.md`, `brief.md`
-- Global: `preferences.md`, `patterns.md`
-- TTL-based expiration with 5 importance levels
-- Context injection via `<yume-memory>` block (2000 token budget)
-- Custom MCP server (`yume-mcp-memory.cjs`) writes directly to V2 files
-- Competitors have memory but not project-isolated markdown with TTL
-
-### 3. Multi-Provider CLI Shim (UNIQUE)
+### 2. Multi-Provider CLI Shim (UNIQUE)
 No other Claude CLI wrapper supports transparent switching between Claude, Gemini, and OpenAI through a unified interface. The yume-cli shim normalizes all provider outputs to Claude-compatible stream-json.
 
-### 4. 4 Specialized Core Agents (UNIQUE)
+### 3. 4 Specialized Core Agents (UNIQUE)
 | Agent | Purpose | Why Different |
 |-------|---------|---------------|
 | yume-architect | Plans, designs, decomposes tasks | Cursor has generic agents |
@@ -207,7 +197,7 @@ No other Claude CLI wrapper supports transparent switching between Claude, Gemin
 | yume-implementer | Small, focused code changes | Incremental edits |
 | yume-guardian | Reviews, audits, verifies + domain tasks (tests, docs, devops, data) | Built-in code review + domain expertise |
 
-### 5. Plugin System with 5 Component Types (UNIQUE)
+### 4. Plugin System with 5 Component Types (UNIQUE)
 Most comprehensive extensibility framework:
 - Commands (slash commands)
 - Agents (custom AI personas)
@@ -215,7 +205,7 @@ Most comprehensive extensibility framework:
 - Skills (auto-context injection with ReDoS protection)
 - MCP (server connections)
 
-### 6. Skills with ReDoS Protection (UNIQUE)
+### 5. Skills with ReDoS Protection (UNIQUE)
 **No competitor validates regex triggers for denial-of-service.**
 - Tag-based UI for extensions, keywords, regex patterns
 - Real-time ReDoS detection with risk levels (safe/low/medium/high)
@@ -223,34 +213,32 @@ Most comprehensive extensibility framework:
 - Performance testing with adversarial strings
 - Match mode: ANY (OR) vs ALL (AND) logic
 
-### 7. Unified Conversation Format (UCF) (UNIQUE)
+### 6. Unified Conversation Format (UCF) (UNIQUE)
 Provider-agnostic conversation format enabling:
 - Cross-provider session portability
 - Tool translation with status tracking
 - History format conversion (JSONL ↔ JSON)
 
-### 8. Freeware Model (COMPETITIVE MOAT)
-Yume is **free to use** with a generous trial (3 tabs, 1 window). Pro license ($29 one-time) unlocks power user limits (99 tabs/windows).
+### 7. One-Time Pricing (COMPETITIVE MOAT)
+| Competitor | Annual Cost | Yume Savings |
+|------------|-------------|--------------|
+| Cursor Pro | $240 | 91% |
+| Windsurf Pro | $180 | 88% |
+| Copilot Pro | $100 | 79% |
+| Copilot Pro+ | $468 | 96% |
+| **Yume Pro** | **$29 once** | **Lifetime** |
 
-| Competitor | Annual Cost | Yume Advantage |
-|------------|-------------|----------------|
-| Cursor Pro | $240/year | Yume is free |
-| Windsurf Pro | $180/year | Yume is free |
-| Copilot Pro | $100/year | Yume is free |
-| Copilot Pro+ | $468/year | Yume is free |
-| **Yume** | **Free** | Pro: $29 once (optional) |
-
-### 9. Advanced Analytics Dashboard (RARE)
+### 8. Advanced Analytics Dashboard (RARE)
 Only desktop Claude wrapper with:
 - Per-project token/cost breakdowns
 - Per-model usage analytics
 - Per-date trend analysis
 - Export to CSV/JSON
 
-### 10. Voice Dictation (RARE)
+### 9. Voice Dictation (RARE)
 Native Web Speech API integration for hands-free input.
 
-### 11. Line Changes Tracking (UNIQUE)
+### 10. Line Changes Tracking (UNIQUE)
 Per-session tracking of code modifications:
 - Tracks added/removed lines per edit
 - Shows impact in ContextBar
@@ -264,9 +252,9 @@ Per-session tracking of code modifications:
 
 | Feature | Status | Implementation |
 |---------|--------|----------------|
-| **Background/Async Agents** | ✅ COMPLETE | 4 concurrent agents, git branch isolation, 14 Tauri commands |
-| **Memory V2 System** | ✅ COMPLETE | Per-project markdown with TTL/importance (5 levels), auto-pruning, context injection |
+| **Background/Async Agents** | ✅ COMPLETE | 4 concurrent agents, git branch isolation, 30-min timeout, 14 Tauri commands |
 | **Skills UI Completion** | ✅ COMPLETE | TriggerEditor, ContentEditor, ReDoS validation |
+| **MCP Support** | ✅ COMPLETE | User-installable MCP servers via settings UI |
 
 ### HIGH PRIORITY (Remaining Gaps)
 
@@ -336,11 +324,11 @@ Per-session tracking of code modifications:
 - Native desktop experience over browser/IDE extensions
 - Comprehensive analytics for cost tracking
 - Plugin extensibility without code changes
-- Free software (freeware model lowers barrier to adoption)
+- One-time payment over subscriptions
 
 **Secondary:**
 - Teams evaluating Claude CLI wrappers
-- Developers burned by subscription fatigue (freeware = easy word-of-mouth)
+- Developers burned by subscription fatigue
 
 ### Key Messaging
 
@@ -349,8 +337,8 @@ Per-session tracking of code modifications:
    - Unified interface, no provider lock-in
 
 2. **"Own Your AI Coding Environment"**
-   - Free to use, Pro upgrade optional ($29 once)
-   - No subscriptions, no cloud lock-in
+   - Free vs $240-2400/year subscriptions
+   - All local, no cloud lock-in
 
 3. **"4 AI Agents, Zero Configuration"**
    - Architect, Explorer, Implementer, Guardian
@@ -370,8 +358,11 @@ Per-session tracking of code modifications:
   - *Mitigation*: yume-cli abstraction layer provides buffer
 
 #### Medium Risk
+- **Subscription fatigue backlash**: Some users may resist even $29
+  - *Mitigation*: Generous trial (3 tabs, 1 window) to prove value
+
 - **Open source competition**: Opcode (19k stars), Continue.dev (26k stars)
-  - *Mitigation*: Focus on polish, multi-provider, analytics, freeware model for adoption
+  - *Mitigation*: Focus on polish, multi-provider, analytics
 
 #### Low Risk
 - **IDE extension dominance**: Users may prefer integrated workflow

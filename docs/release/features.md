@@ -161,48 +161,6 @@ agents auto-sync to `~/.claude/agents/yume-*.md` when enabled. use selected mode
 
 ---
 
-## memory v2 system
-
-### overview
-per-project markdown memory with TTL-based expiration.
-
-### storage
-- location: `~/.yume/memory/`
-- format: markdown files per project
-- structure:
-  - `global/preferences.md` - user preferences
-  - `global/patterns.md` - global coding patterns
-  - `projects/{hash}/learnings.md` - project learnings
-  - `projects/{hash}/errors.md` - error→solution mappings
-  - `projects/{hash}/patterns.md` - project patterns
-  - `projects/{hash}/brief.md` - project overview
-
-### importance levels
-| level | ttl | use case |
-|-------|-----|----------|
-| 1 | 1 day | ephemeral notes |
-| 2 | 7 days | short-term context |
-| 3 | 30 days | normal learnings |
-| 4 | 90 days | important patterns |
-| 5 | permanent | critical knowledge |
-
-### auto-learning triggers
-- error/fix patterns: detects `/error|bug|fix|issue|problem|crash|fail/i`
-- architecture decisions: detects `/should (use|prefer|avoid)|best practice|pattern/i`
-
-### mcp server
-custom `yume-mcp-memory.cjs` with tools:
-- `add_observations` - add memories
-- `search_nodes` - search by query
-- `read_graph` - read all memories
-
-### settings tab
-- enable/disable memory system
-- view entries per project
-- add/delete entries with importance
-
----
-
 ## background agents
 
 ### queue management

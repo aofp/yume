@@ -1,10 +1,10 @@
 # Yume Master Documentation Index
 
 **Created:** January 2025
-**Updated:** January 2026
-**Version:** 0.6.7
-**Total Documentation:** 11 core guides + 19 expansion plan docs + competitive research suite
-**Coverage:** Core codebase, competitive analysis, multi-provider expansion, background agents, Memory V2 system, test infrastructure
+**Updated:** February 2, 2026
+**Version:** 0.8.5
+**Total Documentation:** 46 docs (11 core guides + 19 expansion-plan + 16 competitive-research)
+**Coverage:** Core codebase, competitive analysis, multi-provider expansion, background agents, MCP support, test infrastructure
 
 ---
 
@@ -53,11 +53,10 @@
 11. **Security**: CSP, isolation, validation, sanitization
 12. **Performance**: Lazy loading, memory management, monitoring
 13. **Platform Features**: Native integrations for each OS
-14. **Memory V2 System**: Per-project markdown, TTL-based expiration (5 importance levels), context injection
-15. **Background Agents**: Async execution, git branch isolation (4 concurrent, streaming isolation, debounce: 700ms macOS/2000ms Windows)
+14. **MCP Support**: User-installable MCP servers via settings UI
+15. **Background Agents**: Async execution, git branch isolation (4 concurrent, 30-min timeout, streaming isolation)
 
 #### Exclusive Features:
-- Memory V2 system with per-project markdown and auto-learning
 - Background agents with git branch isolation and streaming isolation
 - Only GUI with configurable auto-compaction (default T=75%: 70% warn, 75% auto, 80% force)
 - Compiled server binaries (no Node.js dependency for end users)
@@ -72,7 +71,7 @@
 **Depth:** Complete API documentation
 
 #### API Categories:
-1. **Tauri Commands** (199+ commands)
+1. **Tauri Commands** (214 commands)
    - Session management
    - File operations
    - Claude binary detection
@@ -260,7 +259,7 @@
    - Complete plugin ecosystem
    - Performance monitoring
    - History & rollback
-   - Sustainable pricing ($29 one-time)
+   - Sustainable pricing (freeware (Pro $29))
    - OLED black theme
 
 4. **Strategic Gaps & Opportunities**
@@ -528,19 +527,16 @@ Server binaries are stored in `src-tauri/resources/`:
 **Background Agents** (Async Execution):
 - 4 concurrent agents max
 - Git branch isolation (`yume-async-{type}-{id}`)
-- No timeout per agent
+- 30-min timeout per agent
 - Uses Claude CLI with `--dangerously-skip-permissions`
 - Output to `~/.yume/agent-output/`
 - 14 Tauri commands for lifecycle management
 - Streaming isolation: does NOT control main CLI streaming state
 
-#### Memory V2 System
-- **Per-project markdown:** `~/.yume/memory/` with global + project folders
-- **TTL/Importance:** 5 importance levels (ephemeral 1d → permanent)
-- **Auto-pruning:** Expired entries pruned via `memory_v2_prune_expired`
-- **Context injection:** `<yume-memory>` block with 2000 token budget
-- **Custom MCP server:** `yume-mcp-memory.cjs` writes directly to V2 files
-- **15 Tauri commands:** Full CRUD + search + build context
+#### MCP Support
+- User-installable MCP servers via settings UI
+- Full Claude CLI MCP ecosystem compatibility
+- Servers stored in `~/.claude.json`
 
 **Sync Mechanism**:
 - PID tracking prevents multi-instance conflicts

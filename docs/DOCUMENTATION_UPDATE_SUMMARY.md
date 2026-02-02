@@ -1,7 +1,7 @@
 # Documentation Update Summary
 
-**Date**: January 28, 2026
-**Version**: 5.7.0
+**Date**: January 31, 2026
+**Version**: 0.8.5
 
 ## Overview
 
@@ -16,7 +16,7 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 **Sections Added**:
 
 #### License Management System
-- Trial vs Pro pricing ($29 one-time payment)
+- Freeware with Pro upgrade ($29 for extended limits)
 - Server-side validation with 5-minute cache
 - Encrypted storage using XOR cipher
 - Auto-revalidation every 30 minutes

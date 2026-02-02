@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.6.7
-**Last Updated:** January 2026
+**Version:** 0.8.5
+**Last Updated:** February 2, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -25,13 +25,12 @@
 17. [Analytics & Reporting](#17-analytics--reporting)
 18. [History & Rollback](#18-history--rollback)
 19. [VSCode Extension Integration](#19-vscode-extension-integration)
-20. [Memory V2 System](#20-memory-v2-system-per-project-markdown)
-21. [Background Agents](#21-background-agents)
-22. [Orchestration Flow](#22-orchestration-flow)
-23. [Auto-Update System](#23-auto-update-system)
-24. [ACP (Agent Client Protocol)](#24-acp-agent-client-protocol)
-25. [Sandbox Security](#25-sandbox-security)
-26. [Analytics Enhancements](#26-analytics-enhancements)
+20. [Background Agents](#20-background-agents)
+21. [Orchestration Flow](#21-orchestration-flow)
+22. [Auto-Update System](#22-auto-update-system)
+23. [ACP (Agent Client Protocol)](#23-acp-agent-client-protocol)
+24. [Sandbox Security](#24-sandbox-security)
+25. [Analytics Enhancements](#25-analytics-enhancements)
 
 ## 1. Core Features
 
@@ -981,7 +980,7 @@ use windows::Win32::*;
 
 **Pricing**:
 - **Free**: All features (3 tabs total)
-- **Pro**: $29 one-time (99 tabs, 99 windows)
+- **Pro**: $29 (99 tabs, 99 windows)
 
 ### 14.2 Implementation
 
@@ -1423,7 +1422,7 @@ interface FileSnapshot {
 | Token tracking | Yes |
 | Cost calculation | Yes |
 | Crash recovery | Yes |
-| Hook system (9 events, 3 active) | Yes |
+| Hook system (9 events, 4 active) | Yes |
 | MCP support | Yes |
 | Virtual scrolling | Yes |
 | Git diff viewer | Yes |
@@ -1431,7 +1430,7 @@ interface FileSnapshot {
 | Custom commands | Yes |
 | 30+ keyboard shortcuts | Yes |
 | History + rollback | Yes |
-| Memory V2 (TTL, auto-pruning) | Yes |
+| MCP Support (user memory servers) | Yes |
 | Multi-provider (feature-flagged) | Yes |
 | No telemetry | Yes |
 | Platform support | macOS, Windows, Linux |
@@ -1446,101 +1445,7 @@ interface FileSnapshot {
 | Compaction | <5s | ~3.8s |
 | Memory (idle) | <200MB | ~145MB |
 
-## 20. Memory V2 System (Per-Project Markdown)
-
-### 20.1 Overview
-
-**Description**: Persistent per-project memory system using markdown files for storing learnings, error fixes, patterns, and project context across sessions.
-
-**Location**: `src-tauri/src/commands/memory_v2.rs`, `src/renderer/services/memoryServiceV2.ts`
-
-**Storage**: `~/.yume/memory/`
-- `global/preferences.md` - User preferences across all projects
-- `global/patterns.md` - Global coding patterns
-- `projects/{hash}/learnings.md` - Project-specific learnings
-- `projects/{hash}/errors.md` - Error → solution mappings
-- `projects/{hash}/patterns.md` - Project patterns
-- `projects/{hash}/brief.md` - Project overview
-
-### 20.2 Architecture
-
-**Centralized Rust Service**: Thread-safe with RwLock state
-- Single writer prevents race conditions across tabs
-- Atomic file writes (write to .tmp, then rename)
-- Event broadcasting via `memory-updated` Tauri event
-- Cross-tab synchronization via event-driven updates
-
-**MCP Server**: Custom `yume-mcp-memory.cjs` (replaces npm `@modelcontextprotocol/server-memory`)
-- Source: `src-tauri/resources/yume-mcp-memory.cjs`
-- Copied to: `~/.yume/yume-mcp-memory.cjs` on init
-- Registration: `claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs`
-- Tools: `add_observations`, `search_nodes`, `read_graph`
-- Writes directly to V2 markdown files
-
-### 20.3 Tauri Commands (15)
-
-| Command | Description |
-|---------|-------------|
-| `memory_v2_init` | Initialize memory system |
-| `memory_v2_add_learning` | Add project learning |
-| `memory_v2_add_error` | Add error/solution mapping |
-| `memory_v2_add_pattern` | Add project pattern |
-| `memory_v2_set_brief` | Set project brief |
-| `memory_v2_add_preference` | Add global preference |
-| `memory_v2_add_global_pattern` | Add global pattern |
-| `memory_v2_build_context` | Build context for injection |
-| `memory_v2_get_project` | Get project memory |
-| `memory_v2_get_global` | Get global memory |
-| `memory_v2_list_projects` | List all projects |
-| `memory_v2_delete_entry` | Delete specific entry |
-| `memory_v2_prune_expired` | Prune expired entries |
-| `memory_v2_clear_project` | Clear project memory |
-| `memory_v2_get_base_path` | Get memory base path |
-
-### 20.4 Entry Format & Importance
-
-**Markdown Entry Format**:
-```markdown
-## 2026-01-28T10:00:00Z | importance:4 | ttl:90 | id:abc123
-Uses Zustand for state management
-```
-
-**Importance Levels (1-5)**:
-
-| Level | Name | TTL | Use Case |
-|-------|------|-----|----------|
-| 1 | Ephemeral | 1 day | Temporary notes, scratch context |
-| 2 | Low | 7 days | Short-term patterns, session-specific fixes |
-| 3 | Normal | 30 days | Standard learnings, error fixes |
-| 4 | High | 90 days | Architecture decisions, important patterns |
-| 5 | Permanent | ∞ | Core preferences, critical knowledge |
-
-**Auto-Pruning**:
-- Expired entries pruned automatically via `memory_v2_prune_expired`
-- Based on TTL from importance level
-- Safe: only removes entries past expiration
-
-### 20.5 Context Injection
-
-**System Prompt Integration**:
-- `<yume-memory>` block injected into system prompt
-- Token budget: default 2000 tokens
-- Includes relevant project learnings, patterns, and global preferences
-- Built via `memory_v2_build_context` command
-
-### 20.6 Migration from V1
-
-**Automatic Migration**:
-- V1 storage: `~/.yume/memory.jsonl` (deprecated)
-- On first V2 init, V1 data migrated automatically
-- Backup created: `memory.jsonl.bak`
-- MCP package `@modelcontextprotocol/server-memory` no longer used
-
-### 20.7 Legacy Memory V1 (Deprecated)
-
-The previous memory system using `~/.yume/memory.jsonl` and `@modelcontextprotocol/server-memory` is deprecated. Legacy commands in `src-tauri/src/commands/memory.rs` (12 commands) remain for backward compatibility but are no longer actively used.
-
-## 21. Background Agents
+## 20. Background Agents
 
 ### 21.1 Overview
 
@@ -1611,15 +1516,15 @@ Maps to yume core agents:
 - Subagent results (with `parent_tool_use_id`) are also excluded from clearing streaming state
 - Debounce timing: 700ms macOS, 2000ms Windows (accounts for platform event timing differences)
 
-## 22. Orchestration Flow
+## 21. Orchestration Flow
 
-### 22.1 Overview
+### 21.1 Overview
 
 **Description**: GSD-inspired automatic task orchestration that guides Claude through structured workflows for complex tasks. Baked into default behavior - no user intervention needed.
 
 **Location**: `src/renderer/services/systemPromptService.ts`, `src-tauri/src/claude_spawner.rs`
 
-### 22.2 How It Works
+### 21.2 How It Works
 
 Yume automatically appends an orchestration prompt to new sessions via the `--append-system-prompt` CLI flag. This teaches Claude to:
 
@@ -1712,9 +1617,9 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 - **Customizable** - Users can override or disable entirely
 - **Non-intrusive** - Trivial tasks proceed directly without overhead
 
-## 23. Auto-Update System
+## 22. Auto-Update System
 
-### 23.1 Claude CLI Smart Update
+### 22.1 Claude CLI Smart Update
 
 **Description**: Automatically checks for Claude CLI updates on startup, only updating if a new version is available.
 
@@ -1728,7 +1633,7 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 - Non-blocking: runs in background without interrupting user flow
 - Supports npm, yarn, pnpm, bun installs
 
-### 23.2 App Version Check
+### 22.2 App Version Check
 
 **Description**: Checks for new Yume versions via GitHub Pages on app startup.
 
@@ -1749,14 +1654,14 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 | Category | Count | Examples |
 |----------|-------|----------|
 | Config | 5 | app, features, models, themes, tools |
-| Services | 23 | licenseManager, versionCheck, hooksService, memoryServiceV2, etc. |
+| Services | 21 | licenseManager, versionCheck, hooksService, pluginService, etc. |
 | Types | 3 | backgroundAgents, skill, ucf |
 | Stores | 1 | claudeCodeStore |
 | Utils | 5 | chatHelpers, helpers, performance, regexValidator, structuredLogger |
 
 **Setup:** `src/test/setup.ts` mocks Tauri APIs for test isolation
 
-## 24. ACP (Agent Client Protocol)
+## 23. ACP (Agent Client Protocol)
 
 **Description**: External agent connections via standardized protocol for connecting third-party AI agents.
 
@@ -1782,7 +1687,7 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 
 **Cleanup**: `cleanup_acp()` called on app exit to close all connections.
 
-## 25. Sandbox Security
+## 24. Sandbox Security
 
 **Description**: Process isolation for secure execution of CLI commands and tools.
 
@@ -1803,7 +1708,7 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 | `get_protected_credential_paths` | List protected paths |
 | `test_sandbox_path_access` | Test if path is accessible |
 
-## 26. Analytics Enhancements
+## 25. Analytics Enhancements
 
 ### 26.1 Hourly Statistics
 
@@ -1841,7 +1746,7 @@ Yume offers a comprehensive feature set with unique capabilities:
 
 **Key Differentiators:**
 - **Orchestration flow** - Automatic task decomposition (understand, decompose, act, verify)
-- **Memory V2 system** - Per-project markdown with TTL-based expiration
+- **MCP support** - User-installable memory servers and tools
 - **Background agents** - Async execution with git branch isolation (4 concurrent)
 - **Plugin system** - Complete extensibility (commands, agents, hooks, skills, MCP)
 - **Auto-compaction** - Dynamic thresholds (70% warn, 75% auto, 80% force)

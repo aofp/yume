@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.6.4**
+desktop app for claude cli with multi-provider support. current version: **0.8.4**
 
 ---
 
@@ -53,16 +53,6 @@ unified stream-json protocol. provider switching forks session. macos binaries b
 - **merge workflow** — conflict detection, merge/delete operations
 - **streaming isolation** — agents don't interfere with main session
 - **ui** — sliding panel with agent cards, real-time progress
-
----
-
-## memory v2 system
-
-per-project markdown memory:
-- **storage** — `~/.yume/memory/` (markdown files)
-- **auto-learning** — extracts patterns from conversations
-- **importance levels** — 1-5 with TTL (1 day to permanent)
-- **access** — search, retrieve relevant memories for prompts
 
 ---
 
