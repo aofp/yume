@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.8.6",
+  "latest": "0.8.7",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.7",
+      "date": "2026-02-04",
+      "notes": "bash mcp fix, command palette improvements, fix thinking-only message handling, cleanup",
+      "releaseNotes": "v0.8.7-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.7_arm64.pkg",
+        "mac": "yume_0.8.7_x64.pkg",
+        "windows": "yume_0.8.7_x64-setup.exe",
+        "linux_deb": "yume_0.8.7_amd64.deb",
+        "linux_rpm": "yume-0.8.7-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "a7939b6a3d2825e8690baafaa6c6e31f92a9fbef62e7812a8b1670e1c61cb17b",
+        "mac": "ee64cc74522d3af41773072708c9cde640ba50a2d819bb0ace9701260990243d",
+        "windows": "6debae6ceb50efcf05e96dab8325a97243d06e31c20f03ce3d91407387ffc0f2",
+        "linux_deb": "8b9e268aa560687b8e474a5778a2cb4c3c7502db49734e318e1c63289cf37ac0",
+        "linux_rpm": "1ad9c05f8d0364f8e995c6e149328f5b61f9ddfacbde7f52499814d110fba6b4"
+      }
+    },
     {
       "version": "0.8.6",
       "date": "2026-02-04",
