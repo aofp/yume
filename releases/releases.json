@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.8.4",
+  "latest": "0.8.5",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.5",
+      "date": "2026-02-04",
+      "notes": "live bash output streaming, linux proxy fix, thinking dedup, bash mcp fixes, windows bash streaming, resource leak fixes",
+      "releaseNotes": "v0.8.5-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.5_arm64.pkg",
+        "mac": "yume_0.8.5_x64.pkg",
+        "windows": "yume_0.8.5_x64-setup.exe",
+        "linux_deb": "yume_0.8.5_amd64.deb",
+        "linux_rpm": "yume-0.8.5-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "abda70e425ed54a5f9d37fc2cbb3990932ca1a6b59562557981c767ec1d901da",
+        "mac": "71eb164ee768a06da9063b30f67018e6de6dea1332a367f87832ba71cd6359b3",
+        "windows": "43a810638a0b93377d448274d8f617eb6a4a7a4ecb445a7baa285d2c6f8e41a3",
+        "linux_deb": "fdfc065e09de8251c1eaeff208134e2587b578c87c802de949e8fd0d0bd03ffd",
+        "linux_rpm": "a04c4b22d3671b36ceca3e0eb382f2ffdf886db24962ec16afa36521829f54f3"
+      }
+    },
     {
       "version": "0.8.4",
       "date": "2026-02-02",
