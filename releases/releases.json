@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.8.5",
+  "latest": "0.8.6",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.8.6",
+      "date": "2026-02-04",
+      "notes": "fix realtime token updates on linux/windows, linux-specific batching for bash and agent updates",
+      "releaseNotes": "v0.8.6-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.8.6_arm64.pkg",
+        "mac": "yume_0.8.6_x64.pkg",
+        "windows": "yume_0.8.6_x64-setup.exe",
+        "linux_deb": "yume_0.8.6_amd64.deb",
+        "linux_rpm": "yume-0.8.6-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "b3cab023e5ace268343ab3eb7caacad8316bcd564a6604e9146457f70f48bee5",
+        "mac": "f7e5a2b399a4349441ff8d25b272918254967aa9a1cbadca58d776767177f959",
+        "windows": "69da11d1f20f525ec39082b121320154541b1c48e8d41feea7120bf774d8fca1",
+        "linux_deb": "c75c7884d3d5630e2c32ab606b48fe13a1bcca48253304dbbf1ef40249650e42",
+        "linux_rpm": "652ac5483f1003c599724ed8e68bbf87bb16a643a22f9e949c13ea6f08091709"
+      }
+    },
     {
       "version": "0.8.5",
       "date": "2026-02-04",
