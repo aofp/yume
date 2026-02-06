@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.8.7",
+  "latest": "0.9.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.0",
+      "date": "2026-02-06",
+      "notes": "fix thinking block streaming (dedup, unique blockId, delta hash), command palette improvements, bash fix, UX polish",
+      "releaseNotes": "v0.9.0-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.0_arm64.pkg",
+        "mac": "yume_0.9.0_x64.pkg",
+        "windows": "yume_0.9.0_x64-setup.exe",
+        "linux_deb": "yume_0.9.0_amd64.deb",
+        "linux_rpm": "yume-0.9.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "201df5546909a06f8d448c9f3238fd3da49390298eefe2f99b126880dbc5daa8",
+        "mac": "96254e49fc6596e97cbb5b4516e016bbc43820d7caf5a46647bd18dbd774e27a",
+        "windows": "2c161118d12d7be9338fcaac2e4b0f48f6f0782cd95318cee5639511a3babaa6",
+        "linux_deb": "8a2607b66ec6ddea65b9ef67cefe729667203a7ad9646322756aeb4bf2ceb518",
+        "linux_rpm": "c483eea02d73aef0d9d2e6f04b1d8fecd5f3877a0dd276b1f5a7491f328a31a6"
+      }
+    },
     {
       "version": "0.8.7",
       "date": "2026-02-04",
