@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.2",
+  "latest": "0.9.3",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.3",
+      "date": "2026-02-07",
+      "notes": "agent indicators, scroll fixes, autoscroll fix, streaming fix, tab keep-alive, bash early buffer",
+      "releaseNotes": "v0.9.3-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.3_arm64.pkg",
+        "mac": "yume_0.9.3_x64.pkg",
+        "windows": "yume_0.9.3_x64-setup.exe",
+        "linux_deb": "yume_0.9.3_amd64.deb",
+        "linux_rpm": "yume-0.9.3-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "0a48896dfc09407f271190fbb7e14d203d932c3cb09419853b85cde063f10bd5",
+        "mac": "b44f0ca602b729464691838c5d6244011593240cf0923cc69958a148e0e3875e",
+        "windows": "32718391086982a3dd29fbd93fc143cc81c35c954949e50455b719e1c723476e",
+        "linux_deb": "9dffc31f14fb87f0a429229c03c8379a8a8f85069e5abe1c4bb2ca443e2f11d8",
+        "linux_rpm": "0cc88946cacbd14aafd6c861a7090120babd535309e2d701d6dd167f0d6837e5"
+      }
+    },
     {
       "version": "0.9.2",
       "date": "2026-02-07",
