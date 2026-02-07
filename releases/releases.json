@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.3",
+  "latest": "0.9.4",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.4",
+      "date": "2026-02-07",
+      "notes": "text selection fix, improved compact logic, agent indicators, autoscroll fix, streaming fix, tooltip crash fix, style improvements",
+      "releaseNotes": "v0.9.4-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.4_arm64.pkg",
+        "mac": "yume_0.9.4_x64.pkg",
+        "windows": "yume_0.9.4_x64-setup.exe",
+        "linux_deb": "yume_0.9.4_amd64.deb",
+        "linux_rpm": "yume-0.9.4-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "865bb8aa0899940c2363a94ecd8f39d8cd3e84feaeedb6ac5674b1a7a0d216d6",
+        "mac": "b970e11801dffd4ac46514f9b3584ac9d7730cdfe6c3722296fd9af7aae00b83",
+        "windows": "81b88accbe2f70b13d25ece16dbb4e206be720ddbbf000b50ff6d54ddf347100",
+        "linux_deb": "3c7b9e7926c1aefe49d822f69d4baa8533a0f0ad4292b0647928e9c5232dd182",
+        "linux_rpm": "f26f31edcf9ddfe6ba63950c8c611a79ac2c20a4b2cc6dfe3af2f1c15366e765"
+      }
+    },
     {
       "version": "0.9.3",
       "date": "2026-02-07",
