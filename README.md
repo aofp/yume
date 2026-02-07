@@ -206,8 +206,8 @@ yume is free to download and use (trial: 3 tabs, 1 window). upgrade to pro for 9
 
 - **download**: [aofp.github.io/yume](https://aofp.github.io/yume)
 - **docs**: [aofp.github.io/yume/docs/](https://aofp.github.io/yume/docs/)
-- **discord**: [discord.gg/RhWVqCUnCc](https://discord.gg/RhWVqCUnCc)
 - **issues**: [github.com/aofp/yume/issues](https://github.com/aofp/yume/issues)
+- **discord**: [discord.gg/RhWVqCUnCc](https://discord.gg/RhWVqCUnCc)
 - **claude code cli**: [github.com/anthropics/claude-code](https://github.com/anthropics/claude-code)
 
 ---
