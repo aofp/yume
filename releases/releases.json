@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.0",
+  "latest": "0.9.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.1",
+      "date": "2026-02-06",
+      "notes": "streaming reliability, dedup rework, bash output bounds, scroll fixes, performance improvements, crash fix",
+      "releaseNotes": "v0.9.1-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.1_arm64.pkg",
+        "mac": "yume_0.9.1_x64.pkg",
+        "windows": "yume_0.9.1_x64-setup.exe",
+        "linux_deb": "yume_0.9.1_amd64.deb",
+        "linux_rpm": "yume-0.9.1-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "456c173cf732cf6ade7f9c4a78f1d425fa4fca7f116da3d635a31ebf0aa04533",
+        "mac": "cd608d78678ed7dd7ffc07cb8862b31ed584aae9afdbfb2bff2651d70c6f2b4f",
+        "windows": "d78c590a9ba209d03c2d6c9a04fed9ddb9748bbf2ef7859bbb30207ced16b596",
+        "linux_deb": "53c5d19d3a88f085f7af8c88c821c075b36ccf9a0f53c563d4cc869d6625c638",
+        "linux_rpm": "0d11384535371c678932d8f8338d4f04afd9a9e07413b2a26072738893c2d30d"
+      }
+    },
     {
       "version": "0.9.0",
       "date": "2026-02-06",
