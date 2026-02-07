@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.1",
+  "latest": "0.9.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.2",
+      "date": "2026-02-07",
+      "notes": "fix linux yume-bin path resolution, fix windows bash stdin hang, fix esbuild regex, tool category fix",
+      "releaseNotes": "v0.9.2-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.2_arm64.pkg",
+        "mac": "yume_0.9.2_x64.pkg",
+        "windows": "yume_0.9.2_x64-setup.exe",
+        "linux_deb": "yume_0.9.2_amd64.deb",
+        "linux_rpm": "yume-0.9.2-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "0ddd8956080d1d7931c94c1552b8e7e1cd90f9bfde5b1552b6ed4a5a48ed5e31",
+        "mac": "ea6f3e395714fd4c65d7b5f2446975b4c64c45560aec1298d58ae328852a5525",
+        "windows": "a4fc4532107ea90ea926c60b7fe244003939f58d9a84ee8b4ae733c9df18a0e7",
+        "linux_deb": "16a61c3bc84732936bc14c257570e67f163f478b8871ac1240728beb41339611",
+        "linux_rpm": "fb5a33b0c3d632fa1a4df307b07d68b0ffb5328ffbe59775db36154018b8e914"
+      }
+    },
     {
       "version": "0.9.1",
       "date": "2026-02-06",
