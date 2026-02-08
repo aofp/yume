@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.6",
+  "latest": "0.9.7",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.7",
+      "date": "2026-02-08",
+      "notes": "background process tracking, notifications, file preview, mcp bash fixes, linux support improvements, ui optimizations",
+      "releaseNotes": "v0.9.7-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.7_arm64.pkg",
+        "mac": "yume_0.9.7_x64.pkg",
+        "windows": "yume_0.9.7_x64-setup.exe",
+        "linux_deb": "yume_0.9.7_amd64.deb",
+        "linux_rpm": "yume-0.9.7-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "e80624da6c2d86bb1d1310210473dca6883b41c4236ceb416e374243ced00acf",
+        "mac": "7f0c3f2f3425c240fcd943473977603c1a06fbe70a4ade5d050811e036f651e8",
+        "windows": "",
+        "linux_deb": "",
+        "linux_rpm": ""
+      }
+    },
     {
       "version": "0.9.6",
       "date": "2026-02-08",
