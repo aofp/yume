@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.5",
+  "latest": "0.9.6",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.6",
+      "date": "2026-02-08",
+      "notes": "fix wsl claude cli detection (add ~/.local/bin, prefer newest version, respect user settings), fix skills, autoscroll improvements, ui polish",
+      "releaseNotes": "v0.9.6-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.6_arm64.pkg",
+        "mac": "yume_0.9.6_x64.pkg",
+        "windows": "yume_0.9.6_x64-setup.exe",
+        "linux_deb": "yume_0.9.6_amd64.deb",
+        "linux_rpm": "yume-0.9.6-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "4d3225e240fb789146546e21a2afe506e425f222c0218ab3e927e640fbe3379e",
+        "mac": "3c92a05d5bbcdbaf3eb49c5aafb205063b2b3aa5bda125e75e2bd53e376704c6",
+        "windows": "f3cc7c334e997c8d0fbd2c84c64e46266e44459d4985bff5197a8a219df6ff7b",
+        "linux_deb": "15f55d217cd5f70993a2a7c7183fe0003587c5317a0c4243b2ea690e35171ccd",
+        "linux_rpm": "7836aa2ed6252ff0acb478f48951c9d7fb1a49ce1df63099efbe435d9722d24b"
+      }
+    },
     {
       "version": "0.9.5",
       "date": "2026-02-07",
