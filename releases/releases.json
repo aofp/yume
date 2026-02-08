@@ -1,8 +1,28 @@
 {
   "product": "yume",
-  "latest": "0.9.4",
+  "latest": "0.9.5",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.5",
+      "date": "2026-02-07",
+      "notes": "fix thinking block crash, fix windows bash (use cmd.exe), fix windows mcp bash quoting, fix tooltip crash, fix skills, autoscroll improvements, ui polish",
+      "releaseNotes": "v0.9.5-release-notes.md",
+      "downloads": {
+        "mac_arm": "yume_0.9.5_arm64.pkg",
+        "mac": "yume_0.9.5_x64.pkg",
+        "windows": "yume_0.9.5_x64-setup.exe",
+        "linux_deb": "yume_0.9.5_amd64.deb",
+        "linux_rpm": "yume-0.9.5-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "1f42f3148019e663e1a56459cf8434b4f5ff551979eafd3ce818d5825f2579e1",
+        "mac": "f293f44506a34deafc634f17b80adb4288c6d1c2e712c68fa6c4ebceede6bcd0",
+        "windows": "2e64484679d373a3c0fa0b291dd39c790b9235824294f7f47ab03e25e0a29621",
+        "linux_deb": "eee5528f0f26702182dfd94ada0bb55b87ed9ea4a52be52bea79e659e5163c3d",
+        "linux_rpm": "98a11562d9dbe92c735713372188f326709d97975883ba5cd241d6e6c43f7b7c"
+      }
+    },
     {
       "version": "0.9.4",
       "date": "2026-02-07",
