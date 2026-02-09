@@ -6,7 +6,7 @@
     {
       "version": "0.9.7",
       "date": "2026-02-08",
-      "notes": "background process tracking, notifications, file preview, mcp bash fixes, linux support improvements, ui optimizations",
+      "notes": "light theme with luminance detection, background process tracking (windows task scheduler + vbscript), file preview, mcp bash fixes, detached stdio dedup, notifications, linux/windows bg process fixes, pipe/style fixes, ui optimizations, darken light theme text contrast, macos bg fix",
       "releaseNotes": "v0.9.7-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.9.7_arm64.pkg",
@@ -16,11 +16,11 @@
         "linux_rpm": "yume-0.9.7-1.x86_64.rpm"
       },
       "checksums": {
-        "mac_arm": "e80624da6c2d86bb1d1310210473dca6883b41c4236ceb416e374243ced00acf",
-        "mac": "7f0c3f2f3425c240fcd943473977603c1a06fbe70a4ade5d050811e036f651e8",
-        "windows": "",
-        "linux_deb": "",
-        "linux_rpm": ""
+        "mac_arm": "0247c70dae37f4fd9aea892a809e8201e1552012ca6630c9e80b2caa77d9f7e2",
+        "mac": "ab7373a9da8a160beadf9df4434fc00613b227a2e04972d3c8d537eceacb6764",
+        "windows": "8db0017e79ebc57a81427cf9419fdc858f09573077d8b2c0a8db5d0b21e361f9",
+        "linux_deb": "b0d0438c6f470c1cc6d626a2fd48721dc1f478498e2d87de50eae83ecfaa9775",
+        "linux_rpm": "fc660ef0b66a136bf90ef15bc7398fccbfaee4f2b935d2593df1b44498927077"
       }
     },
     {
