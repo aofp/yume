@@ -37,14 +37,14 @@ echo -n "Checking release assets... "
 ASSETS=$(gh release view "v$VERSION" --repo aofp/yume --json assets -q '.assets[].name' 2>/dev/null || echo "")
 if echo "$ASSETS" | grep -q "yume_${VERSION}_arm64.pkg" && \
    echo "$ASSETS" | grep -q "yume_${VERSION}_x64.pkg" && \
-   echo "$ASSETS" | grep -q "yume_${VERSION}_x64-setup.exe"; then
+   echo "$ASSETS" | grep -q "yume_${VERSION}_x64-setup.msi"; then
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${RED}✗${NC}"
     echo -e "${YELLOW}  Missing assets. Expected:${NC}"
     echo "    - yume_${VERSION}_arm64.pkg"
     echo "    - yume_${VERSION}_x64.pkg"
-    echo "    - yume_${VERSION}_x64-setup.exe"
+    echo "    - yume_${VERSION}_x64-setup.msi"
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -52,7 +52,7 @@ fi
 echo -n "Checking local installer files... "
 if [ -f "releases/yume_${VERSION}_arm64.pkg" ] && \
    [ -f "releases/yume_${VERSION}_x64.pkg" ] && \
-   [ -f "releases/yume_${VERSION}_x64-setup.exe" ]; then
+   [ -f "releases/yume_${VERSION}_x64-setup.msi" ]; then
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${RED}✗${NC}"

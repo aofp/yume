@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.9.7",
+  "latest": "0.9.8",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.8",
+      "date": "2026-02-11",
+      "notes": "split panes (3-pane layout), light theme with luminance detection, native macos menu, app auto-updater, windows av hardening, recursive process tree kill, bg agent stderr capture, windows bg processes (task scheduler + vbscript), titlebar drag fix in split-pane mode",
+      "downloads": {
+        "mac_arm": "yume_0.9.8_arm64.pkg",
+        "mac": "yume_0.9.8_x64.pkg",
+        "windows": "yume_0.9.8_x64_en-US.msi",
+        "linux_deb": "yume_0.9.8_amd64.deb",
+        "linux_rpm": "yume-0.9.8-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "c4818f26a6d28cdee108aaf244e65bca224786151cd1677be06b502f7f419b85",
+        "mac": "8c995fd13a31d9b4a2c7ceb9cdc68b30c1031d4f78079563a71376e31c66a227",
+        "windows": "44c67fee64688a28e8ff7c57fcd5cfda581718aeb7d59d5b7250bababa13b23b",
+        "linux_deb": "5f62c3b7831db2db372215b38c4c9bc006e85b21b8cdf6a023ddf9c53e2fdfcb",
+        "linux_rpm": "a3ecbaade76f97d329c36d5bdc823c6ceb4db55e4220511fa4951326e01d7e77"
+      }
+    },
     {
       "version": "0.9.7",
       "date": "2026-02-08",
@@ -11,7 +30,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.7_arm64.pkg",
         "mac": "yume_0.9.7_x64.pkg",
-        "windows": "yume_0.9.7_x64-setup.exe",
+        "windows": "yume_0.9.7_x64-setup.msi",
         "linux_deb": "yume_0.9.7_amd64.deb",
         "linux_rpm": "yume-0.9.7-1.x86_64.rpm"
       },
@@ -31,7 +50,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.6_arm64.pkg",
         "mac": "yume_0.9.6_x64.pkg",
-        "windows": "yume_0.9.6_x64-setup.exe",
+        "windows": "yume_0.9.6_x64-setup.msi",
         "linux_deb": "yume_0.9.6_amd64.deb",
         "linux_rpm": "yume-0.9.6-1.x86_64.rpm"
       },
@@ -51,7 +70,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.5_arm64.pkg",
         "mac": "yume_0.9.5_x64.pkg",
-        "windows": "yume_0.9.5_x64-setup.exe",
+        "windows": "yume_0.9.5_x64-setup.msi",
         "linux_deb": "yume_0.9.5_amd64.deb",
         "linux_rpm": "yume-0.9.5-1.x86_64.rpm"
       },
@@ -71,7 +90,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.4_arm64.pkg",
         "mac": "yume_0.9.4_x64.pkg",
-        "windows": "yume_0.9.4_x64-setup.exe",
+        "windows": "yume_0.9.4_x64-setup.msi",
         "linux_deb": "yume_0.9.4_amd64.deb",
         "linux_rpm": "yume-0.9.4-1.x86_64.rpm"
       },
@@ -91,7 +110,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.3_arm64.pkg",
         "mac": "yume_0.9.3_x64.pkg",
-        "windows": "yume_0.9.3_x64-setup.exe",
+        "windows": "yume_0.9.3_x64-setup.msi",
         "linux_deb": "yume_0.9.3_amd64.deb",
         "linux_rpm": "yume-0.9.3-1.x86_64.rpm"
       },
@@ -111,7 +130,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.2_arm64.pkg",
         "mac": "yume_0.9.2_x64.pkg",
-        "windows": "yume_0.9.2_x64-setup.exe",
+        "windows": "yume_0.9.2_x64-setup.msi",
         "linux_deb": "yume_0.9.2_amd64.deb",
         "linux_rpm": "yume-0.9.2-1.x86_64.rpm"
       },
@@ -131,7 +150,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.1_arm64.pkg",
         "mac": "yume_0.9.1_x64.pkg",
-        "windows": "yume_0.9.1_x64-setup.exe",
+        "windows": "yume_0.9.1_x64-setup.msi",
         "linux_deb": "yume_0.9.1_amd64.deb",
         "linux_rpm": "yume-0.9.1-1.x86_64.rpm"
       },
@@ -151,7 +170,7 @@
       "downloads": {
         "mac_arm": "yume_0.9.0_arm64.pkg",
         "mac": "yume_0.9.0_x64.pkg",
-        "windows": "yume_0.9.0_x64-setup.exe",
+        "windows": "yume_0.9.0_x64-setup.msi",
         "linux_deb": "yume_0.9.0_amd64.deb",
         "linux_rpm": "yume-0.9.0-1.x86_64.rpm"
       },
@@ -171,7 +190,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.7_arm64.pkg",
         "mac": "yume_0.8.7_x64.pkg",
-        "windows": "yume_0.8.7_x64-setup.exe",
+        "windows": "yume_0.8.7_x64-setup.msi",
         "linux_deb": "yume_0.8.7_amd64.deb",
         "linux_rpm": "yume-0.8.7-1.x86_64.rpm"
       },
@@ -191,7 +210,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.6_arm64.pkg",
         "mac": "yume_0.8.6_x64.pkg",
-        "windows": "yume_0.8.6_x64-setup.exe",
+        "windows": "yume_0.8.6_x64-setup.msi",
         "linux_deb": "yume_0.8.6_amd64.deb",
         "linux_rpm": "yume-0.8.6-1.x86_64.rpm"
       },
@@ -211,7 +230,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.5_arm64.pkg",
         "mac": "yume_0.8.5_x64.pkg",
-        "windows": "yume_0.8.5_x64-setup.exe",
+        "windows": "yume_0.8.5_x64-setup.msi",
         "linux_deb": "yume_0.8.5_amd64.deb",
         "linux_rpm": "yume-0.8.5-1.x86_64.rpm"
       },
@@ -231,7 +250,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.4_arm64.pkg",
         "mac": "yume_0.8.4_x64.pkg",
-        "windows": "yume_0.8.4_x64-setup.exe",
+        "windows": "yume_0.8.4_x64-setup.msi",
         "linux_deb": "yume_0.8.4_amd64.deb",
         "linux_rpm": "yume-0.8.4-1.x86_64.rpm"
       },
@@ -251,7 +270,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.3_arm64.pkg",
         "mac": "yume_0.8.3_x64.pkg",
-        "windows": "yume_0.8.3_x64-setup.exe",
+        "windows": "yume_0.8.3_x64-setup.msi",
         "linux_deb": "yume_0.8.3_amd64.deb",
         "linux_rpm": "yume-0.8.3-1.x86_64.rpm"
       },
@@ -271,7 +290,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.2_arm64.pkg",
         "mac": "yume_0.8.2_x64.pkg",
-        "windows": "yume_0.8.2_x64-setup.exe",
+        "windows": "yume_0.8.2_x64-setup.msi",
         "linux_deb": "yume_0.8.2_amd64.deb"
       },
       "checksums": {
@@ -289,7 +308,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.1_arm64.pkg",
         "mac": "yume_0.8.1_x64.pkg",
-        "windows": "yume_0.8.1_x64-setup.exe",
+        "windows": "yume_0.8.1_x64-setup.msi",
         "linux_deb": "yume_0.8.1_amd64.deb"
       },
       "checksums": {
@@ -307,7 +326,7 @@
       "downloads": {
         "mac_arm": "yume_0.8.0_arm64.pkg",
         "mac": "yume_0.8.0_x64.pkg",
-        "windows": "yume_0.8.0_x64-setup.exe",
+        "windows": "yume_0.8.0_x64-setup.msi",
         "linux_deb": "yume_0.8.0_amd64.deb",
         "linux_rpm": "yume-0.8.0-1.x86_64.rpm"
       },
@@ -327,7 +346,7 @@
       "downloads": {
         "mac_arm": "yume_0.7.3_arm64.pkg",
         "mac": "yume_0.7.3_x64.pkg",
-        "windows": "yume_0.7.3_x64-setup.exe",
+        "windows": "yume_0.7.3_x64-setup.msi",
         "linux_deb": "yume_0.7.3_amd64.deb",
         "linux_rpm": "yume-0.7.3-1.x86_64.rpm"
       },
@@ -347,7 +366,7 @@
       "downloads": {
         "mac_arm": "yume_0.7.2_arm64.pkg",
         "mac": "yume_0.7.2_x64.pkg",
-        "windows": "yume_0.7.2_x64-setup.exe",
+        "windows": "yume_0.7.2_x64-setup.msi",
         "linux_deb": "yume_0.7.2_amd64.deb",
         "linux_rpm": "yume-0.7.2-1.x86_64.rpm"
       },
@@ -367,7 +386,7 @@
       "downloads": {
         "mac_arm": "yume_0.7.1_arm64.pkg",
         "mac": "yume_0.7.1_x64.pkg",
-        "windows": "yume_0.7.1_x64-setup.exe",
+        "windows": "yume_0.7.1_x64-setup.msi",
         "linux_deb": "yume_0.7.1_amd64.deb",
         "linux_rpm": "yume-0.7.1-1.x86_64.rpm"
       },
@@ -387,7 +406,7 @@
       "downloads": {
         "mac_arm": "yume_0.7.0_arm64.pkg",
         "mac": "yume_0.7.0_x64.pkg",
-        "windows": "yume_0.7.0_x64-setup.exe",
+        "windows": "yume_0.7.0_x64-setup.msi",
         "linux_deb": "yume_0.7.0_amd64.deb",
         "linux_rpm": "yume-0.7.0-1.x86_64.rpm"
       },
@@ -407,7 +426,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.7_arm64.pkg",
         "mac": "yume_0.6.7_x64.pkg",
-        "windows": "yume_0.6.7_x64-setup.exe",
+        "windows": "yume_0.6.7_x64-setup.msi",
         "linux_deb": "yume_0.6.7_amd64.deb",
         "linux_rpm": "yume-0.6.7-1.x86_64.rpm"
       },
@@ -427,7 +446,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.6_arm64.pkg",
         "mac": "yume_0.6.6_x64.pkg",
-        "windows": "yume_0.6.6_x64-setup.exe",
+        "windows": "yume_0.6.6_x64-setup.msi",
         "linux_deb": "yume_0.6.6_amd64.deb",
         "linux_rpm": "yume-0.6.6-1.x86_64.rpm"
       },
@@ -446,7 +465,7 @@
       "releaseNotes": "v0.6.5-release-notes.md",
       "downloads": {
         "mac_arm": "yume_0.6.5_arm64.pkg",
-        "windows": "yume_0.6.5_x64-setup.exe",
+        "windows": "yume_0.6.5_x64-setup.msi",
         "linux_deb": "yume_0.6.5_amd64.deb",
         "linux_rpm": "yume-0.6.5-1.x86_64.rpm"
       },
@@ -465,7 +484,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.4_arm64.pkg",
         "mac": "yume_0.6.4_x64.pkg",
-        "windows": "yume_0.6.4_x64-setup.exe",
+        "windows": "yume_0.6.4_x64-setup.msi",
         "linux_deb": "yume_0.6.4_amd64.deb",
         "linux_rpm": "yume-0.6.4-1.x86_64.rpm"
       },
@@ -485,7 +504,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.3_arm64.pkg",
         "mac": "yume_0.6.3_x64.pkg",
-        "windows": "yume_0.6.3_x64-setup.exe",
+        "windows": "yume_0.6.3_x64-setup.msi",
         "linux_deb": "yume_0.6.3_amd64.deb",
         "linux_rpm": "yume-0.6.3-1.x86_64.rpm"
       },
@@ -505,7 +524,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.2_arm64.pkg",
         "mac": "yume_0.6.2_x64.pkg",
-        "windows": "yume_0.6.2_x64-setup.exe",
+        "windows": "yume_0.6.2_x64-setup.msi",
         "linux_deb": "yume_0.6.2_amd64.deb",
         "linux_rpm": "yume-0.6.2-1.x86_64.rpm"
       },
@@ -525,7 +544,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.1_arm64.pkg",
         "mac": "yume_0.6.1_x64.pkg",
-        "windows": "yume_0.6.1_x64-setup.exe",
+        "windows": "yume_0.6.1_x64-setup.msi",
         "linux_deb": "yume_0.6.1_amd64.deb",
         "linux_rpm": "yume-0.6.1-1.x86_64.rpm"
       },
@@ -545,7 +564,7 @@
       "downloads": {
         "mac_arm": "yume_0.6.0_arm64.pkg",
         "mac": "yume_0.6.0_x64.pkg",
-        "windows": "yume_0.6.0_x64-setup.exe",
+        "windows": "yume_0.6.0_x64-setup.msi",
         "linux_deb": "yume_0.6.0_amd64.deb",
         "linux_rpm": "yume-0.6.0-1.x86_64.rpm"
       },
@@ -565,7 +584,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.9_arm64.pkg",
         "mac": "yume_0.5.9_x64.pkg",
-        "windows": "yume_0.5.9_x64-setup.exe",
+        "windows": "yume_0.5.9_x64-setup.msi",
         "linux_deb": "yume_0.5.9_amd64.deb",
         "linux_rpm": "yume-0.5.9-1.x86_64.rpm"
       },
@@ -585,7 +604,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.7_arm64.pkg",
         "mac": "yume_0.5.7_x64.pkg",
-        "windows": "yume_0.5.7_x64-setup.exe",
+        "windows": "yume_0.5.7_x64-setup.msi",
         "linux_deb": "yume_0.5.7_amd64.deb",
         "linux_rpm": "yume-0.5.7-1.x86_64.rpm"
       },
@@ -605,7 +624,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.6_arm64.pkg",
         "mac": "yume_0.5.6_x64.pkg",
-        "windows": "yume_0.5.6_x64-setup.exe",
+        "windows": "yume_0.5.6_x64-setup.msi",
         "linux_deb": "yume_0.5.6_amd64.deb",
         "linux_rpm": "yume-0.5.6-1.x86_64.rpm"
       },
@@ -625,7 +644,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.5_arm64.pkg",
         "mac": "yume_0.5.5_x64.pkg",
-        "windows": "yume_0.5.5_x64-setup.exe",
+        "windows": "yume_0.5.5_x64-setup.msi",
         "linux_deb": "yume_0.5.5_amd64.deb",
         "linux_rpm": "yume-0.5.5-1.x86_64.rpm"
       },
@@ -645,7 +664,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.4_arm64.pkg",
         "mac": "yume_0.5.4_x64.pkg",
-        "windows": "yume_0.5.4_x64-setup.exe",
+        "windows": "yume_0.5.4_x64-setup.msi",
         "linux_deb": "yume_0.5.4_amd64.deb",
         "linux_rpm": "yume-0.5.4-1.x86_64.rpm"
       },
@@ -665,7 +684,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.3_arm64.pkg",
         "mac": "yume_0.5.3_x64.pkg",
-        "windows": "yume_0.5.3_x64-setup.exe",
+        "windows": "yume_0.5.3_x64-setup.msi",
         "linux_deb": "yume_0.5.3_amd64.deb",
         "linux_rpm": "yume-0.5.3-1.x86_64.rpm"
       },
@@ -685,7 +704,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.2_arm64.pkg",
         "mac": "yume_0.5.2_x64.pkg",
-        "windows": "yume_0.5.2_x64-setup.exe",
+        "windows": "yume_0.5.2_x64-setup.msi",
         "linux_deb": "yume_0.5.2_amd64.deb",
         "linux_rpm": "yume-0.5.2-1.x86_64.rpm"
       },
@@ -705,7 +724,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.1_arm64.pkg",
         "mac": "yume_0.5.1_x64.pkg",
-        "windows": "yume_0.5.1_x64-setup.exe",
+        "windows": "yume_0.5.1_x64-setup.msi",
         "linux_deb": "yume_0.5.1_amd64.deb",
         "linux_rpm": "yume-0.5.1-1.x86_64.rpm"
       },
@@ -725,7 +744,7 @@
       "downloads": {
         "mac_arm": "yume_0.5.0_arm64.pkg",
         "mac": "yume_0.5.0_x64.pkg",
-        "windows": "yume_0.5.0_x64-setup.exe",
+        "windows": "yume_0.5.0_x64-setup.msi",
         "linux_deb": "yume_0.5.0_amd64.deb",
         "linux_rpm": "yume-0.5.0-1.x86_64.rpm"
       },
@@ -745,7 +764,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.6_arm64.pkg",
         "mac": "yume_0.4.6_x64.pkg",
-        "windows": "yume_0.4.6_x64-setup.exe",
+        "windows": "yume_0.4.6_x64-setup.msi",
         "linux_deb": "yume_0.4.6_amd64.deb",
         "linux_rpm": "yume-0.4.6-1.x86_64.rpm"
       },
@@ -765,7 +784,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.5_arm64.pkg",
         "mac": "yume_0.4.5_x64.pkg",
-        "windows": "yume_0.4.5_x64-setup.exe",
+        "windows": "yume_0.4.5_x64-setup.msi",
         "linux_deb": "yume_0.4.5_amd64.deb",
         "linux_rpm": "yume-0.4.5-1.x86_64.rpm"
       },
@@ -785,7 +804,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.4_arm64.pkg",
         "mac": "yume_0.4.4_x64.pkg",
-        "windows": "yume_0.4.4_x64-setup.exe",
+        "windows": "yume_0.4.4_x64-setup.msi",
         "linux_deb": "yume_0.4.4_amd64.deb",
         "linux_rpm": "yume-0.4.4-1.x86_64.rpm"
       },
@@ -805,7 +824,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.3_arm64.pkg",
         "mac": "yume_0.4.3_x64.pkg",
-        "windows": "yume_0.4.3_x64-setup.exe"
+        "windows": "yume_0.4.3_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "a2618141b1f92fa234ce8d761765b730f99615a47a979a8f9e546b46f5658ffc",
@@ -821,7 +840,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.2_arm64.pkg",
         "mac": "yume_0.4.2_x64.pkg",
-        "windows": "yume_0.4.2_x64-setup.exe"
+        "windows": "yume_0.4.2_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "0fc6c3dfaa397b92795f8f75c0ea8d04252bfe6a8b692d3ef47f7e19e84889bd",
@@ -837,7 +856,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.1_arm64.pkg",
         "mac": "yume_0.4.1_x64.pkg",
-        "windows": "yume_0.4.1_x64-setup.exe"
+        "windows": "yume_0.4.1_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "2062f1606c23da7c050f49e9d33d7a38a281c9ef25e63c6dded3bd9bf4d93c83",
@@ -853,7 +872,7 @@
       "downloads": {
         "mac_arm": "yume_0.4.0_arm64.pkg",
         "mac": "yume_0.4.0_x64.pkg",
-        "windows": "yume_0.4.0_x64-setup.exe"
+        "windows": "yume_0.4.0_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "816470a041c341e2b2f647d9b4745788cae9f934effda17e258c9e35f7a1ef6d",
@@ -869,7 +888,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.7_arm64.pkg",
         "mac": "yume_0.3.7_x64.pkg",
-        "windows": "yume_0.3.7_x64-setup.exe"
+        "windows": "yume_0.3.7_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "6e682d16e52fd9cffb6f1993ffd6620d4d42e7e605aa6ad531f11e67f01c89e8",
@@ -885,7 +904,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.6_arm64.pkg",
         "mac": "yume_0.3.6_x64.pkg",
-        "windows": "yume_0.3.6_x64-setup.exe"
+        "windows": "yume_0.3.6_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "6837ae5005c08135a607297b5e635dd7e55fc71d11b3333392cae300f93fc4b1",
@@ -901,7 +920,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.5_arm64.pkg",
         "mac": "yume_0.3.5_x64.pkg",
-        "windows": "yume_0.3.5_x64-setup.exe"
+        "windows": "yume_0.3.5_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "1f77380990fc0dedea8f0f34f2304f0ac3c083a492458e00b09c20fa0ef50247",
@@ -917,7 +936,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.4_arm64.pkg",
         "mac": "yume_0.3.4_x64.pkg",
-        "windows": "yume_0.3.4_x64-setup.exe"
+        "windows": "yume_0.3.4_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "7fa4c0f1132ae7bd71c77a52272df2bf46770f929dfe24273b602a1d5a0e8690",
@@ -933,7 +952,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.3_arm64.pkg",
         "mac": "yume_0.3.3_x64.pkg",
-        "windows": "yume_0.3.3_x64-setup.exe"
+        "windows": "yume_0.3.3_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "a968722c806ae9edfcfc430a3f23c6de0b8907c007ae6608011a668e8a18fd29",
@@ -949,7 +968,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.2_arm64.pkg",
         "mac": "yume_0.3.2_x64.pkg",
-        "windows": "yume_0.3.2_x64-setup.exe"
+        "windows": "yume_0.3.2_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "f81d2d80d74b8e6596df62f81782f7d74305eefbefead18083a85f9cf959c1fe",
@@ -965,7 +984,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.1_arm64.pkg",
         "mac": "yume_0.3.1_x64.pkg",
-        "windows": "yume_0.3.1_x64-setup.exe"
+        "windows": "yume_0.3.1_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "02acb368dce46c1ab8e4df5e01318d03756e91ec7c2c09257d0809bb08e28daf",
@@ -981,7 +1000,7 @@
       "downloads": {
         "mac_arm": "yume_0.3.0_arm64.pkg",
         "mac": "yume_0.3.0_x64.pkg",
-        "windows": "yume_0.3.0_x64-setup.exe"
+        "windows": "yume_0.3.0_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "701db477844685102e7aefeb420108cbf22ab0b239a9e7b52da99cc08032055f",
@@ -997,7 +1016,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.8_arm64.pkg",
         "mac": "yume_0.2.8_x64.pkg",
-        "windows": "yume_0.2.8_x64-setup.exe"
+        "windows": "yume_0.2.8_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "bc7e1256d11b9f50acfc80e9f4e96e3a09a8789b057f1b44111eec99b084bba7",
@@ -1013,7 +1032,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.7_arm64.pkg",
         "mac": "yume_0.2.7_x64.pkg",
-        "windows": "yume_0.2.7_x64-setup.exe"
+        "windows": "yume_0.2.7_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "541ac29f00e3c9bcca019c071280bf0df208cc9e8ee0abbed01d755a9eeb8660",
@@ -1029,7 +1048,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.6_arm64.pkg",
         "mac": "yume_0.2.6_x64.pkg",
-        "windows": "yume_0.2.6_x64-setup.exe"
+        "windows": "yume_0.2.6_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "08f9fb3d9e02a5aa88a6365eaaf55606d06d6d7293ddd034e4c43a55c6fdee3d",
@@ -1045,7 +1064,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.5_aarch64.pkg",
         "mac": "yume_0.2.5_x64.pkg",
-        "windows": "yume_0.2.5_x64-setup.exe"
+        "windows": "yume_0.2.5_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "546e64b23681fcf2479d734dbf0b6b9e6a19b4a2b922f8aa74c43d5a11685db4",
@@ -1061,7 +1080,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.4_aarch64.pkg",
         "mac": "yume_0.2.4_x64.pkg",
-        "windows": "yume_0.2.4_x64-setup.exe"
+        "windows": "yume_0.2.4_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "7896b401161959c583ce7e47f9891de362191340a89c2e0c7916989edf86c3ce",
@@ -1077,7 +1096,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.3_arm64.pkg",
         "mac": "yume_0.2.3_x64.pkg",
-        "windows": "yume_0.2.3_x64-setup.exe"
+        "windows": "yume_0.2.3_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "bdf756d80b31cf65eba97eca741a9b8ac467499f3fa06f2faf7df4693a7e14c2",
@@ -1093,7 +1112,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.2_arm64.pkg",
         "mac": "yume_0.2.2_x64.pkg",
-        "windows": "yume_0.2.2_x64-setup.exe"
+        "windows": "yume_0.2.2_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "4a22e6e6b805541b067ae1187a0df295a8e525dad0be43794e0b66649713acdf",
@@ -1109,7 +1128,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.1_arm64.pkg",
         "mac": "yume_0.2.1_x64.pkg",
-        "windows": "yume_0.2.1_x64-setup.exe"
+        "windows": "yume_0.2.1_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "6a1678bc5251c543dc54da571b512617723fed18a7155a11b7a350d1b7afa2a7",
@@ -1125,7 +1144,7 @@
       "downloads": {
         "mac_arm": "yume_0.2.0_arm64.pkg",
         "mac": "yume_0.2.0_x64.pkg",
-        "windows": "yume_0.2.0_x64-setup.exe"
+        "windows": "yume_0.2.0_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "d4d180dd5b025df3fb86a19b03dd32dd31787bae11f1f7d661c3508019f901a1",
@@ -1141,7 +1160,7 @@
       "downloads": {
         "mac_arm": "yume_0.1.7_arm64.pkg",
         "mac": "yume_0.1.7_x64.pkg",
-        "windows": "yume_0.1.7_x64-setup.exe"
+        "windows": "yume_0.1.7_x64-setup.msi"
       },
       "checksums": {
         "mac_arm": "f22901d009416097193e3cba4f61da2de5a07aa8cfb6feff1ad90aa4435efda3",
@@ -1157,7 +1176,7 @@
       "downloads": {
         "mac_arm": "yume-0.1.4-macos-arm64.dmg",
         "mac": "yume-0.1.4-macos-x64.dmg",
-        "windows": "yume_0.1.4_x64-setup.exe"
+        "windows": "yume_0.1.4_x64-setup.msi"
       }
     },
     {

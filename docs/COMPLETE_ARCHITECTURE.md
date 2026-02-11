@@ -1,6 +1,6 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.8.5
+**Version:** 0.9.8
 **Last Updated:** January 2026
 **Status:** Production Ready
 
@@ -1069,7 +1069,7 @@ npm run test                   # Run vitest test suites
 # Production
 npm run tauri:build:mac        # macOS .dmg (ARM64)
 npm run tauri:build:mac:x64    # macOS x64
-npm run tauri:build:win        # Windows .msi/.exe
+npm run tauri:build:win        # Windows .msi
 npm run tauri:build:linux      # Linux .AppImage/.deb
 ```
 

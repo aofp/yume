@@ -37,7 +37,7 @@ echo ""
 # Step 3: Git commit and push
 echo "Step 3/5: Committing to git..."
 git add version.txt releases/releases.json releases/v${VERSION}-release-notes.md 2>/dev/null || true
-git add releases/yume_${VERSION}_arm64.pkg releases/yume_${VERSION}_x64.pkg releases/yume_${VERSION}_x64-setup.exe 2>/dev/null || true
+git add releases/yume_${VERSION}_arm64.pkg releases/yume_${VERSION}_x64.pkg releases/yume_${VERSION}_x64-setup.msi 2>/dev/null || true
 
 if [ -z "$(git status --porcelain)" ]; then
     echo -e "${YELLOW}⚠${NC}  No changes to commit"

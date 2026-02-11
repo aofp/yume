@@ -57,7 +57,7 @@ echo -n "Download links work... "
 BASE_URL="https://github.com/aofp/yume/releases/download/v$VERSION"
 ARM_HTTP=$(curl -sI "$BASE_URL/yume_${VERSION}_arm64.pkg" | head -1 | awk '{print $2}')
 X64_HTTP=$(curl -sI "$BASE_URL/yume_${VERSION}_x64.pkg" | head -1 | awk '{print $2}')
-WIN_HTTP=$(curl -sI "$BASE_URL/yume_${VERSION}_x64-setup.exe" | head -1 | awk '{print $2}')
+WIN_HTTP=$(curl -sI "$BASE_URL/yume_${VERSION}_x64-setup.msi" | head -1 | awk '{print $2}')
 
 if [ "$ARM_HTTP" = "302" ] && [ "$X64_HTTP" = "302" ] && [ "$WIN_HTTP" = "302" ]; then
     echo -e "${GREEN}✓${NC} All 3 assets downloadable"

@@ -1,6 +1,6 @@
 # Yume Production Deployment Guide
 
-**Version:** 0.8.5
+**Version:** 0.9.8
 **Last Updated:** January 29, 2026
 **Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
 
@@ -493,7 +493,7 @@ releases/
 │   │   ├── yume_0.6.0_x64.dmg            # Intel
 │   │   └── checksums.sha256
 │   ├── windows/
-│   │   ├── yume_0.6.0_x64-setup.exe
+│   │   ├── yume_0.6.0_x64-setup.msi
 │   │   ├── yume_0.6.0_x64_en-US.msi
 │   │   └── checksums.sha256
 │   └── linux/
@@ -520,7 +520,7 @@ gh release create v0.6.0 \
 gh release upload v0.6.0 \
   yume_0.6.0_aarch64.dmg \
   yume_0.6.0_x64.dmg \
-  yume_0.6.0_x64-setup.exe \
+  yume_0.6.0_x64-setup.msi \
   yume_0.6.0_amd64.AppImage
 ```
 

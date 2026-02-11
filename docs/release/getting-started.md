@@ -13,7 +13,7 @@ claude  # login
 |----------|------|
 | mac m1/m2/m3/m4 | `yume-x.x.x-arm64.dmg` |
 | mac intel | `yume-x.x.x-x64.dmg` |
-| windows | `yume-x.x.x-x64-setup.exe` |
+| windows | `yume-x.x.x-x64-setup.msi` |
 | linux | `yume-x.x.x-x64.AppImage` |
 
 ## 3. install

@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.8.4**
+desktop app for claude cli with multi-provider support. current version: **0.9.8**
 
 ---
 
@@ -171,7 +171,7 @@ sqlite in `~/.yume/yume.db`:
 |----------|-----------|
 | mac m1/m2/m3/m4 | `yume-x.x.x-arm64.dmg` |
 | mac intel | `yume-x.x.x-x64.dmg` |
-| windows | `yume-x.x.x-x64-setup.exe` |
+| windows | `yume-x.x.x-x64-setup.msi` |
 | linux | `yume-x.x.x-x64.AppImage` |
 
 ~50mb binary. requires claude cli.
