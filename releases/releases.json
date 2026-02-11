@@ -17,7 +17,7 @@
       "checksums": {
         "mac_arm": "c4818f26a6d28cdee108aaf244e65bca224786151cd1677be06b502f7f419b85",
         "mac": "8c995fd13a31d9b4a2c7ceb9cdc68b30c1031d4f78079563a71376e31c66a227",
-        "windows": "97ae054d4ce403cb09ddc6fa308e696c35184c9412d0da5b6044d93ea4501f5a",
+        "windows": "3655c3d172ec677078a3a6af663e5ad75caf7149a51aa3a968c2b3cd47d9ade8",
         "linux_deb": "5f62c3b7831db2db372215b38c4c9bc006e85b21b8cdf6a023ddf9c53e2fdfcb",
         "linux_rpm": "a3ecbaade76f97d329c36d5bdc823c6ceb4db55e4220511fa4951326e01d7e77"
       }
