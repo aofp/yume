@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.9.10",
+  "latest": "0.10.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.10.0",
+      "date": "2026-02-12",
+      "notes": "fix socket guard and session scoping, fix streaming stuck state, persist tool collapse, clamp resize to monitor, fix tool whitelist and turn nonce races, native windows zoom, fix double-select races and cleanup leaks",
+      "downloads": {
+        "mac_arm": "yume_0.10.0_arm64.pkg",
+        "mac": "yume_0.10.0_x64.pkg",
+        "windows": "yume_0.10.0_x64-setup.exe",
+        "linux_deb": "yume_0.10.0_amd64.deb",
+        "linux_rpm": "yume-0.10.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "a24dccade309f337c5c37a5ca4da4fa222a86a44f6a2ed8137554506d217496e",
+        "mac": "acac84290eee810280764d793144b5e3ee930c10cd9cfd234db65860fa658aef",
+        "windows": "463d634c23c41088305f804aba398f5fe9641f082591dbe895f557805b5391d9",
+        "linux_deb": "cb91634b883e314223e92b46c71035c20ced4caf54e6aab5f74972f9761d873a",
+        "linux_rpm": "5814d167a9ce5c68912cd6ca23a0b24024ee12c909f7553d71b02ae7ef508b48"
+      }
+    },
     {
       "version": "0.9.10",
       "date": "2026-02-11",
