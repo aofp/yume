@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.9.9",
+  "latest": "0.9.10",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.10",
+      "date": "2026-02-11",
+      "notes": "fix bash utf-8 streaming, silent installers (pkg/exe), split pane fixes, context bar keyboard navigation, ui border/opacity tweaks",
+      "downloads": {
+        "mac_arm": "yume_0.9.10_arm64.pkg",
+        "mac": "yume_0.9.10_x64.pkg",
+        "windows": "yume_0.9.10_x64-setup.exe",
+        "linux_deb": "yume_0.9.10_amd64.deb",
+        "linux_rpm": "yume-0.9.10-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "e5dd768940109f450a4c5ea421b0f00339d644e8728c968d24fcfd131ace8b4d",
+        "mac": "82a7714134ba9f66e56874812d1ebd4e46bc456f9863288ba0bed3bb939001fc",
+        "windows": "e3952bc1bae704c1b7478355f5eb7633f7ea891299263d0d50cd7d89193e8794",
+        "linux_deb": "5b141a1d8103fbadf8b93fdd0f0d37c99079b875d9ea3e650b6fee40fbf18222",
+        "linux_rpm": "fcc8a4cd99d2ea90bc6a5bacd32f993db6c00f2d913971a003d52e6793f86088"
+      }
+    },
     {
       "version": "0.9.9",
       "date": "2026-02-11",
