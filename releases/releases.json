@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.9.8",
+  "latest": "0.9.9",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.9.9",
+      "date": "2026-02-11",
+      "notes": "macos text selection fix (native guard replaces focus polling), compaction message loss fix, split pane scroll/resize improvements, windows console/bash/opacity fixes, titlebar drag restored in split-pane mode, linux build fix",
+      "downloads": {
+        "mac_arm": "yume_0.9.9_arm64.pkg",
+        "mac": "yume_0.9.9_x64.pkg",
+        "windows": "yume_0.9.9_x64-setup.exe",
+        "linux_deb": "yume_0.9.9_amd64.deb",
+        "linux_rpm": "yume-0.9.9-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "832ceb39c11bcebfe2b8e6df0415feac36c52de55572c27ee93a890239be89fd",
+        "mac": "7b340638795254f64a0d1bff741030506d08824641e5c1c6b80a923ac282bd35",
+        "windows": "db26d01ac92071ea9b6638020f5353d20aedb98bae859ccac527632e981a4762",
+        "linux_deb": "5b6b045b6d9f6038e6fdc4fc822635f7b3d7896e0abc4a168c45033e69949501",
+        "linux_rpm": "5d9966ab91e362496a21cb9f207ba12570598bb4d990f6084d409d7e97c53685"
+      }
+    },
     {
       "version": "0.9.8",
       "date": "2026-02-11",
