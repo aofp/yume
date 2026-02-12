@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.10.0",
+  "latest": "0.10.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.10.1",
+      "date": "2026-02-12",
+      "notes": "open installer instead of silent install, fix bash streaming flush",
+      "downloads": {
+        "mac_arm": "yume_0.10.1_arm64.pkg",
+        "mac": "yume_0.10.1_x64.pkg",
+        "windows": "yume_0.10.1_x64-setup.exe",
+        "linux_deb": "yume_0.10.1_amd64.deb",
+        "linux_rpm": "yume-0.10.1-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "0292d57c6e0e207692b94c31d988c03d54a4ebc77918db87abf7389c0a01e695",
+        "mac": "b0d075db3a3470f16ce3c8f451069a95524b2594b5dc8b47a917c914fb2df0c0",
+        "windows": "4144c9966bcaa6d417cb587d7be427115ea6f0ad44cb1c0f2da231c5b50b5cb1",
+        "linux_deb": "87a2faa79b82ccc91aba5fcf66a08cb6941325ec5f05f37ec1e991d9b93bda1e",
+        "linux_rpm": "58e45da87ec3db3a4c8f6c93b7baa7e0286dc1cbc470a112aa4ebefe7a851599"
+      }
+    },
     {
       "version": "0.10.0",
       "date": "2026-02-12",
