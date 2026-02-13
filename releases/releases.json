@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.10.1",
+  "latest": "0.10.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.10.2",
+      "date": "2026-02-12",
+      "notes": "fix token counting, remove auto-compact ui, add themes, show 5h/7d usage limits on welcome screen, fix session recovery double-emit, streaming flush race, fix window shadow loss on opacity change, ui polish",
+      "downloads": {
+        "mac_arm": "yume_0.10.2_arm64.pkg",
+        "mac": "yume_0.10.2_x64.pkg",
+        "windows": "yume_0.10.2_x64-setup.exe",
+        "linux_deb": "yume_0.10.2_amd64.deb",
+        "linux_rpm": "yume-0.10.2-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "401c0f4c6439ad71dc26cd7bed41139bcf96c809457ac1040a436f25d1843ee8",
+        "mac": "cdc9e72e97afc69cca2058bab176af48ae8f9404cb154f6d1002fdc99580df25",
+        "windows": "105640f23a40cdb8fd8a63d5a1439fcc1b1ee42cf1ed4f0b2c148d9a90767b75",
+        "linux_deb": "a25918038666195798a5584d754da3ad0f3f1e2cea953d9fe5753d13997b7f33",
+        "linux_rpm": "0bef5a14efe0f08f0b3158baf70369b4b84d2e04bd5d9fcfd2637613b65879e0"
+      }
+    },
     {
       "version": "0.10.1",
       "date": "2026-02-12",
