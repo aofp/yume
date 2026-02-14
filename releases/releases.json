@@ -6,7 +6,7 @@
     {
       "version": "0.11.0",
       "date": "2026-02-14",
-      "notes": "stream event dots with gradient blending and icon types, per-modal pane tracking, demo limits enforcement (2 panes/1 window), OAuth token refresh on 401 for usage limits, model detection fix (primary by token count), Windows Credential Manager fallback, Linux build fixes, thinking text contrast and file preview overlay improvements, tab icon scaling, cc plugin support",
+      "notes": "stream event dots with gradient blending and icon types, per-modal pane tracking, demo limits enforcement (2 panes/1 window), model detection fix (primary by token count), usage limits retry and caching, Windows Credential Manager fallback, Linux build fixes, thinking text contrast and file preview overlay improvements, tab icon scaling, cc plugin support",
       "downloads": {
         "mac_arm": "yume_0.11.0_arm64.pkg",
         "mac": "yume_0.11.0_x64.pkg",
@@ -15,11 +15,11 @@
         "linux_rpm": "yume-0.11.0-1.x86_64.rpm"
       },
       "checksums": {
-        "mac_arm": "7ece91afc5891861d2f3c1061d8f0530a1d7d99cff33e7b85d4fafa4bd628156",
-        "mac": "1fd438b4f43f55fe5902664ddd2b9d9f1a9b3ad2e53bcd51e1021d76716691af",
-        "windows": "PENDING",
-        "linux_deb": "PENDING",
-        "linux_rpm": "PENDING"
+        "mac_arm": "1a35577cf02fc75ee2dc3c661f3edf8211596fdb78f44095401381165d9af71c",
+        "mac": "3e01e36c40fe77c358f8f3c9f42b06b225ee2da2bc774a8424ad4d0928e8408e",
+        "windows": "da5b745f9b167189160324848d7a8c41b352742a17388ebc406b551e3563f452",
+        "linux_deb": "3abd4fcaeed0ba3377d2090f925ab4998ee23ba64cf2b8cbdff82538f521f748",
+        "linux_rpm": "c9f555e03b072d2afcd98f4a87f05a459d85d37217a36b3a0cfe70c29922115e"
       }
     },
     {
