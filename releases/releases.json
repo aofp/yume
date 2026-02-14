@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.10.2",
+  "latest": "0.11.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.11.0",
+      "date": "2026-02-14",
+      "notes": "stream event dots with gradient blending and icon types, per-modal pane tracking, demo limits enforcement (2 panes/1 window), OAuth token refresh on 401 for usage limits, model detection fix (primary by token count), Windows Credential Manager fallback, Linux build fixes, thinking text contrast and file preview overlay improvements, tab icon scaling, cc plugin support",
+      "downloads": {
+        "mac_arm": "yume_0.11.0_arm64.pkg",
+        "mac": "yume_0.11.0_x64.pkg",
+        "windows": "yume_0.11.0_x64-setup.exe",
+        "linux_deb": "yume_0.11.0_amd64.deb",
+        "linux_rpm": "yume-0.11.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "7ece91afc5891861d2f3c1061d8f0530a1d7d99cff33e7b85d4fafa4bd628156",
+        "mac": "1fd438b4f43f55fe5902664ddd2b9d9f1a9b3ad2e53bcd51e1021d76716691af",
+        "windows": "PENDING",
+        "linux_deb": "PENDING",
+        "linux_rpm": "PENDING"
+      }
+    },
     {
       "version": "0.10.2",
       "date": "2026-02-12",
