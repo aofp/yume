@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.12.0",
+  "latest": "0.12.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.12.1",
+      "date": "2026-02-17",
+      "notes": "fix Windows OAuth login URL quoting, fix macOS Sequoia install, fix pkg installer overwrite failure",
+      "downloads": {
+        "mac_arm": "yume_0.12.1_arm64.pkg",
+        "mac": "yume_0.12.1_x64.pkg",
+        "windows": "yume_0.12.1_x64-setup.exe",
+        "linux_deb": "yume_0.12.1_amd64.deb",
+        "linux_rpm": "yume-0.12.1-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "82e2345a09d4b2506cf4496950029e6c758dce68f8d59924ec1bf86056d4cff7",
+        "mac": "eda4706298f18d95a30db646e17a0f76dd6f8bc33f8d80f2a445b261fee3c52f",
+        "windows": "4d876bd30403b58a1ac9feb75c8f88ade0b165daa50279791d39dfbccea7752d",
+        "linux_deb": "af62c0f1d8e677794ab72aaa8e58c6022b7020a4f76186626c9039eb84e1279a",
+        "linux_rpm": "f274c18b05be69b59fd13961cf492145c02fa19e0bb8b53bb2c9cbc6a79ea00b"
+      }
+    },
     {
       "version": "0.12.0",
       "date": "2026-02-17",
