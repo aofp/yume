@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.11.0",
+  "latest": "0.12.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.12.0",
+      "date": "2026-02-17",
+      "notes": "inline auth login modal with proactive auth check, OAuth token refresh on 401, unified bash stream polling, stream event dots as icons with gradient blending, per-modal pane tracking, sonnet for tab titles, demo limits enforcement (2 panes/1 window), fix model detection (primary by token count), usage limits retry with null-aware TTL caching, Windows Credential Manager fallback, fix OAuth refresh and credentials parse, scroll/focus/tab UI fixes, fix pkg installer overwrite, fix macOS Sequoia xattr, Linux/Windows build fixes",
+      "downloads": {
+        "mac_arm": "yume_0.12.0_arm64.pkg",
+        "mac": "yume_0.12.0_x64.pkg",
+        "windows": "yume_0.12.0_x64-setup.exe",
+        "linux_deb": "yume_0.12.0_amd64.deb",
+        "linux_rpm": "yume-0.12.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "ca247a52262ff07387d2327959425b2c52e6dfff1cffbbbb071d727b974ed779",
+        "mac": "676e5a7f5a66c39bc2e8afca9fe597c28c9bf0cd660e6ed79accde72073ec504",
+        "windows": "88fc67041fb14a99c5a78cf166d07b2ba6811b4e9b104cbaaa6f2c92a46fedcd",
+        "linux_deb": "991f2fcdc944243d8316f1baf607d5b61643829f170b0d60931bb0e8e0e54569",
+        "linux_rpm": "914d43e1d4945b3ac565862728bdb5ce33de2032d5f7618b6343dec472e9d4cf"
+      }
+    },
     {
       "version": "0.11.0",
       "date": "2026-02-14",
