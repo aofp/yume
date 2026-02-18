@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.13.0",
+  "latest": "0.13.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.13.1",
+      "date": "2026-02-18",
+      "notes": "fix windows claude detection npm, fix haiku model misattribution, image compression, fix button stats day logic, improve cli subprocessing",
+      "downloads": {
+        "mac_arm": "yume_0.13.1_arm64.pkg",
+        "mac": "yume_0.13.1_x64.pkg",
+        "windows": "yume_0.13.1_x64-setup.exe",
+        "linux_deb": "yume_0.13.1_amd64.deb",
+        "linux_rpm": "yume-0.13.1-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "37284a0c795b30571e56473e809a1fddffb3d6a6790468d1a5dbb3b24afd36fe",
+        "mac": "456675b70af6124a8a1c537d075b39fff661edea67d942398d09e774c2777503",
+        "windows": "b2c2fe0eb94516dd07bfab838eb1a9160b57ad781a4ddbc0b3379ab0ee1abfbe",
+        "linux_deb": "b8709f3c47337880ec6d4f7106723d0a3fc1902f9733a9720e799d7a6341886a",
+        "linux_rpm": "01c097c9e24ec09e671e6e63d4d130e44f2b912915372c6a59c7169e26aedbcf"
+      }
+    },
     {
       "version": "0.13.0",
       "date": "2026-02-18",
