@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.12.2",
+  "latest": "0.13.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.13.0",
+      "date": "2026-02-18",
+      "notes": "focus swizzle with resignFirstResponder rejection, debounced makeFirstResponder with resign/become key tracking, streaming perf and context breakdown fallback, welcome screen and plugins tab cleanup, model ID updates (claude-sonnet-4-6), tooltip and stream indicator improvements, smart CLI update via npm registry check",
+      "downloads": {
+        "mac_arm": "yume_0.13.0_arm64.pkg",
+        "mac": "yume_0.13.0_x64.pkg",
+        "windows": "yume_0.13.0_x64-setup.exe",
+        "linux_deb": "yume_0.13.0_amd64.deb",
+        "linux_rpm": "yume-0.13.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "053a3d3da5e60e9fa8f8827ee9eeeff0e69d6b12dce0357bc0344a8c5b2f21f3",
+        "mac": "b9978b07d087dfa0078319e40442593d17bb1424d06d209c815626e78c967ae6",
+        "windows": "349c2a7f064cef5a982f34c3d21387434ec87d8af8c6addc2b8fe0be8133e2f4",
+        "linux_deb": "dedc1b8af49493f45c8571bef44b717b97e42d2ce322e6008e618c9ca0bc8272",
+        "linux_rpm": "67283d39da9d4e6acfeca1f57d178c97431ad938ac893b485ca389a9dc9a086a"
+      }
+    },
     {
       "version": "0.12.2",
       "date": "2026-02-17",
