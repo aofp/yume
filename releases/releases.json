@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.12.1",
+  "latest": "0.12.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.12.2",
+      "date": "2026-02-17",
+      "notes": "fix macOS focus loss after click, streaming performance improvements, context breakdown fallback, compile fix for class_addMethod bool type",
+      "downloads": {
+        "mac_arm": "yume_0.12.2_arm64.pkg",
+        "mac": "yume_0.12.2_x64.pkg",
+        "windows": "yume_0.12.2_x64-setup.exe",
+        "linux_deb": "yume_0.12.2_amd64.deb",
+        "linux_rpm": "yume-0.12.2-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "764afa410fb78d803259ea8ed8f60288c6747bc72cc635c7589c8e370d078f24",
+        "mac": "1ec231738bb130c17e98fece9320836dd94587751a22e06d0b943be0952e5897",
+        "windows": "86e0b9dcab0870b08ebbf16db1ee646f9c2cc248ce52a1a24ef1008d1f10bebb",
+        "linux_deb": "64df3a1f69a961349ee6fe00b1c314f8c46616d92801fa580c3ea0b576b74732",
+        "linux_rpm": "e2ade4d6698a7623b01ec0d2ef6742be806971ae7fc5f857abc94c9effc9502a"
+      }
+    },
     {
       "version": "0.12.1",
       "date": "2026-02-17",
