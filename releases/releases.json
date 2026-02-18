@@ -63,7 +63,7 @@
     {
       "version": "0.12.1",
       "date": "2026-02-17",
-      "notes": "fix Windows OAuth login URL quoting, fix macOS Sequoia install, fix pkg installer overwrite failure",
+      "notes": "fix Windows auth login URL quoting, fix macOS Sequoia install, fix pkg installer overwrite failure",
       "downloads": {
         "mac_arm": "yume_0.12.1_arm64.pkg",
         "mac": "yume_0.12.1_x64.pkg",
@@ -82,7 +82,7 @@
     {
       "version": "0.12.0",
       "date": "2026-02-17",
-      "notes": "inline auth login modal with proactive auth check, OAuth token refresh on 401, unified bash stream polling, stream event dots as icons with gradient blending, per-modal pane tracking, sonnet for tab titles, demo limits enforcement (2 panes/1 window), fix model detection (primary by token count), usage limits retry with null-aware TTL caching, Windows Credential Manager fallback, fix OAuth refresh and credentials parse, scroll/focus/tab UI fixes, fix pkg installer overwrite, fix macOS Sequoia xattr, Linux/Windows build fixes",
+      "notes": "inline auth login modal with proactive auth check, token refresh on 401, unified bash stream polling, stream event dots as icons with gradient blending, per-modal pane tracking, sonnet for tab titles, demo limits enforcement (2 panes/1 window), fix model detection (primary by token count), usage limits retry with null-aware TTL caching, Windows Credential Manager fallback, fix auth refresh and credentials parse, scroll/focus/tab UI fixes, fix pkg installer overwrite, fix macOS Sequoia xattr, Linux/Windows build fixes",
       "downloads": {
         "mac_arm": "yume_0.12.0_arm64.pkg",
         "mac": "yume_0.12.0_x64.pkg",
