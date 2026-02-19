@@ -1,6 +1,6 @@
 # Shim Architecture: The "Yume CLI Translation Layer" (`yume-cli`)
 
-> **Last Updated:** 2026-01-28
+> **Last Updated:** 2026-01-31
 > **Implementation Status:** ✅ Complete (macOS ready, Windows/Linux binaries pending)
 
 ## Implementation Summary

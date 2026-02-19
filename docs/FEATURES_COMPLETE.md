@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.8.5
-**Last Updated:** February 2, 2026
+**Version:** 0.14.0
+**Last Updated:** February 18, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -31,6 +31,20 @@
 23. [ACP (Agent Client Protocol)](#23-acp-agent-client-protocol)
 24. [Sandbox Security](#24-sandbox-security)
 25. [Analytics Enhancements](#25-analytics-enhancements)
+26. [Split Panes](#26-split-panes)
+27. [Light Theme](#27-light-theme)
+28. [Background Bash Processes](#28-background-bash-processes)
+29. [File Preview](#29-file-preview)
+30. [Thinking Streaming](#30-thinking-streaming)
+31. [Memory System V2](#31-memory-system-v2)
+32. [CLAUDE.md Editor](#32-claudemd-editor)
+33. [Bash Mode](#33-bash-mode)
+34. [Performance Flags](#34-performance-flags)
+35. [Font Customization](#35-font-customization)
+36. [Auth Login Modal](#36-auth-login-modal)
+37. [Stream Event Dots](#37-stream-event-dots)
+38. [File Drop Attachment](#38-file-drop-attachment)
+39. [Windows ARM64 Support](#39-windows-arm64-support)
 
 ## 1. Core Features
 
@@ -57,8 +71,8 @@ pub struct ClaudeSpawner {
 **Supported Models**:
 
 *Claude (via Claude CLI):*
-- Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) - Balanced coding
-- Claude Opus 4.5 (`claude-opus-4-5-20251101`) - Best reasoning
+- Claude Sonnet 4.6 (`claude-sonnet-4-6`) - Balanced coding
+- Claude Opus 4.6 (`claude-opus-4-6`) - Best reasoning
 
 *Gemini (via yume-cli):*
 - Gemini 2.5 Pro (`gemini-2.5-pro`) - Advanced reasoning
@@ -81,7 +95,7 @@ pub struct ClaudeSpawner {
 claude \
   --print \                    # Enable output
   --output-format stream-json \ # Streaming JSON
-  --model claude-sonnet-4-5-20250929 \  # Model selection
+  --model claude-sonnet-4-6 \  # Model selection
   --working-dir /path/to/project
 ```
 
@@ -202,7 +216,7 @@ pub struct CrashRecoveryManager {
 
 ### 3.1 Overview
 
-**Description**: Automatically compacts conversation context with dynamic thresholds (default T=75%: 70% warning, 75% auto, 80% force).
+**Description**: Automatically compacts conversation context with dynamic thresholds (default T=85%: 80% warning, 85% auto, 90% force). Auto-compact is off by default -- CLI handles it.
 
 **Unique Feature**: Variable threshold system with 5% warning buffer and 5% force buffer around the configurable auto-compact threshold.
 
@@ -213,15 +227,15 @@ pub struct CrashRecoveryManager {
 **Threshold Detection**:
 ```rust
 pub struct CompactionConfig {
-    pub auto_threshold: f32,  // default 0.75 (75%)
-    pub force_threshold: f32, // default 0.80 (auto + 5%)
+    pub auto_threshold: f32,  // default 0.85 (85%)
+    pub force_threshold: f32, // default 0.90 (auto + 5%)
 }
 
 // Dynamic thresholds: warning = threshold - 5%, auto = threshold, force = threshold + 5%
 pub fn check_compaction_action(&self, usage: f32) -> CompactionAction {
-    let warning_threshold = threshold - 0.05;  // 70%
-    let auto_threshold = threshold;            // 75%
-    let force_threshold = threshold + 0.05;    // 80%
+    let warning_threshold = threshold - 0.05;  // 80%
+    let auto_threshold = threshold;            // 85%
+    let force_threshold = threshold + 0.05;    // 90%
 
     if usage >= force_threshold { Force }
     else if usage >= auto_threshold { AutoTrigger }
@@ -233,7 +247,7 @@ pub fn check_compaction_action(&self, usage: f32) -> CompactionAction {
 ### 3.3 Compaction Process
 
 **Steps**:
-1. **Detection**: Monitor reaches 75% (auto) or 80% (force) threshold (default values)
+1. **Detection**: Monitor reaches 85% (auto) or 90% (force) threshold (default values)
 2. **Preparation**: Save current state
 3. **Trigger**: Send `/compact` command on next user message
 4. **Processing**: Claude creates summary
@@ -251,8 +265,8 @@ pub fn check_compaction_action(&self, usage: f32) -> CompactionAction {
 ```typescript
 interface CompactionSettings {
   autoTrigger: boolean;        // Enable auto-compaction
-  autoThreshold: number;       // 0.75 (75%) default
-  forceThreshold: number;      // 0.80 (80%) default (auto + 5%)
+  autoThreshold: number;       // 0.85 (85%) default
+  forceThreshold: number;      // 0.90 (90%) default (auto + 5%)
   preserveContext: boolean;    // Preserve important context
   generateManifest: boolean;   // Create compaction manifest
 }
@@ -331,8 +345,8 @@ interface TokenStats {
 
 | Model | Input | Output |
 |-------|-------|--------|
-| Claude Opus 4.5 | $15 | $75 |
-| Claude Sonnet 4.5 | $3 | $15 |
+| Claude Opus 4.6 | $15 | $75 |
+| Claude Sonnet 4.6 | $3 | $15 |
 
 **Session Cost Aggregation**:
 - Per-message cost
@@ -671,7 +685,15 @@ ORDER BY rank;
 
 ### 9.2 Theme System
 
-**Dark Theme (Default)**:
+**18 Themes (12 dark + 6 light)**:
+
+*Dark themes (OLED optimized):*
+- yume, void, cobalt, slate, arctic, synth, mint, grove, ochre, bourbon, burnt, rose
+
+*Light themes:*
+- paper, olive, ivory, classic, cloud, luna
+
+**Default Theme (yume - dark)**:
 ```css
 :root {
   --bg-primary: #0a0a0a;
@@ -683,13 +705,23 @@ ORDER BY rank;
 }
 ```
 
-**OLED Optimized**:
+**OLED Optimized (dark themes)**:
 - Pure black backgrounds
 - High contrast text
 - Minimal gray usage
 - Power efficiency
 
-### 9.3 Keyboard Shortcuts
+### 9.3 Stream Event Dots
+
+Live visualization of tool activity during streaming in `StreamIndicator.tsx`.
+- **12 event types:** `search`, `read`, `edit`, `bash`, `bash_result`, `thinking`, `message`, `agent`, `web`, `todo`, `tool_call`, `tool_result`
+- **Sliding window:** 5s window, max 10 dots visible, last dot persists permanently
+- **Gradient blending:** Tool-color weight scales with dot count (30% at 1 dot → 70% at 10+), blended with accent color
+- **Event rate tracking:** 60s window drives gradient opacity (0 events → 0%, 30+ events → 50%)
+- **Icons:** Tabler icons per type (`IconSearch`, `IconEye`, `IconPencil`, `IconTerminal2`, `IconBrain`, etc.)
+- **CSS color resolution:** Cached probe element resolves `var()` colors to RGB for blending (50-entry LRU, 5s TTL for theme changes)
+
+### 9.4 Keyboard Shortcuts
 
 **Global Shortcuts**:
 | Shortcut | Action |
@@ -1009,13 +1041,18 @@ interface LicenseStore {
 }
 
 interface LicenseFeatures {
-  maxTabs: number      // 3 (trial) or 99 (pro)
+  maxTabs: number      // 2 (trial) or 99 (pro)
   maxWindows: number   // 1 (trial) or 99 (pro)
 }
 ```
 
+**Cross-Window Enforcement:**
+- `GLOBAL_TAB_COUNT` (AtomicU32) in Rust tracks total panes across all windows
+- Single-instance plugin enforces 1-window limit for trial users
+- Cross-window enforcement prevents circumventing limits by opening multiple windows
+
 **UI Component**: `UpgradeModal.tsx`
-- Shows upgrade prompts with reasons: `tabLimit`, `feature`, `trial`
+- Shows upgrade prompts with reasons: `tabLimit`, `paneLimit`, `windowLimit`, `feature`, `demo`
 - Purchase link integration
 - License key input and validation
 
@@ -1065,6 +1102,11 @@ interface LicenseFeatures {
 - Configuration: Server command, args, env variables
 - Auto-start capability
 - Claude CLI integration
+
+**Claude Code Plugin Compatibility:**
+- Plugins with `source: 'claude-code'` flag are supported
+- Separate `enableCCPlugin()`/`disableCCPlugin()` methods in `pluginService.ts`
+- Yume-specific overrides applied on top of CC plugin structure
 
 ### 15.4 Plugin API
 
@@ -1410,6 +1452,18 @@ interface FileSnapshot {
 
 | Feature | Yume |
 |---------|------|
+| Thinking streaming (live) | Yes (unique) |
+| Split panes (2/3-pane) | Yes |
+| 18 themes (12 dark + 6 light) | Yes |
+| Memory system (per-project) | Yes |
+| CLAUDE.md editor | Yes |
+| Bash mode (!/$ prefix) | Yes |
+| Performance flags | Yes |
+| Font customization | Yes |
+| Background bash processes | Yes |
+| File preview (images/audio/video/PDF/code) | Yes |
+| Native macOS menu | Yes |
+| Text selection | Yes |
 | Auto-update (CLI + app) | Yes |
 | License system (trial/pro) | Yes |
 | Plugin system | Yes |
@@ -1428,10 +1482,15 @@ interface FileSnapshot {
 | Git diff viewer | Yes |
 | 4 built-in agents | Yes |
 | Custom commands | Yes |
-| 30+ keyboard shortcuts | Yes |
+| 32+ keyboard shortcuts | Yes |
 | History + rollback | Yes |
-| MCP Support (user memory servers) | Yes |
+| ACP (Agent Client Protocol) | Yes |
+| Sandbox security | Yes |
 | Multi-provider (feature-flagged) | Yes |
+| Stream event dots | Yes |
+| Auth login modal | Yes |
+| Windows ARM64 | Yes |
+| File drop attachment | Yes |
 | No telemetry | Yes |
 | Platform support | macOS, Windows, Linux |
 
@@ -1457,7 +1516,7 @@ interface FileSnapshot {
 
 - `AgentQueueManager` - Thread-safe manager for background agent lifecycle
 - `MAX_CONCURRENT_AGENTS`: 4 (parallel execution limit)
-- **No timeout** (agents run until completion)
+- **30-min timeout** (configurable per agent)
 - Output directory: `~/.yume/agent-output/`
 - Event emission: `background-agent-status` (Tauri event)
 - **Streaming isolation**: Background agents do NOT control main CLI streaming state; only main process `streaming_end`/`result` events set `streaming=false`
@@ -1626,7 +1685,7 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 **Location**: `src-tauri/src/commands/claude_info.rs`
 
 **Features**:
-- Toggle in Settings (General tab): "auto-update claude" (default: on)
+- Toggle in Settings (General tab): "auto-update claude" (default: off, `autoUpdateClaude: false`)
 - Smart version check via npm registry API (no npm CLI required)
 - Compares local version against `https://registry.npmjs.org/@anthropic-ai/claude-code/latest`
 - Only runs update if version mismatch detected
@@ -1650,7 +1709,7 @@ yume. lowercase, concise. read before edit, small changes, relative paths.
 
 **Framework:** Vitest 3.x with jsdom environment (`vitest.config.ts`)
 
-**37 Test Suites:**
+**81 Test Suites, 2966 tests:**
 | Category | Count | Examples |
 |----------|-------|----------|
 | Config | 5 | app, features, models, themes, tools |
@@ -1740,16 +1799,285 @@ streaks: {
 
 **Calculation**: Analyzes `byDate` to find consecutive days with tokens > 0.
 
+## 26. Split Panes
+
+### 26.1 Overview
+
+**Description**: Multi-pane layout system for parallel workflows within a single window.
+
+**Features**:
+- 2-pane layout (side-by-side sessions)
+- 3-pane layout (three sessions visible simultaneously)
+- Drag-to-resize pane borders
+- Focus tracking across panes
+- Titlebar dragging preserved in split-pane mode
+- Windows AV hardening for split pane views
+- Independent scroll per pane
+
+### 26.2 Implementation
+
+- Layout state managed in session store
+- Each pane runs an independent session
+- Keyboard shortcuts work in focused pane
+- Tab operations scoped to active pane
+
+## 27. Light Theme
+
+### 27.1 Overview
+
+**Description**: Full light theme support with automatic luminance detection and proper color-scheme integration.
+
+**Features**:
+- Luminance-based detection for system theme matching
+- `color-scheme` CSS property support
+- High contrast text for readability
+- Proper highlighting in light mode
+- Turn-scoped message IDs for consistent styling
+- All 12 existing themes + light theme variant
+
+### 27.2 Implementation
+
+- CSS custom properties for theme switching
+- `prefers-color-scheme` media query support
+- Darkened light theme text for better contrast
+- Color blending adjustments for bash output backgrounds
+
+## 28. Background Bash Processes
+
+### 28.1 Overview
+
+**Description**: Detached bash process execution with automatic result injection into conversations.
+
+### 28.2 Features
+
+- **Cross-platform**: nohup/setsid on macOS/Linux, Task Scheduler + VBScript on Windows
+- **Persistent tracking**: State in `~/.yume/bg-processes.json` with PID, command, cwd, session, status
+- **Auto-injection**: Frontend polls every 3s, backend checks for completion, injects output into originating session
+- **Deduplication**: Prevents duplicate spawns via command+cwd+session fingerprinting
+- **MCP integration**: `yume-mcp-bash` server provides `RunBash` tool with `run_in_background` parameter
+- **UI indicator**: `BackgroundProcessIndicator` shows running count, click to view list
+- **Output capture**: To `~/.yume/bg-output/{process-id}.txt`, auto-cleared after injection
+- **Persistence**: Survives MCP server restarts, tracked independently from session lifecycle
+
+### 28.3 Commands (8)
+
+| Command | Description |
+|---------|-------------|
+| `spawn_bg_bash` | Spawn detached background process |
+| `list_bg_processes` | List all background processes |
+| `kill_bg_process` | Kill a running process |
+| `read_bg_output` | Read process output |
+| `clear_bg_output` | Clear output file |
+| `cleanup_old_bg_processes` | Remove old processes |
+| `check_newly_completed_bg_processes` | Check for completions |
+| `inject_bg_completion` | Inject output into session |
+
+## 29. File Preview
+
+### 29.1 Overview
+
+**Description**: In-app file preview modal with support for multiple file types.
+
+### 29.2 Supported Formats
+
+| Type | Formats | Method |
+|------|---------|--------|
+| Images | PNG, JPG, GIF, WebP, SVG, TIFF, HEIC/HEIF | Base64 data URLs |
+| Audio | MP3, WAV, FLAC, AAC, OGG, M4A | HTML5 audio player |
+| Video | MP4, MOV, AVI, MKV, WebM | HTML5 video player |
+| Code | All text files | Syntax highlighting (max 2000 lines) |
+| PDF | .pdf | External viewer integration |
+
+### 29.3 Features
+
+- Compact UI (60px top margin for title bar, reduced padding)
+- Line numbers for code (dynamic width based on total lines)
+- "Open in Finder/Explorer" and "Open in Browser" actions
+- Escape to close, keyboard navigation
+- Path resolution (absolute/relative with working directory)
+- Truncation notice for large files
+- Triggered by clicking file paths in messages, @ mentions, or preview button
+
+## 30. Thinking Streaming
+
+### 30.1 Overview
+
+**Description**: Live display of Claude's extended thinking process as it streams. This is a **unique feature** - not even the official Claude CLI shows thinking in real-time.
+
+### 30.2 Features
+
+- Real-time thinking block rendering during streaming
+- Unique blockId per API response to prevent duplicates
+- Global dedup for thinking deltas across multiple listeners
+- Single listener handles `message_start` to prevent duplicate blocks
+- Delta content hash for dedup key
+- Thinking blocks visually distinguished from regular output
+
+### 30.3 Technical Details
+
+- Thinking blocks extracted from `content_block_start` and `content_block_delta` events
+- Deduplication via content hash instead of length-based comparison
+- Only one Socket.IO listener processes `message_start` events
+- Assistant messages with only thinking content are filtered from `onMessage`
+
+## 31. Memory System V2
+
+### 31.1 Overview
+**Description**: Per-project markdown-based memory with importance levels and automatic TTL-based pruning.
+
+**Storage**: `~/.yume/memory/` with global + per-project folders.
+
+### 31.2 Features
+- **5 importance levels**: ephemeral (1d TTL), low (7d), normal (30d), high (90d), permanent (no expiry)
+- **Auto-learning**: Extracts error fixes, architecture decisions, user preferences from conversations
+- **Context injection**: `<yume-memory>` block injected into system prompt with configurable token budget
+- **Auto-pruning**: Expired entries pruned automatically based on TTL on startup
+- **Per-project isolation**: Separate memory files per working directory
+
+### 31.3 Implementation
+- **Backend**: 15 Tauri commands for memory_v2 operations
+- **MCP server**: `yume-mcp-memory.cjs` for memory read/write/search
+- **Storage format**: Markdown files (migrated from V1 JSONL format)
+
+## 32. CLAUDE.md Editor
+
+### 32.1 Overview
+**Description**: In-app editor for project-level CLAUDE.md files, accessible via keyboard shortcut.
+
+**Shortcut**: `Cmd+Shift+E`
+
+**Component**: `ClaudeMdEditorModal.tsx`
+
+### 32.2 Features
+- Edit CLAUDE.md for the current project directory
+- Create new CLAUDE.md if one doesn't exist
+- Syntax-aware editing with save/cancel actions
+- Changes persist to disk immediately
+
+## 33. Bash Mode
+
+### 33.1 Overview
+**Description**: Direct terminal command execution via `!` or `$` prefix in the chat input.
+
+### 33.2 Usage
+- Type `!command` or `$command` in the input field to run a bash command directly
+- Output displayed inline in the conversation
+- Useful for quick file checks, git status, etc. without asking Claude
+
+## 34. Performance Flags
+
+### 34.1 Overview
+**Description**: Runtime-configurable performance flags for tuning streaming, rendering, and platform-specific behavior.
+
+**Location**: `src/renderer/config/performanceFlags.ts`
+
+### 34.2 Available Flags
+| Flag | Default | Description |
+|------|---------|-------------|
+| `IPC_BATCHING` | true | Reduces setState calls during streaming from 100+/sec to ~60/sec |
+| `SINGLE_RAF_SCROLL` | false | Simplified single-RAF scroll correction |
+| `CAFFEINATE` | true | Prevents macOS App Nap during streaming |
+| `AGGRESSIVE_GPU` | true | GPU composite layers for smooth scrolling |
+| `CACHE_TODOS` | true | Memoizes buildTaskListFromMessages for performance |
+
+### 34.3 Configuration
+```javascript
+// Via localStorage
+localStorage.setItem('yume_perf_IPC_BATCHING', 'false');
+
+// Via window API (debug)
+window.perfFlags.set('CAFFEINATE', false);
+window.perfFlags.all();  // Show all flags
+window.perfFlags.log();  // Log current state
+```
+
+## 35. Font Customization
+
+### 35.1 Overview
+**Description**: Customizable fonts for monospace and sans-serif text in the UI.
+
+**Component**: `FontPickerModal.tsx`
+
+### 35.2 Settings
+- **Monospace font**: Used for code blocks and terminal output (`yume_mono-font`)
+- **Sans-serif font**: Used for UI text (`yume_sans-font`)
+- **Font size**: Configurable (`yume_font-size`)
+- **Line height**: Configurable (`yume_line-height`)
+
+## 36. Auth Login Modal
+
+### 36.1 Overview
+**Description**: In-app OAuth authentication for Claude CLI, allowing users to log in without leaving the application.
+
+**Location**: `src/renderer/components/AuthLoginModal/AuthLoginModal.tsx`
+
+### 36.2 Features
+- Inline OAuth login flow within the app
+- Proactive auth checking on startup
+- OAuth token refresh on 401 errors
+- Seamless re-authentication without restarting
+
+## 37. Stream Event Dots
+
+### 37.1 Overview
+**Description**: Live visualization of tool activity during streaming, providing real-time feedback on what Claude is doing.
+
+**Location**: `src/renderer/components/Chat/StreamIndicator.tsx`
+
+### 37.2 Features
+- **12 event types**: `search`, `read`, `edit`, `bash`, `bash_result`, `thinking`, `message`, `agent`, `web`, `todo`, `tool_call`, `tool_result`
+- **Sliding window**: 5s window, max 10 dots visible, last dot persists permanently
+- **Gradient blending**: Tool-color weight scales with dot count (30% at 1 dot to 70% at 10+), blended with accent color
+- **Event rate tracking**: 60s window drives gradient opacity (0 events = 0%, 30+ events = 50%)
+- **Icons**: Tabler icons per type (`IconSearch`, `IconEye`, `IconPencil`, `IconTerminal2`, `IconBrain`, etc.)
+- **CSS color resolution**: Cached probe element resolves `var()` colors to RGB for blending (50-entry LRU, 5s TTL for theme changes)
+
+## 38. File Drop Attachment
+
+### 38.1 Overview
+**Description**: Drag-and-drop file attachment support. Dropped text and code files are attached to the conversation instead of inserting file paths.
+
+### 38.2 Features
+- Dropped text/code files are attached as context rather than inserting paths
+- Supports drag-and-drop workflow for quick file sharing
+- File content is included in the conversation for Claude to reference
+
+## 39. Windows ARM64 Support
+
+### 39.1 Overview
+**Description**: Native ARM64 builds for Windows, supporting Qualcomm Snapdragon and other ARM-based Windows devices.
+
+### 39.2 Features
+- Separate Tauri config: `tauri.win-arm64.conf.json`
+- Native ARM64 binary compilation
+- Full feature parity with x64 Windows builds
+
+---
+
 ## Conclusion
 
 Yume offers a comprehensive feature set with unique capabilities:
 
 **Key Differentiators:**
+- **Thinking streaming** - Live extended thinking display (unique, not even CLI has this)
+- **Split panes** - 2-pane and 3-pane layouts for parallel workflows
+- **Background bash processes** - Detached execution with auto-inject results
+- **File preview** - In-app preview for images, audio, video, PDF, code
 - **Orchestration flow** - Automatic task decomposition (understand, decompose, act, verify)
 - **MCP support** - User-installable memory servers and tools
 - **Background agents** - Async execution with git branch isolation (4 concurrent)
 - **Plugin system** - Complete extensibility (commands, agents, hooks, skills, MCP)
-- **Auto-compaction** - Dynamic thresholds (70% warn, 75% auto, 80% force)
+- **Auto-compaction** - Dynamic thresholds (80% warn, 85% auto, 90% force; off by default)
+- **Stream event dots** - Live tool activity visualization with gradient blending
+- **Auth login modal** - In-app OAuth authentication for Claude CLI
+- **File drop attachment** - Drag-and-drop files as context attachments
+- **Windows ARM64** - Native ARM64 builds for Windows
+- **18 themes** - 12 OLED dark themes + 6 light themes with luminance detection
+- **Memory system** - Per-project markdown memory with importance levels and TTL pruning
+- **CLAUDE.md editor** - In-app editor for project instructions (Cmd+Shift+E)
+- **Bash mode** - Direct terminal execution via !/$ prefix in chat input
+- **Performance flags** - Runtime-configurable flags for streaming, rendering, platform tuning
+- **Font customization** - Configurable monospace/sans-serif fonts, size, and line height
 - **Performance monitoring** - Real-time FPS, memory, render metrics
 - **Analytics dashboard** - Usage tracking by project/model/date
 
@@ -1757,7 +2085,10 @@ Yume offers a comprehensive feature set with unique capabilities:
 - Virtual scrolling for 1000+ message sessions
 - Bounded buffers and lazy loading
 - Native Tauri/Rust backend
+- Native macOS menu integration
+- Text selection in chat messages
 - No telemetry, local-only operation
 - 4 built-in agents with Claude CLI integration
+- Cross-platform background bash (nohup/setsid macOS/Linux, Task Scheduler Windows)
 
 **Multi-Provider Support:** Gemini/OpenAI support is implemented but disabled by default via feature flags. Uses `yume-cli` shim with Claude-compatible stream-json output.

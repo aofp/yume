@@ -1,10 +1,10 @@
 # Yume Master Documentation Index
 
-**Created:** January 2025
-**Updated:** February 2, 2026
-**Version:** 0.8.5
-**Total Documentation:** 46 docs (11 core guides + 19 expansion-plan + 16 competitive-research)
-**Coverage:** Core codebase, competitive analysis, multi-provider expansion, background agents, MCP support, test infrastructure
+**Created:** January 2026
+**Updated:** February 18, 2026
+**Version:** 0.14.0
+**Total Documentation:** 48 docs (11 core guides + 19 expansion-plan + 18 competitive-research)
+**Coverage:** Core codebase, competitive analysis, multi-provider expansion, background agents, split panes, light theme, background bash, file preview, thinking streaming, MCP support, test infrastructure, auth login, stream event dots, Windows ARM64, file drop attachment
 
 ---
 
@@ -41,28 +41,47 @@
 
 #### Core Feature Categories:
 1. **Claude CLI Integration**: 6 models across 3 providers, streaming JSON, binary detection
-2. **Session Management**: 7 states, persistence layers, recovery
-3. **Auto-Compaction**: Dynamic thresholds (default T=75%: 70% warn, 75% auto, 80% force)
-4. **Token Tracking**: Real-time counting, accurate cost calculation
-5. **Editor Features**: Syntax highlighting, diff viewer, file references
+2. **Session Management**: 7 states, persistence layers, recovery, tab keep-alive
+3. **Auto-Compaction**: Dynamic thresholds (default T=85%: 80% warn, 85% auto, 90% force)
+4. **Token Tracking**: Real-time counting, accurate cost calculation, 5h/7d limits
+5. **Editor Features**: Syntax highlighting, diff viewer, file references, text selection
 6. **Hook System**: 9 triggers, blocking/non-blocking, variables
 7. **MCP Protocol**: Full implementation, server management
 8. **Database**: SQLite schema, checkpoints, full-text search
-9. **UI/UX**: Custom chrome, 12 themes, shortcuts, virtual scrolling
+9. **UI/UX**: Custom chrome, 18 themes (12 dark + 6 light), shortcuts, virtual scrolling, split panes
 10. **Developer Features**: Debug mode, profiling, extension API
-11. **Security**: CSP, isolation, validation, sanitization
+11. **Security**: CSP, isolation, validation, sanitization, sandbox
 12. **Performance**: Lazy loading, memory management, monitoring
-13. **Platform Features**: Native integrations for each OS
+13. **Platform Features**: Native integrations for each OS, native macOS menu
 14. **MCP Support**: User-installable MCP servers via settings UI
 15. **Background Agents**: Async execution, git branch isolation (4 concurrent, 30-min timeout, streaming isolation)
+16. **Split Panes**: 2-pane and 3-pane layouts for parallel workflows
+17. **Light Theme**: Luminance detection, color-scheme support
+18. **Background Bash Processes**: Detached cross-platform execution with auto-inject
+19. **File Preview**: In-app preview (images, audio, video, PDF, code)
+20. **Thinking Streaming**: Live extended thinking display (unique to Yume)
+21. **Auth Login**: OAuth login modal for Claude authentication
+22. **Stream Event Dots**: Live tool activity visualization with gradient blending
+23. **File Drop Attachment**: Drag-and-drop text/code files as attachments
+24. **Windows ARM64**: Native ARM64 builds for Windows on ARM
 
 #### Exclusive Features:
+- Thinking streaming (live extended thinking - unique, not even CLI has this)
+- Split panes (2-pane and 3-pane layouts)
+- Background bash processes (detached, cross-platform, auto-inject)
+- File preview (images, audio, video, PDF, code with syntax highlighting)
+- Light + dark themes (18 themes: 12 OLED dark + 6 light with luminance detection)
 - Background agents with git branch isolation and streaming isolation
-- Only GUI with configurable auto-compaction (default T=75%: 70% warn, 75% auto, 80% force)
+- Stream event dots (live tool activity visualization with gradient blending)
+- Auth login modal (OAuth authentication flow)
+- File drop attachment (drag-and-drop text/code files)
+- Only GUI with configurable auto-compaction (default T=85%: 80% warn, 85% auto, 90% force)
 - Compiled server binaries (no Node.js dependency for end users)
 - Crash recovery with session restoration
 - True token cost tracking (accurate to cent)
 - Zero telemetry/tracking
+- Native macOS menu integration
+- Text selection in chat messages
 
 ---
 
@@ -71,7 +90,7 @@
 **Depth:** Complete API documentation
 
 #### API Categories:
-1. **Tauri Commands** (214 commands)
+1. **Tauri Commands** (~227 commands across 16 modules)
    - Session management
    - File operations
    - Claude binary detection
@@ -81,9 +100,9 @@
    - Compaction control
    - MCP protocol
 
-2. **WebSocket API** (20+ events)
-   - Client → Server events
-   - Server → Client events
+2. **Tauri IPC API** (20+ events)
+   - Frontend → Backend commands
+   - Backend → Frontend events
    - Stream processing
    - Error handling
 
@@ -467,21 +486,22 @@
 #### Auto-Compaction with Dynamic Thresholds
 
 **Why Dynamic Thresholds?**
-- Configurable threshold T (default 75%) allows tuning
-- Warning at T-5% (70%), auto at T (75%), force at T+5% (80%)
+- Configurable threshold T (default 85%) allows tuning
+- Warning at T-5% (80%), auto at T (85%), force at T+5% (90%)
 - Prevents context overflow with comfortable margin
+- Auto-compact is off by default — CLI handles it
 
 **Implementation**:
 ```rust
-// Dynamic thresholds from configurable T (default 0.75)
-let warning_threshold = threshold - 0.05;  // 70%
-let auto_threshold = threshold;            // 75%
-let force_threshold = threshold + 0.05;    // 80%
+// Dynamic thresholds from configurable T (default 0.85)
+let warning_threshold = threshold - 0.05;  // 80%
+let auto_threshold = threshold;            // 85%
+let force_threshold = threshold + 0.05;    // 90%
 ```
 
 **Process**:
 1. Monitor token usage continuously
-2. Detect 75% (auto) or 80% (force) threshold (default values)
+2. Detect 85% (auto) or 90% (force) threshold (default values)
 3. Set pending compaction flag
 4. Send /compact command with next user message
 5. Create new session with summary

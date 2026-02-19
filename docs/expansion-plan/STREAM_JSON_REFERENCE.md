@@ -1,5 +1,7 @@
 # Stream-JSON Reference (Claude-Compatible)
 
+*Last Updated: January 31, 2026*
+
 This reference mirrors the message shapes parsed by Yume in `src-tauri/src/stream_parser.rs`.
 Use it when implementing shims or adapters.
 

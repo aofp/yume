@@ -1,5 +1,7 @@
 # Multi-Provider UI/UX Design Plan
 
+*Last Updated: January 31, 2026*
+
 **Implementation Status:** Multi-provider support is designed but not yet enabled. Feature flags `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` are currently `false` in `config/features.ts`.
 
 ## Core Philosophy

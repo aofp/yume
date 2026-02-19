@@ -2,7 +2,7 @@
 
 Single source of truth for providers, models, context limits, and pricing. Update this file when models or pricing change.
 
-> **Last Updated:** 2026-01-29
+> **Last Updated:** 2026-01-31
 
 ## Provider Overview
 

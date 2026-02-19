@@ -1,5 +1,111 @@
 # changelog
 
+## 0.13.1 — february 18, 2026
+
+- fix windows claude detection via npm
+- fix haiku model misattribution
+- image compression
+- fix button stats day logic
+- improve cli subprocessing
+
+## 0.13.0 — february 18, 2026
+
+- focus swizzle with resignFirstResponder rejection
+- debounced makeFirstResponder with resign/become key tracking
+- streaming perf and context breakdown fallback
+- welcome screen and plugins tab cleanup
+- model ID updates (claude-sonnet-4-6)
+- tooltip and stream indicator improvements
+- smart CLI update via npm registry check
+
+## 0.12.2 — february 17, 2026
+
+- fix macOS focus loss after click
+- streaming performance improvements
+- context breakdown fallback
+- compile fix for class_addMethod bool type
+
+## 0.12.1 — february 17, 2026
+
+- fix Windows auth login URL quoting
+- fix macOS Sequoia install
+- fix pkg installer overwrite failure
+
+## 0.12.0 — february 17, 2026
+
+- inline auth login modal with proactive auth check
+- token refresh on 401
+- unified bash stream polling
+- stream event dots as icons with gradient blending
+- per-modal pane tracking
+- sonnet for tab titles
+- demo limits enforcement (3 panes / 1 window)
+- usage limits retry with null-aware TTL caching
+- Windows Credential Manager fallback
+- scroll/focus/tab UI fixes
+- Linux/Windows build fixes
+
+## 0.11.0 — february 14, 2026
+
+- stream event dots with gradient blending
+- per-modal pane tracking
+- demo limits enforcement
+
+## 0.10.2 — february 12, 2026
+
+- fix token counting
+- add themes
+- show 5h/7d usage limits on welcome screen
+
+## 0.10.1 — february 11, 2026
+
+- fix edge cases in token tracking
+- ui polish
+
+## 0.10.0 — february 10, 2026
+
+- usage limits display on welcome screen
+- theme system overhaul (12 themes)
+- token counting improvements
+
+## 0.9.8 — february 8, 2026
+
+- stability and performance improvements
+- streaming fixes
+
+## 0.9.7 — february 7, 2026
+
+- streaming improvements
+- ui refinements
+
+## 0.9.5 — february 5, 2026
+
+- bug fixes and performance improvements
+
+## 0.9.0 — february 3, 2026
+
+- major stability improvements
+- background agent enhancements
+
+## 0.8.3 — february 1, 2026
+
+- first published release with binaries
+- macos arm64 + x64, windows, linux (deb + rpm)
+- multi-provider support via yume-cli
+- plugin system with commands, agents, hooks, skills, mcp
+- 4 built-in agents
+- orchestration flow
+
+---
+
+## 0.7.x — january 31, 2026
+
+- internal releases
+- multi-provider architecture
+- plugin system foundations
+
+---
+
 ## 0.6.7 — january 30, 2026
 
 - acp protocol support

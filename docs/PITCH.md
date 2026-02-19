@@ -76,7 +76,7 @@ the agents get injected into your workflow automatically via orchestration promp
 
 now this is cool. you can run agents in the background while you keep working.
 
-say you want the architect to plan something, but you don't want to wait. queue it as a background agent. yume manages a queue - up to 4 running concurrently. no timeout. they run until they're done.
+say you want the architect to plan something, but you don't want to wait. queue it as a background agent. yume manages a queue - up to 4 running concurrently with a 30-minute timeout.
 
 each background agent can optionally get its own git branch. yume creates it automatically: `yume-async-architect-{id}`. stashes your uncommitted changes first, creates the branch, runs the agent. when it's done, you can review the diff, merge it in, or toss it.
 
@@ -123,7 +123,7 @@ rapid fire on other features:
 
 **5h and 7-day limit tracking** - anthropic has rate limits. nobody else shows you where you stand on these. yume has visual bars.
 
-**12 themes** - all oled-optimized. pure blacks. cursor has like 5. windsurf has 3.
+**18 themes** - 12 dark oled-optimized with pure blacks + 6 light themes. cursor has like 5. windsurf has 3.
 
 **crash recovery** - snapshots every 5 minutes. close the app wrong, lose power, whatever - your session's there when you come back. 24 hour retention.
 
@@ -153,7 +153,7 @@ quick comparison:
 
 **aider** - command line tool. great for what it is, but it's still command line.
 
-yume is the "I want claude code but better" option. all the power, native performance, 15+ features you can't get anywhere else.
+yume is the "I want claude code but better" option. all the power, native performance, 20+ features you can't get anywhere else.
 
 ---
 

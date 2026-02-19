@@ -1,5 +1,7 @@
 # Protocol Normalization Strategy
 
+*Last Updated: January 31, 2026*
+
 ## Objective
 All provider output must be translated into the **exact stream-json format** Yume already parses (`src-tauri/src/stream_parser.rs`). The translation layer (`yume-cli`) emits the same line-delimited JSON objects Claude produces.
 

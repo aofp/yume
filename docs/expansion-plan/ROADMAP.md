@@ -1,7 +1,9 @@
 # Multi-Provider Expansion Roadmap
 
-> **Last Updated:** 2026-01-29
-> **Overall Progress:** ~95% complete (macOS ready, Windows/Linux binaries pending)
+> **Last Updated:** 2026-01-31
+> **Overall Progress:** ~95% architecture complete (feature-flagged off in production)
+>
+> **Note:** Multi-provider infrastructure is implemented but disabled via `PROVIDER_GEMINI_AVAILABLE: false` and `PROVIDER_OPENAI_AVAILABLE: false` in `src/renderer/config/features.ts`. Enable when ready for testing.
 
 **Key Documents:**
 - [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) - Models, pricing, features

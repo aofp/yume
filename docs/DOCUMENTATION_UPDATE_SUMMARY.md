@@ -1,7 +1,7 @@
-# Documentation Update Summary
+# Documentation Update Summary (last reviewed with v0.10.0)
 
 **Date**: January 31, 2026
-**Version**: 0.8.5
+**Version**: 0.10.0
 
 ## Overview
 
@@ -19,7 +19,7 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 - Freeware with Pro upgrade ($29 for extended limits)
 - Server-side validation with 5-minute cache
 - Encrypted storage using XOR cipher
-- Auto-revalidation every 30 minutes
+- Server-side validation at registration (no periodic re-validation)
 - Feature limits (Trial: 3 tabs/1 window, Pro: 99 tabs/windows)
 
 #### Plugin System
@@ -472,28 +472,6 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 
 ---
 
-## Next Steps
-
-### For Users
-1. Review new features in CLAUDE.md
-2. Try quick start guides for plugins and skills
-3. Enable performance monitoring for optimization
-4. Explore analytics dashboard
-
-### For Developers
-1. Reference API documentation for new commands
-2. Follow best practices for plugin development
-3. Use performance monitoring during development
-4. Contribute to documentation improvements
-
-### For Documentation
-1. Keep updating as new features are added
-2. Add video tutorials for complex features
-3. Create plugin development guide
-4. Add more real-world examples
-
----
-
 ## Summary
 
 This documentation update represents a **comprehensive audit** of the Yume codebase, identifying and documenting **43+ previously undocumented features**. The updates ensure that:
@@ -504,4 +482,4 @@ This documentation update represents a **comprehensive audit** of the Yume codeb
 4. **Best practices are clear** - Guidelines prevent common mistakes
 5. **Troubleshooting is available** - Users can resolve issues independently
 
-The documentation now accurately reflects the **technically superior** position of Yume compared to competitors, with unique features like the plugin system, skills system, and performance monitoring that no other Claude GUI offers.
+The documentation now accurately reflects the current state of Yume compared to competitors, with unique features like the plugin system, skills system, and performance monitoring that no other Claude GUI offers.

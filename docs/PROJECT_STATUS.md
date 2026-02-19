@@ -1,58 +1,67 @@
 # Yume Project Status
 
-**Date:** February 2, 2026
-**Version:** 0.8.5
-**Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
-**Tauri Commands:** 214 registered across 14 modules
+**Date:** February 18, 2026
+**Version:** 0.14.0
+**Status:** Beta (macOS + Windows release-ready, Linux binaries pending)
+**Tauri Commands:** ~231 registered across 16 modules
 
 ## Executive Summary
 
-Yume is a GUI for Claude CLI with intelligent context management that auto-compacts at configurable thresholds (default 75% auto, 80% force). Beta quality with major systems implemented: plugin architecture, skills, error boundaries, CSP, crash recovery, analytics, and compiled server binaries.
+Yume is a GUI for Claude CLI with intelligent context management that auto-compacts at configurable thresholds (default 85% auto, 90% force; auto-compact off by default — CLI handles it). Beta quality with major systems implemented: plugin architecture, skills, error boundaries, CSP, crash recovery, analytics, and compiled server binaries.
 
 **Multi-Provider:** Backend complete, UI 75%, disabled by default. `yume-cli` shim supports Gemini/OpenAI with Claude-compatible output. macOS unified binaries ready; Windows/Linux pending.
 
 ## Current State
 
 ### Working Features
-- **Auto-compact at 75%** - Dynamic thresholds (70% warn, 75% auto, 80% force)
-- **Token tracking** - Accurate cost calculation
-- **Session management** - Lazy reconnection, tab persistence, crash recovery
+- **Auto-compact at 85%** - Dynamic thresholds (80% warn, 85% auto, 90% force; off by default)
+- **Thinking streaming** - Live extended thinking display (UNIQUE - not even CLI has this)
+- **Split panes** - 2-pane and 3-pane layouts for parallel workflows
+- **Light + dark themes** - 18 themes (12 dark + 6 light) with luminance detection
+- **Background bash processes** - Detached cross-platform execution with auto-inject results
+- **File preview** - In-app preview for images, audio, video, PDF, code with syntax highlighting
+- **Native macOS menu** - Full native menu integration
+- **App auto-updater** - Version check via GitHub Pages + optional Claude CLI update
+- **Text selection** - Select and copy text from chat messages
+- **Token tracking** - Accurate cost calculation with 5h/7d limit display
+- **Session management** - Lazy reconnection, tab persistence, tab keep-alive, crash recovery
 - **Multi-platform** - macOS, Windows, Linux
 - **License system** - Payment and validation functional
-- **Core UI** - OLED theme with minimal design
 - **Plugin system** - Commands, agents, hooks, skills, MCP
 - **Skills system** - Auto-inject context with ReDoS-protected triggers
 - **Error boundaries** - All major components wrapped
 - **CSP security** - Content Security Policy enabled
 - **Performance monitoring** - Real-time FPS/memory tracking
-- **Analytics dashboard** - Usage analytics with breakdowns
+- **Analytics dashboard** - Usage analytics with hourly stats and activity streaks
 - **Compiled binaries** - No Node.js dependency for users
 - **MCP support** - User-installable MCP servers via settings UI
-- **Smart Claude CLI update** - Checks npm registry first, only updates if needed
 - **Background agents** - 4 concurrent, 30-min timeout, git branch isolation
 - **Hooks** - 9 defined, 4 active (`pre_tool_use`, `context_warning`, `compaction_trigger`, `user_prompt_submit`)
 - **yume-cli** - Multi-provider shim (Gemini, OpenAI)
 - **Orchestration** - 4 core agents (architect, explorer, implementer, guardian)
-- **Timeline UI** - Checkpoint navigation with UCF persistence
-- **Thinking streaming** - Live extended thinking display (UNIQUE - not even CLI has this)
-- **Test infrastructure** - Vitest 3.x, 54 test suites, 2027 tests
+- **Test infrastructure** - Vitest 3.x, 81 test suites, 2966 tests
 - **ACP support** - Agent Client Protocol for external agents (14 commands)
 - **Sandbox security** - Process isolation for secure execution (7 commands)
-- **Analytics hourly/streaks** - Detailed usage patterns and activity streaks
+- **Auth login modal** - In-app OAuth authentication
+- **Stream event dots** - Live tool activity visualization with gradient blending
+- **Windows ARM64** - Native ARM64 Windows builds
+- **File drop attachment** - Drop files to attach instead of inserting paths
+- **Credentials caching** - Prevent Keychain/Credential Manager dialog spam
+- **OAuth token refresh** - Automatic token refresh on 401
+- **Image compression** - Improved image handling for attachments
 
 ### Remaining Issues
 1. **Code signing** - Certificates needed for macOS/Windows
-2. **Windows/Linux binaries** - Build scripts exist, not yet built
+2. **Linux binaries** - Build scripts exist, builds untested (Windows ARM64 now supported)
 3. **Platform testing** - More WSL/Linux testing required
-4. **Hooks incomplete** - 6/9 events defined but not triggered
+4. **Hooks incomplete** - 5/9 events defined but not triggered
 5. **Checkpoint listeners** - Feature flag enabled, socket listeners disabled
 6. **Provider flags** - Gemini/OpenAI disabled by default
-7. ~~**Test coverage**~~ - Complete: 54 test suites, 2027 tests covering services, hooks, components
 
 ### Code Metrics
-- **Lines of Code:** ~83,000 (62k TypeScript/TSX + 21k Rust)
-- **Tauri Commands:** 214 across 14 modules
-- **Test Suites:** 54 (config: 5, services: 32, hooks: 2, components: 8, types: 3, stores: 1, utils: 5)
+- **Lines of Code:** ~85,000+ (63k+ TypeScript/TSX + 22k+ Rust)
+- **Tauri Commands:** ~231 across 16 modules
+- **Test Suites:** 81 (2966 tests)
 
 ## Architecture
 
@@ -66,9 +75,20 @@ Yume is a GUI for Claude CLI with intelligent context management that auto-compa
 ### vs Competition
 | Feature | Yume | Opcode | Claudia |
 |---------|------|--------|---------|
-| Auto-compact | 75% | No | Manual |
+| Auto-compact | 85% | No | Manual |
 | Compiled server | Yes | No | No |
 | Token accuracy | Yes | Yes | Unknown |
+
+### Completed Since v0.10.0
+- Auth login modal (inline OAuth authentication)
+- Stream event dots visualization (live tool activity with gradient blending)
+- Windows ARM64 support (native ARM64 builds)
+- macOS Sequoia install fix
+- OAuth token refresh (automatic on 401)
+- Credentials caching (prevent Keychain/Credential Manager spam)
+- File drop attachment (drop files to attach instead of inserting paths)
+- Image compression (improved image handling)
+- Usage limits on welcome screen (5h/7d stats display)
 
 ## Path to Production (2-3 Weeks)
 
@@ -146,5 +166,5 @@ Strong technical foundation with unique auto-compact feature. Requires 2-3 weeks
 
 **Decisions Pending:**
 - Certificate budget ($400-700)
-- Crash reporting service (Sentry/Rollbar)
+- [x] Crash reporting: Not needed (intentionally removed per user request)
 - [x] Pricing: Freeware (Pro $29)

@@ -67,7 +67,7 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 | provider | models | cli package |
 |----------|--------|-------------|
-| claude | sonnet 4.5, opus 4.5 | `@anthropic-ai/claude-code` |
+| claude | sonnet 4.5/4.6, opus 4.5 | `@anthropic-ai/claude-code` |
 | gemini | 2.5 pro, 2.5 flash | `@google/gemini-cli` |
 | openai | gpt-5.2 codex, gpt-5.1 mini | `@openai/codex` |
 
@@ -454,13 +454,13 @@ oled optimized (pure black backgrounds).
 - traffic light positioning
 - translucent sidebar
 - vibrancy effects
-- dmg installer
+- pkg installer
 - gatekeeper compatible
 
 ### windows
 - wsl support for claude cli
 - hidden console windows
-- msi/nsis installers
+- exe installer
 - acrylic effects
 - snap layout support
 - high dpi (permonitorv2)
@@ -520,8 +520,7 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 ### code
 - 181+ tauri commands
 - 24 frontend services
-- ~51k lines (39k ts/tsx + 12k rust)
-- 32 rust files
+- ~83k lines (62k ts/tsx + 21k rust)
 
 ### binary
 - ~50mb size

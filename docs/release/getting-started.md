@@ -11,18 +11,19 @@ claude  # login
 
 | platform | file |
 |----------|------|
-| mac m1/m2/m3/m4 | `yume-x.x.x-arm64.dmg` |
-| mac intel | `yume-x.x.x-x64.dmg` |
-| windows | `yume-x.x.x-x64-setup.msi` |
-| linux | `yume-x.x.x-x64.AppImage` |
+| mac m1/m2/m3/m4 | `yume_x.x.x_arm64.pkg` |
+| mac intel | `yume_x.x.x_x64.pkg` |
+| windows | `yume_x.x.x_x64-setup.exe` |
+| linux deb | `yume_x.x.x_amd64.deb` |
+| linux rpm | `yume-x.x.x-1.x86_64.rpm` |
 
 ## 3. install
 
-**mac**: open dmg, drag to applications. first launch: right-click → open.
+**mac**: run the .pkg installer. first launch: right-click → open (or `xattr -cr /Applications/Yume.app`).
 
 **windows**: run installer.
 
-**linux**: `chmod +x yume-*.AppImage && ./yume-*.AppImage`
+**linux**: install via `sudo dpkg -i yume_*.deb` or `sudo rpm -i yume-*.rpm`
 
 ## 4. run
 

@@ -1,6 +1,6 @@
 # Yume CLI (`yume-cli`) Technical Specification
 
-> **Last Updated:** 2026-01-29
+> **Last Updated:** 2026-01-31
 > **Status:** Complete (macOS ready, Windows/Linux binaries pending)
 
 ## Overview

@@ -1,6 +1,6 @@
 # Technical Architecture Analysis
 
-*Last Updated: January 28, 2026*
+*Last Updated: January 31, 2026*
 
 *Deep dive into frameworks, performance, and implementation patterns*
 
@@ -175,7 +175,6 @@ Best of all worlds, but complex to implement.
 - React in WebView: Proper rendering engine
 - Tauri: Performance + security
 - Compiled server binaries: Full CLI compatibility, no Node.js dependency
-- Memory V2: Per-project markdown files with TTL, importance levels, auto-pruning
 - Auto-compaction: Dynamic thresholds (T-5% warn, T% auto, T+5% force, default T=75%)
 
 ---
@@ -279,21 +278,13 @@ Benefits:
 - Better context extraction
 - Matches Aider's approach
 
-### MCP Server (Implemented)
+### MCP Support
 
-Yume uses a custom MCP server (`yume-mcp-memory.cjs`) for the Memory V2 system:
+Yume supports MCP (Model Context Protocol) servers via Claude CLI integration:
 
-```javascript
-// Custom MCP server for Memory V2
-// Registered via: claude mcp add -s user memory -- node ~/.yume/yume-mcp-memory.cjs
-// Tools: add_observations, search_nodes, read_graph
-// Writes directly to V2 markdown files in ~/.yume/memory/
-```
-
-Benefits:
-- Extensibility ✅ Implemented
-- Integration with Claude CLI ecosystem ✅ Implemented
-- Plugin system foundation ✅ Implemented
+- Users can install their own memory MCP servers (e.g., `mcp-memory-service`)
+- MCP tab in settings for managing servers
+- Full Claude CLI MCP ecosystem compatibility
 
 ### GPU-Accelerated Rendering
 

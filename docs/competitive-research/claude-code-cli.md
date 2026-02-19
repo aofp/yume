@@ -1,6 +1,6 @@
 # Claude Code CLI - Deep Analysis
 
-*Last Updated: January 28, 2026*
+*Last Updated: January 31, 2026*
 
 *Our primary competitor and the tool yume wraps*
 
@@ -209,8 +209,7 @@ Claude Code CLI requires a Claude subscription:
 - Weekly usage safeguards apply
 - Extra usage available with prepay
 
-**Yume Model**: Freeware
-- Free to use (Pro $29 optional for power users)
+**Yume Model**: Freeware (Pro $29 for extended limits)
 - Uses user's existing Claude Pro/Max subscription
 - No additional API costs
 - No recurring fees
@@ -228,7 +227,7 @@ Claude Code CLI requires a Claude subscription:
 | Context visibility | `/usage`, `/context` | ✅ Always-visible bar + 5h/7d limits |
 | Hooks | 9 events (v2.1.x) | ✅ 9 events + visual UI |
 | Skills | Hot reload, forked context | ✅ ReDoS-safe triggers |
-| Memory | None (relies on CLAUDE.md) | ✅ Memory V2 (per-project markdown) |
+| Memory | CLAUDE.md | CLAUDE.md + user MCP servers |
 
 ## Features CLI Has That Yume Leverages
 

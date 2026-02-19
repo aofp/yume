@@ -128,8 +128,8 @@ Everything that makes Claude Code great:
 - ✅ **CLAUDE.md editor** (visual editor with save/discard)
 - ✅ **Command palette** (Cmd+P)
 - ✅ **Multi-provider** (Claude + Gemini + OpenAI via yume-cli)
-- ✅ **Background agents** (4 concurrent, git branch isolation - UNIQUE)
-- ✅ **Memory V2 system** (per-project markdown files, TTL, importance levels, auto-pruning - UNIQUE)
+- ✅ **Background agents** (4 concurrent, 30-min timeout, git branch isolation - UNIQUE)
+- ✅ **MCP support** (user-installable MCP servers)
 - ✅ **Skills system** (auto-inject context, ReDoS-safe triggers)
 - ✅ **Plugin system** (5 component types)
 - ✅ **Session changes panel** (track file modifications)
@@ -160,22 +160,20 @@ We're not trying to replace CLI power users who love the terminal.
 
 ## Business Model
 
-### Why Freeware + Pro Upgrade?
+### Why Freeware with Pro Upgrade?
 
 | Approach | Why We Chose It |
 |----------|-----------------|
-| **Freeware** | Zero barrier to entry, easy word-of-mouth adoption |
-| **Not subscription** | Developers hate subscription fatigue |
+| **Freeware** | Zero barrier to entry, maximum adoption |
 | **Not API-based** | Uses existing Claude subscription |
-| **Pro optional** | $29 for power users who need more tabs/windows |
+| **Pro upgrade** | $29 for power users who need more tabs |
 | **One-time** | Ownership > renting |
 
 ### Revenue Model
-- Free: 3 tabs, 1 window (generous for most users)
-- Pro: $29 one-time (99 tabs/windows for power users)
+- Free app (3 tabs)
+- Pro license $29 (99 tabs)
 - No recurring fees
 - No API markup
-- No upsells
 
 ---
 

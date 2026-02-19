@@ -1,7 +1,7 @@
 # Yume Complete Troubleshooting Guide
 
-**Version:** 0.8.5
-**Last Updated:** January 29, 2026
+**Version:** 0.14.0
+**Last Updated:** February 18, 2026
 **Platforms:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -369,6 +369,9 @@ claude config get api_key
   "apiKeySource": "environment"
 }
 ```
+
+4. **In-app OAuth login modal**:
+Yume provides a built-in OAuth login modal that handles authentication directly within the app. If CLI-based `claude login` fails or is inconvenient, use the in-app login flow (triggered automatically when no valid credentials are detected, or via Settings). This avoids browser redirect issues and works reliably across all platforms.
 
 ### 3.4 WSL Issues (Windows)
 
@@ -925,6 +928,10 @@ System Preferences > Security & Privacy > Privacy > Full Disk Access
 tccutil reset All io.github.aofp.yume
 ```
 
+#### Issue: macOS Sequoia compatibility
+
+**Note**: macOS Sequoia (15.x) introduced stricter security prompts and Gatekeeper behavior. If you encounter permission dialogs or blocked execution, ensure you are using the latest Yume build (0.14.0+) which includes Sequoia compatibility fixes. Use the `xattr -cr` command above if the app is quarantined after download.
+
 #### Issue: Translucent sidebar not working
 
 **Solution**:
@@ -956,6 +963,16 @@ killall Dock
 [HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers]
 "C:\\Program Files\\Yume\\yume.exe"="~ HIGHDPIAWARE"
 ```
+
+#### Issue: Windows ARM64 support
+
+**Note**: As of 0.14.0, Yume supports Windows ARM64 builds. If you are on a Windows ARM device (e.g., Surface Pro X, Snapdragon laptops), use the ARM64-specific installer. The x64 build will also work via emulation but with reduced performance.
+
+#### Issue: OAuth callback URL not opening
+
+**Cause**: On some Windows configurations, the OAuth callback URL fails to open the browser correctly.
+
+**Solution**: Ensure your default browser is set in Windows Settings > Apps > Default apps. If the issue persists, copy the OAuth URL from the Yume log and open it manually in your browser.
 
 #### Issue: Antivirus false positives
 

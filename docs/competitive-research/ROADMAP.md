@@ -1,26 +1,26 @@
 # Yume Roadmap
 
-**Last Updated:** January 29, 2026
-**Version:** 0.6.7
+**Last Updated:** February 2, 2026
+**Version:** 0.8.5
 
 ---
 
 ## Current State: What Makes Yume Unique
 
-### Complete Feature Summary (v0.6.7)
+### Complete Feature Summary (v0.8.5)
 
 | Category | Feature | Competitor Comparison |
 |----------|---------|----------------------|
-| **Background Agents** | 4 concurrent with git branch isolation (no timeout) | UNIQUE - no competitor has auto git branch isolation |
-| **Memory V2** | Per-project markdown files with TTL, importance, auto-prune | UNIQUE APPROACH - `~/.yume/memory/` per-project folders |
+| **Background Agents** | 4 concurrent with git branch isolation (30-min timeout) | UNIQUE - no competitor has auto git branch isolation |
+| **MCP Support** | User-installable MCP servers via settings | Full Claude CLI ecosystem compatibility |
 | **Multi-Provider** | Claude + Gemini + OpenAI via yume-cli (feature-flagged off) | UNIQUE architecture - no other Claude wrapper |
 | **4 Core Agents** | yume-architect, yume-explorer, yume-implementer, yume-guardian | More focused than Cursor's generic agents |
 | **Plugin System** | 5 components (commands/agents/hooks/skills/mcp) | UNIQUE - most comprehensive |
 | **Skills** | ReDoS-protected regex triggers, context injection | UNIQUE - no competitor validates regex safety |
 | **UCF** | Unified Conversation Format for portability | UNIQUE |
 | **Analytics** | Per-project/model/date breakdowns | Better than competitors |
-| **Context** | 70/78/85% thresholds, 5h/7d rate limits | More proactive than Claude Code's 80%/95% |
-| **Pricing** | Freeware (Pro $29 optional) | Free vs $240-2400/year subscriptions |
+| **Context** | 70/75/80% thresholds, 5h/7d rate limits | More proactive than Claude Code's 80%/95% |
+| **Pricing** | freeware | 79-96% cheaper than annual subscriptions |
 
 ---
 
@@ -30,7 +30,7 @@
 **Status:** FULLY IMPLEMENTED AND DOCUMENTED
 
 **Implementation:**
-- `background_agents.rs` - Agent queue manager (MAX_CONCURRENT_AGENTS=4, NO timeout)
+- `background_agents.rs` - Agent queue manager (MAX_CONCURRENT_AGENTS=4, 30-min timeout)
 - `git_manager.rs` - Git branch operations for isolated agent work
 - `commands/background_agents.rs` - 14 Tauri commands for agent lifecycle
 - `backgroundAgentService.ts` - Event-driven service with Tauri listeners
@@ -42,26 +42,13 @@
 
 ---
 
-### ✅ Memory V2 System (COMPLETE)
-**Status:** FULLY IMPLEMENTED AND DOCUMENTED
+### ✅ MCP Support (COMPLETE)
+**Status:** FULLY IMPLEMENTED
 
 **Implementation:**
-- `commands/memory_v2.rs` - 17 Tauri commands for per-project markdown system
-- `memoryServiceV2.ts` - Event-driven service with cross-tab sync
-- Storage: `~/.yume/memory/` with per-project folders
-  - `global/preferences.md` - User preferences across all projects
-  - `global/patterns.md` - Global coding patterns
-  - `projects/{hash}/learnings.md` - Project-specific learnings
-  - `projects/{hash}/errors.md` - Error -> solution mappings
-  - `projects/{hash}/patterns.md` - Project patterns
-  - `projects/{hash}/brief.md` - Project overview
-- **Entry format (Markdown)**: `## 2026-01-28T10:00:00Z | importance:4 | ttl:90 | id:abc123`
-- **Importance levels (1-5)**: Ephemeral (1d), Low (7d), Normal (30d), High (90d), Permanent
-- **Auto-pruning**: Expired entries pruned on startup
-- **Context injection**: `<yume-memory>` block with token budget (default 2000)
-- **MCP Server**: Custom `yume-mcp-memory.cjs` with tools: `add_observations`, `search_nodes`, `read_graph`
-
-**Unique Feature:** Per-project markdown files with TTL, importance, auto-learning - no competitor has this approach
+- User-installable MCP servers via settings UI
+- Full Claude CLI MCP ecosystem compatibility
+- Servers stored in `~/.claude.json`
 
 ---
 
@@ -232,20 +219,24 @@
 
 ## Success Metrics
 
-### v0.6.7 (Current)
+### v0.8.5 (Current)
 - ✅ Multi-provider architecture complete (Claude active; Gemini + OpenAI via yume-cli feature-flagged off)
 - ✅ 4 core agents (yume-architect, yume-explorer, yume-implementer, yume-guardian)
 - ✅ Plugin system with 5 components (commands/agents/hooks/skills/mcp)
-- ✅ Analytics dashboard with cost tracking
+- ✅ Analytics dashboard with cost tracking (hourly stats, activity streaks)
 - ✅ Context compaction (70% warn, 75% auto, 80% force)
-- ✅ Memory V2 per-project markdown system
-- ✅ Background agents (4 concurrent, no timeout)
+- ✅ MCP support (user-installable servers)
+- ✅ Background agents (4 concurrent, 30-min timeout)
 - ✅ Skills UI with ReDoS protection
 - ✅ Crash recovery (24hr window)
 - ✅ Command palette (Cmd+P)
 - ✅ 32+ keyboard shortcuts
+- ✅ Tab detach to new window (Ctrl+N shortcut)
+- ✅ Thinking streaming (live extended thinking display - UNIQUE)
+- ✅ ACP support (Agent Client Protocol) - 14 commands
+- ✅ Sandbox security - 7 commands
 
-### v0.7+ Target
+### v0.8+ Target
 - [ ] PR review via guardian agent
 - [ ] Inline code suggestions
 - [ ] Full git commit/push UI
@@ -261,27 +252,26 @@
 
 | Metric | Yume | Cursor | Windsurf |
 |--------|------|--------|----------|
-| **Background Agents** | ✅ 4 concurrent (no timeout) | ✅ 8 parallel | ✅ Cascade |
+| **Background Agents** | ✅ 4 concurrent (30-min timeout) | ✅ 8 parallel | ✅ Cascade |
 | **Git Branch Isolation** | ✅ UNIQUE | ❌ | ❌ |
-| **Memory V2** | ✅ Per-project markdown | ✅ | ✅ |
+| **MCP Support** | ✅ User-installable | ✅ | ✅ |
 | **Skills/Context Inject** | ✅ ReDoS-protected | ❌ | ❌ |
 | **PR Review** | ❌ (roadmap) | ✅ BugBot | ❌ |
 | **Inline Suggestions** | ❌ (roadmap) | ✅ | ✅ |
 | **Multi-Provider** | ✅ (arch ready, flagged off) | ✅ | ✅ |
 | **4 Core Agents** | ✅ | ❌ | ❌ |
 | **Plugin System** | ✅ 5 types | ❌ | ❌ |
-| **Freeware** | ✅ Free (Pro $29 optional) | ❌ $240/yr | ❌ $180/yr |
+| **One-Time Price** | ✅ $29 | ❌ $240/yr | ❌ $180/yr |
 
 **Yume's UNIQUE advantages (competitors lack):**
 1. ✅ Git branch isolation for async agents
-2. ✅ Memory V2 per-project markdown with TTL/importance/auto-prune
-3. ✅ Skills with ReDoS protection
-4. ✅ 4 core agents (architect, explorer, implementer, guardian)
-5. ✅ Plugin system with 5 component types
-6. ✅ UCF (Unified Conversation Format)
-7. ✅ Freeware model (Pro $29 optional)
-8. ✅ 5h/7d Anthropic limit tracking
-9. ✅ Crash recovery (24hr window)
+2. ✅ Skills with ReDoS protection
+3. ✅ 4 core agents (architect, explorer, implementer, guardian)
+4. ✅ Plugin system with 5 component types
+5. ✅ UCF (Unified Conversation Format)
+6. ✅ One-time $29 pricing
+7. ✅ 5h/7d Anthropic limit tracking
+8. ✅ Crash recovery (24hr window)
 
 **Remaining gaps:**
 1. PR review (leverage guardian agent)

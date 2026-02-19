@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.9.8**
+desktop app for claude cli with multi-provider support. current version: **0.13.1**
 
 ---
 
@@ -34,15 +34,15 @@ desktop app for claude cli with multi-provider support. current version: **0.9.8
 
 ---
 
-## multi-provider (95% complete)
+## multi-provider
 
 | provider | models | status |
 |----------|--------|--------|
-| claude | sonnet 4.5, opus 4.5 | ✅ native |
+| claude | sonnet 4.5/4.6, opus 4.5 | ✅ native |
 | gemini | 2.5 pro, 2.5 flash | ✅ via yume-cli |
 | openai | gpt-5.2 codex, gpt-5.1 mini | ✅ via yume-cli |
 
-unified stream-json protocol. provider switching forks session. macos binaries bundled.
+unified stream-json protocol. provider switching forks session.
 
 ---
 
@@ -169,10 +169,11 @@ sqlite in `~/.yume/yume.db`:
 
 | platform | installer |
 |----------|-----------|
-| mac m1/m2/m3/m4 | `yume-x.x.x-arm64.dmg` |
-| mac intel | `yume-x.x.x-x64.dmg` |
-| windows | `yume-x.x.x-x64-setup.msi` |
-| linux | `yume-x.x.x-x64.AppImage` |
+| mac m1/m2/m3/m4 | `yume_x.x.x_arm64.pkg` |
+| mac intel | `yume_x.x.x_x64.pkg` |
+| windows | `yume_x.x.x_x64-setup.exe` |
+| linux deb | `yume_x.x.x_amd64.deb` |
+| linux rpm | `yume-x.x.x-1.x86_64.rpm` |
 
 ~50mb binary. requires claude cli.
 

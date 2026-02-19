@@ -2,6 +2,8 @@
 
 *How to position Yume in the AI coding tools market*
 
+*Last Updated: January 31, 2026*
+
 ## Market Context
 
 ### Developer AI Adoption (2025)
@@ -79,7 +81,7 @@ The full power of Claude Code, freed from terminal limitations.
 | Competitor | Yume Advantage | Message |
 |------------|----------------|---------|
 | Claude Code CLI | Desktop (smooth) vs Terminal (laggy), <50ms vs 10s input, Native IME, Visual sessions | "All the power, none of the pain" |
-| Cursor | Lightweight vs Heavy IDE, Free vs $20/mo, Claude-focused | "Claude-native, not IDE bloat" |
+| Cursor | Lightweight vs Heavy IDE, free vs $20/mo, Claude-focused | "Claude-native, not IDE bloat" |
 | Aider | GUI vs CLI, Visual interface, Native rendering | "Visual interface for the Claude experience" |
 
 ---
@@ -122,11 +124,12 @@ The full power of Claude Code, freed from terminal limitations.
 
 ## Pricing Positioning
 
-### Current Model: Freeware + Optional Pro
+### Current Model: Freeware with Pro Upgrade
 
-- **Free**: Maximum adoption, zero barrier, easy word-of-mouth
-- **Pro ($29 one-time)**: For power users wanting 99 tabs/windows
+- Maximum adoption with zero barrier
+- Pro license $29 for power users (99 tabs)
 - No subscription fatigue
+- Impulse-buy territory
 - Aligns with developer preference for ownership
 
 See [Pricing Analysis](./pricing-analysis.md) for detailed breakdown.

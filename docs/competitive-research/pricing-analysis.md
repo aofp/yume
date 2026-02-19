@@ -1,6 +1,6 @@
 # Pricing Analysis
 
-*Last Updated: January 2026*
+*Last Updated: January 31, 2026*
 
 ## Pricing Model Types
 

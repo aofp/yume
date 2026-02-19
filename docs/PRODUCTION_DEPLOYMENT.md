@@ -1,7 +1,7 @@
 # Yume Production Deployment Guide
 
-**Version:** 0.9.8
-**Last Updated:** January 29, 2026
+**Version:** 0.14.0
+**Last Updated:** February 2026
 **Status:** Beta (macOS release-ready, Windows/Linux binaries pending)
 
 ## Table of Contents
@@ -75,7 +75,7 @@ npm run build
 #### Manual Testing Checklist
 - [ ] Fresh installation on clean system
 - [ ] Session creation and management
-- [ ] Auto-compaction at 75%
+- [ ] Auto-compaction at 85% (auto-compact off by default — CLI handles it)
 - [ ] Token tracking accuracy
 - [ ] Cost calculation correctness
 - [ ] Crash recovery functionality
@@ -165,6 +165,7 @@ npm run tauri:build:mac:x64
 
 # Windows
 npm run tauri:build:win          # x86_64-pc-windows-msvc
+npm run tauri:build:win:arm64    # aarch64-pc-windows-msvc (ARM64)
 
 # Linux
 npm run tauri:build:linux        # x86_64-unknown-linux-gnu
@@ -393,22 +394,19 @@ Post-build scripts (`scripts/post-build-mac.cjs` and `scripts/build-pkg.sh`) han
 ```
 
 #### NSIS Configuration
-```nsis
-; installer.nsi
-!define PRODUCT_NAME "Yume"
-!define PRODUCT_VERSION "1.0.0"
-!define PRODUCT_PUBLISHER "Yuru Software"
 
-InstallDir "$PROGRAMFILES64\Yume"
-RequestExecutionLevel admin
+Configured in `tauri.conf.json` → `bundle.windows.nsis`:
+- **Install mode:** `"both"` (per-user and system-wide)
+- **Preinstall hooks:** `installer-hooks.nsh` kills running `yume.exe` and `yume-bin-windows-x64.exe` before install, 1s delay for file handle release
+- **Silent install:** Supported via NSIS `/S` flag
+- **Credential Manager:** Windows Credential Manager fallback for OAuth credentials (`CredReadW`/`CredFree` FFI)
 
-Section "Main"
-  SetOutPath "$INSTDIR"
-  File /r "dist\*.*"
-  
-  CreateShortcut "$DESKTOP\Yume.lnk" "$INSTDIR\yume.exe"
-  CreateShortcut "$SMPROGRAMS\Yume\Yume.lnk" "$INSTDIR\yume.exe"
-SectionEnd
+```json
+"nsis": {
+  "installMode": "both",
+  "displayLanguageSelector": false,
+  "installerHooks": "installer-hooks.nsh"
+}
 ```
 
 ### 4.3 Linux Deployment
@@ -493,7 +491,7 @@ releases/
 │   │   ├── yume_0.6.0_x64.dmg            # Intel
 │   │   └── checksums.sha256
 │   ├── windows/
-│   │   ├── yume_0.6.0_x64-setup.msi
+│   │   ├── yume_0.6.0_x64-setup.exe
 │   │   ├── yume_0.6.0_x64_en-US.msi
 │   │   └── checksums.sha256
 │   └── linux/
@@ -520,7 +518,7 @@ gh release create v0.6.0 \
 gh release upload v0.6.0 \
   yume_0.6.0_aarch64.dmg \
   yume_0.6.0_x64.dmg \
-  yume_0.6.0_x64-setup.msi \
+  yume_0.6.0_x64-setup.exe \
   yume_0.6.0_amd64.AppImage
 ```
 
@@ -787,7 +785,8 @@ sudo apt install fuse libfuse2  # Ubuntu/Debian
 |----------|--------|--------|
 | macOS arm64 | Ready | DMG + PKG |
 | macOS x64 | Ready | DMG + PKG |
-| Windows | Scripts exist | Not bundled |
+| Windows x64 | Scripts exist | NSIS + MSI |
+| Windows ARM64 | Scripts exist | NSIS + MSI |
 | Linux | Scripts exist | Not bundled |
 
 ## Key Files

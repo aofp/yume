@@ -1,6 +1,6 @@
 # Yume Competitive Advantages
 
-*Last Updated: January 2026*
+*Last Updated: January 31, 2026*
 
 ## Core Value Proposition
 
@@ -12,7 +12,6 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 
 | Feature | Description |
 |---------|-------------|
-| Memory V2 | Per-project markdown with TTL, importance (1-5), auto-pruning |
 | 5h + 7-day limit tracking | Visual quota bars showing Anthropic subscription limits |
 | Git branch isolation | Background agents auto-create isolated branches |
 | Yume Guard | Security hook blocking dangerous commands |
@@ -22,7 +21,7 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 | History/rollback panel | Visual message history with file restoration |
 | Ultrathink | Cmd+K insert + rainbow highlighting |
 | 12 themes | OLED-optimized (vs Cursor ~5, Windsurf ~3, Opcode 0) |
-| 9 hook events | 3 active: pre_tool_use, context_warning, compaction_trigger |
+| 9 hook events | 4 active: pre_tool_use, context_warning, compaction_trigger, user_prompt_submit |
 | Crash recovery | Auto-save with 24hr restoration |
 | Freeware | vs $240-2400/year subscriptions |
 | Plugin system | Commands, agents, hooks, skills, MCP extensibility |
@@ -40,7 +39,7 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 | Quota tracking | `/usage` command only | Always-visible bars |
 | Context visibility | `/context` command | Always-visible percentage |
 | Config | JSON file editing | Visual UI forms |
-| Memory | CLAUDE.md only | Memory V2 per-project |
+| Memory | CLAUDE.md only | CLAUDE.md + user MCP servers |
 | Background agents | Supported | + Git branch isolation |
 | Crash recovery | None | Auto-save every 5 min |
 
@@ -100,7 +99,6 @@ Solves CLI's biggest problem (laggy, flickering TUI) while providing features no
 | 5h/7d limit tracking | No | No | No |
 | Yume Guard | No | No | No |
 | 4 built-in agents | No | No | No |
-| Memory V2 | No | No | No |
 | Git branch isolation | No | No | No |
 | 12 themes | No | ~5 | 0 |
 | Crash recovery | No | No | No |

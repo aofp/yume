@@ -1,5 +1,7 @@
 # Tool Schema Reference (UI Expectations)
 
+*Last Updated: January 31, 2026*
+
 This reference captures the **input fields** the UI reads for tool rendering and analytics.
 It is derived from `src/renderer/components/Chat/MessageRenderer.tsx` and `src/renderer/stores/claudeCodeStore.ts`.
 

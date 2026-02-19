@@ -1,6 +1,6 @@
 # Competitor Deep Dives
 
-*Last Updated: January 30, 2026*
+*Last Updated: January 31, 2026*
 
 ## IDE-Based Competitors
 
@@ -261,7 +261,7 @@
 | Feature | Yume | Opcode |
 |---------|----------|--------|
 | 5h + 7d limit tracking | ✅ | ❌ |
-| Memory system (TTL, importance) | ✅ Memory V2 | ❌ |
+| MCP support | ✅ User-installable | ❌ |
 | Yume Guard | ✅ Built-in security | ❌ |
 | Hook system | ✅ 9 events | ❌ |
 | @ mention system | ✅ @r, @m, folders | ❌ |
@@ -975,7 +975,7 @@
 | Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ | ✅ 32+ | No |
 | Drag & drop | ✅ | ✅ | ❌ | ✅ | ✅ | No |
 | Light mode | ✅ | ✅ | ? | ✅ | ❌ (OLED focus) | Design choice |
-| Memories | ✅ | ✅ | ❌ | ❌ | ✅ Memory V2 | No |
+| Memories | ✅ | ✅ | ❌ | ❌ | ✅ MCP servers | No |
 | Command palette | ✅ | ✅ | ❌ | ✅ | ✅ Cmd+P | No |
 | CLAUDE.md editor | ❌ | ❌ | ✅ | ❌ | ✅ | No |
 | Background agents | ✅ | ✅ | ✅ | ✅ (ACP) | ✅ 4 concurrent | No |
@@ -992,7 +992,7 @@
 
 | Feature | Yume | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
 |---------|----------|------------|--------|----------|--------|-----|-------|
-| **Price** | Free | Pro/Max sub | $20-200/mo | $15-60/mo | Free | Free-$20/mo | Free+API |
+| **Price** | $29 once | Pro/Max sub | $20-200/mo | $15-60/mo | Free | Free-$20/mo | Free+API |
 | **Type** | Desktop GUI | CLI | IDE | IDE | Desktop GUI | IDE | CLI |
 | **Native Performance** | ✅ Tauri/Rust | ❌ React Ink | ❌ Electron | ❌ Electron | ✅ Tauri | ✅ Rust | ❌ Python |
 | **No Flickering** | ✅ | ❌ (700+ upvotes) | ⚠️ Issues | ⚠️ | ✅ | ✅ | N/A |
@@ -1070,7 +1070,7 @@
 | **Keyboard Shortcuts** | ✅ 32+ | ~10 | ✅ Many | ✅ | ❌ | ✅ | ~5 |
 | **Light Mode** | ❌ (OLED focus) | ❌ | ✅ | ✅ | ❓ | ✅ | ❌ |
 | **Command Palette** | ✅ Cmd+P (56 cmds) | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **Memories** | ✅ Memory V2 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Memories** | ✅ MCP servers | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -1081,15 +1081,15 @@
 |----------|---------|
 | **Native Performance** | Tauri/Rust, zero flickering, <50ms latency |
 | **5h/7d Limit Tracking** | ONLY tool tracking actual Anthropic subscription limits |
-| **Freeware** | Free to use, Pro $29 optional for power users |
+| **$29 One-Time** | No subscriptions, no recurring fees |
 | **4 Built-in Agents** | architect, explorer, implementer, guardian |
 | **Orchestration Flow** | Auto-selects agents based on task complexity |
 | **12 Themes** | More than any competitor |
 | **9 Hook Events** | Most comprehensive hook system |
 | **Yume Guard** | Built-in security blocking dangerous commands |
 | **Stream Timers** | Live thinking/bash/compacting duration |
-| **@ Mention System** | @ shows recent/modified with autocomplete, folder navigation |
-| **Memory V2** | Per-project markdown with TTL and importance levels |
+| **@ Mention System** | @r recent, @m modified, folder navigation |
+| **MCP Support** | User-installable MCP servers via settings |
 | **Crash Recovery** | Auto-save with 24hr window |
 | **History/Rollback** | Visual message history with rollback |
 | **Ultrathink** | Cmd+K insert + rainbow highlighting |
@@ -1113,7 +1113,7 @@
 |----------|-------------|-----|
 | Claude Code without lag | **Yume** | Native rendering, all CLI features |
 | Full IDE replacement | **Cursor** | Most features, large ecosystem |
-| Budget-conscious | **Yume** (free) or **Opcode** (free) | Both free vs subscriptions |
+| Budget-conscious | **Yume** (free) or **Opcode** (free) | Free vs subscriptions |
 | Privacy-focused | **Yume**, **Zed**, or **Continue** | No telemetry, local-first |
 | Enterprise/Teams | **Cursor** or **Copilot** | SOC2, SSO, admin controls |
 | Multi-model flexibility | **OpenCode** or **Aider** | Provider-agnostic |
@@ -1129,9 +1129,9 @@
 
 2. **Tab completion is an IDE feature**: Cursor/Windsurf are code editors with inline completion. Yume is a chat interface - different product category. Not a real gap.
 
-3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yume's freeware model is a major differentiator vs Cursor/Windsurf subscriptions. Both Yume and Opcode are free.
+3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yume's freeware model is a major differentiator vs Cursor/Windsurf. Opcode is free but has fewer features.
 
-4. **Context memory matters**: Both Cursor and Windsurf added "Memories". Yume has Memory V2 system with per-project markdown, TTL, and importance levels - more sophisticated than competitor approaches.
+4. **Context memory matters**: Both Cursor and Windsurf added "Memories". Yume supports user-installable MCP servers for memory functionality via the settings UI.
 
 5. **Checkpoint/timeline**: ✅ Both yume and Opcode have this. No longer unique, but still differentiator vs IDEs.
 

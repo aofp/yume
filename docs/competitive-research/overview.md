@@ -1,6 +1,6 @@
 # Competitive Research Overview
 
-*Last Updated: January 29, 2026*
+*Last Updated: January 31, 2026*
 
 > **For Claude Code Team**: See [Executive Summary](./executive-summary.md) for a presentation-ready overview.
 
@@ -51,14 +51,14 @@ The AI coding assistant market in 2026 is dominated by three categories:
 ✅ **Complete**:
 - Native rendering (no flickering/lag)
 - 32+ keyboard shortcuts
-- 12 dark themes
+- 18 themes (12 dark + 6 light)
 - 4 built-in agents (architect, explorer, implementer, guardian)
 - 9 hook events + Yume Guard (built-in security)
 - Checkpoints + Timeline UI
 - Files panel with git status
 - Git panel with +/- line stats
 - History/rollback panel
-- @ mentions (@ shows recent/modified with autocomplete, folders)
+- @ mentions (@r recent, @m modified, folders)
 - / commands (/clear, /model, /title, /init, /compact, /commit, /review, /iterate + custom)
 - Ultrathink support (Cmd+K insert + rainbow highlighting)
 - Stream timers (thinking, bash, compacting)
@@ -87,7 +87,7 @@ The AI coding assistant market in 2026 is dominated by three categories:
 | Poor visual feedback | Hard to track context, tokens | Always-visible context bar with 5h/7d limits |
 | JSON config editing | MCP, hooks require file editing | Visual UI forms |
 | No thinking timer | Can't see how long thinking takes | Live stream timers |
-| No @ mentions | Must type full paths | @ shows recent/modified with autocomplete, folder navigation |
+| No @ mentions | Must type full paths | @r recent, @m modified, folder navigation |
 
 Note: Many GitHub issues are model behavior or user errors, not CLI bugs. We can't fix those.
 
@@ -107,7 +107,7 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 
 ### Extended Research
 - [User Sentiment](./user-sentiment.md) - Reddit/HN/GitHub complaints, pain points
-- [Pricing Analysis](./pricing-analysis.md) - $29 one-time model analysis
+- [Pricing Analysis](./pricing-analysis.md) - freeware model analysis
 - [Enterprise Features](./enterprise-features.md) - SOC2, SSO, compliance
 - [Emerging Trends](./emerging-trends.md) - New tools, market dynamics
 - [Technical Architecture](./technical-architecture.md) - Tauri, tree-sitter, performance
@@ -135,8 +135,8 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | **History/rollback panel** | Visual message history navigation |
 | **Ultrathink highlighting** | Rainbow gradient + Cmd+K insert |
 | **Command palette** | Cmd+P access to commands |
-| **Background agents** | 4 concurrent with git branch isolation |
-| **Memory V2 system** | Per-project markdown with TTL, importance levels, auto-pruning |
+| **Background agents** | 4 concurrent with git branch isolation, 30-min timeout |
+| **MCP support** | User-installable MCP servers via settings |
 | **12 themes** | OLED optimized dark themes |
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration |
@@ -159,7 +159,7 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | Ultrathink Support | ✅ | ❌ | ❌ | ❌ |
 | Multi-Provider | ✅ (Claude+Gemini+OpenAI) | ❌ | ❌ | ✅ (Claude+Codex) |
 | Background Agents | ✅ (4 concurrent, git isolation) | ❌ | ❌ | ❌ |
-| Memory System | ✅ (V2 per-project markdown) | ❌ | ❌ | ❌ |
+| MCP Support | ✅ (user-installable) | ❌ | ❌ | ❌ |
 | Command Palette | ✅ (Cmd+P) | ❌ | ❌ | ❌ |
 | YC Backed | ❌ | ❌ | ✅ | ❌ |
 | Price | Free | Free | Free | Free |

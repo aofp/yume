@@ -2,6 +2,8 @@
 
 *Security, compliance, and enterprise readiness analysis*
 
+*Last Updated: January 31, 2026*
+
 ## Why Enterprise Matters
 
 > "Large enterprises, especially in finance, healthcare, and regulated industries, commonly require SOC 2 as a condition for partnership. Many corporate security teams won't even look at an AI vendor without a SOC 2 report."

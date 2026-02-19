@@ -1,5 +1,7 @@
 # Technical Approach: Multi-Provider Translation Layer
 
+*Last Updated: January 31, 2026*
+
 Technical approach for adding Gemini and OpenAI/Codex support while preserving Yume's Claude-compatible stream-json pipeline.
 
 ## 1. Goals and Invariants

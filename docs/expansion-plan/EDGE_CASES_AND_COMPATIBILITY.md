@@ -1,5 +1,7 @@
 # Translation Layer Edge Cases & Compatibility
 
+*Last Updated: January 31, 2026*
+
 This document enumerates scenarios the translation layer (`yume-cli` or adapters) must handle to ensure Yume behaves consistently across Claude, Gemini, and OpenAI/Codex.
 
 **Implementation Status:** Multi-provider support is designed but not yet enabled. Feature flags `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` are currently `false` in `config/features.ts`. The `yume-cli` shim exists in `src-yume-cli/` but is not yet fully integrated.

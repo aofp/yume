@@ -51,7 +51,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | Custom commands | Slash commands with templates | ✅ /clear, /model, /title, /init, /compact + custom |
 | Font customization | Monospace + UI fonts | ✅ Comic Mono/Neue |
 | System prompts | Custom system prompts | ✅ Implemented |
-| Smart file mentions | @ shows recent/modified with autocomplete | ✅ Full @ mention system |
+| Smart file mentions | @r recent, @m modified | ✅ Full @ mention system |
 | Ultrathink support | Extended thinking mode | ✅ Cmd+K insert + rainbow highlighting |
 | Stream indicators | Activity timers | ✅ Thinking/bash/compacting timers |
 | **Thinking streaming** | Live extended thinking display | ✅ **UNIQUE** - not even CLI has this |
@@ -59,7 +59,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | History panel | Message rollback | ✅ Implemented |
 | Background opacity | Window transparency | ✅ Implemented |
 | Command palette | Quick actions (Cmd+P) | ✅ Implemented |
-| Memory V2 | Per-project markdown files | ✅ Implemented |
+| MCP support | User-installable MCP servers | ✅ Implemented |
 | Light mode | Light theme option | ❌ Not implemented |
 
 ---
@@ -80,7 +80,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | MCP | Yes | No | No | Yes | ✅ Full UI |
 | Built-in agents | No | No | No | No | ✅ **4 agents** |
 | Custom commands | No | No | No | No | ✅ **Yes** |
-| Hooks system | Partial | Partial | No | No | ✅ **9 events (3 active)** |
+| Hooks system | Partial | Partial | No | No | ✅ **9 events (4 active)** |
 | Security guard | No | No | No | No | ✅ **Yume Guard** |
 | Themes | No | ~5 | ~3 | No | ✅ **12 themes** |
 | Auto-compaction | Yes | No | No | No | ✅ 75%/80% |
@@ -94,7 +94,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | Stream timers | No | No | No | No | ✅ **UNIQUE** |
 | Git panel | No | Yes | Yes | ? | ✅ Yes |
 | History panel | No | No | No | ? | ✅ **UNIQUE** |
-| Memory V2 | No | No | No | No | ✅ **UNIQUE** |
+| MCP UI | No | No | No | Yes | ✅ Full UI |
 | Light mode | No | Yes | Yes | ? | ❌ No |
 | Command palette | No | Yes | Yes | No | ✅ Yes |
 
@@ -113,9 +113,8 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 | **Ultrathink highlighting** | Rainbow gradient when typing ultrathink |
 | **Thinking streaming** | Live extended thinking display - see Claude's reasoning in real-time |
 | **Cmd+K ultrathink** | Quick insert thinking mode prefix |
-| **Memory V2** | Per-project markdown files with TTL, importance, auto-prune |
 | **12 themes** | Way more than any competitor |
-| **9 hook events (3 active)** | pre_tool_use, context_warning, compaction_trigger |
+| **9 hook events (4 active)** | pre_tool_use, context_warning, compaction_trigger, user_prompt_submit |
 | **Crash recovery** | Auto-save with 24hr restoration window |
 | **Freeware** | vs $240-2400/year subscriptions |
 
@@ -154,13 +153,12 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 2. ✅ Visual agent status (AgentsModal + 4 built-in)
 3. ✅ Conversation search
 4. ✅ Custom commands system (/clear, /model, /title, /init, /compact)
-5. ✅ Hooks system (9 events defined, 3 active: pre_tool_use, context_warning, compaction_trigger)
+5. ✅ Hooks system (9 events defined, 4 active: user_prompt_submit, pre_tool_use, context_warning, compaction_trigger)
 6. ✅ @ mention system (@r, @m, folders)
 7. ✅ Ultrathink support (Cmd+K + highlighting)
 8. ✅ Git panel with line stats
 9. ✅ History/rollback panel
 10. ✅ Command palette (Cmd+P)
-11. ✅ Memory V2 per-project markdown system
 
 ### Phase 4: Advanced (P2) ✅ MOSTLY COMPLETE
 1. ✅ MCP visual manager
@@ -188,7 +186,7 @@ Yume has achieved **complete feature parity and superiority**. We have 15+ uniqu
 - 12 themes
 - 4 built-in yume agents
 - Custom slash commands
-- 9 hook events (3 active) + yume-guardian agent
+- 9 hook events (4 active) + yume-guardian agent
 - MCP visual manager
 - Checkpoints + Timeline
 - Auto-compaction at 75%/80%

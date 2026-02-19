@@ -1,5 +1,9 @@
 # VSCode Integration Architecture
 
+*Last Updated: January 31, 2026*
+
+*Status: Planned - Not yet implemented*
+
 ## Overview
 Yume embeds its full GUI within VSCode via a webview panel. Developers use Yume's features (agents, timeline, diff view) without leaving the editor.
 

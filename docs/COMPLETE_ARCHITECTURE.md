@@ -1,7 +1,7 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.9.8
-**Last Updated:** January 2026
+**Version:** 0.14.0
+**Last Updated:** February 2026
 **Status:** Production Ready
 
 ## Table of Contents
@@ -116,20 +116,22 @@ db/mod.rs               // SQLite database (sessions, messages, analytics)
 config.rs               // Production configuration
 
 // Commands (src-tauri/src/commands/)
-commands/mod.rs               // Main handlers (file ops, agents, settings, git, bash)
-commands/claude_commands.rs   // Claude session spawning (11 commands)
+commands/mod.rs               // Main handlers (90 commands: file ops, agents, settings, git, bash)
+commands/claude_commands.rs   // Claude session spawning (13 commands)
 commands/claude_info.rs       // CLI info, usage stats, API limits
 commands/claude_detector.rs   // CLI detection, WSL checks
 commands/database.rs          // Database operations (12 commands)
 commands/hooks.rs             // Hook execution (4 commands)
-commands/compaction.rs        // Compaction triggers (9 commands)
+commands/compaction.rs        // Compaction triggers (10 commands)
 commands/mcp.rs               // MCP server management (6 commands)
 commands/custom_commands.rs   // Custom command utilities (7 commands)
 commands/settings.rs          // Cross-window settings sync (6 commands)
 commands/background_agents.rs // Agent queue IPC (14 commands)
-commands/plugins.rs           // Plugin management (21 commands)
+commands/plugins.rs           // Plugin management (22 commands)
 commands/acp.rs               // ACP agent management (14 commands)
+commands/bg_processes.rs      // Background bash processes (8 commands)
 commands/sandbox.rs           // Sandbox security (7 commands)
+commands/app_updater.rs       // App update management (4 commands)
 
 // Advanced Features
 compaction/mod.rs       // Auto-compaction at configurable thresholds
@@ -234,7 +236,9 @@ App.minimal.tsx                    // Root component
     ├── Analytics/AnalyticsModal.tsx      // Usage analytics
     ├── About/AboutModal.tsx              // Application info
     ├── Upgrade/UpgradeModal.tsx          // Upgrade prompts
+    ├── AuthLoginModal/AuthLoginModal.tsx // Auth login flow
     └── KeyboardShortcuts/                // Keyboard shortcuts help
+├── BackgroundProcesses/BackgroundProcessIndicator.tsx // Background bash process indicator
 ```
 
 #### State Management (Zustand):
@@ -633,7 +637,7 @@ class PerformanceMonitor {
 
 **3. CompactionService** (`compactionService.ts`)
 - Monitors context usage percentage
-- Auto-triggers at 75%, force-triggers at 80% (configurable)
+- Auto-triggers at 85%, force-triggers at 90% (configurable; auto-compact off by default)
 - Sets pending flags for next-message compaction
 - Generates context manifests before compaction
 - Coordinates with Rust backend via Tauri commands
@@ -643,6 +647,7 @@ class PerformanceMonitor {
 - Semantic version comparison
 - Cached results in localStorage
 - Non-blocking check on app startup
+- Claude CLI auto-update: `autoUpdateClaude` defaults to `false` (opt-in via settings)
 
 **5. SystemPromptService** (`systemPromptService.ts`)
 - Manages orchestration flow prompt injection
@@ -819,19 +824,21 @@ Token Tracking Flow:
 2. StreamParser in Rust extracts usage from messages
 3. TokenAccumulator aggregates input/output/cache tokens
 4. Frontend fetches session tokens from server endpoint
-5. Auto-compact triggers at 75% context usage (configurable)
+5. Auto-compact triggers at 85% context usage (configurable; off by default)
 
 ## 7. Critical Systems
 
 ### 7.1 Auto-Compaction System
 
-**Thresholds**: Dynamic (default T=75%: 70% warning, 75% auto-trigger, 80% force-trigger)
+**Thresholds**: Dynamic (default T=85%: 80% warning, 85% auto-trigger, 90% force-trigger)
 **Location**: `src-tauri/src/compaction/mod.rs`
+
+> **Note:** Auto-compact is off by default -- CLI handles it.
 
 ```rust
 pub struct CompactionConfig {
-    pub auto_threshold: f32,     // 0.75 (75%) default - auto-compact
-    pub force_threshold: f32,    // 0.80 (80%) default - force-compact (auto + 5%)
+    pub auto_threshold: f32,     // 0.85 (85%) default - auto-compact
+    pub force_threshold: f32,    // 0.90 (90%) default - force-compact (auto + 5%)
     pub preserve_context: bool,
     pub generate_manifest: bool,
 }
@@ -839,9 +846,9 @@ pub struct CompactionConfig {
 pub enum CompactionAction {
     None,
     Notice,       // deprecated
-    Warning,      // 70%+
-    AutoTrigger,  // 75%+ (configurable threshold)
-    Force,        // 85%+
+    Warning,      // 80%+
+    AutoTrigger,  // 85%+ (configurable threshold)
+    Force,        // 90%+
 }
 
 pub struct CompactionManager {
@@ -852,7 +859,7 @@ pub struct CompactionManager {
 ```
 
 Compaction Process:
-1. Detect threshold (75% auto, 80% force by default)
+1. Detect threshold (85% auto, 90% force by default)
 2. Set `pendingAutoCompact` flag in session
 3. On next user message, generate context manifest
 4. Send `/compact` command to Claude
@@ -1069,15 +1076,15 @@ npm run test                   # Run vitest test suites
 # Production
 npm run tauri:build:mac        # macOS .dmg (ARM64)
 npm run tauri:build:mac:x64    # macOS x64
-npm run tauri:build:win        # Windows .msi
-npm run tauri:build:linux      # Linux .AppImage/.deb
+npm run tauri:build:win        # Windows NSIS .exe + WiX .msi
+npm run tauri:build:linux      # Linux .deb/.rpm/.AppImage
 ```
 
 ### Distribution
 
-- **macOS**: DMG installer (ARM64 and x64)
-- **Windows**: MSI/NSIS installer
-- **Linux**: AppImage, DEB, RPM packages
+- **macOS**: `.dmg` + `.pkg` installers (ARM64 and x64)
+- **Windows**: NSIS `.exe` + WiX `.msi` installers (silent install via `/S` flag)
+- **Linux**: `.deb`, `.rpm`, `.AppImage` packages
 
 ### Code Signing
 
@@ -1090,12 +1097,14 @@ npm run tauri:build:linux      # Linux .AppImage/.deb
 **Config:** `vitest.config.ts` with path aliases (`@/` → `src/renderer/`, `@shared/` → `src/shared/`)
 **Setup:** `src/test/setup.ts` with Tauri API mocks
 
-**Test Suites (37 files):**
-- `src/renderer/config/__tests__/` - 4 files (app, features, models, themes, tools)
-- `src/renderer/services/__tests__/` - 23 files (all services)
+**Test Suites (81 files, ~2966 tests):**
+- `src/renderer/config/__tests__/` - 6 files (app, features, models, themes, tools, performanceFlags)
+- `src/renderer/services/__tests__/` - 30 files (all services)
 - `src/renderer/types/__tests__/` - 3 files (backgroundAgents, skill, ucf)
-- `src/renderer/stores/__tests__/` - 1 file (claudeCodeStore)
-- `src/renderer/utils/__tests__/` - 6 files (chatHelpers, helpers, performance, regexValidator, structuredLogger)
+- `src/renderer/stores/__tests__/` - 6 files (claudeCodeStore, streamingIsolation, streamingScenarios, streamingEdgeCases, subagentStreaming, thinkingState)
+- `src/renderer/utils/__tests__/` - 7 files (chatHelpers, helpers, performance, regexValidator, structuredLogger, consoleOverride, editContext, paneUtils)
+- `src/renderer/hooks/__tests__/` - 2 files (useFocusTrap, useEnabledProviders)
+- `src/renderer/components/__tests__/` - 27 files (Chat, Layout, Modals, common components)
 
 ## Performance Benchmarks
 
@@ -1122,14 +1131,14 @@ npm run tauri:build:linux      # Linux .AppImage/.deb
 **Trade-offs**: More complex IPC, higher memory usage  
 
 ### ADR-003: Dynamic Auto-Compaction Thresholds
-**Decision**: Configurable threshold T (default 75%) with warning at T-5%, auto at T, force at T+5%
-**Rationale**: Variable thresholds allow users to tune compaction timing; default 75% provides good balance
+**Decision**: Configurable threshold T (default 85%) with warning at T-5%, auto at T, force at T+5%
+**Rationale**: Variable thresholds allow users to tune compaction timing; default 85% preserves more context while CLI handles compaction by default
 **Trade-offs**: Higher threshold preserves more context but risks overflow; lower threshold is safer but compacts more often
 
 ### ADR-004: No Telemetry, Opt-In Auto-Updates
-**Decision**: No telemetry; auto-update for Claude CLI (opt-in, default on) and app version check via GitHub Pages
-**Rationale**: User privacy preserved (no tracking), but CLI and app stay current automatically
-**Trade-offs**: No usage insights; version check requires network access to GitHub Pages  
+**Decision**: No telemetry; auto-update for Claude CLI (opt-in, `autoUpdateClaude` defaults to `false`) and app version check via GitHub Pages
+**Rationale**: User privacy preserved (no tracking); Claude CLI updates are opt-in to avoid unexpected changes; app version check is lightweight and non-blocking
+**Trade-offs**: No usage insights; version check requires network access to GitHub Pages; CLI may fall behind if user doesn't opt in  
 
 ## Conclusion
 

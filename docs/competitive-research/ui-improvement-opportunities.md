@@ -1,6 +1,6 @@
 # UI Improvement Opportunities
 
-*Last Updated: January 2026*
+*Last Updated: January 31, 2026*
 
 *Actionable improvements yume can make over Claude Code CLI*
 
@@ -131,12 +131,6 @@ Unique features competitors don't have:
 - Environment variable configuration
 - Connection testing
 
-#### Memory V2 ✅ (COMPLETE)
-- Per-project markdown files in `~/.yume/memory/`
-- TTL, importance levels, auto-pruning
-- Custom MCP server (`yume-mcp-memory.cjs`)
-- Context injection with token budget
-
 ---
 
 ## Quick Wins (Implement First)
@@ -195,9 +189,8 @@ Low effort, high impact:
 *Goal: Unique value*
 
 - [~] Checkpoint timeline (code exists, socket listeners disabled)
-- [x] Background agents (4 concurrent, no timeout, git branch isolation)
+- [x] Background agents (4 concurrent, 30-min timeout, git branch isolation)
 - [x] MCP visual manager (MCPTab)
-- [x] Memory V2 per-project markdown system
 - [x] Command palette (Cmd+P)
 - [ ] Split views
 - [ ] Light mode

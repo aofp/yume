@@ -101,6 +101,6 @@ rust/tauri 2.9, react 19, node.js. 181+ tauri commands, ~83k lines.
 smaller binary (~50mb vs electron's ~150mb), less memory, native performance.
 
 **models?**
-- claude: sonnet 4.5, opus 4.5
+- claude: sonnet 4.5/4.6, opus 4.5
 - gemini: 2.5 pro, 2.5 flash
 - openai: gpt-5.2 codex, gpt-5.1 mini

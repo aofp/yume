@@ -1,8 +1,8 @@
 # Yume API Reference
 
-**Version:** 0.8.5
-**Last Updated:** January 2026
-**Tauri Commands:** 230
+**Version:** 0.14.0
+**Last Updated:** February 2026
+**Tauri Commands:** ~231
 
 ## Table of Contents
 
@@ -31,6 +31,10 @@
    - [File Content Operations](#file-content-operations)
    - [Rollback & Conflict Detection](#rollback--conflict-detection)
    - [Extended Analytics](#extended-analytics)
+   - [Plugin Operations](#plugin-operations)
+   - [ACP Operations](#acp-operations)
+   - [Sandbox Operations](#sandbox-operations)
+   - [Background Bash Processes](#background-bash-processes)
 2. [Tauri Events API](#tauri-events-api)
 3. [Frontend Services API](#frontend-services-api)
 4. [Store API](#store-api)
@@ -414,7 +418,7 @@ interface WeeklyUsageSummary {
 ```
 
 #### `get_claude_usage_limits`
-Gets Claude usage limits from the Anthropic API. Requires valid OAuth credentials.
+Gets Claude 5h/7d usage limits from `platform.claude.com/v1/api-client-usage`. Requires valid OAuth credentials.
 
 ```typescript
 invoke('get_claude_usage_limits') => Promise<ClaudeUsageLimits>
@@ -436,6 +440,13 @@ interface ClaudeUsageLimits {
   rate_limit_tier?: string | null;
 }
 ```
+
+**Implementation Details:**
+- **OAuth refresh:** On 401, automatically refreshes token via `platform.claude.com/v1/oauth/token` with `client_id` + `scope`, then retries
+- **Credentials cache:** `CREDENTIALS_CACHE` mutex prevents repeated Keychain/Credential Manager prompts
+- **Credential sources (priority):** macOS Keychain → credentials file (`~/.claude/credentials.json`), Windows Credential Manager → credentials file
+- **Frontend cache:** Dual-TTL in localStorage — 2 min for null/empty data, 20 min for valid data, 15s retry on initial null
+- **Display:** `ContextBar` shows `5h: 23%` / `7d: 67%` inline; `WelcomeScreen` shows usage in stats modal; color-coded red at 90%+
 
 #### `update_claude_cli`
 Smart Claude CLI updater that checks npm registry first.

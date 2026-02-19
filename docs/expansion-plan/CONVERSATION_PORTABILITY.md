@@ -1,6 +1,6 @@
 # Conversation Portability & Mid-Session Model Switching
 
-> **Last Updated:** 2026-01-28
+> **Last Updated:** 2026-01-31
 > **Related Documents:**
 > - [UNIVERSAL_SESSION_ARCHITECTURE.md](./UNIVERSAL_SESSION_ARCHITECTURE.md) - Session storage foundation
 > - [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) - Model and feature matrix (single source of truth)

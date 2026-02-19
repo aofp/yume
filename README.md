@@ -3,7 +3,7 @@
 <div align="center">
   <img src="assets/yume.png" alt="yume logo" width="120">
   <h3>claude code, unchained</h3>
-  <p>orchestration flow. background agents. interleaved thinking.<br>4 built-in agents. plugins & skills.</p>
+  <p>orchestration flow. background agents. interleaved thinking.<br>4 built-in agents. plugins & skills. multi-provider. mac, windows, linux.</p>
   <p>
     <a href="https://aofp.github.io/yume">Download</a>
   </p>
@@ -17,11 +17,11 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 
 ### terminal limitations
 
-- **flickering** - 700+ upvoted github issue, fundamentally unfixed
-- **performance degradation** - multi-second delays in extended sessions
-- **terminal crashes** - IDE instability after 10-20 minutes of heavy use
-- **hidden rate limits** - requires manual `/usage` checks
-- **fragile sessions** - complete loss on crash, no recovery mechanism
+- **flickering** — 700+ upvoted github issue, fundamentally unfixed
+- **performance degradation** — multi-second delays in extended sessions
+- **terminal crashes** — IDE instability after 10-20 minutes of heavy use
+- **hidden rate limits** — requires manual `/usage` checks
+- **fragile sessions** — complete loss on crash, no recovery mechanism
 
 ### yume's approach
 
@@ -72,7 +72,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 
 ### multi-provider support
 - **6 models, 3 providers** - via yume-cli shim
-  - claude sonnet 4.5, opus 4.5
+  - claude sonnet 4.5/4.6, opus 4.5
   - gemini 2.5 pro, flash
   - gpt-5.2 codex, codex mini
 - **protocol normalization** - stream-json output for all providers
@@ -127,7 +127,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 | orchestration flow | ✗ | ✗ | ✗ | ✗ | ✓ auto |
 | background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
 | interleaved thinking | ✗ after | ✗ | ✗ | ✗ | ✓ live toggle |
-| multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models |
+| multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models / 3 providers |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
 | 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
@@ -190,9 +190,9 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 ## requirements
 
 - **claude subscription** - pro or max required for claude code access
-- **macos** 11+ (big sur or later)
-- **windows** 10+ (64-bit)
-- **linux** ubuntu 20.04+ or equivalent
+- **macos** 11+ (big sur or later) — arm64 + x64
+- **windows** 10+ (64-bit) — exe installer
+- **linux** ubuntu 20.04+ or equivalent — deb + rpm
 
 ---
 
