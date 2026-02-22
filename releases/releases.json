@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.14.1",
+  "latest": "0.14.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.14.2",
+      "date": "2026-02-22",
+      "notes": "wait for server readiness before frontend connect",
+      "downloads": {
+        "mac_arm": "yume_0.14.2_arm64.pkg",
+        "mac": "yume_0.14.2_x64.pkg",
+        "windows": "yume_0.14.2_x64-setup.exe",
+        "linux_deb": "yume_0.14.2_amd64.deb",
+        "linux_rpm": "yume-0.14.2-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "c604f4db414dbfeaf62d5fa85f78f5e911cc381f42bd47d73a5000e2e4c206e9",
+        "mac": "d3618f41fee3c61ca0afdfb7bf958eaa8654ed7a2d25f15dce25b52a892d021a",
+        "windows": "PENDING",
+        "linux_deb": "PENDING",
+        "linux_rpm": "PENDING"
+      }
+    },
     {
       "version": "0.14.1",
       "date": "2026-02-22",
