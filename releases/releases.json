@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.13.1",
+  "latest": "0.14.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.14.0",
+      "date": "2026-02-21",
+      "notes": "/rewind command, AskUser as user bubbles with quick-select, dropped file attachment, improved CLI usage tracking, Windows conpty support, fix macOS TCC permission prompts, AskUserQuestion MCP tool, bash tool fallback and timeout, post-interrupt streaming fix, Linux paste fallback and completion sound fix, Windows /usage crash fix, autocomplete performance improvements",
+      "downloads": {
+        "mac_arm": "yume_0.14.0_arm64.pkg",
+        "mac": "yume_0.14.0_x64.pkg",
+        "windows": "yume_0.14.0_x64-setup.exe",
+        "linux_deb": "yume_0.14.0_amd64.deb",
+        "linux_rpm": "yume-0.14.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "e19105adf7d03ade72814b2d79d0bff63f6c9fa4d5264b906420c3eee5b3b4ff",
+        "mac": "3eb5389dd54e9a706831825389e96c0208c632180c8394746e4a0501b0364954",
+        "windows": "PENDING",
+        "linux_deb": "PENDING",
+        "linux_rpm": "PENDING"
+      }
+    },
     {
       "version": "0.13.1",
       "date": "2026-02-18",
