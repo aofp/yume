@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.14.0",
+  "latest": "0.14.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.14.1",
+      "date": "2026-02-22",
+      "notes": "fix resume picking most recent conversation, CSS zoom on all platforms, fix ripple zoom offset, animation freeze recovery, input focus styles, ethereal spinner words, fix input focus flicker",
+      "downloads": {
+        "mac_arm": "yume_0.14.1_arm64.pkg",
+        "mac": "yume_0.14.1_x64.pkg",
+        "windows": "yume_0.14.1_x64-setup.exe",
+        "linux_deb": "yume_0.14.1_amd64.deb",
+        "linux_rpm": "yume-0.14.1-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "f3a17f942979fee9cb03a15be32914afed31ccc1a363270bf06b708dbd477acd",
+        "mac": "866b07e49c84eddca6fd30c5dd99c519cfeeffce0693ae67461dec8b2dbe4258",
+        "windows": "PENDING",
+        "linux_deb": "PENDING",
+        "linux_rpm": "PENDING"
+      }
+    },
     {
       "version": "0.14.0",
       "date": "2026-02-21",
