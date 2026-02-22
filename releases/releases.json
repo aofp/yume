@@ -17,9 +17,9 @@
       "checksums": {
         "mac_arm": "c604f4db414dbfeaf62d5fa85f78f5e911cc381f42bd47d73a5000e2e4c206e9",
         "mac": "d3618f41fee3c61ca0afdfb7bf958eaa8654ed7a2d25f15dce25b52a892d021a",
-        "windows": "PENDING",
-        "linux_deb": "PENDING",
-        "linux_rpm": "PENDING"
+        "windows": "fa5f3b976d2c48f0deaf30929545492d2d877aa6dab30d252fdc626ad4c9a5d8",
+        "linux_deb": "2da3f5058d0217208ca148957e0d41f42b39e12944387d49ec20d9cd93e20081",
+        "linux_rpm": "be05b3b18873252facadc158a10302a1c55c056adf4c1d6fb9a4b04d93123c87"
       }
     },
     {
@@ -36,9 +36,9 @@
       "checksums": {
         "mac_arm": "f3a17f942979fee9cb03a15be32914afed31ccc1a363270bf06b708dbd477acd",
         "mac": "866b07e49c84eddca6fd30c5dd99c519cfeeffce0693ae67461dec8b2dbe4258",
-        "windows": "PENDING",
-        "linux_deb": "PENDING",
-        "linux_rpm": "PENDING"
+        "windows": "9fafaa97d5999430b7089010d66a019a6819f93022d26dc66ed6d9b22ffc05b7",
+        "linux_deb": "d2d0a34e3154c5320dd2008d73c73705c06d0146981348ce112961f23e2dc197",
+        "linux_rpm": "14997a79ef878252eb72eadd83c02b098cb8a63b18ae08f13912c458be2cc88f"
       }
     },
     {
@@ -55,9 +55,9 @@
       "checksums": {
         "mac_arm": "e19105adf7d03ade72814b2d79d0bff63f6c9fa4d5264b906420c3eee5b3b4ff",
         "mac": "3eb5389dd54e9a706831825389e96c0208c632180c8394746e4a0501b0364954",
-        "windows": "PENDING",
-        "linux_deb": "PENDING",
-        "linux_rpm": "PENDING"
+        "windows": "ecde5651617f75fcdfdcc5d8486bc6a80a26e9c6b52dac28cc789c3c1702eb78",
+        "linux_deb": "be8d25d03b92bc668b5979b20beae11e460142119add1b1b5c6486ba6b44cc50",
+        "linux_rpm": "f69f2e7d44ed2eba2271ace18aeba71f2738005b32dedb09b1837737f7a4cf04"
       }
     },
     {
