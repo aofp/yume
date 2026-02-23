@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.14.2",
+  "latest": "0.15.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.15.0",
+      "date": "2026-02-23",
+      "notes": "instant new-tab UX, secret censoring, deep focus fix, Cmd+K/O shortcut remap, warm theme, bg process agent-checked dedup, UI refinements, tooltip zoom fix, about modal z-index fix, context bar tooltip line breaks, tab shortcut in help, linux fixes",
+      "downloads": {
+        "mac_arm": "yume_0.15.0_arm64.pkg",
+        "mac": "yume_0.15.0_x64.pkg",
+        "windows": "yume_0.15.0_x64-setup.exe",
+        "linux_deb": "yume_0.15.0_amd64.deb",
+        "linux_rpm": "yume-0.15.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "399668f0437feb4dc53ba103c9c7f1c661a1f0f82d4802b84ab8cf555148c584",
+        "mac": "0ce44949bdb733f9e289d7cdf3132100f3c8b17324b42a4c568395c35d7dc6da",
+        "windows": "12cc7d6e16e601a2f86be3dc64a780ba06ea8ce403df080fa9bf3896db25cc6b",
+        "linux_deb": "98b37dad3d3df20e4a97e4489230bb9f06bff46a5ccd3a52d8dd2fbaf94ec352",
+        "linux_rpm": "354dacd1a554a544ffe274d7b453075ece520a10b547116156ad0d16f53d13e0"
+      }
+    },
     {
       "version": "0.14.2",
       "date": "2026-02-22",
