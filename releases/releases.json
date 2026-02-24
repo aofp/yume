@@ -1,8 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.15.1",
+  "latest": "0.16.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.16.0",
+      "date": "2026-02-23",
+      "notes": "40+ keyboard shortcuts, file preview modal, improved shortcuts system",
+      "downloads": {
+        "mac_arm": "yume_0.16.0_arm64.pkg",
+        "mac": "yume_0.16.0_x64.pkg",
+        "windows": "yume_0.16.0_x64-setup.exe",
+        "linux_deb": "yume_0.16.0_amd64.deb",
+        "linux_rpm": "yume-0.16.0-1.x86_64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "99ff875e39e66a7baaf9fee72c3bdae43ca8853ff147527ca3d96f32da070c39",
+        "mac": "7aa80cce21b77c777ec80b8388502ff6c4dcfe17330804d1f6ada43064c1b24a",
+        "windows": "0575cbc0a48a7282ec53d3e2ee7a05750eecd6c30b612caedba465f9571f3dbc",
+        "linux_deb": "d980060e7bda93b457568fad8c967b3cf606197601ddb48f8d2fc742a7133c1d",
+        "linux_rpm": "c0b5e3fd797b5238d6ecfaf594fc03dbdc043956cf3404b39d32902b50887c29"
+      }
+    },
     {
       "version": "0.15.1",
       "date": "2026-02-23",
