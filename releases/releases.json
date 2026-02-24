@@ -6,7 +6,7 @@
     {
       "version": "0.16.0",
       "date": "2026-02-23",
-      "notes": "40+ keyboard shortcuts, file preview modal, improved shortcuts system",
+      "notes": "windows path safety (os error 267), bg agent capacity CAS loop, stream parser mem::take, lock-free process registry, yume-cli EOF safety net, mcp bash pty fallback chain, focus manager DOM heartbeat, useShallow selectors, file path existence check, functional setState, cleanup on unmount, per-pane spinner dedup, stuck agent Escape clear, sequential tab close, cmd+o when focused, atomic MCP config write, warm→tengu theme, adaptiveConnect generation tracking, HMR cleanup",
       "downloads": {
         "mac_arm": "yume_0.16.0_arm64.pkg",
         "mac": "yume_0.16.0_x64.pkg",
