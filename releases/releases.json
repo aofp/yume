@@ -1,6 +1,6 @@
 {
   "product": "yume",
-  "latest": "0.17.0",
+  "latest": "0.16.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
     {
