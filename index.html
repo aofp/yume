@@ -1919,12 +1919,12 @@
                     <div class="shortcut-keys"><span class="key">⌘</span><span class="key">W</span></div>
                 </div>
                 <div class="shortcut-item">
-                    <span class="shortcut-action">toggle model</span>
-                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">O</span></div>
+                    <span class="shortcut-action">model & tools</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">K</span></div>
                 </div>
                 <div class="shortcut-item">
-                    <span class="shortcut-action">ultrathink</span>
-                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">K</span></div>
+                    <span class="shortcut-action">toggle model</span>
+                    <div class="shortcut-keys"><span class="key">⌘</span><span class="key">⇧</span><span class="key">K</span></div>
                 </div>
                 <div class="shortcut-item">
                     <span class="shortcut-action">settings</span>
@@ -1947,7 +1947,7 @@
                     <div class="shortcut-keys"><span class="key">⌘</span><span class="key">Y</span></div>
                 </div>
                 <div class="shortcut-item">
-                    <span class="shortcut-action">new window</span>
+                    <span class="shortcut-action">new pane</span>
                     <div class="shortcut-keys"><span class="key">⌘</span><span class="key">N</span></div>
                 </div>
                 <div class="shortcut-item">
@@ -2519,7 +2519,8 @@
                         { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
                         { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
                         { key: 'linux_deb', label: 'linux (deb)', url: r.downloads.linux_deb },
-                        { key: 'linux_rpm', label: 'linux (rpm)', url: r.downloads.linux_rpm }
+                        { key: 'linux_rpm', label: 'linux (rpm)', url: r.downloads.linux_rpm },
+                        { key: 'linux_flatpak', label: 'linux (flatpak)', url: r.downloads.linux_flatpak }
                     ];
 
                     const availableButtons = platformButtons.filter(p => p.url);
@@ -2578,13 +2579,15 @@
             const winFile = getFilename(latestRelease.downloads.win || latestRelease.downloads.windows);
             const linuxDebFile = getFilename(latestRelease.downloads.linux_deb);
             const linuxRpmFile = getFilename(latestRelease.downloads.linux_rpm);
+            const linuxFlatpakFile = getFilename(latestRelease.downloads.linux_flatpak);
 
             const urls = {
                 mac_arm: macArmFile ? `${ghReleaseBase}/${macArmFile}` : null,
                 mac: macFile ? `${ghReleaseBase}/${macFile}` : null,
                 win: winFile ? `${ghReleaseBase}/${winFile}` : null,
                 linux_deb: linuxDebFile ? `${ghReleaseBase}/${linuxDebFile}` : null,
-                linux_rpm: linuxRpmFile ? `${ghReleaseBase}/${linuxRpmFile}` : null
+                linux_rpm: linuxRpmFile ? `${ghReleaseBase}/${linuxRpmFile}` : null,
+                linux_flatpak: linuxFlatpakFile ? `${ghReleaseBase}/${linuxFlatpakFile}` : null
             };
 
             // Detect OS
@@ -2631,6 +2634,7 @@
             if (userOS !== 'win' && urls.win) otherPlatforms.push('<a href="#releases">windows</a>');
             if (userOS !== 'linux' && (urls.linux_deb || urls.linux_rpm)) otherPlatforms.push('<a href="#releases">linux</a>');
             if (userOS === 'linux' && urls.linux_rpm) otherPlatforms.push('<a href="#releases">linux (rpm)</a>');
+            if (userOS === 'linux' && urls.linux_flatpak) otherPlatforms.push('<a href="#releases">linux (flatpak)</a>');
             if (userOS === 'win' || userOS === 'linux') {
                 if (urls.mac_arm) otherPlatforms.push('<a href="#releases">mac</a>');
             }

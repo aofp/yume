@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.16.0",
+  "latest": "0.17.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.17.0",
+      "date": "2026-02-26",
+      "notes": "row split panels (3x2 grid), vim mode (normal/insert/visual/command), flatpak support, windows git bash preference, worktree isolation for bg agents, favorite projects with hotkey bindings, askuser global poll, memoized message list, toast feedback on command palette toggles, fix jsonl parser dollar sign splitting, fix context breakdown mcp config handling, fix stale process_exit detection, reduced bg agent poller overhead, devtools disabled in release builds",
+      "downloads": {
+        "mac_arm": "yume_0.17.0_arm64.pkg",
+        "mac": "yume_0.17.0_x64.pkg",
+        "windows": "yume_0.17.0_x64-setup.exe",
+        "linux_deb": "yume_0.17.0_amd64.deb",
+        "linux_rpm": "yume-0.17.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.17.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "4e1959b9d671ca7f6d6ad05687b62d6e143f3d8f06c5e5f9d89c18118cb22846",
+        "mac": "44e554625a464bab10bb4f8b766cdfcbe109491fd6c274c154ac7b4f0e4a0141",
+        "windows": "72435f362436ffe29e8eadd6598f5ce3e67c016ce03f53213b89fb3ec08668be",
+        "linux_deb": "f2d9ee6fdda6834952c99cc2d5f190c6955c7dccd91d0b30e0bc324f432ef248",
+        "linux_rpm": "cb21a953f716b076cec7ec5383898cf7a54a28e0bb7a06a73222585c5157adfc",
+        "linux_flatpak": "b2e0dbb54b1e720563bee2455651d4874e23f776632cbbca5b0c20b1d44e29d7"
+      }
+    },
     {
       "version": "0.16.0",
       "date": "2026-02-23",

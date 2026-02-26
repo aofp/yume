@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
-**Version:** 0.14.0
-**Last Updated:** February 18, 2026
+**Version:** 0.17.0
+**Last Updated:** February 26, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -45,6 +45,10 @@
 37. [Stream Event Dots](#37-stream-event-dots)
 38. [File Drop Attachment](#38-file-drop-attachment)
 39. [Windows ARM64 Support](#39-windows-arm64-support)
+40. [Row Split Panels](#40-row-split-panels)
+41. [Vim Mode](#41-vim-mode)
+42. [Flatpak Support](#42-flatpak-support)
+43. [Favorite Projects](#43-favorite-projects)
 
 ## 1. Core Features
 
@@ -721,19 +725,15 @@ Live visualization of tool activity during streaming in `StreamIndicator.tsx`.
 - **Icons:** Tabler icons per type (`IconSearch`, `IconEye`, `IconPencil`, `IconTerminal2`, `IconBrain`, etc.)
 - **CSS color resolution:** Cached probe element resolves `var()` colors to RGB for blending (50-entry LRU, 5s TTL for theme changes)
 
-### 9.4 Keyboard Shortcuts
+### 9.4 Keyboard Shortcuts (40+)
 
-**Global Shortcuts**:
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl+N` | New session |
-| `Cmd/Ctrl+T` | New tab |
-| `Cmd/Ctrl+W` | Close tab |
-| `Cmd/Ctrl+Enter` | Send message |
-| `Cmd/Ctrl+/` | Focus input |
-| `Cmd/Ctrl+,` | Settings |
-| `Cmd/Ctrl+Shift+C` | Clear context |
-| `Cmd/Ctrl+P` | Command palette |
+**Tabs**: `Cmd/Ctrl+T` New tab | `Cmd/Ctrl+W` Close tab | `Cmd/Ctrl+D` Duplicate | `Cmd/Ctrl+Shift+D` Fork | `Ctrl+Tab` Next | `Cmd/Ctrl+1-9` Switch | `F2` Rename
+
+**Panels**: `Cmd/Ctrl+P` Palette | `Cmd/Ctrl+E` Files | `Cmd/Ctrl+G` Git | `Cmd/Ctrl+J` Sessions | `Cmd/Ctrl+R` Recent | `Cmd/Ctrl+N` New pane | `Cmd/Ctrl+Shift+N` New window | `Cmd/Ctrl+Shift+A` Agents | `Cmd/Ctrl+B` BG processes | `Cmd/Ctrl+,` Settings
+
+**Session**: `Cmd/Ctrl+.` Stats | `Cmd/Ctrl+K` Model & tools | `Cmd/Ctrl+Shift+K` Toggle model | `Cmd/Ctrl+O` Open project | `Cmd/Ctrl+L` Clear | `Cmd/Ctrl+M` Compact | `Cmd/Ctrl+Shift+R` Resume | `Cmd/Ctrl+Shift+E` Edit CLAUDE.md | `Cmd/Ctrl+Y` Analytics | `Cmd/Ctrl+H` Rollback
+
+**Input**: `Cmd/Ctrl+F` Search | `Cmd/Ctrl+U` Clear input | `Cmd/Ctrl+/` Focus | `Cmd/Ctrl+Shift+V` Direct paste | `Shift+Enter` New line | `Ctrl+S` Auto-scroll | `F5` Dictate | `Escape` Cancel | `?`/`F1` Help
 
 ### 9.4 Virtual Scrolling
 
@@ -2071,6 +2071,10 @@ Yume offers a comprehensive feature set with unique capabilities:
 - **Stream event dots** - Live tool activity visualization with gradient blending
 - **Auth login modal** - In-app OAuth authentication for Claude CLI
 - **File drop attachment** - Drag-and-drop files as context attachments
+- **Row split panels** - Up to 6 panels in 3x2 grid layout
+- **Vim mode** - Normal/insert/visual/command modes for chat input
+- **Flatpak support** - Native Linux Flatpak packaging with flatpak-spawn
+- **Favorite projects** - Hotkey bindings (a-z) for quick project access
 - **Windows ARM64** - Native ARM64 builds for Windows
 - **18 themes** - 12 OLED dark themes + 6 light themes with luminance detection
 - **Memory system** - Per-project markdown memory with importance levels and TTL pruning
@@ -2092,3 +2096,57 @@ Yume offers a comprehensive feature set with unique capabilities:
 - Cross-platform background bash (nohup/setsid macOS/Linux, Task Scheduler Windows)
 
 **Multi-Provider Support:** Gemini/OpenAI support is implemented but disabled by default via feature flags. Uses `yume-cli` shim with Claude-compatible stream-json output.
+
+## 40. Row Split Panels
+
+Split panes vertically into rows, supporting up to 6 panels in a 3-column x 2-row grid.
+
+### Features
+- Split any column into top/bottom rows
+- Independent sessions per panel
+- Keyboard shortcuts: `Cmd+Shift+1/2/3` to switch panes
+- Drag-to-resize between rows
+- Panels persist across restarts
+
+## 41. Vim Mode
+
+Full vim-style keybinding support for the chat input area.
+
+### Modes
+| Mode | Description |
+|------|-------------|
+| Normal | Navigation and commands (`h/j/k/l`, `w/b/e`, `0/$`) |
+| Insert | Text editing (`i/a/o/A/I/O`) |
+| Visual | Text selection (`v`, shift+arrows) |
+| Command | Ex commands (`:w` to send, `:q` to clear) |
+
+### Features
+- Mode indicator in input area
+- `Escape` to return to normal mode
+- Standard vim motions and operators
+- Toggle via settings or command palette
+
+## 42. Flatpak Support
+
+Native Linux Flatpak packaging for sandboxed distribution.
+
+### Implementation
+- `flatpak-spawn --host` for CLI execution from sandbox
+- Environment variable forwarding
+- Desktop file and AppStream metadata
+- Build script: `scripts/build-flatpak.sh`
+
+### Files
+- `flatpak/io.github.aofp.yume.yml` - Flatpak manifest
+- `flatpak/io.github.aofp.yume.desktop` - Desktop entry
+- `flatpak/io.github.aofp.yume.metainfo.xml` - AppStream metadata
+
+## 43. Favorite Projects
+
+Pin frequently used projects with keyboard hotkey bindings.
+
+### Features
+- Assign hotkeys (a-z) to favorite projects
+- Quick-access from projects modal
+- Persistent across sessions
+- Visual indicators for favorited projects

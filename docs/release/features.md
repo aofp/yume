@@ -220,6 +220,23 @@ export with p50/p90/p99 percentiles.
 
 ## ui
 
+### row split panels
+- up to 6 panels in 3x2 grid (3 columns x 2 rows)
+- independent sessions per panel
+- drag-to-resize between rows
+- keyboard shortcuts: cmd/ctrl+shift+1/2/3
+
+### vim mode
+- normal/insert/visual/command modes for chat input
+- standard vim motions (h/j/k/l, w/b/e, 0/$)
+- ex commands (:w to send, :q to clear)
+- toggle via settings or command palette
+
+### favorite projects
+- assign hotkeys (a-z) to projects
+- quick-access from projects modal
+- persistent across sessions
+
 ### themes (12)
 yume (default), void, cobalt, slate, arctic, synth, mint, grove, ochre, bourbon, burnt, rose
 
@@ -321,40 +338,62 @@ oled optimized (pure black backgrounds).
 
 ---
 
-## keyboard shortcuts
+## keyboard shortcuts (40+)
 
-### navigation
+### tabs
 | action | key |
 |--------|-----|
-| new session | `cmd/ctrl + n` |
 | new tab | `cmd/ctrl + t` |
 | close tab | `cmd/ctrl + w` |
-| tab 1-9 | `cmd/ctrl + 1-9` |
-| settings | `cmd/ctrl + ,` |
+| duplicate tab | `cmd/ctrl + d` |
+| fork session | `cmd/ctrl + shift + d` |
+| next tab | `ctrl + tab` |
+| switch to tab | `cmd/ctrl + 1-9` |
+| switch pane | `cmd/ctrl + shift + 1/2/3` |
+| rename tab | `f2` |
+
+### panels
+| action | key |
+|--------|-----|
 | command palette | `cmd/ctrl + p` |
+| files panel | `cmd/ctrl + e` |
+| git panel | `cmd/ctrl + g` |
+| session changes | `cmd/ctrl + shift + s` |
+| sessions browser | `cmd/ctrl + j` |
+| recent projects | `cmd/ctrl + r` |
+| new pane | `cmd/ctrl + n` |
+| new window | `cmd/ctrl + shift + n` |
+| agents | `cmd/ctrl + shift + a` |
+| bg processes | `cmd/ctrl + b` |
+| settings | `cmd/ctrl + ,` |
 
-### chat
+### session
 | action | key |
 |--------|-----|
-| send | `cmd/ctrl + enter` |
+| session stats | `cmd/ctrl + .` |
+| model & tools | `cmd/ctrl + k` |
+| toggle model | `cmd/ctrl + shift + k` |
+| open project | `cmd/ctrl + o` |
+| clear context | `cmd/ctrl + l` |
+| compact context | `cmd/ctrl + m` |
+| resume session | `cmd/ctrl + shift + r` |
+| edit claude.md | `cmd/ctrl + shift + e` |
+| analytics | `cmd/ctrl + y` |
+| rollback/history | `cmd/ctrl + h` |
+
+### input
+| action | key |
+|--------|-----|
+| search messages | `cmd/ctrl + f` |
+| clear input | `cmd/ctrl + u` |
 | focus input | `cmd/ctrl + /` |
-| clear context | `cmd/ctrl + shift + c` |
-| stop | `esc` |
-| voice | `f5` |
-
-### window
-| action | key |
-|--------|-----|
-| zoom in | `cmd/ctrl + +` |
-| zoom out | `cmd/ctrl + -` |
-| reset zoom | `cmd/ctrl + 0` |
-| devtools | `cmd/ctrl + shift + i` or `f12` |
-
-### editor
-| action | key |
-|--------|-----|
-| save claude.md | `cmd/ctrl + s` |
-| close modal | `esc` |
+| direct paste | `cmd/ctrl + shift + v` |
+| new line | `shift + enter` |
+| auto-scroll | `ctrl + s` |
+| zoom | `cmd/ctrl + +/-/0` |
+| dictate | `f5` |
+| cancel/stop | `esc` |
+| help | `?` or `f1` |
 
 ---
 
@@ -469,7 +508,7 @@ oled optimized (pure black backgrounds).
 - gtk3/gtk4 integration
 - x11/wayland compatible
 - system tray
-- appimage, deb, rpm, aur
+- appimage, deb, rpm, aur, flatpak
 
 ---
 

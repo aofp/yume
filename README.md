@@ -152,19 +152,25 @@ visit [aofp.github.io/yume](https://aofp.github.io/yume) for all download option
 |--------|-------|---------------|
 | new tab | ⌘T | Ctrl+T |
 | close tab | ⌘W | Ctrl+W |
-| toggle model | ⌘⇧O | Ctrl+Shift+O |
-| model & tools | ⌘O | Ctrl+O |
-| settings | ⌘, | Ctrl+, |
-| search messages | ⌘F | Ctrl+F |
+| duplicate tab | ⌘D | Ctrl+D |
+| fork session | ⌘⇧D | Ctrl+Shift+D |
+| command palette | ⌘P | Ctrl+P |
 | files panel | ⌘E | Ctrl+E |
 | git panel | ⌘G | Ctrl+G |
-| agents | ⌘N | Ctrl+N |
+| model & tools | ⌘K | Ctrl+K |
+| toggle model | ⌘⇧K | Ctrl+Shift+K |
+| open project | ⌘O | Ctrl+O |
+| settings | ⌘, | Ctrl+, |
+| search messages | ⌘F | Ctrl+F |
+| new pane | ⌘N | Ctrl+N |
+| new window | ⌘⇧N | Ctrl+Shift+N |
+| agents | ⌘⇧A | Ctrl+Shift+A |
 | clear context | ⌘L | Ctrl+L |
 | compact context | ⌘M | Ctrl+M |
-| command palette | ⌘P | Ctrl+P |
 | recent projects | ⌘R | Ctrl+R |
+| analytics | ⌘Y | Ctrl+Y |
 
-30+ shortcuts total. every action accessible via keyboard on all platforms.
+40+ shortcuts total. every action accessible via keyboard on all platforms.
 
 ---
 

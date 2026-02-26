@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.13.1**
+desktop app for claude cli with multi-provider support. current version: **0.17.0**
 
 ---
 
@@ -118,20 +118,24 @@ js/py/sh scripts with 5s timeout.
 
 ---
 
-## keyboard shortcuts (32+)
+## keyboard shortcuts (40+)
 
 | action | key |
 |--------|-----|
-| send | `cmd/ctrl + enter` |
-| new tab | `cmd/ctrl + n` |
+| new tab | `cmd/ctrl + t` |
 | close tab | `cmd/ctrl + w` |
-| tab 1-9 | `cmd/ctrl + 1-9` |
-| settings | `cmd/ctrl + ,` |
 | command palette | `cmd/ctrl + p` |
+| model & tools | `cmd/ctrl + k` |
+| toggle model | `cmd/ctrl + shift + k` |
+| files panel | `cmd/ctrl + e` |
+| git panel | `cmd/ctrl + g` |
+| settings | `cmd/ctrl + ,` |
+| search messages | `cmd/ctrl + f` |
+| clear context | `cmd/ctrl + l` |
+| analytics | `cmd/ctrl + y` |
 | stop | `esc` |
-| voice | `f5` |
 | zoom | `cmd/ctrl + +/-/0` |
-| devtools | `cmd/ctrl + shift + i` |
+| help | `?` or `f1` |
 
 ---
 
@@ -174,6 +178,7 @@ sqlite in `~/.yume/yume.db`:
 | windows | `yume_x.x.x_x64-setup.exe` |
 | linux deb | `yume_x.x.x_amd64.deb` |
 | linux rpm | `yume-x.x.x-1.x86_64.rpm` |
+| linux flatpak | `io.github.aofp.yume` |
 
 ~50mb binary. requires claude cli.
 
