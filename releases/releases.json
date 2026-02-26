@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.17.1",
+  "latest": "0.17.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.17.2",
+      "date": "2026-02-26",
+      "notes": "fix linux PTY usage limits (raw fork/exec, repeated CRs)",
+      "downloads": {
+        "mac_arm": "yume_0.17.2_arm64.pkg",
+        "mac": "yume_0.17.2_x64.pkg",
+        "windows": "yume_0.17.2_x64-setup.exe",
+        "linux_deb": "yume_0.17.2_amd64.deb",
+        "linux_rpm": "yume-0.17.2-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.17.2_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "f3d4755d8f55a7c9f718d53da3c5cda162734b20ea8025e575f8ef8a2af56576",
+        "mac": "b7cf39359a75a3675313666e9f22041e15ada3b7a3f9813b17ac52ed32a97be5",
+        "windows": "f19a6cd2359a586516ad9debafa9c3c67376c6802f83aaf1798549e8c3f54fc3",
+        "linux_deb": "3d2f0f9645374e77bb8229fa8c7a0a77695d11508b39f423aacb513724c929dd",
+        "linux_rpm": "eca4d7b70b81b9e2498f694c0e0262650aecee84b9c2d64fae23f25edb7b7e40",
+        "linux_flatpak": "591d0f048f9af2e2d8b15826c8bb3beb5b2fcd4e4d2f5307e7bceb9cb465adca"
+      }
+    },
     {
       "version": "0.17.1",
       "date": "2026-02-26",
