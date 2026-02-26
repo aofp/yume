@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.17.0**
+desktop app for claude cli with multi-provider support. current version: **0.17.1**
 
 ---
 

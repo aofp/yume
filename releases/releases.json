@@ -1,27 +1,27 @@
 {
   "product": "yume",
-  "latest": "0.16.0",
+  "latest": "0.17.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
     {
-      "version": "0.17.0",
+      "version": "0.17.1",
       "date": "2026-02-26",
-      "notes": "row split panels (3x2 grid), vim mode (normal/insert/visual/command), flatpak support, windows git bash preference, worktree isolation for bg agents, favorite projects with hotkey bindings, askuser global poll, memoized message list, toast feedback on command palette toggles, fix jsonl parser dollar sign splitting, fix context breakdown mcp config handling, fix stale process_exit detection, reduced bg agent poller overhead, devtools disabled in release builds",
+      "notes": "row split panels (3x2 grid), vim mode (normal/insert/visual/command), flatpak support, windows git bash preference, worktree isolation for bg agents, favorite projects with hotkey bindings, askuser global poll, memoized message list, toast feedback on command palette toggles, fix jsonl parser dollar sign splitting, fix context breakdown mcp config handling, fix stale process_exit detection, reduced bg agent poller overhead, fix production Socket.IO port discovery (stale port file), fix missing use-sync-external-store dependency, usage detection diagnostics",
       "downloads": {
-        "mac_arm": "yume_0.17.0_arm64.pkg",
-        "mac": "yume_0.17.0_x64.pkg",
-        "windows": "yume_0.17.0_x64-setup.exe",
-        "linux_deb": "yume_0.17.0_amd64.deb",
-        "linux_rpm": "yume-0.17.0-1.x86_64.rpm",
-        "linux_flatpak": "yume_0.17.0_x64.flatpak"
+        "mac_arm": "yume_0.17.1_arm64.pkg",
+        "mac": "yume_0.17.1_x64.pkg",
+        "windows": "yume_0.17.1_x64-setup.exe",
+        "linux_deb": "yume_0.17.1_amd64.deb",
+        "linux_rpm": "yume-0.17.1-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.17.1_x64.flatpak"
       },
       "checksums": {
-        "mac_arm": "4e1959b9d671ca7f6d6ad05687b62d6e143f3d8f06c5e5f9d89c18118cb22846",
-        "mac": "44e554625a464bab10bb4f8b766cdfcbe109491fd6c274c154ac7b4f0e4a0141",
-        "windows": "72435f362436ffe29e8eadd6598f5ce3e67c016ce03f53213b89fb3ec08668be",
-        "linux_deb": "f2d9ee6fdda6834952c99cc2d5f190c6955c7dccd91d0b30e0bc324f432ef248",
-        "linux_rpm": "cb21a953f716b076cec7ec5383898cf7a54a28e0bb7a06a73222585c5157adfc",
-        "linux_flatpak": "b2e0dbb54b1e720563bee2455651d4874e23f776632cbbca5b0c20b1d44e29d7"
+        "mac_arm": "1577ffc86718c0dbfcc17220d64a6c64776d1340d3d94277b9d6cded1698ae97",
+        "mac": "3f2256999a474b26946a3e66e9b7f8f6be859ab8743ba02adeaaa6cbcd179387",
+        "windows": "57c853c2ed6e31c455ed7fcf38a2df56f3709395369d93a3609688f2b1ab48bf",
+        "linux_deb": "437173975153822642bec610593da58534d95f8c5700c872353e4b3ac8daa09c",
+        "linux_rpm": "97326dd35db9a9b0489c1042a1eaebd6d325111d722cbb365a6884021cd69267",
+        "linux_flatpak": "32871bb5cf517bb0e01f458543aae666c26eaf59698ec59d7570e0748276a3af"
       }
     },
     {
