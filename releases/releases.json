@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.17.2",
+  "latest": "0.18.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.18.0",
+      "date": "2026-02-27",
+      "notes": "effort/budget controls (low/medium/high + max budget USD), OpenAI Codex provider enabled (JSONL parser for codex v0.100+ events, session resume), 15+ new slash commands (/config, /theme, /help, /stats, /memory, /mcp, /tasks, /new, /history, /rename, /analytics), CLAUDE.local.md + MEMORY.md editor support, auto-memory toggle, strip ANSI virtual terminal buffer rewrite, focus stability (removed focus heartbeat causing random focus loss, focusout rate limiter), system prompt + disallowed tools passed to yume-cli, live usage emission during yume-cli streaming, pane split fix, resets_at validation against garbled TUI fragments, cobalt theme fix, windows claude detection improvements",
+      "downloads": {
+        "mac_arm": "yume_0.18.0_arm64.pkg",
+        "mac": "yume_0.18.0_x64.pkg",
+        "windows": "yume_0.18.0_x64-setup.exe",
+        "linux_deb": "yume_0.18.0_amd64.deb",
+        "linux_rpm": "yume-0.18.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.18.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "ddc05daa77638347144f41a6e60ad998cea0234091b7bde8782ba38aa70b91d4",
+        "mac": "eac1c764b64671ad9249dc7fd19c48caf68dfd96f5b72f197452d20fdb0e3164",
+        "windows": "4bb7f368d95a0f2bb149d236c408bfdb3599dbfbaef0ab497ba67d572ba62892",
+        "linux_deb": "a9c83706a8e31535e0025eae03358d1e6e2c4263164a892b26401582fb977cad",
+        "linux_rpm": "d2e28c6e3b0df1fc83fd0b63461365debf5ca6c46e3ce5bc1ad17fb4f0bcb96b",
+        "linux_flatpak": "a4cc9eb1157e4354cedc01f2b253e77c08fc354866916ac1ec324c2668951dfa"
+      }
+    },
     {
       "version": "0.17.2",
       "date": "2026-02-26",
