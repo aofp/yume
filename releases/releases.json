@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.18.1",
+  "latest": "0.19.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.19.0",
+      "date": "2026-02-28",
+      "notes": "/schedule command (timed: 5m/2pm/14:00, event-based: next/done), schedule indicator in context bar, remove fsync from mcp bash stream (windows AV lag fix), cross-platform isPidAlive, fix windows installer launch (redirect stdio, CREATE_NO_WINDOW), adaptive bg process polling (3s active/15s idle), bash stream poll 100ms→300ms, git refresh in-flight guard, windows defender exclusion tip in settings",
+      "downloads": {
+        "mac_arm": "yume_0.19.0_arm64.pkg",
+        "mac": "yume_0.19.0_x64.pkg",
+        "windows": "yume_0.19.0_x64-setup.exe",
+        "linux_deb": "yume_0.19.0_amd64.deb",
+        "linux_rpm": "yume-0.19.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.19.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "d54dc3905a964c18bc6032ab0adbd22a5ecdffcd3ff90da7c710047e0962fcc5",
+        "mac": "7e3760eb7467b6c200f5dd7cc7fea97557c824b5e88be913be095e5f1ab3c4cf",
+        "windows": "d27f8d099071c1787196c1cbdcf36309fd27dcd40ee44ff75b8a21a7eac39ba6",
+        "linux_deb": "7520724863115401cd4e897b1d93cfca98e71c8f221afe81bbeba7f30d14ae2c",
+        "linux_rpm": "d2ec4534fac4507798aa5d9a2943255bf66efbd1ac514ba307d1b9af9a49cf0b",
+        "linux_flatpak": "f01c0c277c3c264995d50dd5c7ad4e793d926a7eb0487ea993df2b793ffcf2f0"
+      }
+    },
     {
       "version": "0.18.1",
       "date": "2026-02-27",
