@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.18.0",
+  "latest": "0.18.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.18.1",
+      "date": "2026-02-27",
+      "notes": "map bedrock models (Claude via AWS Bedrock), improve TUI parsing, fix background processes and agents not visible in UI",
+      "downloads": {
+        "mac_arm": "yume_0.18.1_arm64.pkg",
+        "mac": "yume_0.18.1_x64.pkg",
+        "windows": "yume_0.18.1_x64-setup.exe",
+        "linux_deb": "yume_0.18.1_amd64.deb",
+        "linux_rpm": "yume-0.18.1-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.18.1_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "3aa43aaacdd3e7200d780910a5ec436ee66105dbe34d99aa80b35479186cd25b",
+        "mac": "d08051c77bdcce1c2b0fd73dd4cac8a03cd0337b4ea64329620569392ce5c500",
+        "windows": "9bea53aa839f050824d82f8848911f2fdf70cbe15d7f3f62dce0bbbb75b50821",
+        "linux_deb": "4e0d896301d9d90dc2395968db78cd7a790c8f4ae9abd2b7ea4d42c3776992bb",
+        "linux_rpm": "4ce695ebfb7691f1bad37098f74e02c3265914cc59db8ba71d2deaa070a0a863",
+        "linux_flatpak": "a27c0c46703a1b967da0e3545711e9b098e71b1da63888731ca66bafc9f7d57f"
+      }
+    },
     {
       "version": "0.18.0",
       "date": "2026-02-27",
