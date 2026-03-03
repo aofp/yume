@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.19.0",
+  "latest": "0.20.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.20.0",
+      "date": "2026-03-03",
+      "notes": "reliable interrupt/kill (PID fallback, brute-force scan, drop interrupted messages), agent teams (rust backend + react panel for multi-agent coordination), file conflict detection across tabs, rules tab (.claude/rules/ CRUD), per-provider model picker with enable/disable, kiro provider, remote access foundation (?mobile=1 with device token auth), Agent/Teammate/TeamCreate/SendMessage tool support, large prompt stdin pipe (>100KB avoids E2BIG), 15-min inactivity timeout for subagents, image compression pipeline + thumbnails in chat, pane split state transfer + F7/F8 split/combine + /pane target commands, HTTP hooks with SSRF protection, background agent permission modes + memory scope + auto-worktree cleanup, skip polling when document.hidden + longer poll intervals, windows: fix OS error 193 (filter extensionless paths, route .cmd via cmd.exe), nvm4w support, suppress child error dialogs, persistent bash stream handle, incremental message analytics O(1), NotebookEdit snapshot support, context bar warning thresholds lowered (75/80/85%), bash output window 5 head + 15 tail lines",
+      "downloads": {
+        "mac_arm": "yume_0.20.0_arm64.pkg",
+        "mac": "yume_0.20.0_x64.pkg",
+        "windows": "yume_0.20.0_x64-setup.exe",
+        "linux_deb": "yume_0.20.0_amd64.deb",
+        "linux_rpm": "yume-0.20.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.20.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "bf6d7a6bc9ebb7a06c3a29a9fc04d79909054f60f626a2babf2d71c495f8edbd",
+        "mac": "5d33892097ff51672d2c99fbb687e25525adc1aa1d21291ed2b9d339d11f70c1",
+        "windows": "4c3ed6a3c00d6a267883767f4230faffd6e330133f098c159d029fe139657eea",
+        "linux_deb": "bc8e920ab579059174250305c07ecbd401a32fe89ede7299bcf4e358eadd3a0b",
+        "linux_rpm": "60be3d9da7d8eba0a54deb6b627cb1d667ac1dd84439f667a3b85313599415c2",
+        "linux_flatpak": "807f779316bde84db7d5c5bfc6eee1c32e40a0fe313ec8b32c5c2f608eca708d"
+      }
+    },
     {
       "version": "0.19.0",
       "date": "2026-02-28",
