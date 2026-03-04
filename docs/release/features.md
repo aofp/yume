@@ -70,6 +70,7 @@ sends `/compact` on next user message. generates context manifest preserving imp
 | claude | sonnet 4.5/4.6, opus 4.5 | `@anthropic-ai/claude-code` |
 | gemini | 2.5 pro, 2.5 flash | `@google/gemini-cli` |
 | openai | gpt-5.2 codex, gpt-5.1 mini | `@openai/codex` |
+| kiro | kiro (latest) | `kiro` |
 
 ### implementation
 - yume-cli shim spawns official clis
@@ -123,9 +124,10 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 #### hooks
 - location: `hooks/*.js`, `hooks/*.py`, `hooks/*.sh`
-- 9 events defined, **only 3 active**: `PreToolUse`, `ContextWarning`, `CompactionTrigger`
-- 6 events defined but not wired: `UserPromptSubmit`, `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`
+- 16 events defined, **7 active**: `PreToolUse`, `ContextWarning`, `CompactionTrigger`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `TeammateIdle`
+- 9 events defined but not wired: `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, and others
 - actions: continue, block, modify
+- hook types: script (bash/python/node/powershell), HTTP (POST JSON with SSRF protection)
 - 5s timeout default
 - variable substitution: `${session_id}`, `${message}`, `${file}`
 
@@ -173,9 +175,14 @@ agents auto-sync to `~/.claude/agents/yume-*.md` when enabled. use selected mode
 
 ### git integration
 - automatic branch creation (`yume-async-{type}-{id}`)
-- isolated work on dedicated branches
+- worktree isolation mode (in addition to git branch)
+- auto-worktree cleanup on cancel
 - merge/delete branch operations
 - conflict detection before merge
+
+### permissions & scope
+- permission modes per agent (dangerously-skip, ask, deny)
+- memory scope settings (shared, isolated, read-only)
 
 ### ui components
 - `AgentQueuePanel` - sliding panel with agent cards
@@ -186,6 +193,17 @@ agents auto-sync to `~/.claude/agents/yume-*.md` when enabled. use selected mode
 ```bash
 yume-cli --async --output-file ./out.json --git-branch feature-xyz
 ```
+
+---
+
+## agent teams
+
+- multi-agent coordination system
+- create teams with named teammates
+- task assignment and tracking per team
+- inter-agent messaging
+- ui panel (`cmd/ctrl + shift + t`)
+- state stored in `~/.yume/teams/{team-name}/`
 
 ---
 
@@ -306,6 +324,26 @@ oled optimized (pure black backgrounds).
 - plugin badges showing command origin
 - tab to fill, enter to send
 
+### rules tab
+- crud for `.claude/rules/*.md` in settings
+- create, edit, delete rule files
+
+### secret censoring
+- api keys/tokens automatically redacted in output
+- applies to bash output, bg processes, mcp
+
+### image thumbnails
+- drag-and-drop images into chat
+- compression pipeline for large images
+
+### copy picker modal
+- select specific code block to copy from messages
+- keyboard-navigable block selection
+
+### claude.local.md + memory.md editor
+- extended claude.md editor for local overrides
+- in-app memory.md editing
+
 ### context bar enhancements
 - git count badge (modified + added + deleted)
 - line changes tracking per session
@@ -335,6 +373,34 @@ oled optimized (pure black backgrounds).
 - appearance (theme, font, opacity)
 - settings (open, specific tabs)
 - menu (projects, agents, analytics)
+
+---
+
+## schedule system
+
+- `/schedule` command for timed tasks
+- relative triggers: `5m`, `2h` (from now)
+- absolute triggers: `2pm`, `14:00` (wall clock)
+- event-based triggers: `next` (after response), `done` (streaming ends)
+- schedule indicator pill in context bar
+- per-session task management dropdown
+
+---
+
+## effort controls
+
+- effort level setting: low (1) / medium (2) / high (3)
+- compact 1/2/3 toggle in context bar
+- passed as `--effort` to cli
+
+---
+
+## askuser ipc
+
+- claude can ask structured questions mid-session
+- single/multi-select choice popover in chat
+- file-based ipc (write question, poll answer)
+- inline wizard styles with completion sound
 
 ---
 
@@ -475,6 +541,7 @@ oled optimized (pure black backgrounds).
 - 4 layers: frontend, tauri, server, claude
 - path traversal prevention
 - redos-safe regex for skills
+- secret censoring in bash output, bg processes, mcp
 
 ### yume-cli limits
 - max_turns: 50
@@ -557,9 +624,9 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 - node.js server (compiled to binary)
 
 ### code
-- 181+ tauri commands
-- 24 frontend services
-- ~83k lines (62k ts/tsx + 21k rust)
+- 200+ tauri commands
+- 26 frontend services
+- ~90k lines (66k ts/tsx + 24k rust)
 
 ### binary
 - ~50mb size

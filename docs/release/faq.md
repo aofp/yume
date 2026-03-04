@@ -95,7 +95,7 @@ check settings → plugins, make sure it's enabled
 ## tech
 
 **stack?**
-rust/tauri 2.9, react 19, node.js. 181+ tauri commands, ~83k lines.
+rust/tauri 2.9, react 19, node.js. 230+ tauri commands, ~90k+ lines.
 
 **why tauri?**
 smaller binary (~50mb vs electron's ~150mb), less memory, native performance.
@@ -104,3 +104,16 @@ smaller binary (~50mb vs electron's ~150mb), less memory, native performance.
 - claude: sonnet 4.5/4.6, opus 4.5
 - gemini: 2.5 pro, 2.5 flash
 - openai: gpt-5.2 codex, gpt-5.1 mini
+- kiro: kiro (latest)
+
+**what is /schedule?**
+schedule tasks with time or event triggers. `/schedule 5m review code` runs after 5 minutes.
+
+**what are agent teams?**
+multi-agent coordination. create a team, add teammates, assign tasks. agents can message each other.
+
+**vim mode?**
+full vim keybindings for chat. normal/insert/visual/command modes. toggle in settings.
+
+**what's the effort control?**
+sets claude's effort level (1/2/3). lower = faster/cheaper, higher = more thorough. toggle in context bar.

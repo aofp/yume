@@ -1739,12 +1739,12 @@
                 <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-users icon"></i>
                     <h3>do 4 things at once</h3>
-                    <p>run 4 agents in parallel on isolated branches. test, refactor, write docs, review—all at once.</p>
+                    <p>run 4 agents in parallel on isolated branches or worktrees. create teams, assign tasks, coordinate workflows—all at once.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-switch-horizontal icon"></i>
                     <h3>not locked to anthropic</h3>
-                    <p>claude, gemini, and openai—all through one interface. switch providers with a keystroke. 6 models, 3 providers.</p>
+                    <p>claude, gemini, openai, and kiro—all through one interface. switch providers with a keystroke. 7+ models, 4 providers.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-command icon"></i>
@@ -1786,6 +1786,46 @@
                     <h3>tabs + windows</h3>
                     <p>cli is single-session. yume gives you unlimited tabs, multiple windows, drag between them.</p>
                 </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-users-group icon"></i>
+                    <h3>agent teams</h3>
+                    <p>multi-agent coordination. create teams, assign tasks, inter-agent messaging. run coordinated workflows across multiple agents.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-calendar-event icon"></i>
+                    <h3>schedule system</h3>
+                    <p>/schedule command. timed (5m, 2pm) and event-based (next, done) task triggers. schedule indicator in context bar.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-terminal icon"></i>
+                    <h3>vim mode</h3>
+                    <p>full vim keybindings. normal/insert/visual/command modes. j/k navigate, gg/G top/bottom, /? search, :w send, :q clear.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-adjustments icon"></i>
+                    <h3>effort controls</h3>
+                    <p>set claude's effort level (1/2/3). lower = faster, higher = more thorough. compact toggle in context bar.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-message-question icon"></i>
+                    <h3>askuser ipc</h3>
+                    <p>claude asks you questions mid-session. structured choices with single/multi-select. inline wizard popover in chat.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-file-settings icon"></i>
+                    <h3>rules management</h3>
+                    <p>.claude/rules/ CRUD in settings. create, edit, delete rule files. supports nested directories.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-eye-off icon"></i>
+                    <h3>secret censoring</h3>
+                    <p>api keys, tokens, passwords auto-redacted in all output streams. bash, background processes, mcp.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-layout-columns icon"></i>
+                    <h3>row split panels</h3>
+                    <p>up to 6 panels in 3x2 grid. F7 combine, F8 split evenly. independent sessions per panel.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -1800,9 +1840,9 @@
             <div class="tech-grid">
                 <div class="tech-card">
                     <i class="ti ti-robot icon"></i>
-                    <div class="tech-value">6 models</div>
-                    <div class="tech-label">3 providers</div>
-                    <div class="tech-detail">claude sonnet 4.5/4.6 + opus, gemini 2.5 pro/flash, gpt-5.2 codex. via yume-cli shim.</div>
+                    <div class="tech-value">7+ models</div>
+                    <div class="tech-label">4 providers</div>
+                    <div class="tech-detail">claude sonnet 4.5/4.6 + opus, gemini 2.5 pro/flash, gpt-5.2 codex, kiro. via yume-cli shim.</div>
                 </div>
                 <div class="tech-card">
                     <i class="ti ti-bolt icon"></i>
@@ -1842,7 +1882,7 @@
         <div class="container">
             <div class="section-header">
                 <h2>a team of specialists, not one generalist</h2>
-                <p>cli claude tries everything at once. yume deploys purpose-built agents that each do one thing well.</p>
+                <p>cli claude tries everything at once. yume deploys purpose-built agents that each do one thing well. branch or worktree isolation. agent teams for coordinated workflows.</p>
             </div>
 
             <div class="agents-grid">
@@ -1870,10 +1910,10 @@
 
             <div class="agents-callout">
                 <p class="agents-callout-title">
-                    <i class="ti ti-users"></i>run 4 agents simultaneously
+                    <i class="ti ti-users"></i>run 4 agents simultaneously. coordinate as teams.
                 </p>
                 <p class="agents-callout-desc">
-                    each agent works on an isolated git branch. refactor, test, document, and review—all in parallel. no waiting.
+                    each agent works on an isolated git branch or worktree. create agent teams, assign tasks, coordinate workflows—all in parallel. no waiting.
                 </p>
             </div>
         </div>
@@ -2010,6 +2050,22 @@
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="check">✓</span> extensible</div>
+                </div>
+                <div class="comparison-row">
+                    <div>agent teams</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> coordinated</div>
+                </div>
+                <div class="comparison-row">
+                    <div>vim mode</div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="cross">✗</span></div>
+                    <div><span class="check">✓</span> full</div>
                 </div>
                 <!-- pain points yume fixes -->
                 <div class="comparison-row">

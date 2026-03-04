@@ -3,7 +3,7 @@
 <div align="center">
   <img src="assets/yume.png" alt="yume logo" width="120">
   <h3>claude code, unchained</h3>
-  <p>orchestration flow. background agents. interleaved thinking.<br>4 built-in agents. plugins & skills. multi-provider. mac, windows, linux.</p>
+  <p>orchestration flow. agent teams. background agents. interleaved thinking.<br>4 built-in agents. vim mode. plugins & skills. 4 providers. mac, windows, linux.</p>
   <p>
     <a href="https://aofp.github.io/yume">Download</a>
   </p>
@@ -69,12 +69,15 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **no timeout** - agents run until completion, output to ~/.yume/agent-output/
 - **streaming isolation** - background agents don't interfere with main session
 - **merge conflict detection** - pre-merge checks before integrating agent work
+- **worktree isolation** - full filesystem isolation via git worktree
+- **agent teams** - multi-agent coordination with task tracking (`Cmd+Shift+T`)
 
 ### multi-provider support
-- **6 models, 3 providers** - via yume-cli shim
+- **7+ models, 4 providers** - via yume-cli shim
   - claude sonnet 4.5/4.6, opus 4.5
   - gemini 2.5 pro, flash
   - gpt-5.2 codex, codex mini
+  - kiro (latest)
 - **protocol normalization** - stream-json output for all providers
 - **same interface** - switch providers without changing workflow
 
@@ -86,6 +89,10 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
 - **auto-compaction** - variable threshold (default 75%), user configurable or disable
+- **effort controls** - low/medium/high effort level, compact toggle in context bar
+- **schedule system** - `/schedule 5m`, `/schedule 2pm`, `/schedule done` for timed and event-based tasks
+- **askuser ipc** - claude asks structured questions mid-session with choice popover
+- **secret censoring** - api keys and tokens automatically redacted in all output
 
 ### plugin & skills system
 - **complete extensibility** - commands, agents, hooks, skills, MCP servers
@@ -100,6 +107,11 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **analytics dashboard** - usage by project/model/date, cost tracking, export
 - **voice dictation** - F5 to toggle, native speech-to-text
 - **@ mention system** - @ shows recent/modified files with autocomplete, folder navigation
+- **vim mode** - full normal/insert/visual/command modes for chat navigation
+- **row split panels** - up to 6 panels in 3x2 grid with F7/F8 split/combine
+- **rules management** - .claude/rules/ CRUD in settings
+- **image thumbnails** - drag-and-drop images with compression pipeline
+- **15+ slash commands** - /config, /theme, /stats, /memory, /mcp, /tasks, and more
 
 ### customization
 - **12 themes, infinite combinations** - accents, backgrounds, foregrounds fully customizable
@@ -127,7 +139,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 | orchestration flow | ✗ | ✗ | ✗ | ✗ | ✓ auto |
 | background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
 | interleaved thinking | ✗ after | ✗ | ✗ | ✗ | ✓ live toggle |
-| multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 6 models / 3 providers |
+| multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 7+ models / 4 providers |
 | limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
 | plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
 | 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
@@ -169,8 +181,12 @@ visit [aofp.github.io/yume](https://aofp.github.io/yume) for all download option
 | compact context | ⌘M | Ctrl+M |
 | recent projects | ⌘R | Ctrl+R |
 | analytics | ⌘Y | Ctrl+Y |
+| agent teams | ⌘⇧T | Ctrl+Shift+T |
+| split all panes | F8 | F8 |
+| combine panes | F7 | F7 |
+| vim mode | toggle in settings | toggle in settings |
 
-40+ shortcuts total. every action accessible via keyboard on all platforms.
+50+ shortcuts total. every action accessible via keyboard on all platforms.
 
 ---
 
@@ -190,6 +206,8 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 - output to ~/.yume/agent-output/
 - streaming isolation from main session
 - merge conflict detection
+- worktree isolation: full filesystem isolation
+- permission modes + memory scope
 
 ---
 
@@ -198,7 +216,7 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 - **claude subscription** - pro or max required for claude code access
 - **macos** 11+ (big sur or later) — arm64 + x64
 - **windows** 10+ (64-bit) — exe installer
-- **linux** ubuntu 20.04+ or equivalent — deb + rpm
+- **linux** ubuntu 20.04+ or equivalent — deb + rpm + flatpak
 
 ---
 

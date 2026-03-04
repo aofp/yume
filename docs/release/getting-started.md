@@ -16,6 +16,7 @@ claude  # login
 | windows | `yume_x.x.x_x64-setup.exe` |
 | linux deb | `yume_x.x.x_amd64.deb` |
 | linux rpm | `yume-x.x.x-1.x86_64.rpm` |
+| linux flatpak | `yume_x.x.x_x64.flatpak` |
 
 ## 3. install
 
@@ -23,7 +24,9 @@ claude  # login
 
 **windows**: run installer.
 
-**linux**: install via `sudo dpkg -i yume_*.deb` or `sudo rpm -i yume-*.rpm`
+**linux (deb/rpm)**: install via `sudo dpkg -i yume_*.deb` or `sudo rpm -i yume-*.rpm`
+
+**linux (flatpak)**: `flatpak install yume_*.flatpak`
 
 ## 4. run
 
@@ -41,6 +44,10 @@ gemini auth login
 # openai
 npm install -g @openai/codex
 codex login
+
+# kiro
+npm install -g kiro
+kiro auth login
 ```
 
 switch providers in the model picker. switching forks the session.

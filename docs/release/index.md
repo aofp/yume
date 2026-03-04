@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.17.2**
+desktop app for claude cli with multi-provider support. current version: **0.20.0**
 
 ---
 
@@ -12,7 +12,16 @@ desktop app for claude cli with multi-provider support. current version: **0.17.
 - **auto-compaction** — variable threshold (default 75%), user configurable or disable
 - **token tracking** — input/output/cache tokens, cost per message
 - **crash recovery** — 30s auto-save, full state restoration
-- **multi-provider** — claude, gemini, openai via official clis
+- **multi-provider** — claude, gemini, openai, kiro via official clis
+- **agent teams** — multi-agent coordination with task tracking
+- **schedule system** — `/schedule` for timed and event-based tasks
+- **effort controls** — low/medium/high effort level per session
+- **rules management** — .claude/rules/ CRUD in settings
+- **askuser ipc** — claude asks structured questions mid-session
+- **secret censoring** — api keys/tokens redacted in output
+- **vim mode** — full normal/insert/visual/command modes
+- **row split panels** — up to 6 panels in 3x2 grid
+- **kiro provider** — 4th provider support
 
 ---
 
@@ -41,6 +50,7 @@ desktop app for claude cli with multi-provider support. current version: **0.17.
 | claude | sonnet 4.5/4.6, opus 4.5 | ✅ native |
 | gemini | 2.5 pro, 2.5 flash | ✅ via yume-cli |
 | openai | gpt-5.2 codex, gpt-5.1 mini | ✅ via yume-cli |
+| kiro | kiro (latest) | ✅ via kiro cli |
 
 unified stream-json protocol. provider switching forks session.
 
@@ -83,11 +93,11 @@ agents use selected model. synced to `~/.claude/agents/`.
 
 ---
 
-## hooks (9 events, 3 active)
+## hooks (16 events, 7 active)
 
-**active:** `PreToolUse`, `ContextWarning`, `CompactionTrigger`
+**active:** `PreToolUse`, `ContextWarning`, `CompactionTrigger`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `TeammateIdle`
 
-**defined (not wired):** `UserPromptSubmit`, `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`
+**defined (not wired):** `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, `ScheduleTrigger`, `TeamMessage`, `TaskComplete`, `EffortChange`
 
 js/py/sh scripts with 5s timeout.
 
@@ -196,9 +206,9 @@ sqlite in `~/.yume/yume.db`:
 - rust/tauri 2.9 backend
 - react 19 frontend
 - node.js server (compiled binaries)
-- 181+ tauri commands
+- 230+ tauri commands
 - 24 frontend services
-- ~83k lines of code (62k ts/tsx + 21k rust)
+- ~90k+ lines of code
 
 ---
 
