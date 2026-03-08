@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.21.1",
+  "latest": "0.22.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.22.2",
+      "date": "2026-03-08",
+      "notes": "version check via Rust reqwest (bypasses webview fetch restrictions), stream indicator animation fix (explicit animationPlayState: running), chat/message renderer CSS refinements",
+      "downloads": {
+        "mac_arm": "yume_0.22.2_arm64.pkg",
+        "mac": "yume_0.22.2_x64.pkg",
+        "windows": "yume_0.22.2_x64-setup.exe",
+        "linux_deb": "yume_0.22.2_amd64.deb",
+        "linux_rpm": "yume-0.22.2-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.22.2_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "91f3bacb4f0d83070cbbbe7cc01ac5960fe2affbde5e48c7f43f310e029e852c",
+        "mac": "95277dcdc41611c797ea1b5601aeaf77c6d7756e5e553f6edbee183de3d1fe78",
+        "windows": "df2c070062f6a31e1755eaae4864d0d679b289da639e0be4c275e3810594cf0e",
+        "linux_deb": "a77ec59b1e66dc1f2f976dce6c8a65f2f05c1ea506446cf564575a783b68bbd5",
+        "linux_rpm": "b030ef23d768015ab83481e04f49d4f078f5cf279f1f269e70c5a94a45e222ce",
+        "linux_flatpak": "708a5e7f77fde08e7e7409a3ac0d9db7452421881c0f54869c8e00812752345e"
+      }
+    },
     {
       "version": "0.21.1",
       "date": "2026-03-08",
