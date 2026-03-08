@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.21.0",
+  "latest": "0.21.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.21.1",
+      "date": "2026-03-08",
+      "notes": "fix x64 bytecode crash (cross-arch compilation via rosetta), force default cursor everywhere in session tabs (remove all pointer/grabbing cursors), rebuild server binary, flatten cli-not-found diagnostics",
+      "downloads": {
+        "mac_arm": "yume_0.21.1_arm64.pkg",
+        "mac": "yume_0.21.1_x64.pkg",
+        "windows": "yume_0.21.1_x64-setup.exe",
+        "linux_deb": "yume_0.21.1_amd64.deb",
+        "linux_rpm": "yume-0.21.1-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.21.1_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "c8d71e1e4e3018eb53196dfe47030fb7df1143ca545236e48d1078612e8cef90",
+        "mac": "925090c923c6d43936f07d25d5b02aa1001e19e1b4c36f48c76c151e536abc3d",
+        "windows": "e0164799edb4a0834a9d23ae6d1f36d1e85943b0a3fa6f8d1fe5f4663f4ee3b1",
+        "linux_deb": "43d0b8d5062d259bf27ad455f95820745534cb8781c9540003b4152a423cf074",
+        "linux_rpm": "593fd48c980cd98184cf4c39d5c12ae35815a1a77f79ad27ab44eb05582c66ec",
+        "linux_flatpak": "eac08209dbf5f50ae2738dfe6364c8e32c8255a9efab638db2e0c125db713044"
+      }
+    },
     {
       "version": "0.21.0",
       "date": "2026-03-08",
