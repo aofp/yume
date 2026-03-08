@@ -1,5 +1,16 @@
 # changelog
 
+## 0.21.0 — march 8, 2026
+
+- pane auto-collapse on empty
+- remote access improvements + CLI detection fixes
+- linux platform support improvements
+- remove inactivity timeout from background agents and bash processes
+- temp file cleanup
+- kiro provider + remote access foundation
+- agent/teammate tool support
+- windows reliability (OS error 193 fix, pane commands, polling perf)
+
 ## 0.20.0 — march 3, 2026
 
 - reliable interrupt/kill (PID fallback, brute-force scan, drop interrupted messages)

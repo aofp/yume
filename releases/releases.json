@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.20.0",
+  "latest": "0.21.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.21.0",
+      "date": "2026-03-08",
+      "notes": "pane auto-collapse on empty, remote access improvements, CLI detection fixes, linux platform support, no inactivity timeout for background agents/bash processes, temp file cleanup, agent teams file conflict detection, rules tab, per-provider model picker, kiro provider, remote access foundation, agent/teammate tool support, windows reliability (OS error 193 fix, pane commands, polling perf)",
+      "downloads": {
+        "mac_arm": "yume_0.21.0_arm64.pkg",
+        "mac": "yume_0.21.0_x64.pkg",
+        "windows": "yume_0.21.0_x64-setup.exe",
+        "linux_deb": "yume_0.21.0_amd64.deb",
+        "linux_rpm": "yume-0.21.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.21.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "72349ed9b293d90ee8447aa2da7f404c75a4e8a09e7ceeb922cad9162df05c5f",
+        "mac": "14aca95f5f8705b99819e28101aa6c5caadd1ff50121d7bec47c106ebde9ddce",
+        "windows": "9b44cb9c6c257cd3ec5538d93173979aa72c0b032a126451cc1553ec25bc771f",
+        "linux_deb": "f54a19b16492f8793440e3a97ea1d3943cf6ab74811e96ab664099a3f1064055",
+        "linux_rpm": "7ff37db38c86e3c709ba1928007208c86153fe63d5f0660ae8f6419f924c8441",
+        "linux_flatpak": "421cb8803c93b7e2500f80090352d04ea5f812108053dee19e7c06a0c7306df8"
+      }
+    },
     {
       "version": "0.20.0",
       "date": "2026-03-03",
