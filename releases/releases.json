@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.22.2",
+  "latest": "0.23.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.23.0",
+      "date": "2026-03-09",
+      "notes": "remote control backend (start/stop/status via claude remote-control CLI), remote output tab with batched streaming and auto-cleanup, rewrite remote access modal from socket pairing to tauri IPC, schedule task inline editing with popover actions, harden image processor (force compress, progressive downscale 5% steps, convert large GIF/WebP to JPEG, guard failed images), fix windows claude detection (auto-recovery on mount, server redetect, extension fallback for .cmd/.exe), remove content-visibility optimization (scroll instability), simplify auto-scroll disable logic, streamline implement/swarm plugin commands, bump plugin version to 3.0.0",
+      "downloads": {
+        "mac_arm": "yume_0.23.0_arm64.pkg",
+        "mac": "yume_0.23.0_x64.pkg",
+        "windows": "yume_0.23.0_x64-setup.exe",
+        "linux_deb": "yume_0.23.0_amd64.deb",
+        "linux_rpm": "yume-0.23.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.23.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "96cba5e97f75950b708767c468a94d56be1e132b206b593f15f71f4dffe0e356",
+        "mac": "676551f5039198c1ae1b99b21e2ba5ed42828451b7a923e1e100675d8e87d26c",
+        "windows": "7485b719ec82f319c0ca2249fa425d61edc3fd785165133c029e7cb535b13cc7",
+        "linux_deb": "88c00d222e6b3109c26c7d97df7842c9a788881488d3f812335ecd3bc0b2a624",
+        "linux_rpm": "36befdc9cdbeb492be944a46e26510fe841d69e45845c13d29c87b1d2f68c08d",
+        "linux_flatpak": "0bf0e41ee0edfee31a3c1a586cbcb9be812c455af861cdcad845a42c978e0ae6"
+      }
+    },
     {
       "version": "0.22.2",
       "date": "2026-03-08",
