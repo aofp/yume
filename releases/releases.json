@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.23.0",
+  "latest": "0.24.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.24.0",
+      "date": "2026-03-11",
+      "notes": "font migration (system font stack), per-session MCP server toggles, inline bash streaming, /reasoning command, slash command translation in schedule service, fix 54 bugs across crashes/security/perf/ui/cleanup, hook kill guard, stream_parser fallback, schedule cleanup, harden image processor, fix windows claude detection (auto-recovery, server redetect, extension fallback), collapsible alignment fix",
+      "downloads": {
+        "mac_arm": "yume_0.24.0_arm64.pkg",
+        "mac": "yume_0.24.0_x64.pkg",
+        "windows": "yume_0.24.0_x64-setup.exe",
+        "linux_deb": "yume_0.24.0_amd64.deb",
+        "linux_rpm": "yume-0.24.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.24.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "d5a4ca726212973efa08e3b28ae8a043cad1a5004bf81532df330fb338b06afa",
+        "mac": "3266f04c65ef3de68502a30c766af54d3aaa4f19308ac74eac0851364a0da09e",
+        "windows": "66edab834092c8ff46b87dc9eb476a5514d53c4938b89090575d51937aabee9b",
+        "linux_deb": "8b4ee12398149dadb80d18b1ad45569f81dd890cad9e0eb5ed0bc1b983fe3014",
+        "linux_rpm": "5cac68cd618a3e284a09d4bcd94db70d1dcf9f016173bdacabdecde5daa94cfc",
+        "linux_flatpak": "0f7aa7d0b4975c14b15e02832c63b7830b843a85cb23f5085ed714fd6f9ebee9"
+      }
+    },
     {
       "version": "0.23.0",
       "date": "2026-03-09",

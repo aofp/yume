@@ -1,5 +1,30 @@
 # changelog
 
+## 0.24.0 — march 11, 2026
+
+- font migration (system font stack), remote access rewrite, streaming hardening
+- per-session MCP server toggles (enable/disable per tab)
+- inline bash streaming in chat
+- /reasoning command for model thinking visibility
+- slash command translation in schedule service
+- fix 54 bugs across 5 phases: crashes, security, perf, ui, cleanup
+- hook kill guard, stream_parser fallback, schedule cleanup
+- harden image processor: force compress, guard failed images
+- fix windows claude detection: auto-recovery, server redetect, extension fallback
+- collapsible section alignment fix
+
+## 0.22.2 — march 9, 2026
+
+- remote control backend (start/stop/status via claude remote-control CLI)
+- remote output tab with batched streaming and auto-cleanup
+- rewrite remote access modal from socket pairing to tauri IPC
+- schedule task inline editing with popover actions
+- version check via Rust reqwest (bypasses webview fetch restrictions)
+
+## 0.21.1 — march 8, 2026
+
+- fix macos CLI detection bug (rebuild server binary, flatten cli-not-found diagnostics)
+
 ## 0.21.0 — march 8, 2026
 
 - pane auto-collapse on empty
