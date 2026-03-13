@@ -18,10 +18,10 @@
       "checksums": {
         "mac_arm": "3a276049516398354538188c0b0118b2bc1172f4242793524f89e0751958aedc",
         "mac": "fa21c89e3443a6bcb62265bfc5345c9ee857a5a38c88dafbd2bd268efeaf9f22",
-        "windows": "PENDING",
-        "linux_deb": "PENDING",
-        "linux_rpm": "PENDING",
-        "linux_flatpak": "PENDING"
+        "windows": "0c905a087ba5d992a2c94c47b2cd241e97605e4108ce0c157b4ce336984c1f65",
+        "linux_deb": "b6ad3406ccbcfb7a94bdf8c3a02e81c0fb7465b479c27f341850260832044494",
+        "linux_rpm": "57e3fe2b5ae6ad9cced00b1b1777ebc57cb58df6ec49c329a542413cdd0d04f4",
+        "linux_flatpak": "338d1a2dabbbbc2d322ded4d75c6ee3c988b0ea263baf597520493aff3e0f18d"
       }
     },
     {
