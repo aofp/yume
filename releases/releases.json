@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.24.1",
+  "latest": "0.24.2",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.24.2",
+      "date": "2026-03-13",
+      "notes": "fix x64 bytecode crash on macOS (cross-arch compilation via Rosetta), unify PTY usage on macOS for Claude CLI interactions, fix agent timeout lock and stale cache guard, auto-recovery for CLI detection (shell scan + server re-detect on startup), flatten CLI-not-found diagnostics, remove grab cursors",
+      "downloads": {
+        "mac_arm": "yume_0.24.2_arm64.pkg",
+        "mac": "yume_0.24.2_x64.pkg",
+        "windows": "yume_0.24.2_x64-setup.exe",
+        "linux_deb": "yume_0.24.2_amd64.deb",
+        "linux_rpm": "yume-0.24.2-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.24.2_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "64c808cfc2ca5418136d96cd3a8ccbb8632f5121c51067f7fca0292015ba2f9b",
+        "mac": "9f8a853e7b9f7d85f004e4f8acc19d484851d3b44ff2eaf6c23c18c0b0a20196",
+        "windows": "807dd9f2efde22ec340fc138982b6afb08de3ba730ce9634d193917c80ed1f02",
+        "linux_deb": "f21d0ef225ff7d8c0369e40602b2bd4b00bb33660a30c4855c27677fbf0e7b46",
+        "linux_rpm": "bc8b1e4a03aa9481e92b3012b52e44f68e472a2cab20d0c2a9493936d7500928",
+        "linux_flatpak": "8927929fc72bc6067f9837912ab2d7fb5dfcbe73daf498a8d8b5ff47fd101f9c"
+      }
+    },
     {
       "version": "0.24.1",
       "date": "2026-03-12",
