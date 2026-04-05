@@ -1,8 +1,29 @@
 {
   "product": "yume",
-  "latest": "0.24.2",
+  "latest": "0.25.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.25.0",
+      "date": "2026-04-05",
+      "notes": "windows perf overhaul, session promotion, opus 1M context support, CLI 2.1.69-2.1.89 compat (hooks, agent fields, skills seeding), fix CRLF frontmatter parsing on windows, process tree kill + orphan cleanup, on-demand window transparency, fix macos resize cpu loop, news service",
+      "downloads": {
+        "mac_arm": "yume_0.25.0_arm64.pkg",
+        "mac": "yume_0.25.0_x64.pkg",
+        "windows": "yume_0.25.0_x64-setup.exe",
+        "linux_deb": "yume_0.25.0_amd64.deb",
+        "linux_rpm": "yume-0.25.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.25.0_x64.flatpak"
+      },
+      "checksums": {
+        "mac_arm": "114b39eb25a49871e29f1b889c96c490403d4a8fe2d85a8ae153d0fab206b2a7",
+        "mac": "65c3353289ba16f5a47996bc97a8cc1087ca79f6fada60a64057ed5ad7af9a61",
+        "windows": "24fc7382cdc81e96eb046c02316572d822e5d718f7785be6b8f93897d63fc4de",
+        "linux_deb": "07f49da2f16cff9368c18cf24eb7c39ea47c29fe3036ec91d1a2261cce38f2b0",
+        "linux_rpm": "cab8a65536a030f667ffb82f64fd5322e955ce8a4a6b14c4e031e421512de3b3",
+        "linux_flatpak": "22de5a70dc2c65d170c9fafb99752853b80617c0c2d38167618b65d01602b246"
+      }
+    },
     {
       "version": "0.24.2",
       "date": "2026-03-13",
