@@ -6,7 +6,7 @@
     {
       "version": "0.25.0",
       "date": "2026-04-05",
-      "notes": "windows perf overhaul, session promotion, opus 1M context support, CLI 2.1.69-2.1.89 compat (hooks, agent fields, skills seeding), fix CRLF frontmatter parsing on windows, process tree kill + orphan cleanup, on-demand window transparency, fix macos resize cpu loop, news service",
+      "notes": "windows perf overhaul, session promotion, opus 1M context support, CLI 2.1.69-2.1.89 compat (hooks, agent fields, skills seeding), fix CRLF frontmatter parsing on windows, process tree kill + orphan cleanup, on-demand window transparency, fix macos resize cpu loop",
       "downloads": {
         "mac_arm": "yume_0.25.0_arm64.pkg",
         "mac": "yume_0.25.0_x64.pkg",
