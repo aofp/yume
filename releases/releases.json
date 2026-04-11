@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.25.0",
+  "latest": "0.26.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.26.0",
+      "date": "2026-04-11",
+      "notes": "loop idle auto-stop, auto-start auth login, tab select fix, streaming hot-path perf (libc::kill syscalls, websocket-only), linux arm64 build support, custom base url auth bypass, remove context-full input lock overlay",
+      "downloads": {
+        "mac_arm": "yume_0.26.0_arm64.pkg",
+        "mac": "yume_0.26.0_x64.pkg",
+        "windows": "yume_0.26.0_x64-setup.exe",
+        "linux_deb": "yume_0.26.0_amd64.deb",
+        "linux_rpm": "yume-0.26.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.26.0_x64.flatpak",
+        "linux_deb_arm": "yume_0.26.0_arm64.deb",
+        "linux_rpm_arm": "yume-0.26.0-1.aarch64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "a41e4bd3c3e1082a1057f08c6b41eada2708390e35e0004b71c14476f9643e88",
+        "mac": "8e9824333b46c8ddeecff8131ad59cc6f8c53aed262fcea563896bff3947b715",
+        "windows": "fc33ffbf116403ae23b4536a55920ffe6c240859049b7f446c89e46926e04038",
+        "linux_deb": "8d2e45c8f3a15aac6cca1c14004e45da55e0fc529bbf36fecb825e11547123f0",
+        "linux_rpm": "93c23245b3295c6666ad837cb28f4fc76e54740fb04304e4762b0870939c0b2f",
+        "linux_flatpak": "d29a120498b163c7805e8fef3f3a30620c1c9c1d6d4c7494fbf6226411247dfd",
+        "linux_deb_arm": "13de020b8bc521053713e5df15c9aeeea47b96157bf2cde705710ea9df9d6ed4",
+        "linux_rpm_arm": "f1a8e99f3c7de675215a6831ada79122d9213aa51f23a37a0a6fbf88835da693"
+      }
+    },
     {
       "version": "0.25.0",
       "date": "2026-04-05",
