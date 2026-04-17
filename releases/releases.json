@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.26.0",
+  "latest": "0.27.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.27.0",
+      "date": "2026-04-16",
+      "notes": "opus 4.7 + codex 5.3 models (opus pricing drop to $5/$25), usage limits resilience (rate-limit state tracking, preserve stale data, ConPTY parse cleanup), server orphan owner PID tracking for multi-instance safety, adaptive thinking for claude 4.6+, window restore via tauri-plugin-store, fix welcome tab during pane collapse + copy preserving empty lines",
+      "downloads": {
+        "mac_arm": "yume_0.27.0_arm64.pkg",
+        "mac": "yume_0.27.0_x64.pkg",
+        "windows": "yume_0.27.0_x64-setup.exe",
+        "linux_deb": "yume_0.27.0_amd64.deb",
+        "linux_rpm": "yume-0.27.0-1.x86_64.rpm",
+        "linux_flatpak": "yume_0.27.0_x64.flatpak",
+        "linux_deb_arm": "yume_0.27.0_arm64.deb",
+        "linux_rpm_arm": "yume-0.27.0-1.aarch64.rpm"
+      },
+      "checksums": {
+        "mac_arm": "f53e16c1b12005a4785cac27bd58de67aa07d7b4995a2c32a2fea41207425f45",
+        "mac": "77c7547e196b638c636e02c6436adec1519a6991f6b0690b92d980b653b9c4d0",
+        "windows": "b731fee2e415f05bb6ef1fcc161ed279bb854cf7b70f1be2023662191ccf046d",
+        "linux_deb": "b6a19db91539d10709481406889711b814f3b32a26922a28cdb40d74efaf46c3",
+        "linux_rpm": "714013ba2f9a5da507fb2ec0987b34a2da1006a0f96dc38f01bc93c71b3c6933",
+        "linux_flatpak": "e1af25152e1bb89ebebc907ed175844ba63f7c6a731257e57745be6493393930",
+        "linux_deb_arm": "042697b750ef4c8e8ee8dd2aad59da3713c8c4b4a57f7367b2b0801122346294",
+        "linux_rpm_arm": "fa3ae598153f7e5486a1082e50db6a1c3961f7dbf25add6e55e63797920be4aa"
+      }
+    },
     {
       "version": "0.26.0",
       "date": "2026-04-11",
