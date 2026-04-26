@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.28.0",
+  "latest": "0.28.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.28.1",
+      "date": "2026-04-26",
+      "notes": "fe927e12 release 0.28.1 + ci notes pipeline\n2e2a3879 ci: flatten artifacts into installers/ dir before staging",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.28.1-1.aarch64.rpm",
+        "linux_rpm": "yume-0.28.1-1.x86_64.rpm",
+        "linux_deb": "yume_0.28.1_amd64.deb",
+        "windows_arm": "yume_0.28.1_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.28.1_arm64.deb",
+        "mac_arm": "yume_0.28.1_arm64.pkg",
+        "windows": "yume_0.28.1_x64-setup.exe",
+        "mac": "yume_0.28.1_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "cea6c3395a87effa0e32970dd8190855aec05c3ae3fd05a5414a989fd6ee2eab",
+        "linux_rpm": "9bce6409a0ed634bbf2da567a006adf7ac9981f0c6ccae8b015e1ae7ed4644b6",
+        "linux_deb": "95bc4cd410649831eb2ad42e2022f9793583c88700754a7ecc1b41a4b6a84ca9",
+        "windows_arm": "a0ca0d13d92b34da1d3ffc65bda88caafa2e8befa8ec406ec8f7647d17c90297",
+        "linux_deb_arm": "219bce5560c59a7cded6b7b75c14ba3a12e97eecf7a8062f49120d2fb3fabd7f",
+        "mac_arm": "42fd32a324cd880b75eba6eef18fd8d1ed61e64a7fee90eba9b120fd70e3a5a3",
+        "windows": "e7f026266caadb1b82ae582b78df402bdf094e80f91c52f9a038ad4a39bcf89e",
+        "mac": "fd96aff426f8b9afc93d70ba20019f021eb9bb303464463b27397671bb2b4449"
+      }
+    },
     {
       "version": "0.28.0",
       "date": "2026-04-26",
