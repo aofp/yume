@@ -5,6 +5,8 @@
   "releases": [
     {
       "version": "0.28.0",
+      "date": "2026-04-26",
+      "notes": "codex 5.5 with 400k context, opus 4.7 thinking display fix + chime reverb + stats refactor, image paste fix, performance pass + dead translator removal, windows /usage 5h capture fix, provider command/tool filtering, 1m context sonnet",
       "downloads": {
         "linux_rpm_arm": "yume-0.28.0-1.aarch64.rpm",
         "linux_rpm": "yume-0.28.0-1.x86_64.rpm",
