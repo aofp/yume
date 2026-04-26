@@ -6,7 +6,7 @@
     {
       "version": "0.28.1",
       "date": "2026-04-26",
-      "notes": "fe927e12 release 0.28.1 + ci notes pipeline\n2e2a3879 ci: flatten artifacts into installers/ dir before staging",
+      "notes": "automated multi-platform release pipeline (github actions): mac arm64+x64, windows x64+arm64, linux x64+arm64, tag-triggered builds with auto-publish to aofp/yume; hardened runtime configs, windows arm64 platform key for auto-update, cross-compile mac x64 from arm64 runners, release notes pipeline (gh release + releases.json synced)",
       "downloads": {
         "linux_rpm_arm": "yume-0.28.1-1.aarch64.rpm",
         "linux_rpm": "yume-0.28.1-1.x86_64.rpm",
