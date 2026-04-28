@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.28.1",
+  "latest": "0.29.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.29.0",
+      "date": "2026-04-28",
+      "notes": "6b3c4563 release 0.29.0: monthly subscription tier + weekly license recheck",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.29.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.29.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.29.0_amd64.deb",
+        "windows_arm": "yume_0.29.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.29.0_arm64.deb",
+        "mac_arm": "yume_0.29.0_arm64.pkg",
+        "windows": "yume_0.29.0_x64-setup.exe",
+        "mac": "yume_0.29.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "c24847618ced1948e41486e3e8fc35e70eb3f9c16814aa3d31679ea156b15e8d",
+        "linux_rpm": "6d805dc940ec9da4f72ba6edf9229fd194fd1031c0c8a6313c7d7f1934742fa6",
+        "linux_deb": "085ecf159740ebda21d77672356e445e0bac2daa164b320068deeb8e7ab7fa1d",
+        "windows_arm": "9fd7aa3ecdce13d949779fd6f7aef073c6ad6e8d574233ad9edf60a0fc77eabe",
+        "linux_deb_arm": "dd6bd3fe0f72e4c93b8323d324f42c43549bb48e6c4fa4f3025a513d01aaae2a",
+        "mac_arm": "4dc597ed60ef933d23c95f9f0f1b38b29859244db9d896572088c7cf2fbf4a36",
+        "windows": "736dd754f40f5453df2c4f14a46723253394a9a115f6e8e57200f2217432674f",
+        "mac": "019dc60099206b6ea3b9c4057241bcced97f7148665e6945ec3603ca95e06b03"
+      }
+    },
     {
       "version": "0.28.1",
       "date": "2026-04-26",
