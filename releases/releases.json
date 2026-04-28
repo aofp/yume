@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.30.0",
+  "latest": "0.30.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.30.1",
+      "date": "2026-04-28",
+      "notes": "11cc4e16 release 0.30.1: fix windows resume regression\n8703ca73 fix(server): validateProjectPath rejects windows drive-letter project dirs",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.30.1-1.aarch64.rpm",
+        "linux_rpm": "yume-0.30.1-1.x86_64.rpm",
+        "linux_deb": "yume_0.30.1_amd64.deb",
+        "windows_arm": "yume_0.30.1_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.30.1_arm64.deb",
+        "mac_arm": "yume_0.30.1_arm64.pkg",
+        "windows": "yume_0.30.1_x64-setup.exe",
+        "mac": "yume_0.30.1_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "02b50a12d8425ea5857a10a20b45e1f75d6d35ab5123ac9dc514ab36e8de05cf",
+        "linux_rpm": "d3d4dd8ac761f66b12f7467c140f29861edd622667f6d4dcb889f6e887fd5ece",
+        "linux_deb": "ce8817d6d07a32eff1261ac0c9190a2f167dd967c74f0d58b2b16336741c7240",
+        "windows_arm": "1009af59e5d1a5ea81aab630ee44042d5050067aeba7d3a8322059600b5cc96d",
+        "linux_deb_arm": "d490a2bdfebab69fdfe969382196ef0f1db8a2840c93c1b0fd18824d182d3d9f",
+        "mac_arm": "d1ffd2727e9c8fb66701426e4c9ba8469ddbecccdb15f8cb3416f001f25eb478",
+        "windows": "968b8906f3d0827c73c04e2c11ff5af8f9fb9dc3a0cda6f01415c8ece82844d3",
+        "mac": "3484262a1c1d325a7937212a432a67fd0ddbff2fff1e65d4dd2237a6aee2ac83"
+      }
+    },
     {
       "version": "0.30.0",
       "date": "2026-04-28",
