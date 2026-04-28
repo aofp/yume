@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.29.0",
+  "latest": "0.30.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download",
   "releases": [
+    {
+      "version": "0.30.0",
+      "date": "2026-04-28",
+      "notes": "bf24d368 fix(server-windows): escape inner template backticks in embedded mcp-bash fallback\n78922c9c release 0.30.0: path-guard security, license module split, hooks registry, renderer sanitization utils, server refactor across platforms, thinking-text wave fix\nd136cc83 docs: refresh for 0.29.0 (dual-tier pricing, current models, license re-verification)",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.30.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.30.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.30.0_amd64.deb",
+        "windows_arm": "yume_0.30.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.30.0_arm64.deb",
+        "mac_arm": "yume_0.30.0_arm64.pkg",
+        "windows": "yume_0.30.0_x64-setup.exe",
+        "mac": "yume_0.30.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "f31eddf2b25a08f8f9ccb2fb54d00b4fda45144431e43a9ae2f87c8ba51f297d",
+        "linux_rpm": "ce50fb87b839db3faf569f6fda85f1f8135a87ee66e60832ea4ec29ddc7e326d",
+        "linux_deb": "1c3645ea4880a151b06b211ca7114cbad934cd3c00ef541e27f5ee6ca9c0ca6a",
+        "windows_arm": "234da85d961a7e8c6b9e84607a5705d6a4d53f7233c1049d3e14e1ce7fea4e81",
+        "linux_deb_arm": "8e81e775cf016669fcc9742d28bb2e6fddf5bd364ce9f3b5b81aa13b554e2a55",
+        "mac_arm": "a0ee9862fab7eeb6fe8738974b4a6a917687e9d8817666770b6cd26e377b3c1f",
+        "windows": "f13d72a37caab9eba08544691ad664644ffaeb228194f8eec6e4676cfda300de",
+        "mac": "745c4260952a95691f10a91d6fb490ae61946a887195f7fad60249f2984f1b72"
+      }
+    },
     {
       "version": "0.29.0",
       "date": "2026-04-28",
