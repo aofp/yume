@@ -1,5 +1,59 @@
 # changelog
 
+## 0.29.0 — april 27, 2026
+
+- monthly subscription tier ($4/mo via paypal) alongside $49 lifetime
+- weekly automatic license recheck (~7d ± 12h jitter, server-clock anchored)
+- 7-day network grace period for offline tolerance
+- on validation failure: revert to demo immediately, retain key for retry
+- new `LicenseBanner` component (non-blocking inline banner with retry/upgrade/dismiss)
+- license storage v3 → v4 migration (legacy `isLicensed:true` → `tier:lifetime`)
+- about modal shows tier explicitly: `[pro - lifetime]` / `[pro - monthly]` / `[demo]`
+
+## 0.28.1 — april 26, 2026
+
+- ci notes pipeline: `notes` workflow input overrides auto-generated git-log notes
+- release-prep.cjs: `--notes` / `--notes-file` args; embed notes in releases.json entry
+- generate notes before staging artifacts; persist for downstream jobs
+
+## 0.28.0 — april 19, 2026
+
+- first ci-built release (multi-platform release workflow on tag push)
+- fix windows /usage 5h capture (PTY parser robustness)
+- provider command/tool filter (correct tool list per provider in cli)
+- 1m sonnet context window (claude-sonnet-4-6 1M)
+- monitors plugin component type (CC v2.1.105+)
+- mac x64 cross-compiled from arm64 runners (macos-13 free runners saturated)
+- bytecode auto-skip when cross-compiling (plain js fallback)
+
+## 0.27.0 — april 16, 2026
+
+- claude opus 4.7 (new default, lower pricing: 5e-6 input / 25e-6 output) + gpt-5.3 codex
+- usage limits resilience: track rate-limited state, preserve stale data, filter rust log/TUI garbage in conpty parse
+- server orphan detection by owner pid (prevents multi-instance kill conflicts)
+- window restore: tauri-plugin-store is source of truth for maximized state
+- thinking proxy as transparent forwarder; adaptive thinking for all claude 4.6+
+- model lookup accepts display names and short aliases; copy preserves empty lines
+
+## 0.26.0 — april 10, 2026
+
+- version bump only (carries 0.25.1 fixes)
+
+## 0.25.1 — april 7, 2026
+
+- auto-stop /loop after 3 consecutive idle responses (short text, no tool use)
+- auto-start oauth login when auth modal opens (skip manual click)
+- prevent text selection on session tabs
+
+## 0.25.0 — march 17, 2026
+
+- windows perf overhaul: ipc batching, named-pipe crossings ~400/sec → ~20/sec; git/file ops moved to spawn_blocking
+- split message rendering (`StableMessageList` + `StreamingMessage`) eliminates O(N) re-renders on every 66ms streaming tick
+- opus 4.6 1m context window; dynamic context window throughout (wrapper, compaction, analytics, tabs)
+- session promotion to background agent (detach without kill, adopt pid); /btw side question command; /next and /done shorthand
+- linux arm64 build support; custom base url auth bypass; on-demand window transparency
+- claude cli 2.1.69-2.1.89 compat (hooks, agent fields, skills seeding); crlf frontmatter parsing on windows
+
 ## 0.24.0 — march 11, 2026
 
 - font migration (system font stack), remote access rewrite, streaming hardening

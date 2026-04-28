@@ -1471,6 +1471,7 @@
             .shortcut-action { font-size: 13px; }
             .key { padding: 4px 8px; font-size: 11px; }
 
+            .pricing-grid { grid-template-columns: 1fr !important; }
             .pricing-card { padding: 24px 16px; border-radius: 16px; }
             .pricing-title { font-size: 1.2rem; }
             .pricing-price { font-size: 2.5rem; }
@@ -1506,6 +1507,7 @@
                 <a href="#features">features</a>
                 <a href="#agents">agents</a>
                 <a href="#tech">tech</a>
+                <a href="#pricing">pricing</a>
                 <a href="docs/release/viewer.html">docs</a>
                 <a href="#releases">releases</a>
                 <a href="https://discord.gg/RhWVqCUnCc" target="_blank">discord</a>
@@ -1524,7 +1526,7 @@
                 <img src="assets/yume.png" alt="yume" class="hero-logo">
             </div>
             <h1>claude code,<br><span class="hero-catchphrase" id="hero-catchphrase">supercharged</span></h1>
-            <p class="hero-sub">orchestration. interleaved thinking. background agents.<br>40+ features the cli doesn't have. mac, windows, linux.<br>same claude, zero compromises.</p>
+            <p class="hero-sub">orchestration. interleaved thinking. background agents.<br>50+ features the cli doesn't have. mac, windows, linux.<br>same claude, zero compromises.</p>
             <div class="hero-ctas">
                 <a href="#" class="btn download-btn" id="dl-mac-arm" data-os="mac_arm">download for mac (apple silicon)</a>
                 <a href="#" class="btn download-btn" id="dl-mac" data-os="mac">download for mac (intel)</a>
@@ -1557,8 +1559,8 @@
             <div class="stat-label">agents</div>
         </div>
         <div class="stat">
-            <div class="stat-value">free</div>
-            <div class="stat-label">forever</div>
+            <div class="stat-value">free demo</div>
+            <div class="stat-label">$4/mo or $49</div>
         </div>
     </section>
 
@@ -1754,7 +1756,7 @@
                 <div class="feature-card">
                     <i class="ti ti-webhook icon"></i>
                     <h3>hooks system</h3>
-                    <p>9 event types for intercepting claude behavior. pre-tool-use, post-tool-use, context warnings. customize workflow.</p>
+                    <p>23 event types for intercepting claude behavior. pre-tool-use, post-tool-use, context warnings. customize workflow.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-plug icon"></i>
@@ -1830,6 +1832,50 @@
         </div>
     </section>
 
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>pricing</h2>
+                <p>demo is free. pick a tier when you outgrow it.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; max-width: 920px; margin: 0 auto;" class="pricing-grid">
+                <div class="pricing-card" style="max-width: none; margin: 0;">
+                    <div class="pricing-badge">monthly</div>
+                    <div class="pricing-title">pro monthly</div>
+                    <div class="pricing-price">$4<span style="font-size: 1.25rem; color: var(--text-dim); font-weight: 400;">/mo</span></div>
+                    <div class="pricing-note">cancel anytime. access until period ends.</div>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> 99 tabs</li>
+                        <li><span class="check">✓</span> 99 panes</li>
+                        <li><span class="check">✓</span> 99 windows</li>
+                        <li><span class="check">✓</span> all features unlocked</li>
+                        <li><span class="check">✓</span> paypal subscription</li>
+                    </ul>
+                    <a href="https://yuru.be/yume/pro/" class="btn" style="width: 100%; box-sizing: border-box; text-align: center;">subscribe</a>
+                </div>
+                <div class="pricing-card" style="max-width: none; margin: 0;">
+                    <div class="pricing-badge">lifetime</div>
+                    <div class="pricing-title">pro lifetime</div>
+                    <div class="pricing-price">$49<span style="font-size: 1.25rem; color: var(--text-dim); font-weight: 400;"> once</span></div>
+                    <div class="pricing-note">one-time payment. forever updates.</div>
+                    <ul class="pricing-features">
+                        <li><span class="check">✓</span> 99 tabs</li>
+                        <li><span class="check">✓</span> 99 panes</li>
+                        <li><span class="check">✓</span> 99 windows</li>
+                        <li><span class="check">✓</span> all features unlocked</li>
+                        <li><span class="check">✓</span> all future versions</li>
+                    </ul>
+                    <a href="https://yuru.be/yume/pro/" class="btn" style="width: 100%; box-sizing: border-box; text-align: center;">buy lifetime</a>
+                </div>
+            </div>
+
+            <p style="text-align: center; color: var(--text-dim); margin-top: 32px; font-size: 14px;">
+                free demo: 2 tabs, 2 panes, 1 window. all features available to try.
+            </p>
+        </div>
+    </section>
+
     <section class="section section--diagonal section--numbered section--floating" id="tech">
         <div class="container">
             <div class="section-header">
@@ -1840,9 +1886,9 @@
             <div class="tech-grid">
                 <div class="tech-card">
                     <i class="ti ti-robot icon"></i>
-                    <div class="tech-value">7+ models</div>
+                    <div class="tech-value">10+ models</div>
                     <div class="tech-label">4 providers</div>
-                    <div class="tech-detail">claude sonnet 4.5/4.6 + opus, gemini 2.5 pro/flash, gpt-5.2 codex, kiro. via yume-cli shim.</div>
+                    <div class="tech-detail">claude sonnet 4.6 + opus 4.7, gemini 3.1 pro/3 flash, gpt-5.5 codex, kiro. via yume-cli shim.</div>
                 </div>
                 <div class="tech-card">
                     <i class="ti ti-bolt icon"></i>
@@ -1858,7 +1904,7 @@
                 </div>
                 <div class="tech-card">
                     <i class="ti ti-arrows-minimize icon"></i>
-                    <div class="tech-value">75% default</div>
+                    <div class="tech-value">85% default</div>
                     <div class="tech-label">auto-compaction</div>
                     <div class="tech-detail">smart context management matching claude code's buffer. never hit limits.</div>
                 </div>
@@ -2006,7 +2052,7 @@
         <div class="container">
             <div class="section-header">
                 <h2>why settle for less?</h2>
-                <p>other tools charge $20-200/mo and give you less. yume is free.</p>
+                <p>other tools charge $20-200/mo and give you less. yume is $4/mo or $49 lifetime.</p>
             </div>
 
             <div class="comparison">
@@ -2141,7 +2187,7 @@
                     <div>$20-200/mo</div>
                     <div><span class="check">✓</span> free</div>
                     <div><span class="check">✓</span> free</div>
-                    <div><span class="check">✓</span> free</div>
+                    <div><span class="check">✓</span> $4/mo or $49 lifetime</div>
                 </div>
             </div>
         </div>

@@ -73,11 +73,11 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **agent teams** - multi-agent coordination with task tracking (`Cmd+Shift+T`)
 
 ### multi-provider support
-- **7+ models, 4 providers** - via yume-cli shim
-  - claude sonnet 4.5/4.6, opus 4.5
-  - gemini 2.5 pro, flash
-  - gpt-5.2 codex, codex mini
-  - kiro (latest)
+- **10+ models, 4 providers** - via yume-cli shim
+  - claude sonnet 4.6, opus 4.7
+  - gemini 3.1 pro preview, gemini 3 flash preview
+  - gpt-5.5 codex, gpt-5.4 mini
+  - kiro (auto, claude sonnet 4.5, claude haiku 4.5, glm-5)
 - **protocol normalization** - stream-json output for all providers
 - **same interface** - switch providers without changing workflow
 
@@ -95,7 +95,8 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **secret censoring** - api keys and tokens automatically redacted in all output
 
 ### plugin & skills system
-- **complete extensibility** - commands, agents, hooks, skills, MCP servers
+- **complete extensibility** - commands, agents, hooks, skills, MCP servers, monitors
+- **23 hook events** - pre-tool-use, post-tool-use, context warnings, compaction, subagent lifecycle, and more
 - **skills auto-injection** - context based on file extensions, keywords, regex
 - **plugin directory** - install/enable/disable per component
 - **bundled yume plugin** - default commands and agents
@@ -148,7 +149,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 | stream timers | ✗ | ✗ | ✗ | ✗ | ✓ live |
 | native app | terminal | electron | tauri | electron | ✓ tauri |
 | customization | ✗ | ~5 themes | ✗ | ✗ | ✓ ∞ |
-| price | pro/max | $20-200/mo | ✓ free | ✓ free | ✓ free |
+| price | pro/max | $20-200/mo | ✓ free | ✓ free | ✓ $4/mo or $49 lifetime |
 
 ---
 
@@ -222,7 +223,12 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 ## license
 
-yume is free to download and use (trial: 3 tabs, 1 window). upgrade to pro for 99 tabs and 99 windows ($29 one-time payment).
+yume is free to download and use (demo: 2 tabs, 2 panes, 1 window). upgrade to pro for 99 tabs, 99 panes, 99 windows.
+
+- **monthly** — $4/mo, paypal subscription, cancel anytime, access until period ends
+- **lifetime** — $49 one-time payment, forever updates
+
+license is re-verified weekly with a 7-day network grace period. on validation failure, yume reverts to demo and offers a retry banner (key is retained).
 
 ---
 

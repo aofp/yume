@@ -7,7 +7,7 @@ complete feature reference.
 ## session management
 
 ### tabs
-- up to 99 concurrent sessions (pro), 3 (trial)
+- up to 99 concurrent sessions (pro), 2 (demo)
 - independent context per tab
 - lazy reconnection (connects when accessed)
 - drag & drop reordering
@@ -67,10 +67,10 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 | provider | models | cli package |
 |----------|--------|-------------|
-| claude | sonnet 4.5/4.6, opus 4.5 | `@anthropic-ai/claude-code` |
-| gemini | 2.5 pro, 2.5 flash | `@google/gemini-cli` |
-| openai | gpt-5.2 codex, gpt-5.1 mini | `@openai/codex` |
-| kiro | kiro (latest) | `kiro` |
+| claude | sonnet 4.6, opus 4.7 | `@anthropic-ai/claude-code` |
+| gemini | 3.1 pro preview, 3 flash preview | `@google/gemini-cli` |
+| openai | gpt-5.5 codex, gpt-5.4 mini | `@openai/codex` |
+| kiro | auto, claude sonnet 4.5, claude haiku 4.5, glm-5 | `kiro` |
 
 ### implementation
 - yume-cli shim spawns official clis
@@ -124,9 +124,9 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 #### hooks
 - location: `hooks/*.js`, `hooks/*.py`, `hooks/*.sh`
-- 16 events defined, **7 active**: `PreToolUse`, `ContextWarning`, `CompactionTrigger`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `TeammateIdle`
-- 9 events defined but not wired: `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, and others
-- actions: continue, block, modify
+- 23 events defined, **7 active**: `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `ContextWarning`, `CompactionTrigger`, `SubagentStart`, `SubagentStop`
+- 16 events defined but not wired: `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, `WorktreeCreate`, `WorktreeRemove`, `ConfigChange`, `TaskCreated`, `PostCompact`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `StopFailure`, `PermissionDenied`, `Elicitation`, `ElicitationResult`, `PreCompact`
+- actions: continue, block, modify, defer (CC v2.1.89+)
 - hook types: script (bash/python/node/powershell), HTTP (POST JSON with SSRF protection)
 - 5s timeout default
 - variable substitution: `${session_id}`, `${message}`, `${file}`
@@ -603,16 +603,28 @@ features: verbose logging, performance metrics, memory profiling, network inspec
 ## license
 
 ### tiers
-| tier | tabs | windows | price |
-|------|------|---------|-------|
-| trial | 3 | 1 | free |
-| pro | 99 | 99 | $29 |
+| tier | tabs | panes | windows | price |
+|------|------|-------|---------|-------|
+| demo | 2 | 2 | 1 | free |
+| pro monthly | 99 | 99 | 99 | $4/mo |
+| pro lifetime | 99 | 99 | 99 | $49 one-time |
+
+monthly is a paypal subscription. cancel anytime; access continues until the current period ends. lifetime is a one-time payment with forever updates.
+
+### license re-verification
+
+- **weekly recheck** — license is re-validated against the server every ~7 days (± 12h jitter, server-clock anchored)
+- **7-day network grace** — if the server is unreachable, yume keeps working for 7 days from the last successful check (anchored to server clock to defeat client clock skew)
+- **revert to demo** — on a definitive server-says-invalid response, yume immediately reverts to demo and shows a non-blocking banner
+- **retain key for retry** — the key is kept on disk so the user can retry validation from the banner without re-entering it
+- **license banner** — `LicenseBanner` component offers retry / upgrade / dismiss when revalidation fails
 
 ### validation
 - server validation (configured per installation)
 - 5-minute response cache
-- 30-minute auto-revalidation
+- weekly auto-revalidation (~7d ± 12h jitter)
 - format: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX`
+- storage: `~/.yume/license.json` (survives uninstall)
 
 ---
 

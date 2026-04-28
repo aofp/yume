@@ -60,6 +60,6 @@ switch providers in the model picker. switching forks the session.
 
 **can't find claude**: make sure `claude --version` works in terminal
 
-**only 3 tabs**: trial mode (3 tabs, 1 window). $29 for pro (99 tabs, 99 windows)
+**only 2 tabs**: demo mode (2 tabs, 2 panes, 1 window). pro is $4/mo or $49 lifetime (99 tabs, 99 panes, 99 windows)
 
 [more in faq →](faq.md)

@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.24.0**
+desktop app for claude cli with multi-provider support. current version: **0.29.0**
 
 ---
 
@@ -47,10 +47,10 @@ desktop app for claude cli with multi-provider support. current version: **0.24.
 
 | provider | models | status |
 |----------|--------|--------|
-| claude | sonnet 4.5/4.6, opus 4.5 | ✅ native |
-| gemini | 2.5 pro, 2.5 flash | ✅ via yume-cli |
-| openai | gpt-5.2 codex, gpt-5.1 mini | ✅ via yume-cli |
-| kiro | kiro (latest) | ✅ via kiro cli |
+| claude | sonnet 4.6, opus 4.7 | ✅ native |
+| gemini | 3.1 pro preview, 3 flash preview | ✅ via yume-cli |
+| openai | gpt-5.5 codex, gpt-5.4 mini | ✅ via yume-cli |
+| kiro | auto, claude sonnet 4.5, claude haiku 4.5, glm-5 | ✅ via kiro cli |
 
 unified stream-json protocol. provider switching forks session.
 
@@ -93,13 +93,13 @@ agents use selected model. synced to `~/.claude/agents/`.
 
 ---
 
-## hooks (16 events, 7 active)
+## hooks (23 events)
 
-**active:** `PreToolUse`, `ContextWarning`, `CompactionTrigger`, `UserPromptSubmit`, `SubagentStart`, `SubagentStop`, `TeammateIdle`
+**active:** `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `ContextWarning`, `CompactionTrigger`, `SubagentStart`, `SubagentStop`
 
-**defined (not wired):** `PostToolUse`, `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, `ScheduleTrigger`, `TeamMessage`, `TaskComplete`, `EffortChange`
+**defined (not wired):** `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, `WorktreeCreate`, `WorktreeRemove`, `ConfigChange`, `TaskCreated`, `PostCompact`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `StopFailure`, `PermissionDenied`, `Elicitation`, `ElicitationResult`, `PreCompact`
 
-js/py/sh scripts with 5s timeout.
+bash/python/node/powershell scripts with 5s timeout. http hooks supported (POST JSON with SSRF protection).
 
 ---
 
@@ -196,8 +196,11 @@ sqlite in `~/.yume/yume.db`:
 
 ## pricing
 
-- **trial** — free, 3 tabs, 1 window
-- **pro** — $29 once, 99 tabs, 99 windows
+- **demo** — free, 2 tabs, 2 panes, 1 window
+- **pro monthly** — $4/mo, 99 tabs, 99 panes, 99 windows. paypal subscription. cancel anytime; access until period ends.
+- **pro lifetime** — $49 one-time, 99 tabs, 99 panes, 99 windows. forever updates.
+
+license is re-verified weekly (~7d ± 12h jitter) with a 7-day network grace period anchored to the server clock. on validation failure, yume reverts to demo and offers a retry banner (key is retained).
 
 ---
 
