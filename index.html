@@ -2619,9 +2619,12 @@
                     const platformButtons = [
                         { key: 'mac_arm', label: 'mac (apple silicon)', url: r.downloads.mac_arm },
                         { key: 'mac', label: 'mac (intel)', url: r.downloads.mac },
-                        { key: 'win', label: 'windows', url: r.downloads.win || r.downloads.windows },
-                        { key: 'linux_deb', label: 'linux (deb)', url: r.downloads.linux_deb },
-                        { key: 'linux_rpm', label: 'linux (rpm)', url: r.downloads.linux_rpm },
+                        { key: 'win', label: 'windows (x64)', url: r.downloads.win || r.downloads.windows },
+                        { key: 'windows_arm', label: 'windows (arm64)', url: r.downloads.windows_arm || r.downloads.win_arm },
+                        { key: 'linux_deb', label: 'linux deb (x64)', url: r.downloads.linux_deb },
+                        { key: 'linux_deb_arm', label: 'linux deb (arm64)', url: r.downloads.linux_deb_arm },
+                        { key: 'linux_rpm', label: 'linux rpm (x64)', url: r.downloads.linux_rpm },
+                        { key: 'linux_rpm_arm', label: 'linux rpm (arm64)', url: r.downloads.linux_rpm_arm },
                         { key: 'linux_flatpak', label: 'linux (flatpak)', url: r.downloads.linux_flatpak }
                     ];
 
