@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.30.1",
-  "baseUrl": "https://github.com/aofp/yume/releases/download",
+  "latest": "0.31.0",
+  "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.31.0",
+      "date": "2026-05-08",
+      "notes": "05d28eda release 0.31.0: i18n system (7 langs, 12 namespaces, lazy-loaded), remote ssh module (ssh-exec, ed25519 key deploy, all 4 servers wired), windows credmgr oauth fallback, prompt caching env passthrough, native binary detection, server refactors across platforms, ui polish across 100+ components",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.31.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.31.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.31.0_amd64.deb",
+        "windows_arm": "yume_0.31.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.31.0_arm64.deb",
+        "mac_arm": "yume_0.31.0_arm64.pkg",
+        "windows": "yume_0.31.0_x64-setup.exe",
+        "mac": "yume_0.31.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "081600b7b087cf2e62b4c854966908e4ceabb998a2560c4ed9c7279cb027cfb8",
+        "linux_rpm": "cfaf563ffa9cba150c361daae228c3bb03bbd9a5aa04d484a87877ec08ff323f",
+        "linux_deb": "6f116e4213d7184aae16d6fc397d3b438081e9c6c994bf9c839eda866ce1a4bf",
+        "windows_arm": "a2195614cbaea87c553e4cb384f641b5131f43fc3bf54bdd2145a7d59afa8384",
+        "linux_deb_arm": "a7adeb1b21830392d547ee62ec14b91920b39d1fe637f9702d1f55b0e0ae75f9",
+        "mac_arm": "c454c6d62ebc2ee2799f42025b88c82b70b5f3188f33bf5f7d0fb78feedea213",
+        "windows": "5d563e3bf66ad7b4bce8a0e41da4807f4328169fa6872a9eacc0a775c8ca7920",
+        "mac": "e2fffb38fcac7f5c60118ce668f0b4b370b7cf56f3f88c45f5e68d0f43bb3db8"
+      }
+    },
     {
       "version": "0.30.1",
       "date": "2026-04-28",
