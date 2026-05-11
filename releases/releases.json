@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.31.0",
+  "latest": "0.32.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.32.0",
+      "date": "2026-05-11",
+      "notes": "059f880d release 0.32.0: license-key paste normalization (em/en/minus/fullwidth dashes, NBSP/ZWSP/word-joiner/BOM, fullwidth letters via NFKC), surface server request_id + contact-support hint on activation failure, map code 1009 (license not found), interleaved thinking on resumed sessions, animated-text color wake effect, system-prompt rephrase",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.32.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.32.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.32.0_amd64.deb",
+        "windows_arm": "yume_0.32.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.32.0_arm64.deb",
+        "mac_arm": "yume_0.32.0_arm64.pkg",
+        "windows": "yume_0.32.0_x64-setup.exe",
+        "mac": "yume_0.32.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "3f5992e1489408907687f5fa5ccb2fb53da1de9ef8aeb8f26a1b53318b9f7bfd",
+        "linux_rpm": "31586918c218384aacbf463a106fc7ceaa3e64e3d2f59ec49458d3c9e6e362fd",
+        "linux_deb": "4c80fdde00f96ca24f8a2c54d8a6dc91a63668c4b80740b655a6ccd775d1be5d",
+        "windows_arm": "726cca73771279d4f6d7dcf70f7f6561351e358a99a3f56399271e119f4a9416",
+        "linux_deb_arm": "c203fe564df0e3470664aeff2cd585f8146c7f760fab93f25010d5839430a793",
+        "mac_arm": "316a4c7eb46292beff892466be6719033a2c960fa53e8a3db3d931dc6cf08d0c",
+        "windows": "08e7f08a5e33a01991307eceb5bfbf26266baa0718b1a0b3bd759b9e04c6df39",
+        "mac": "c9f4a794e14c442bb635624558618688b59b1e7ccb508d85e6ba9d8d9e720b1e"
+      }
+    },
     {
       "version": "0.31.0",
       "date": "2026-05-08",
