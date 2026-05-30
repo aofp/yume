@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.32.0",
+  "latest": "0.33.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.33.0",
+      "date": "2026-05-30",
+      "notes": "7aae071f release 0.33.0: opus 4.8 flagship (opus 4.7 demoted to off-by-default previous gen), print/Agent-SDK default transport + experimental TUI mode + budget readout, interactive-session Esc re-arm fix, CLI project-dir escaping fix, yume-mcp-bash hardening\n6246a027 fix: re-arm kept-alive interactive session after Esc (no longer bricks)\na6885d7f fix: match CLI project-dir escaping (every non-alphanumeric -> '-')\ne0127cd8 review: align interactive gate, plan-mode catalog honesty, poller hardening\n93767e5f feat: print/Agent-SDK default transport + experimental TUI mode + budget readout",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.33.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.33.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.33.0_amd64.deb",
+        "windows_arm": "yume_0.33.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.33.0_arm64.deb",
+        "mac_arm": "yume_0.33.0_arm64.pkg",
+        "windows": "yume_0.33.0_x64-setup.exe",
+        "mac": "yume_0.33.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "e27e7b3320076c55622dda0045b4daf0e61e979e1ced39ac6f2f1727fac6d96b",
+        "linux_rpm": "eef8d7696eae12d61755462243cee9418eb3c22d5879b198dd25668145400f41",
+        "linux_deb": "343b50b6ae08376a164f0d3a0687efd2508c865183652137bf865f2516dd32d0",
+        "windows_arm": "b30279b91ba5bb32e3dd3ca60a6a0e2755d5d8a4c4ccc50ca08c093c819cfa10",
+        "linux_deb_arm": "26ffab68c99a5b416cb7c8c2b01a1272f90f4b7b790d03393fd1c34940d232f9",
+        "mac_arm": "915767e4baf5eb5b2f83356cbfdfa08bb23de614b9e7f9f85b3dc805b9759712",
+        "windows": "e7a9d0820fe0d50ecd3cc267b4a849cc7a0adebfb6b3e1a0ad41973af097e65a",
+        "mac": "3144ece18b90d6e6e8f0ef41204e8ce1d6b51a1a88c14649e6dade6370e947b9"
+      }
+    },
     {
       "version": "0.32.0",
       "date": "2026-05-11",
