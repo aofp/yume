@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.33.0",
+  "latest": "0.33.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.33.1",
+      "date": "2026-05-31",
+      "notes": "11380ae0 release 0.33.1: provider background-process support, claude bg-tool guidance, shell-exec hardening\n244f3dd8 docs: ci/cd release workflow + provider mcp injection notes\n52c46f53 feat: subtle glow on the thinking dots\n8f339046 fix: teach claude the background-process tools; add spawner disallow/fallback tests\ncd47456a feat: background processes for gemini/codex/kiro via yume mcp injection\ne8eee357 fix: force all shell exec through RunBash — disallow PowerShell (+ Bash bg tools)",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.33.1-1.aarch64.rpm",
+        "linux_rpm": "yume-0.33.1-1.x86_64.rpm",
+        "linux_deb": "yume_0.33.1_amd64.deb",
+        "windows_arm": "yume_0.33.1_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.33.1_arm64.deb",
+        "mac_arm": "yume_0.33.1_arm64.pkg",
+        "windows": "yume_0.33.1_x64-setup.exe",
+        "mac": "yume_0.33.1_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "7cffe62a210a020d09f7320ef823d2b838ebd224583056b1b044de2d12e281dc",
+        "linux_rpm": "6a13fc7035c1e95a18f0d355182fc97315f7dd4be66a150e626bd1b70be9439a",
+        "linux_deb": "ae3f8eaaf97c096598ad62897fb1d1929a68d2a56102442b71c27462e0aab3f6",
+        "windows_arm": "d0fa5683edcb26edc04ffaf4f70cdd75d8ab122c9455eaf74d0e870b223a56d2",
+        "linux_deb_arm": "ffbff46db647cf594168fbb417a8116c55126e3c167f669cfe325c232cc79c14",
+        "mac_arm": "8a59f8784d49b21b3a5136a84de71f6675b2053899d391bd49397bc941c8f0d1",
+        "windows": "d313fdcb8c950e77db7bba2086ac4aec3cd5af178808a5754ccb3d0c5d86321b",
+        "mac": "46251596c8508e7f8b2d838fa2973b32149d7f1650e8561efaf1de2b5a60e9ff"
+      }
+    },
     {
       "version": "0.33.0",
       "date": "2026-05-30",
