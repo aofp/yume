@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.33.1",
+  "latest": "0.34.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.34.0",
+      "date": "2026-06-11",
+      "notes": "5f2436f2 release 0.34.0: fable 5 default, subscription saver hardening, auto-scroll and streaming fixes\n03cd8798 fix: runbash no longer misroutes bash commands that embed powershell",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.34.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.34.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.34.0_amd64.deb",
+        "windows_arm": "yume_0.34.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.34.0_arm64.deb",
+        "mac_arm": "yume_0.34.0_arm64.pkg",
+        "windows": "yume_0.34.0_x64-setup.exe",
+        "mac": "yume_0.34.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "149f83f596baf9e15922491666385d99944d9c657af12205e28687c45158b726",
+        "linux_rpm": "2d82da2e1e71bddd75cb5d9b36214b980137df6e1934bfc5a3b3d00d73dbb94c",
+        "linux_deb": "0ca2808a8c75cce01817849126dbee75605401aeaa8e30b61749b48d3f658a86",
+        "windows_arm": "17812e9ca4be0933e223b4726c567363bf6c3644cf5154c07a43cd2917b23ee5",
+        "linux_deb_arm": "0f7a643957eb0b6f0235dab1b6ec12263121fec5970772f2a85408c86685ae00",
+        "mac_arm": "6c1d4dafd38b8fd0836253731f0e262ee5d974bd449b61e463bcce47594483ad",
+        "windows": "d613fa00b9ef8f417571a03f4710a8381f5fd6197317aa99d3d8770e987b07da",
+        "mac": "cb54d157371fc58f39757654b74ff338d2c4cb95e387cb720910c3cce2013497"
+      }
+    },
     {
       "version": "0.33.1",
       "date": "2026-05-31",
