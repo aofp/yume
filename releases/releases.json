@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.34.0",
+  "latest": "0.35.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.35.0",
+      "date": "2026-07-02",
+      "notes": "6bd6b45e release 0.35.0: sonnet 5, 5h overcharge guard (stops at 99%), full-app audit fixes, default font 12",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.35.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.35.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.35.0_amd64.deb",
+        "windows_arm": "yume_0.35.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.35.0_arm64.deb",
+        "mac_arm": "yume_0.35.0_arm64.pkg",
+        "windows": "yume_0.35.0_x64-setup.exe",
+        "mac": "yume_0.35.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "be9f0353c4436649c06fbf83a1d93a592d6869895e57b8e3c0d46134af174351",
+        "linux_rpm": "a52247a8c75ff4de11536731a273401605ca04160e1d97b8bbf9030402794591",
+        "linux_deb": "f47db420e5c676d1078a38d5636fd55ff42873d32b9208ac47528aa95a143a7b",
+        "windows_arm": "d2a0cf812525fd32bbbae03228aed0683860c6678f8c3cf475827abcf59b8f9c",
+        "linux_deb_arm": "61f38f99598fa76847179f2a2486ac6c829e7291bb97e900180ac354008b0357",
+        "mac_arm": "c5bb6557608c9bd0c29789fa1eaaabb35da9f003f5d8e6a49b50ffe421ee2e41",
+        "windows": "1347bfadff93021c881e1053aaf5b1faf8a6bc3d751a9dfa57ad713fca58da4b",
+        "mac": "d5602df2071420e2689d28882ee52b1a3f1d3e78515ec4d51fd03889dcc5c029"
+      }
+    },
     {
       "version": "0.34.0",
       "date": "2026-06-11",
