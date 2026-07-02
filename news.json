@@ -1,20 +1,20 @@
 [
   {
-    "id": "0.25.0",
-    "date": "2026-03-20",
-    "title": "0.25.0 — windows perf overhaul, session promotion, opus 1M context",
-    "body": "Windows performance overhaul, session promotion, Opus 4.6 with 1M context support."
+    "id": "0.35.0",
+    "date": "2026-07-01",
+    "title": "0.35.0 — sonnet 5, 5h overcharge guard, full-app audit",
+    "body": "Claude Sonnet 5 (1M context). A usage-limit guard that stops new turns before your 5-hour window bills into overage. A full-app audit pass: analytics pricing fixes, background-process locking, license and draft-preservation hardening."
   },
   {
-    "id": "0.24.2",
-    "date": "2026-03-13",
-    "title": "0.24.2 — unified pty, agent timeout lock, stale cache guard",
-    "body": "Fix x64 bytecode crash on macOS, unify PTY usage, fix agent timeout lock and stale cache guard."
+    "id": "0.34.0",
+    "date": "2026-06-11",
+    "title": "0.34.0 — fable 5 default, subscription-saver hardening",
+    "body": "Fable 5 is now the default model (most powerful tier); Cmd+Shift+K toggles fable and sonnet. Subscription-saver hardening plus auto-scroll and streaming fixes."
   },
   {
-    "id": "0.24.1",
-    "date": "2026-03-12",
-    "title": "0.24.1 — process hardening, streaming resilience, 54 bug fixes",
-    "body": "Process lifecycle hardening, streaming resilience, per-session MCP server toggles, inline bash streaming."
+    "id": "0.33.0",
+    "date": "2026-05-30",
+    "title": "0.33.0 — opus 4.8 flagship, background processes for all providers",
+    "body": "Opus 4.8 flagship model. Background bash processes for every provider via the injected yume MCP. Print/Agent-SDK default transport and budget readout."
   }
 ]

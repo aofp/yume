@@ -55,7 +55,10 @@ yume re-checks the server roughly weekly. if the network is unreachable it keeps
 `~/.claude/projects/` — same as claude cli
 
 **what does auto-compact do?**
-at configurable threshold (default 75%): summarizes old messages, keeps recent ones and active code. warn at T-5%, auto at T%, force at T+5%.
+at a configurable dynamic threshold (default 85%): summarizes old messages, keeps recent ones and active code. warn at T-5%, auto at T%, force at T+5%. can also be turned off (the cli handles compaction too).
+
+**will yume charge me past my subscription?**
+no — turn on the 5-hour usage-limit guard (settings → general) and yume stops starting new claude turns before your 5-hour window reaches 100%, so it never spills into metered/overage billing.
 
 **can i adjust thresholds?**
 yes. settings → compaction.
@@ -107,9 +110,9 @@ rust/tauri 2.9, react 19, node.js. 230+ tauri commands, ~90k+ lines.
 smaller binary (~50mb vs electron's ~150mb), less memory, native performance.
 
 **models?**
-- claude: sonnet 4.6, opus 4.7
+- claude: fable 5 (default flagship), sonnet 5 (1M context), sonnet 4.6, opus 4.8, opus 4.7
 - gemini: 3.1 pro preview, 3 flash preview (legacy: 2.5 pro, 2.5 flash)
-- openai: gpt-5.5 codex, gpt-5.4 mini
+- openai: gpt-5.5, gpt-5.4 mini
 - kiro: auto, claude sonnet 4.5, claude haiku 4.5, glm-5
 
 **what is /schedule?**

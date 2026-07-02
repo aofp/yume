@@ -1,5 +1,47 @@
 # changelog
 
+## 0.35.0 — july 1, 2026
+
+- claude sonnet 5 support (1M context, 128k output, adaptive thinking, launch pricing)
+- "stop at 5h limit" guard (default on): blocks new claude turns before the 5-hour window bills into overage; defers /loop and scheduled tasks; claude-billed sessions only
+- default chat font size raised to 12px for readability
+- full-app audit pass: analytics pricing fixes (windows opus, fable 5), background-process cross-process locking, license rate-limit handling, draft preservation when a send is blocked, thinking-proxy sonnet-5 handling, and more
+- yume-cli hardening: history-truncation, glob metacharacters, case-insensitive history paths, and read-path guards
+
+## 0.34.0 — june 11, 2026
+
+- fable 5 is now the default model (most powerful tier); cmd+shift+k toggles fable ↔ sonnet
+- subscription-saver hardening; auto-scroll and streaming fixes
+
+## 0.33.1 — may 31, 2026
+
+- background-process support for non-claude providers (gemini/openai/kiro) via injected yume mcp
+- claude background-tool guidance; shell-exec hardening
+
+## 0.33.0 — may 30, 2026
+
+- opus 4.8 flagship model (opus 4.7 demoted to off-by-default previous gen)
+- print / agent-sdk default transport, budget readout
+- yume-mcp-bash hardening; interactive-session esc re-arm; cli project-dir escaping
+
+## 0.32.0 — may 2026
+
+- background bash processes (detached execution, auto-injected results, cross-platform)
+- acp (agent client protocol) support for external agents
+- file preview modal (images, audio, video, pdf, syntax-highlighted code)
+
+## 0.31.0 — april 2026
+
+- in-app auto-update download (installers pulled from github releases)
+- remote access foundation (device pairing, qr code, lan)
+- internationalization: 7 languages via react-i18next
+
+## 0.30.0 — april 2026
+
+- schedule system (`/schedule` — relative, absolute, and event triggers)
+- file conflict detection across sessions; rules management ui
+- tool selection modal (8 categories); vs code extension integration
+
 ## 0.29.0 — april 27, 2026
 
 - monthly subscription tier ($4/mo via paypal) alongside $49 lifetime

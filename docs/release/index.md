@@ -2,81 +2,99 @@
 
 **夢** — dream
 
-desktop app for claude cli with multi-provider support. current version: **0.29.0**
+the native desktop app for the claude code cli. tabs, orchestration, live thinking, background agents, and 50+ things the terminal can't do — driving the same official claude you already pay for. current version: **0.35.0**
+
+---
+
+## why yume
+
+the claude code cli is excellent, but it's a terminal: one session, no persistence, thinking shown after the fact, and it flickers and lags in long conversations. yume keeps the exact same claude (it spawns the official cli, never an api wrapper) and wraps it in a fast, native desktop app.
+
+- **zero flicker, instant input** — native tauri + rust rendering, not a terminal repaint
+- **never lose work** — crash recovery with 5-minute snapshots and 24-hour retention
+- **see claude think** — extended thinking streams live, token by token
+- **do four things at once** — up to 4 background agents on isolated branches/worktrees
+- **stay on budget** — a usage-limit guard that stops before your 5-hour window bills into overage
 
 ---
 
 ## core features
 
-- **multi-tab sessions** — up to 99 concurrent conversations (pro)
-- **auto-compaction** — variable threshold (default 75%), user configurable or disable
-- **token tracking** — input/output/cache tokens, cost per message
-- **crash recovery** — 30s auto-save, full state restoration
-- **multi-provider** — claude, gemini, openai, kiro via official clis
-- **agent teams** — multi-agent coordination with task tracking
-- **schedule system** — `/schedule` for timed and event-based tasks
-- **effort controls** — low/medium/high effort level per session
-- **rules management** — .claude/rules/ CRUD in settings
-- **askuser ipc** — claude asks structured questions mid-session
-- **secret censoring** — api keys/tokens redacted in output
-- **vim mode** — full normal/insert/visual/command modes
-- **row split panels** — up to 6 panels in 3x2 grid
-- **kiro provider** — 4th provider support
+- **multi-tab sessions** — up to 99 concurrent conversations (pro), each with its own context
+- **orchestration flow** — auto-injected understand → decompose → act → verify for complex tasks
+- **background agents** — 4 concurrent, git-branch or worktree isolation, auto-injected results
+- **background bash** — detached long-running commands that report back into the session
+- **live thinking** — extended-thinking streaming via a dedicated proxy sidecar
+- **token + cost tracking** — per-message and aggregate, with an analytics dashboard
+- **crash recovery** — periodic snapshots, full window + session restoration
+- **multi-provider** — claude, gemini, openai, kiro through their official clis
+- **schedule system** — `/schedule` for timed (`5m`, `2pm`) and event (`next`, `done`) triggers
+- **effort + budget controls** — per-model thinking budget and effort level
+- **rules management** — `.claude/rules/*.md` CRUD from settings
+- **askuser** — claude asks you structured multiple-choice questions mid-session
+- **secret censoring** — api keys and tokens redacted across every output stream
+- **vim mode** — full normal / insert / visual / command keybindings
+- **remote access** — pair a device, connect over LAN (foundation)
+- **7 languages** — english, spanish, french, german, polish, chinese, japanese
+
+---
+
+## models
+
+yume ships the current claude lineup and keeps up as new models land.
+
+| provider | models | integration |
+|----------|--------|-------------|
+| claude | **fable 5** (default flagship), **sonnet 5** (1M context), sonnet 4.6, opus 4.8, opus 4.7 | native (official cli) |
+| gemini | 3.1 pro preview, 3 flash preview | via yume-cli shim |
+| openai | gpt-5.5, gpt-5.4 mini | via yume-cli shim |
+| kiro | auto, claude sonnet 4.5, claude haiku 4.5, glm-5 | via kiro cli |
+
+`cmd/ctrl + shift + k` toggles between fable and sonnet. non-claude providers run through the yume-cli shim, which translates their output into claude-compatible streaming. switching provider forks the session.
 
 ---
 
 ## context management
 
-- **usage thresholds** — auto-compact at user-configured threshold (default 75%)
-- **manifest generation** — preserves files, functions, decisions
-- **rate limit tracking** — 5h + 7d limits from anthropic api (claude only)
-- **context bar** — visual indicator with color-coded warnings
+- **auto-compaction** — dynamic threshold (default 85%): warn at T-5%, auto at T, force at T+5%; configurable or off (the cli also handles it)
+- **manifest generation** — preserves files, functions, and decisions across a compact
+- **rate-limit tracking** — 5-hour and 7-day windows read from `claude /usage` (claude only)
+- **usage-limit guard** — optionally stops new turns before the 5-hour window hits 100%, so a subscription never spills into metered overage
+- **context bar** — color-coded usage, git + line-change badges, provider-aware
 
 ---
 
 ## analytics
 
-- **per-message stats** — tokens, cache hits, cost in dollars
-- **dashboard** — 📊 button for daily/weekly/monthly views
-- **breakdowns** — by project, model, date
-- **export** — csv/json
-
----
-
-## multi-provider
-
-| provider | models | status |
-|----------|--------|--------|
-| claude | sonnet 4.6, opus 4.7 | ✅ native |
-| gemini | 3.1 pro preview, 3 flash preview | ✅ via yume-cli |
-| openai | gpt-5.5 codex, gpt-5.4 mini | ✅ via yume-cli |
-| kiro | auto, claude sonnet 4.5, claude haiku 4.5, glm-5 | ✅ via kiro cli |
-
-unified stream-json protocol. provider switching forks session.
+- **per-message stats** — input / output / cache tokens and dollar cost
+- **dashboard** — daily, weekly, and monthly views with streaks
+- **breakdowns** — by project, model, and date
+- **export** — csv / json
 
 ---
 
 ## background agents
 
-- **queue management** — 4 concurrent, no timeout
-- **git isolation** — automatic branch per agent (yume-async-{type}-{id})
-- **merge workflow** — conflict detection, merge/delete operations
-- **streaming isolation** — agents don't interfere with main session
-- **ui** — sliding panel with agent cards, real-time progress
+- **queue** — 4 concurrent, 30-minute timeout
+- **isolation** — none, git branch, or full worktree per agent
+- **inter-agent messaging** — coordinate work across agents
+- **streaming isolation** — background agents never disturb the main session's stream
+- **ui** — a sliding panel with live agent cards and progress
 
 ---
 
 ## plugin system
 
-5 component types in `~/.yume/plugins/`:
+six component types under `~/.yume/plugins/`, plus a marketplace:
 
-- **commands** — custom slash commands (md files)
-- **agents** — specialized assistants with system prompts
-- **hooks** — intercept 9 events (prompt submit, tool use, response, etc)
-- **skills** — auto-inject context based on file types/keywords
+- **commands** — custom slash commands
+- **agents** — specialized assistants with their own system prompts
+- **hooks** — intercept lifecycle events (prompt submit, tool use, compaction, subagents…)
+- **skills** — auto-inject context by file type, keyword, or ReDoS-safe regex
 - **mcp** — model context protocol servers
+- **monitors** — background monitors
 
-bundled plugin: 4 agents, 5 commands.
+claude-code plugins are supported directly. a bundled plugin ships 4 agents and 5 commands.
 
 ---
 
@@ -84,98 +102,39 @@ bundled plugin: 4 agents, 5 commands.
 
 | agent | purpose |
 |-------|---------|
-| yume-architect | planning, task decomposition |
+| yume-architect | planning, task decomposition, risk-spotting |
 | yume-explorer | read-only codebase analysis (sonnet) |
 | yume-implementer | focused code changes |
-| yume-guardian | code review, security + domain tasks |
+| yume-guardian | review, security, and domain tasks (tests, docs, devops) |
 
-agents use selected model. synced to `~/.claude/agents/`.
-
----
-
-## hooks (23 events)
-
-**active:** `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `ContextWarning`, `CompactionTrigger`, `SubagentStart`, `SubagentStop`
-
-**defined (not wired):** `AssistantResponse`, `SessionStart`, `SessionEnd`, `Error`, `WorktreeCreate`, `WorktreeRemove`, `ConfigChange`, `TaskCreated`, `PostCompact`, `CwdChanged`, `FileChanged`, `InstructionsLoaded`, `StopFailure`, `PermissionDenied`, `Elicitation`, `ElicitationResult`, `PreCompact`
-
-bash/python/node/powershell scripts with 5s timeout. http hooks supported (POST JSON with SSRF protection).
+agents use the selected model and sync to `~/.claude/agents/`.
 
 ---
 
-## ui features
+## hooks
 
-- **12 themes** — yume, void, cobalt, slate, arctic, synth, mint, grove, ochre, bourbon, burnt, rose
-- **26 monospace fonts** — jetbrains mono, fira code, etc
-- **26 sans fonts** — inter, sf pro, roboto, etc
-- **window opacity** — 50-100%
-- **voice dictation** — f5 to toggle
-- **claude.md editor** — in-app project config editing
-- **timeline/checkpoints** — save/restore conversation states
+23 event types, **7 active**: `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `ContextWarning`, `CompactionTrigger`, `SubagentStart`, `SubagentStop`. run bash / python / node / powershell scripts (5s default timeout) or http hooks (POST JSON, SSRF-protected).
+
+---
+
+## ui
+
+- **18 themes** — 12 dark (OLED-optimized) + 6 light
+- **font picker** — bundled + system monospace and sans fonts
+- **window opacity** — 50–100%
+- **voice dictation** — F5 to toggle
+- **claude.md editor** — edit project + memory files in-app
+- **file preview** — images, audio, video, PDF, syntax-highlighted code
+- **rollback** — per-message file-change tracking with one-click restore
 - **diff viewer** — side-by-side and inline
-- **virtual scrolling** — handles 1000+ message sessions
+- **stream event dots** — live tool-activity visualization
+- **virtual scrolling** — thousands of messages without lag
 
 ---
 
-## command palette (56 commands)
+## command palette
 
-`cmd/ctrl + p` opens palette with:
-- 10 categories (tabs, panels, session, model, input, zoom, appearance, settings, menu, settings tabs)
-- fuzzy search with scoring
-- submenu navigation (themes, fonts, opacity)
-- live theme preview
-- toggle commands with on/off state
-
----
-
-## keyboard shortcuts (40+)
-
-| action | key |
-|--------|-----|
-| new tab | `cmd/ctrl + t` |
-| close tab | `cmd/ctrl + w` |
-| command palette | `cmd/ctrl + p` |
-| model & tools | `cmd/ctrl + k` |
-| toggle model | `cmd/ctrl + shift + k` |
-| files panel | `cmd/ctrl + e` |
-| git panel | `cmd/ctrl + g` |
-| settings | `cmd/ctrl + ,` |
-| search messages | `cmd/ctrl + f` |
-| clear context | `cmd/ctrl + l` |
-| analytics | `cmd/ctrl + y` |
-| stop | `esc` |
-| zoom | `cmd/ctrl + +/-/0` |
-| help | `?` or `f1` |
-
----
-
-## file operations
-
-- **search** — fuzzy, glob patterns, substring matching
-- **recent files** — recently modified
-- **git integration** — changed files from status
-- **conflict detection** — concurrent edit warnings
-- **atomic delete** — with restore support
-
----
-
-## database
-
-sqlite in `~/.yume/yume.db`:
-- sessions, messages, analytics, checkpoints, settings, compaction_history
-- wal mode for concurrency
-- fts5 full-text search
-
----
-
-## security
-
-- no telemetry
-- local-only (except license validation)
-- encrypted license storage (xor + base64)
-- process isolation (tauri, react, node.js separate)
-- path traversal prevention
-- input validation (4 layers)
+`cmd/ctrl + p` opens a VS Code-style palette: fuzzy search, submenu navigation (themes, fonts, opacity), live theme preview, and toggle state.
 
 ---
 
@@ -183,35 +142,33 @@ sqlite in `~/.yume/yume.db`:
 
 | platform | installer |
 |----------|-----------|
-| mac m1/m2/m3/m4 | `yume_x.x.x_arm64.pkg` |
+| mac apple silicon | `yume_x.x.x_arm64.pkg` |
 | mac intel | `yume_x.x.x_x64.pkg` |
-| windows | `yume_x.x.x_x64-setup.exe` |
+| windows x64 / arm64 | `yume_x.x.x_x64-setup.exe` |
 | linux deb | `yume_x.x.x_amd64.deb` |
 | linux rpm | `yume-x.x.x-1.x86_64.rpm` |
 | linux flatpak | `io.github.aofp.yume` |
 
-~50mb binary. requires claude cli.
+native binary. requires the claude cli.
 
 ---
 
 ## pricing
 
-- **demo** — free, 2 tabs, 2 panes, 1 window
-- **pro monthly** — $4/mo, 99 tabs, 99 panes, 99 windows. paypal subscription. cancel anytime; access until period ends.
-- **pro lifetime** — $49 one-time, 99 tabs, 99 panes, 99 windows. forever updates.
+- **demo** — free. 2 tabs, 2 panes, 1 window. every feature available to try.
+- **pro monthly** — $4/mo (paypal). 99 tabs / panes / windows. cancel anytime; access runs to period end.
+- **pro lifetime** — $49 once. same limits, plus every future version, forever.
 
-license is re-verified weekly (~7d ± 12h jitter) with a 7-day network grace period anchored to the server clock. on validation failure, yume reverts to demo and offers a retry banner (key is retained).
+license re-verifies weekly (~7d ± 12h jitter, server-clock anchored) with a 7-day offline grace window. on failure it reverts to demo and shows a retry banner — your key is kept.
 
 ---
 
 ## tech
 
-- rust/tauri 2.9 backend
-- react 19 frontend
-- node.js server (compiled binaries)
-- 230+ tauri commands
-- 24 frontend services
-- ~90k+ lines of code
+- rust / tauri 2 backend, react 19 frontend
+- compiled node.js server binaries, per platform
+- spawns the official claude cli — no api keys handled, no tokens stored
+- no telemetry; local-first (only the license check leaves the machine)
 
 ---
 
@@ -224,4 +181,4 @@ license is re-verified weekly (~7d ± 12h jitter) with a 7-day network grace per
 
 ---
 
-not affiliated with anthropic.
+not affiliated with anthropic. "claude" is a trademark of anthropic.

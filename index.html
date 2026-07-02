@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
     <title>yume - claude code, like a dream</title>
-    <meta name="description" content="the native desktop gui for claude code cli. no flickering, no input lag, no crashes. orchestration flow, interleaved thinking, 4 background agents, plugins, multi-provider support, and 40+ features the cli doesn't have. free. mac, windows, linux.">
+    <meta name="description" content="the native desktop gui for the claude code cli. no flickering, no input lag, no crashes. orchestration flow, live interleaved thinking, 4 background agents, plugins, multi-provider support, and 50+ features the cli doesn't have. free demo. mac, windows, linux.">
     <link rel="icon" type="image/png" href="assets/yume.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <style>
@@ -1671,7 +1671,7 @@
                 <div class="feature-card">
                     <i class="ti ti-arrows-minimize icon"></i>
                     <h3>never hit context limits</h3>
-                    <p>cli claude runs out of context and forgets important code. yume auto-compacts at 75%—intelligently summarizing while preserving what matters.</p>
+                    <p>cli claude runs out of context and forgets important code. yume auto-compacts at a configurable threshold—intelligently summarizing while preserving what matters.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-git-branch icon"></i>
@@ -1681,7 +1681,7 @@
                 <div class="feature-card">
                     <i class="ti ti-palette icon"></i>
                     <h3>make it truly yours</h3>
-                    <p>cli looks like cli looks like cli. yume gives you 12 themes, custom accent colors, and full color control. match your editor. match your vibe.</p>
+                    <p>cli looks like cli looks like cli. yume gives you 18 themes, custom accent colors, and full color control. match your editor. match your vibe.</p>
                 </div>
                 <div class="feature-card">
                     <i class="ti ti-terminal-2 icon"></i>
@@ -1790,8 +1790,8 @@
                 </div>
                 <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-users-group icon"></i>
-                    <h3>agent teams</h3>
-                    <p>multi-agent coordination. create teams, assign tasks, inter-agent messaging. run coordinated workflows across multiple agents.</p>
+                    <h3>agent coordination</h3>
+                    <p>run up to 4 background agents at once on isolated branches or worktrees, with inter-agent messaging to hand off work. results inject straight back into your session.</p>
                 </div>
                 <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-calendar-event icon"></i>
@@ -1805,8 +1805,13 @@
                 </div>
                 <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-adjustments icon"></i>
-                    <h3>effort controls</h3>
-                    <p>set claude's effort level (1/2/3). lower = faster, higher = more thorough. compact toggle in context bar.</p>
+                    <h3>effort + budget controls</h3>
+                    <p>set claude's effort level (low / medium / high / xhigh) and thinking budget per model. lower = faster, higher = more thorough.</p>
+                </div>
+                <div class="feature-card feature-card--exclusive">
+                    <i class="ti ti-shield-dollar icon"></i>
+                    <h3>never blow past your plan</h3>
+                    <p>the 5-hour usage-limit guard stops new claude turns before your window hits 100%—so a subscription never spills into metered overage. defers /loop and scheduled tasks until it resets.</p>
                 </div>
                 <div class="feature-card feature-card--exclusive">
                     <i class="ti ti-message-question icon"></i>
@@ -1888,7 +1893,7 @@
                     <i class="ti ti-robot icon"></i>
                     <div class="tech-value">10+ models</div>
                     <div class="tech-label">4 providers</div>
-                    <div class="tech-detail">claude sonnet 4.6 + opus 4.7, gemini 3.1 pro/3 flash, gpt-5.5 codex, kiro. via yume-cli shim.</div>
+                    <div class="tech-detail">claude fable 5, sonnet 5 (1M context), opus 4.8; gemini 3.1 pro/3 flash; gpt-5.5; kiro. non-claude via the yume-cli shim.</div>
                 </div>
                 <div class="tech-card">
                     <i class="ti ti-bolt icon"></i>
@@ -2098,12 +2103,12 @@
                     <div><span class="check">✓</span> extensible</div>
                 </div>
                 <div class="comparison-row">
-                    <div>agent teams</div>
+                    <div>agent coordination</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> coordinated</div>
+                    <div><span class="check">✓</span> messaging</div>
                 </div>
                 <div class="comparison-row">
                     <div>vim mode</div>
@@ -2169,7 +2174,7 @@
                     <div>~5</div>
                     <div><span class="cross">✗</span></div>
                     <div><span class="cross">✗</span></div>
-                    <div><span class="check">✓</span> 12 + custom</div>
+                    <div><span class="check">✓</span> 18 + custom</div>
                 </div>
                 <!-- tech comparison -->
                 <div class="comparison-row">

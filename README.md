@@ -2,8 +2,8 @@
 
 <div align="center">
   <img src="assets/yume.png" alt="yume logo" width="120">
-  <h3>claude code, unchained</h3>
-  <p>orchestration flow. agent teams. background agents. interleaved thinking.<br>4 built-in agents. vim mode. plugins & skills. 4 providers. mac, windows, linux.</p>
+  <h3>claude code, supercharged</h3>
+  <p>orchestration flow. live interleaved thinking. background agents. plugins & skills.<br>4 built-in agents. vim mode. 4 providers. 7 languages. mac, windows, linux.</p>
   <p>
     <a href="https://aofp.github.io/yume">Download</a>
   </p>
@@ -70,13 +70,13 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **streaming isolation** - background agents don't interfere with main session
 - **merge conflict detection** - pre-merge checks before integrating agent work
 - **worktree isolation** - full filesystem isolation via git worktree
-- **agent teams** - multi-agent coordination with task tracking (`Cmd+Shift+T`)
+- **agent coordination** - inter-agent messaging to hand off work between background agents
 
 ### multi-provider support
 - **10+ models, 4 providers** - via yume-cli shim
-  - claude sonnet 4.6, opus 4.7
+  - claude fable 5 (default flagship), sonnet 5 (1M context), sonnet 4.6, opus 4.8, opus 4.7
   - gemini 3.1 pro preview, gemini 3 flash preview
-  - gpt-5.5 codex, gpt-5.4 mini
+  - gpt-5.5, gpt-5.4 mini
   - kiro (auto, claude sonnet 4.5, claude haiku 4.5, glm-5)
 - **protocol normalization** - stream-json output for all providers
 - **same interface** - switch providers without changing workflow
@@ -88,11 +88,13 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **keyboard-first** - 32+ shortcuts, full mouse-free navigation
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
-- **auto-compaction** - variable threshold (default 75%), user configurable or disable
-- **effort controls** - low/medium/high effort level, compact toggle in context bar
+- **auto-compaction** - dynamic threshold (default 85%), user configurable or disable
+- **effort + budget controls** - low/medium/high/xhigh effort and thinking budget per model
+- **usage-limit guard** - optionally stops new claude turns before the 5-hour window hits 100%, so a subscription never spills into metered overage
 - **schedule system** - `/schedule 5m`, `/schedule 2pm`, `/schedule done` for timed and event-based tasks
 - **askuser ipc** - claude asks structured questions mid-session with choice popover
 - **secret censoring** - api keys and tokens automatically redacted in all output
+- **7 languages** - english, spanish, french, german, polish, chinese, japanese
 
 ### plugin & skills system
 - **complete extensibility** - commands, agents, hooks, skills, MCP servers, monitors
@@ -115,7 +117,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **15+ slash commands** - /config, /theme, /stats, /memory, /mcp, /tasks, and more
 
 ### customization
-- **12 themes, infinite combinations** - accents, backgrounds, foregrounds fully customizable
+- **18 themes** - 12 dark (OLED-optimized) + 6 light; accents fully customizable
 - **OLED optimization** - pure black (#000000) default
 - **100% CLI compatibility** - subagents, MCP, hooks, skills, claude.md, /commands
 
@@ -182,7 +184,6 @@ visit [aofp.github.io/yume](https://aofp.github.io/yume) for all download option
 | compact context | ⌘M | Ctrl+M |
 | recent projects | ⌘R | Ctrl+R |
 | analytics | ⌘Y | Ctrl+Y |
-| agent teams | ⌘⇧T | Ctrl+Shift+T |
 | split all panes | F8 | F8 |
 | combine panes | F7 | F7 |
 | vim mode | toggle in settings | toggle in settings |

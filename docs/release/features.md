@@ -31,23 +31,22 @@ states: created → connecting → active ↔ streaming ↔ idle → disconnecte
 ### auto-compaction
 | setting | description |
 |---------|-------------|
-| threshold | user-configurable (default 75%) |
-| range | 50% to 90% |
-| disable | can be turned off for manual control |
+| threshold | dynamic (default 85%): warn at T-5%, auto at T, force at T+5% |
+| range | user-configurable, or off (the cli also handles compaction) |
+| manifest | preserves important files, functions, and decisions across a compact |
 
-sends `/compact` on next user message. generates context manifest preserving important files/functions/decisions.
+sends `/compact` on the next user message when the threshold is crossed.
 
 ### token tracking
 - input, output, cache read, cache creation tokens
-- cost per message (model-specific pricing)
+- cost per message (model-specific pricing, including fable 5 and sonnet 5)
 - session totals
 - daily/weekly/monthly aggregation
 
 ### rate limits (claude only)
-- 5-hour limit tracking
-- 7-day limit tracking
+- 5-hour and 7-day limit tracking read from `claude /usage`
 - reset timestamps
-- separate for opus vs sonnet
+- **usage-limit guard** — optionally blocks new turns before the 5-hour window reaches 100%, so a subscription never spills into metered overage (settings → general)
 
 ### context bar
 - visual usage indicator
@@ -67,9 +66,9 @@ sends `/compact` on next user message. generates context manifest preserving imp
 
 | provider | models | cli package |
 |----------|--------|-------------|
-| claude | sonnet 4.6, opus 4.7 | `@anthropic-ai/claude-code` |
+| claude | fable 5 (default), sonnet 5 (1M context), sonnet 4.6, opus 4.8, opus 4.7 | `@anthropic-ai/claude-code` |
 | gemini | 3.1 pro preview, 3 flash preview | `@google/gemini-cli` |
-| openai | gpt-5.5 codex, gpt-5.4 mini | `@openai/codex` |
+| openai | gpt-5.5, gpt-5.4 mini | `@openai/codex` |
 | kiro | auto, claude sonnet 4.5, claude haiku 4.5, glm-5 | `kiro` |
 
 ### implementation
