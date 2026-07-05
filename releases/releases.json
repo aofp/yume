@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.35.0",
+  "latest": "0.36.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.36.0",
+      "date": "2026-07-05",
+      "notes": "af55fb16 release 0.36.0: fable weekly-overage guard (routes fable to opus 4.8 at 98% weekly usage), /usage parser for fable weekly bucket + cli 2.1.201 resets fix",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.36.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.36.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.36.0_amd64.deb",
+        "windows_arm": "yume_0.36.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.36.0_arm64.deb",
+        "mac_arm": "yume_0.36.0_arm64.pkg",
+        "windows": "yume_0.36.0_x64-setup.exe",
+        "mac": "yume_0.36.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "6697ef60b3772efa6e5bc8dba1382b34f642633b65ac4888d63cba26a0142a68",
+        "linux_rpm": "7628e7ed68d75f5d46f342531ba0ed3ee9947424f03e55ece323087df73fe0b4",
+        "linux_deb": "a6fe0d63793618390140a28423d50c1da3accc957eb130e96ecc2922a9e7e12d",
+        "windows_arm": "6d930ee7f670ee1efc0e2a43fdfae05959568370007cc25aa8833dd705b4faa7",
+        "linux_deb_arm": "c8f1f92a21b949f0c636affd48bf2dffae63c81c8d10942ff3e1dedc3d70a627",
+        "mac_arm": "5d4ac212ce46182f538d97950dc501fb9fe706ada2cdb559461b63c7cba498a0",
+        "windows": "b75c39e40371b3548d3aaa4cdd9983a19959498fa40bd7aa5ac3663bd5a34ec8",
+        "mac": "aa0df88086ef7723f157c9dc102ece2643ad8141186a6fee1d68a71bccedff87"
+      }
+    },
     {
       "version": "0.35.0",
       "date": "2026-07-02",
