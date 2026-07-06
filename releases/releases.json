@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.36.0",
+  "latest": "0.37.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.37.0",
+      "date": "2026-07-06",
+      "notes": "29159326 release 0.37.0: pending-watch indicator, memory sizes in context, per-message bash-rules fix, YUME_* env passthrough, yume-cli single-spawn fix, context-total interrupt guard, CLI 2.1.201 tool audit",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.37.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.37.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.37.0_amd64.deb",
+        "windows_arm": "yume_0.37.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.37.0_arm64.deb",
+        "mac_arm": "yume_0.37.0_arm64.pkg",
+        "windows": "yume_0.37.0_x64-setup.exe",
+        "mac": "yume_0.37.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "ceb34670f2a730b50936d952f494ba0dee007ba31e3a3657d00b2f9156984e48",
+        "linux_rpm": "b52e120a20f7cbf67eeedc4db6a999b76a384e3d20dd71cf46cb1735afa02c4b",
+        "linux_deb": "fd14fdb3bf0af51db67dcab795f471d3aa716dee95f806e2683d55b548391d14",
+        "windows_arm": "3f83ffec09a2b60a47be7d158b4febe4103322905150826f627c13a0479e607b",
+        "linux_deb_arm": "4cf78a406230b8f81e647329c63c2fde15a2f07752bddc3a1ae7a6fabd262e27",
+        "mac_arm": "6563100612324fde12397486983f9beb53e57d89e297f3ba8f1c1da53430fcb5",
+        "windows": "e13e5ac59da23d346434b07c3b734fa0e7cb5754353c6572eaedaa376d57f181",
+        "mac": "93feeb3beb2ef2464fc0dceceafd18e2f6b2b77ece436ccfd100bc001af71c61"
+      }
+    },
     {
       "version": "0.36.0",
       "date": "2026-07-05",
