@@ -1,6 +1,6 @@
 # Yume Complete Architecture Documentation
 
-**Version:** 0.14.0
+**Version:** 0.37.0
 **Last Updated:** February 2026
 **Status:** Production Ready
 
@@ -74,16 +74,14 @@ Yume employs a sophisticated three-process architecture that ensures separation 
 5. **Bounded Buffers**: 100KB stream parser buffer (Rust) and 10MB line buffer (server) prevent memory leaks
 6. **Atomic Operations**: Thread-safe operations using Rust's atomic types
 
-### 1.3 Multi-Provider Architecture (Complete - macOS)
-Yume supports Gemini and OpenAI/Codex via **yume-cli shim** that emits Claude-compatible stream-json.
+### 1.3 Multi-Provider Architecture
+Yume supports Gemini, OpenAI/Codex, and Kiro via a **yume-cli shim** that emits Claude-compatible stream-json. All platforms.
 
-- **Unified Binary:** `yume-bin-*` combines server + yume-cli (macOS arm64/x64 complete)
-- **Shim Strategy:** `yume-cli` implements agent loop, normalizes provider streams to Claude format
-- **Protocol Contract:** Output matches stream parser (`src-tauri/src/stream_parser.rs`)
-- **Feature Flags:** `PROVIDER_GEMINI_AVAILABLE` and `PROVIDER_OPENAI_AVAILABLE` default false
-- **Provider Lock:** Sessions lock to initial provider, switching forks session by design
-
-See `docs/expansion-plan/ARCHITECTURE_OVERVIEW.md` and `docs/expansion-plan/PROTOCOL_NORMALIZATION.md`.
+- **Unified Binary:** `yume-bin-*` combines server + yume-cli on every platform
+- **Shim Strategy:** `yume-cli` implements the agent loop and normalizes provider streams to Claude format
+- **Protocol Contract:** Output matches the stream parser (`src-tauri/src/stream_parser.rs`)
+- **Enabled by default:** Gemini, OpenAI, and Kiro providers ship enabled (`src/renderer/config/features.ts`)
+- **Provider Lock:** Sessions lock to their initial provider; switching forks the session by design
 
 ## 2. Core Components Deep Dive
 
@@ -689,18 +687,17 @@ class HooksService {
 }
 ```
 
-Available Hook Events (9 total, **4 active**):
+Available Hook Events (23 total, **7 active**):
+- `user_prompt_submit`: Modify/block user messages before sending **(ACTIVE)**
 - `pre_tool_use`: Intercept tool calls before execution **(ACTIVE)**
+- `post_tool_use`: Process tool results after execution **(ACTIVE)**
 - `context_warning`: Context usage alerts **(ACTIVE)**
 - `compaction_trigger`: Custom compaction behavior **(ACTIVE)**
-- `user_prompt_submit`: Modify/block user messages before sending **(ACTIVE)**
-- `post_tool_use`: Process tool results after execution *(defined, not called)*
-- `assistant_response`: Process Claude responses *(defined, not called)*
-- `session_start`: Session initialization *(defined, not called)*
-- `session_end`: Session cleanup *(defined, not called)*
-- `error`: Error handling *(defined, not called)*
+- `subagent_start`: Subagent lifecycle start **(ACTIVE)**
+- `subagent_stop`: Subagent lifecycle end **(ACTIVE)**
+- plus 16 defined but not yet wired (`assistant_response`, `session_start`, `session_end`, `error`, `worktree_create`, `worktree_remove`, `config_change`, `task_created`, `post_compact`, `cwd_changed`, `file_changed`, `instructions_loaded`, `stop_failure`, `permission_denied`, `elicitation`, `elicitation_result`, `pre_compact`)
 
-> **Note:** Only 4 of 9 hooks are actively triggered in the codebase. The other 5 are defined but not currently wired to any execution path.
+> **Note:** Only 7 of 23 hook events are actively triggered in the codebase. The others are defined but not currently wired to any execution path.
 
 ## 5. Process Communication Architecture
 
@@ -1093,30 +1090,20 @@ npm run tauri:build:linux      # Linux .deb/.rpm/.AppImage
 
 ### Test Infrastructure
 
-**Framework:** Vitest 3.x with jsdom environment
+**Framework:** Vitest 4.x with jsdom environment
 **Config:** `vitest.config.ts` with path aliases (`@/` → `src/renderer/`, `@shared/` → `src/shared/`)
 **Setup:** `src/test/setup.ts` with Tauri API mocks
 
-**Test Suites (81 files, ~2966 tests):**
-- `src/renderer/config/__tests__/` - 6 files (app, features, models, themes, tools, performanceFlags)
-- `src/renderer/services/__tests__/` - 30 files (all services)
-- `src/renderer/types/__tests__/` - 3 files (backgroundAgents, skill, ucf)
-- `src/renderer/stores/__tests__/` - 6 files (claudeCodeStore, streamingIsolation, streamingScenarios, streamingEdgeCases, subagentStreaming, thinkingState)
-- `src/renderer/utils/__tests__/` - 7 files (chatHelpers, helpers, performance, regexValidator, structuredLogger, consoleOverride, editContext, paneUtils)
-- `src/renderer/hooks/__tests__/` - 2 files (useFocusTrap, useEnabledProviders)
-- `src/renderer/components/__tests__/` - 27 files (Chat, Layout, Modals, common components)
+**Test Suites (96 frontend files, 3568 tests + 7 yume-cli files, 63 tests):**
+covering config, services, stores (including streaming isolation and edge cases), utils, hooks, components, and the yume-cli shim. `npm run test` runs both suites.
 
-## Performance Benchmarks
+## Performance Engineering
 
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| Startup Time | <3s | 2.3s | ✅ |
-| Memory Usage (Idle) | <200MB | 145MB | ✅ |
-| Memory Usage (Active) | <500MB | 380MB | ✅ |
-| Message Latency | <100ms | 65ms | ✅ |
-| Compaction Time | <5s | 3.8s | ✅ |
-| FPS (Scrolling) | 60fps | 58fps | ✅ |
-| Bundle Size | <50MB | 42MB | ✅ |
+no synthetic benchmark table here — measure on your own machine. the relevant design choices:
+- tauri/rust core with compiled node.js sidecar (no bundled chromium)
+- virtualized message rendering for long sessions
+- ipc batching, gpu layer promotion, and todo caching (see `performanceFlags.ts`)
+- bounded stream buffers (100KB live output, 10MB server logs) to keep memory flat
 
 ## Architecture Decisions Record (ADR)
 

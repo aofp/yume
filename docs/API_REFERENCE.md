@@ -1,6 +1,6 @@
 # Yume API Reference
 
-**Version:** 0.14.0
+**Version:** 0.37.0
 **Last Updated:** February 2026
 **Tauri Commands:** ~231
 
@@ -1012,16 +1012,16 @@ Gets available hook event types. Returns a Vec of strings.
 invoke('get_hook_events') => Promise<string[]>
 ```
 
-**Available Events:**
+**Active Events (7):**
 - `user_prompt_submit`
 - `pre_tool_use`
 - `post_tool_use`
-- `assistant_response`
-- `session_start`
-- `session_end`
 - `context_warning`
 - `compaction_trigger`
-- `error`
+- `subagent_start`
+- `subagent_stop`
+
+(16 more event types are defined but not yet wired, e.g. `assistant_response`, `session_start`, `session_end`, `error`.)
 
 #### `get_sample_hooks`
 Gets sample yume hook scripts.
@@ -1046,9 +1046,9 @@ invoke('update_context_usage', {
 **Action Types:**
 - `"None"` - No action needed
 - `"Notice"` - Notice level (deprecated)
-- `"Warning"` - Warning at 70%
-- `"AutoTrigger"` - Auto-compact at configurable threshold (default 75%)
-- `"Force"` - Force compact at 85%
+- `"Warning"` - Warning at threshold - 5% (default 80%)
+- `"AutoTrigger"` - Auto-compact at configurable threshold (default 85%)
+- `"Force"` - Force compact at threshold + 5% (default 90%)
 
 #### `save_context_manifest`
 Saves a context manifest for a session.
@@ -1143,7 +1143,7 @@ invoke('update_compaction_config', {
 **Config:**
 ```typescript
 interface CompactionConfig {
-  auto_threshold: number;  // f32, default 0.75 (75%)
+  auto_threshold: number;  // f32, default 0.85 (85%)
   force_threshold: number; // f32, default 0.80 (80%, auto + 5%)
   preserve_context: boolean;
   generate_manifest: boolean;
@@ -1973,7 +1973,7 @@ invoke('get_running_instance_count') => Promise<number>
 
 ### Background Agent Operations
 
-These commands manage background agents that run Claude CLI tasks concurrently (max 4, no timeout).
+These commands manage background agents that run Claude CLI tasks concurrently (max 4, 30-minute timeout).
 
 #### `queue_background_agent`
 Queues a new background agent for execution.
@@ -2566,7 +2566,7 @@ listen(`claude-message:${sessionId}`, (event) => {
 - `result` - Completion with usage stats
 - `error` - Error message
 - `system` - System messages (subtype: session_id, etc.)
-- `thinking` - Extended thinking content (streamed in real-time - UNIQUE feature)
+- `thinking` - Extended thinking content (streamed in real-time)
 - `thinking_delta` - Incremental thinking content updates
 
 #### `claude-error:{sessionId}`
@@ -2790,7 +2790,7 @@ const prompt = systemPromptService.getActivePrompt();
 
 **Location:** `src/renderer/services/compactionService.ts`
 
-Handles context compaction with dynamic thresholds (default T=75%: 70% warning, 75% auto-trigger, 80% force).
+Handles context compaction with dynamic thresholds (default T=85%: 80% warning, 85% auto-trigger, 90% force).
 
 ```typescript
 class CompactionService {
@@ -2815,7 +2815,7 @@ class CompactionService {
 }
 
 interface CompactionConfig {
-  autoThreshold: number;   // 0.75 (75%) default
+  autoThreshold: number;   // 0.85 (85%) default
   forceThreshold: number;  // 0.80 (80%) default, auto + 5%
   preserveContext: boolean;
   generateManifest: boolean;
@@ -3635,7 +3635,7 @@ await invoke('delete_custom_command', {
 ```typescript
 import { invoke } from '@tauri-apps/api/core';
 
-// Update context usage (triggers warning at 70%, auto-compact at 75%)
+// Update context usage (triggers warning at 80%, auto-compact at 85%)
 const action = await invoke('update_context_usage', {
   session_id: sessionId,
   usage: 0.70  // 70% - warning threshold
@@ -3643,13 +3643,13 @@ const action = await invoke('update_context_usage', {
 
 // Get compaction configuration
 const config = await invoke('get_compaction_config');
-console.log('Auto threshold:', config.auto_threshold);  // 0.75 (75%)
+console.log('Auto threshold:', config.auto_threshold);  // 0.85 (85%)
 console.log('Force threshold:', config.force_threshold);  // 0.80 (80%)
 
 // Update compaction configuration
 await invoke('update_compaction_config', {
   config: {
-    auto_threshold: 0.75,       // Auto-compact at 75%
+    auto_threshold: 0.85,       // Auto-compact at 85%
     force_threshold: 0.80,      // Force compact at 80%
     preserve_context: true,
     generate_manifest: true

@@ -166,7 +166,7 @@ agents auto-sync to `~/.claude/agents/yume-*.md` when enabled. use selected mode
 
 ### queue management
 - max 4 concurrent agents
-- no timeout (agents run until completion)
+- 30-minute timeout per agent
 - queued → running → completed/failed/cancelled states
 - real-time progress polling (5s interval)
 - uses claude cli directly with `--dangerously-skip-permissions`
@@ -195,14 +195,12 @@ yume-cli --async --output-file ./out.json --git-branch feature-xyz
 
 ---
 
-## agent teams
+## background bash processes
 
-- multi-agent coordination system
-- create teams with named teammates
-- task assignment and tracking per team
-- inter-agent messaging
-- ui panel (`cmd/ctrl + shift + t`)
-- state stored in `~/.yume/teams/{team-name}/`
+- run long commands detached from the session (`run_in_background`)
+- survives the originating turn; results auto-inject when the process finishes
+- state in `~/.yume/bg-processes.json`, output in `~/.yume/bg-output/`
+- indicator in the ui with list/kill/clear controls (`cmd/ctrl + b`)
 
 ---
 
@@ -354,7 +352,7 @@ oled optimized (pure black backgrounds).
 **shortcut**: `cmd/ctrl + p`
 
 ### features
-- 56 commands across 10 categories
+- 80+ commands across 10 categories
 - fuzzy search with scoring (exact > starts with > contains > category > fuzzy)
 - submenu navigation (themes, font size, line height, opacity, plugins)
 - live theme preview (cancel with esc to restore)
@@ -388,8 +386,8 @@ oled optimized (pure black backgrounds).
 
 ## effort controls
 
-- effort level setting: low (1) / medium (2) / high (3)
-- compact 1/2/3 toggle in context bar
+- effort level setting: five steps — low / medium / high / xhigh / max (xhigh+ on supported models)
+- thinking budget control per model
 - passed as `--effort` to cli
 
 ---
@@ -403,7 +401,7 @@ oled optimized (pure black backgrounds).
 
 ---
 
-## keyboard shortcuts (40+)
+## keyboard shortcuts (50+)
 
 ### tabs
 | action | key |
@@ -528,7 +526,7 @@ oled optimized (pure black backgrounds).
 - only network call: license validation
 
 ### storage
-- encrypted license (xor cipher + base64)
+- license stored locally in `~/.yume/license.json` (survives reinstalls)
 - localStorage key: `yume-license-v3`
 
 ### process
@@ -630,14 +628,14 @@ monthly is a paypal subscription. cancel anytime; access continues until the cur
 ## tech specs
 
 ### architecture
-- rust/tauri 2.9 backend
+- rust/tauri 2.10 backend
 - react 19 frontend
 - node.js server (compiled to binary)
 
 ### code
 - 200+ tauri commands
 - 26 frontend services
-- ~90k lines (66k ts/tsx + 24k rust)
+- 3,600+ automated tests
 
 ### binary
 - ~50mb size

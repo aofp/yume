@@ -2,7 +2,7 @@
 
 **夢** — dream
 
-the native desktop app for the claude code cli. tabs, orchestration, live thinking, background agents, and 50+ things the terminal can't do — driving the same official claude you already pay for. current version: **0.35.0**
+the native desktop app for the claude code cli. tabs, orchestration, live thinking, background agents, and 50+ things the terminal can't do — driving the same official claude you already pay for. current version: **0.37.0**
 
 ---
 

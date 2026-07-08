@@ -17,19 +17,19 @@ Claude Code is transformative for development. Terminal interfaces hold it back.
 
 ### terminal limitations
 
-- **flickering** — 700+ upvoted github issue, fundamentally unfixed
-- **performance degradation** — multi-second delays in extended sessions
-- **terminal crashes** — IDE instability after 10-20 minutes of heavy use
-- **hidden rate limits** — requires manual `/usage` checks
-- **fragile sessions** — complete loss on crash, no recovery mechanism
+- **flickering** — terminal redraw artifacts, a long-standing cli complaint
+- **input lag** — terminal rendering slows down in extended sessions
+- **single session per window** — parallel work means juggling terminals
+- **rate limits on demand only** — requires manual `/usage` checks
+- **no gui affordances** — no visual diffs, clickable rollback, or drag-and-drop
 
 ### yume's approach
 
 - ✅ **native rendering** - hardware-accelerated UI, zero terminal artifacts
-- ✅ **consistent <50ms latency** - responsive input across unlimited session length
-- ✅ **standalone architecture** - immune to IDE/terminal crashes
+- ✅ **responsive input** - typically <50ms, independent of session length
+- ✅ **standalone app** - your session doesn't die with your terminal or IDE
 - ✅ **persistent rate limit display** - 5-hour and 7-day metrics always visible
-- ✅ **automatic session recovery** - 5-minute checkpoint intervals with 24-hour retention
+- ✅ **automatic session recovery** - 5-minute snapshots with 24-hour retention
 
 ---
 
@@ -66,15 +66,15 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
   - **implementer** - focused code changes, edit/write, minimal diffs
   - **guardian** - reviews for bugs, security, performance after changes
 - **4 concurrent background agents** - async execution with git branch isolation (yume-async-{type}-{id})
-- **no timeout** - agents run until completion, output to ~/.yume/agent-output/
+- **30-minute timeout per agent** - output to ~/.yume/agent-output/, 24h retention
 - **streaming isolation** - background agents don't interfere with main session
 - **merge conflict detection** - pre-merge checks before integrating agent work
 - **worktree isolation** - full filesystem isolation via git worktree
 - **agent coordination** - inter-agent messaging to hand off work between background agents
 
 ### multi-provider support
-- **10+ models, 4 providers** - via yume-cli shim
-  - claude fable 5 (default flagship), sonnet 5 (1M context), sonnet 4.6, opus 4.8, opus 4.7
+- **15+ models, 4 providers** - non-claude providers via yume-cli shim
+  - claude fable 5 (default flagship), sonnet 5 (1M context), sonnet 4.6, opus 4.8, haiku 4.5
   - gemini 3.1 pro preview, gemini 3 flash preview
   - gpt-5.5, gpt-5.4 mini
   - kiro (auto, claude sonnet 4.5, claude haiku 4.5, glm-5)
@@ -85,7 +85,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **persistent rate limit visibility** - 5h and 7d limits always visible, no /usage needed
 - **zero visual artifacts** - native rendering eliminates terminal flickering
 - **interleaved thinking toggle** - watch claude reason live, word-by-word, with on/off control
-- **keyboard-first** - 32+ shortcuts, full mouse-free navigation
+- **keyboard-first** - 50+ shortcuts, full mouse-free navigation
 - **<50ms response time** - instant UI regardless of session length
 - **standalone reliability** - independent process, immune to IDE crashes
 - **auto-compaction** - dynamic threshold (default 85%), user configurable or disable
@@ -104,7 +104,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **bundled yume plugin** - default commands and agents
 
 ### additional features
-- **crash recovery** - 30s auto-save, 5-min snapshots, 24hr retention, complete session restore
+- **crash recovery** - 5-min snapshots, 24hr retention, complete session restore
 - **history rollback** - restore points per message, conflict detection, undo edits
 - **mid-stream context** - real-time token updates during streaming
 - **analytics dashboard** - usage by project/model/date, cost tracking, export
@@ -114,7 +114,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 - **row split panels** - up to 6 panels in 3x2 grid with F7/F8 split/combine
 - **rules management** - .claude/rules/ CRUD in settings
 - **image thumbnails** - drag-and-drop images with compression pipeline
-- **15+ slash commands** - /config, /theme, /stats, /memory, /mcp, /tasks, and more
+- **slash commands** - /schedule, /loop, /compact, /clear, /model, /resume, /usage, plus custom and cli commands
 
 ### customization
 - **18 themes** - 12 dark (OLED-optimized) + 6 light; accents fully customizable
@@ -125,7 +125,7 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 
 ## tech stack
 
-- **tauri 2.9** - rust backend, native speed
+- **tauri 2.10** - rust backend, native speed
 - **react 19** - modern ui with virtualized rendering
 - **sqlite + wal** - sessions, messages, analytics persistence
 - **socket.io** - real-time streaming with mid-stream context updates
@@ -137,21 +137,23 @@ think of it like **iterm vs terminal.app** - a different frontend for the same t
 
 ## comparison
 
-| feature | cli | cursor | opcode | crystal | yume |
-|---------|-----|--------|--------|---------|------|
-| orchestration flow | ✗ | ✗ | ✗ | ✗ | ✓ auto |
-| background agents | ✗ | ✗ | ✗ | ✗ | ✓ 4 async |
-| interleaved thinking | ✗ after | ✗ | ✗ | ✗ | ✓ live toggle |
-| multi-provider | ✗ | ✗ | ✗ | ✗ | ✓ 7+ models / 4 providers |
-| limits always visible | /usage | ✗ | ✗ | ✗ | ✓ always |
-| plugin/skills system | ✗ | ✗ | ✗ | ✗ | ✓ unique |
-| 4 built-in agents | ✗ | ✗ | ✗ | ✗ | ✓ |
-| crash recovery | ✗ | ✗ | ✗ | ✗ | ✓ 24hr |
-| @ mentions | partial | ✗ | ✗ | ✗ | ✓ |
-| stream timers | ✗ | ✗ | ✗ | ✗ | ✓ live |
-| native app | terminal | electron | tauri | electron | ✓ tauri |
-| customization | ✗ | ~5 themes | ✗ | ✗ | ✓ ∞ |
-| price | pro/max | $20-200/mo | ✓ free | ✓ free | ✓ $4/mo or $49 lifetime |
+same cli, same claude subscription — different frontend. what yume adds on top of a plain terminal:
+
+| feature | cli in a terminal | cli in yume |
+|---------|-------------------|-------------|
+| interface | text ui, one session per window | native app — tabs, panes, windows |
+| orchestration flow | manual prompting | ✓ baked into every session |
+| background agents | run more terminals | ✓ 4 parallel, branch/worktree isolated |
+| thinking display | plain text scrollback | ✓ live stream with toggle + timers |
+| usage limits | `/usage` on demand | ✓ 5h + 7d always visible, overage guard |
+| context | `/context` on demand | ✓ live token bar, one-key compact |
+| file changes | text diffs | ✓ visual diffs + per-message rollback |
+| crash recovery | `--resume` after restart | ✓ 5-min snapshots, full layout restore |
+| providers | claude | ✓ claude + gemini + openai + kiro |
+| customization | terminal theme | ✓ 18 themes, custom colors, fonts, vim mode |
+| price | free with your claude plan | free demo · $4/mo · $49 lifetime |
+
+yume licenses the app — claude usage stays on your existing claude plan or api key, with no markup. ide-style tools (cursor, windsurf, …) solve a different problem: they bundle model access into $20+/mo subscriptions.
 
 ---
 
@@ -204,7 +206,7 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 **background agents** (4 concurrent, async):
 - git branch isolation: yume-async-{type}-{id}
-- no timeout (runs until completion)
+- 30-minute timeout per agent
 - output to ~/.yume/agent-output/
 - streaming isolation from main session
 - merge conflict detection
@@ -215,7 +217,7 @@ yume includes 4 built-in agents synced to ~/.claude/agents/yume-*.md + 4 concurr
 
 ## requirements
 
-- **claude subscription** - pro or max required for claude code access
+- **claude account** - pro/max subscription or api key for claude code access (yume adds no markup)
 - **macos** 11+ (big sur or later) — arm64 + x64
 - **windows** 10+ (64-bit) — exe installer
 - **linux** ubuntu 20.04+ or equivalent — deb + rpm + flatpak

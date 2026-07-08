@@ -78,7 +78,7 @@ license validation only. conversations stay local.
 - settings: `~/Library/Application Support/yume/` (mac)
 - database: `~/.yume/yume.db`
 - plugins: `~/.yume/plugins/`
-- memory v2: `~/.yume/memory/`
+- conversations (portable format): `~/.yume/conversations/`
 - agent output: `~/.yume/agent-output/`
 
 **how to uninstall completely?**
@@ -104,7 +104,7 @@ check settings → plugins, make sure it's enabled
 ## tech
 
 **stack?**
-rust/tauri 2.9, react 19, node.js. 230+ tauri commands, ~90k+ lines.
+rust/tauri 2.10, react 19, node.js. 255+ tauri commands, 3,600+ automated tests.
 
 **why tauri?**
 smaller binary (~50mb vs electron's ~150mb), less memory, native performance.
@@ -118,11 +118,11 @@ smaller binary (~50mb vs electron's ~150mb), less memory, native performance.
 **what is /schedule?**
 schedule tasks with time or event triggers. `/schedule 5m review code` runs after 5 minutes.
 
-**what are agent teams?**
-multi-agent coordination. create a team, add teammates, assign tasks. agents can message each other.
+**what are background agents?**
+up to 4 agents running in parallel, each on an isolated git branch or worktree. queue tasks, watch progress in the agent panel, merge when done. 30-minute timeout per agent, with inter-agent messaging to hand off work.
 
 **vim mode?**
 full vim keybindings for chat. normal/insert/visual/command modes. toggle in settings.
 
 **what's the effort control?**
-sets claude's effort level (1/2/3). lower = faster/cheaper, higher = more thorough. toggle in context bar.
+sets claude's effort level — five steps from low to max. lower = faster/cheaper, higher = more thorough. in the model & tools modal.

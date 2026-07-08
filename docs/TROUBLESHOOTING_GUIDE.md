@@ -1,6 +1,6 @@
 # Yume Complete Troubleshooting Guide
 
-**Version:** 0.14.0
+**Version:** 0.37.0
 **Last Updated:** February 18, 2026
 **Platforms:** macOS, Windows, Linux
 
@@ -1232,9 +1232,9 @@ copy %LOCALAPPDATA%\yume\logs\server.log yume-debug\
 
 ## 13. Multi-Provider
 
-> **Note:** Multi-provider support is disabled by default (`PROVIDER_GEMINI_AVAILABLE: false`, `PROVIDER_OPENAI_AVAILABLE: false` in `src/renderer/config/features.ts`).
+> **Note:** Gemini, OpenAI, and Kiro providers ship enabled. Each requires its official CLI installed (`gemini`, `codex`, `kiro`) and runs through the bundled `yume-cli` shim.
 
-These issues apply when Gemini/OpenAI providers are enabled via `yume-cli`.
+These issues apply to Gemini/OpenAI/Kiro sessions via `yume-cli`.
 
 ### 13.1 `yume-cli` not found
 **Symptoms**: "Provider binary missing" or no output when starting a session  

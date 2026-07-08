@@ -1,5 +1,11 @@
 [
   {
+    "id": "0.37.0",
+    "date": "2026-07-04",
+    "title": "0.37.0 — pending-watch indicator, bash-rules fix, cli 2.1.201 audit",
+    "body": "Pending-watch indicator for background work, memory sizes in the context breakdown, per-message bash-rules fix, yume-cli single-spawn fix, and a CLI 2.1.201 tool audit."
+  },
+  {
     "id": "0.35.0",
     "date": "2026-07-01",
     "title": "0.35.0 — sonnet 5, 5h overcharge guard, full-app audit",

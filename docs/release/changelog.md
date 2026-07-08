@@ -1,5 +1,20 @@
 # changelog
 
+## 0.37.0 — july 4, 2026
+
+- pending-watch indicator for background work
+- memory file sizes shown in the context breakdown
+- per-message bash-rules fix (rules no longer dropped on send)
+- YUME_* env passthrough to spawned clis
+- yume-cli single-spawn fix (no more double spawns in the agent loop)
+- context-total interrupt guard
+- cli 2.1.201 tool audit (33 built-in tools verified)
+
+## 0.36.0 — july 4, 2026
+
+- fable weekly-overage guard: optionally routes fable to opus 4.8 near the weekly fable limit
+- /usage parser handles the weekly fable bucket + cli 2.1.201 resets format
+
 ## 0.35.0 — july 1, 2026
 
 - claude sonnet 5 support (1M context, 128k output, adaptive thinking, launch pricing)
