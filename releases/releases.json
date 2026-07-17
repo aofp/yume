@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.37.0",
+  "latest": "0.38.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.38.0",
+      "date": "2026-07-17",
+      "notes": "ac977e28 0.38.0: session browser & resume overhaul, recents scroll-to-load-more, zombie/orphan process reap, heavy-output perf pass, interleaved-thinking reposition, multi-provider audit fixes\nb9e5d0fa release 0.38.0: fleet panel, git write actions, worktree sessions, dynamic model discovery, windowed message rendering, provider-spawner rewrite, billing/security fixes",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.38.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.38.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.38.0_amd64.deb",
+        "windows_arm": "yume_0.38.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.38.0_arm64.deb",
+        "mac_arm": "yume_0.38.0_arm64.pkg",
+        "windows": "yume_0.38.0_x64-setup.exe",
+        "mac": "yume_0.38.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "48efc9df036707607027b78c4764e025cce54a6805e18c30735ebc79fe7c00a6",
+        "linux_rpm": "b38f1a194b2118e897b586a607a5ff74bba0778bd22703e3eab2290e1cefcdf7",
+        "linux_deb": "2ad1df8a03e59f671ca01804e748518b8e542d5000d9857a75831f4a595155ea",
+        "windows_arm": "daeac743d368eaea0c2f7cf480da69bbe12e371c1d836f0606146c657fcdf790",
+        "linux_deb_arm": "05c7ba016c1ec1353787a7d3c245206364ac803aab47729e6636df6bd16c8b1b",
+        "mac_arm": "b1b475c6d26cbb41598930aa88c1681cd07f108c0275a65cbb4d2a89bd453408",
+        "windows": "7a7c8cc7e18c714b3b7b289f220f4bb03eda599e2c86d2cfee55899a6ea6467e",
+        "mac": "8813da8c3da9c3ef15c1ff6615df4aa906e2c2d45b61c21622df6c719d1d048c"
+      }
+    },
     {
       "version": "0.37.0",
       "date": "2026-07-06",
