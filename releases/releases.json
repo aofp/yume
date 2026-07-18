@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.38.0",
+  "latest": "0.39.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.39.0",
+      "date": "2026-07-18",
+      "notes": "ab618f15 0.39.0: auth-failure detection & in-app claude login overhaul, live monitor-running indicator, CLI 2.1.214 compat",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.39.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.39.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.39.0_amd64.deb",
+        "windows_arm": "yume_0.39.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.39.0_arm64.deb",
+        "mac_arm": "yume_0.39.0_arm64.pkg",
+        "windows": "yume_0.39.0_x64-setup.exe",
+        "mac": "yume_0.39.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "e89e94adfac22156c0cb9fe8a8dd3cc7af44535a60ab9143248ded93f4bb23b3",
+        "linux_rpm": "30584471e5312823e89a6d1aad86c6478e93deb983f8a30e79a93ca745ff9412",
+        "linux_deb": "b72afa0e30cbb9cdaef4253090c85f1d3202b5e66fde5e57cc9460ce5a02ea35",
+        "windows_arm": "9760bfdcbf4e9def58112c47eab553e7b30b881b295c5b75012152a855daf713",
+        "linux_deb_arm": "3c46a00e75f9244634b70f1a4fc032951d08b827e0afbd26d6959b28ecedf1ec",
+        "mac_arm": "280cb95de59230c773ffb110e76761c43c1de31d059cdc9e96b53212b3d2a82c",
+        "windows": "34eb60ea272e45a5c7cdc1000c845722fc501328b352f33c24218cca2e60dec1",
+        "mac": "2c1a036307637f96dbc1a1178aeb5ee49c626aa74f8833c37b24eb0841e223d2"
+      }
+    },
     {
       "version": "0.38.0",
       "date": "2026-07-17",
