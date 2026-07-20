@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.39.0",
+  "latest": "0.40.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.40.0",
+      "date": "2026-07-20",
+      "notes": "8d02dc5b 0.40.0: lazy shiki bundle for faster startup, heavy bash-output perf pass (bounded retention + chunked accumulation), long-running monitors no longer killed at 600s, windows saved-window-size fix, tool disallow-list audit vs CLI 2.1.215",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.40.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.40.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.40.0_amd64.deb",
+        "windows_arm": "yume_0.40.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.40.0_arm64.deb",
+        "mac_arm": "yume_0.40.0_arm64.pkg",
+        "windows": "yume_0.40.0_x64-setup.exe",
+        "mac": "yume_0.40.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "65c3a1d796c182dd299749f2ad0ce9dd7525bf6e73d4e709f1b9a63f48f349d0",
+        "linux_rpm": "c401df854b7640aee1680bce801bdb6c834565699bb33d4290c4c47b8e7e51e1",
+        "linux_deb": "268c08d090149eba58913aa30d7c5b94398539807b9f5dd46a1d6a285665571d",
+        "windows_arm": "9f498703a234d77e3470fd8fa47eeaa1077101e47617ab41e67988f49869b592",
+        "linux_deb_arm": "c36fe045fdfc665babd7115c643b7b080c0b8862a977fce0191d5b8f74224d91",
+        "mac_arm": "8ab826caeff520b7857859d250dbf9aedad1633b7f745fbe6c8a5c2ba84cbece",
+        "windows": "2249ad3b0444e15571b57f9a4546cb5490f46e46774214ba6778e5253b52fc66",
+        "mac": "c1ab1ac4249a9a00e1e5b1a10c9b32110b8b9419ea63def9a704c6eaf22bb783"
+      }
+    },
     {
       "version": "0.39.0",
       "date": "2026-07-18",
