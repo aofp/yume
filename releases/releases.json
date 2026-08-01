@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.40.0",
+  "latest": "0.41.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.41.0",
+      "date": "2026-08-01",
+      "notes": "c51c7358 fix: windows arm64 sidecar crashed on startup, breaking the whole app there\nf66490f2 fix: sidecar bg verification timed out on windows-11-arm, and said nothing useful\na96860c4 fix: win-arm64 release build died in tauri's own installer signing\nfa282e1c test: pathSecurity case-folding test only ever passed on a windows host\n6821c8d1 fix: the signing canary could pass without our signature applying\n78d64795 test: pin background bash redirect capture, exit containment and sentinel handoff\n3556420d docs: 0.41.0 changelog, competitive research sweep, security model writeup\n5045258b i18n: strings for the new indicators, notifications, attribution panel and a11y labels\nc2797d2e fix: dialog semantics, focus traps and keyboard operability across the app\n2516deb4 feat: fleet panel covers everything running; native window title; AGENTS.md for providers\n81a4edd0 fix: assistant text silently dropped, an 8s blank start, and false idle mid-turn\n683305fd fix: provider plumbing - codex usage, tool toggles, declined-change reporting\nbdb69d66 fix: backend - orphaned children after a panic, stale usage cache, lost bg exit codes\na2966603 feat: /usage attribution panel in session stats\nef5cecdf fix: yume ran the CLI build that collapses every 1M context to 200k\nb023f954 perf: stop the whole app re-rendering on every stream flush\nbc96c57b fix: accessibility - modals were untraversable and leaked focus to the page behind\ndd9a45ed refactor: one shared popover for the six context-bar indicators, live time everywhere\n2ce93ded fix: gemini's discontinued consumer tiers now surface instead of failing opaquely\nbe6a7476 feat: desktop notifications when a pane needs input or a long run ends\n51397c68 feat: recurring /schedule via an RFC 5545 subset\n3d5297ff fix: wake-ups and cron jobs the model armed never fired\nf5b1ff65 fix: arm64 windows signing paired arm64 signtool with the x64 dlib\n1b7b0f6c docs: 2026-07-27 competitive sweep\n2a9e34c8 docs: 0.41.0 stays unreleased until the release is actually cut\n1cc047cd docs: 0.41.0 changelog; typecheck baseline is now clean\neac431ab build: signing wrapper that always restores, cross-arch binary, ci verify step\n79b25b7a fix: windows arm64 could not locate the yume mcp sidecar at all\n477b8da3 fix: rare thinking-text corruption; window streaming thinking to its tail\n18c59183 fix: blank, unresponsive window after long background runs\n7cb9348c fix: severe windows process leak in /usage polling\nd4c6b67f fix: background bash processes never actually ran\ndc1d94e1 feat: claude opus 5 in the model picker, gated to cli 2.1.219+\n92a694f7 docs: note AZURE_SIGN_* accepted from secrets or variables in release runbook\nf135c75f ci: accept AZURE_SIGN_* from secrets or variables + pin artifact-signing-cli 0.11.0\na4be554d ci: windows signing canary + arm64-safe toolchain pinning\n734edf61 release 0.41.0\n5561d2e9 ci: ensure azure cli present on windows runners for signing (arm64-safe)\n60c06eff ci: windows code signing via azure artifact signing (yuru llc) + av false-positive hardening\nf6f73492 ci: slim the release pipeline - stop committing installers to pages, npm cache, 2-day artifact retention\n80e219b5 ci: free runner disk space in the release job so the aofp/yume pages checkout fits",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.41.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.41.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.41.0_amd64.deb",
+        "windows_arm": "yume_0.41.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.41.0_arm64.deb",
+        "mac_arm": "yume_0.41.0_arm64.pkg",
+        "windows": "yume_0.41.0_x64-setup.exe",
+        "mac": "yume_0.41.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "daf74c6adcf35faaa91baae4bec6887651efd79fe40c0fbc6fcd6d773b8418f4",
+        "linux_rpm": "7661abd17afe97c51115cecaadf189b1fb61fdc3f6c9ec62dad973c669cf8b5d",
+        "linux_deb": "62ef25f0497ee84c7c2e40dd9af0cf17634b07c3dff34a9f424ed27bf81206be",
+        "windows_arm": "bfe3364eaf3a5aca508f31e39417f3c899b38e8d36e2d0f4e059b080fe567beb",
+        "linux_deb_arm": "dfe379a1c58b96ad42b3d96bddacadd2e1b1e3eb35f991110618b5111980e15e",
+        "mac_arm": "4b4cf9a4274b9df02cd962af27d3bc63b7b0c1600bc6c36503fa4b24ce2d3e05",
+        "windows": "02b302d26a504d58f40dec21443f726e0e57372a0b993220b4a1cc3961f9a17c",
+        "mac": "01ca88f73db07c70771dc3ba8b31e7f1355e1bda5c15d2b3c38926ce1915cdf0"
+      }
+    },
     {
       "version": "0.40.0",
       "date": "2026-07-20",
