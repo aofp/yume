@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.41.0",
+  "latest": "0.42.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.42.0",
+      "date": "2026-09-02",
+      "notes": "8a92465d build: turn v8 bytecode off on every platform, not just windows and linux\ne56aad17 build: unblock the release from two signing backends and node 24 bytecode\n5e883723 chore: 0.42.0\n436e7bc7 docs: 0.42.0 changelog, codex protocol audit, antigravity integration writeup\na908ee5e feat: disable the fleet panel\n620e3d4f feat(yume-cli): reconstruct codex file diffs, and fail loudly on unknown arguments\n80c3ee39 fix: composer capped at five lines, jittering thinking blocks, and ligatures in every text input\n302070e5 fix: the window grew by its own frame on every launch\n5d1621fe fix: floating ui drifted off screen as the app was zoomed\n783e8e57 fix: the turn footer named a subagent's model, and billed the turn to it\n30bbb815 fix: the context bar stayed pinned at full forever after compacting\n2dee40c7 fix: the task progress bar was frozen at zero for every task-system session\n71fd0a41 fix: sonnet 5 was billed at 1.5x after a price rise that was cancelled\nda9fff4d feat: claude fable 5.1 as the new default model, gated on cli 2.1.251\na8df306f feat: stop foreground bash commands that have gone silent, instead of holding the turn for 15 minutes\nff0e2c4a feat: a child-process panel that also surfaces strays yume left behind\n6e0d7f77 fix: subprocesses had no timeout, no output cap, and leaked grandchildren\n60b04c4f build: pass argv arrays instead of shell strings through the build and signing scripts\n47d5463e build: make version consistency a hard gate on build and release\n23aaa77b build: node 18 to node 24 toolchain, with a checksum-verified bundled runtime\nf63b710c build: apple developer id signing + notarization for the macos installers",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.42.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.42.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.42.0_amd64.deb",
+        "windows_arm": "yume_0.42.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.42.0_arm64.deb",
+        "mac_arm": "yume_0.42.0_arm64.pkg",
+        "windows": "yume_0.42.0_x64-setup.exe",
+        "mac": "yume_0.42.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "33a525a21326a0b76bd2d06ca9cbfee97c352c48773cf514bdef9aae4c052563",
+        "linux_rpm": "953b220e7e7bedb95805d3739ea2e7cebf1d227e729043393bb935172541e501",
+        "linux_deb": "0f860e8c5fda5b56c8d02189305b11aa647b1c841e5147715accc8fb8130379f",
+        "windows_arm": "33d2f73a1ede2c4888d15e142c6fd7435bad2c315d92fae05624d3280eef4f5a",
+        "linux_deb_arm": "9252ffca77cdc0e7625dbbb6bf8299767e387e9cf512ef5ce42d64c7b3ee8e8d",
+        "mac_arm": "49a40c6786196244c18af4d4c14f240ac99ed70641d0e649ee286fb80937d623",
+        "windows": "1782b71e96b0d14d2732260958f58b4ba8ae65b9980d5dbf0b92094d06d41e57",
+        "mac": "3597764fcbc82eff2093de3d25e3fa1cf0516061755dc06bd704e254057d1b33"
+      }
+    },
     {
       "version": "0.41.0",
       "date": "2026-08-01",
