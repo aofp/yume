@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.42.0",
+  "latest": "0.43.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.43.0",
+      "date": "2026-09-04",
+      "notes": "2bcdaf28 fix: gate the /usage pipe tree-kill to windows so the lib builds on unix\n40e59fa3 release 0.43.0\n8c96cadd docs: 0.43.0 changelog, plus the child-process, usage-capture and RunBash invariants\n13fb019d feat: hide yume's own sidecars from the process panel, and scope the pill to its tab\n0907a17e fix: a pending question could be answered from a tab you weren't looking at\n0c503af4 fix: windows RunBash halved every backslash before bash saw the command\n492273ac fix: /usage polling leaked a process per poll until the machine ran out of memory",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.43.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.43.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.43.0_amd64.deb",
+        "windows_arm": "yume_0.43.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.43.0_arm64.deb",
+        "mac_arm": "yume_0.43.0_arm64.pkg",
+        "windows": "yume_0.43.0_x64-setup.exe",
+        "mac": "yume_0.43.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "bcbc0e3db9b08648a1b4629f4525ef0845fbe74703161754127b23d9cd1b2b9d",
+        "linux_rpm": "cd736c317c42522b74e61540e5cb17e835a8624df1a8f9646ee489467d89dad7",
+        "linux_deb": "7b144baafea405ab52d01f6f61b6b46f1d9141966a826b24179ab5c2987830b7",
+        "windows_arm": "c8c4a640d5fa8aa44b000a620f436399c87c2c4d52d4485d5776cb73e2c787c0",
+        "linux_deb_arm": "6162b3e9568c58d3a35792890a4fa43909d9daf64a3b64d7659146bdd4f1fd6d",
+        "mac_arm": "dc2c09aadd867044b23419d2048413cb5d88b2fe280c121165d3781c10209f31",
+        "windows": "25d99886590c658fde0c5654a9c85d54956aef3781bb8083950f953cf43f7edd",
+        "mac": "cb6cff04b6c8917727f9c7554c7fee378bf2b29684a0a895ca0c66e8469bcef8"
+      }
+    },
     {
       "version": "0.42.0",
       "date": "2026-09-02",
