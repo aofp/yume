@@ -3,7 +3,9 @@ Yume License Agreement
 Copyright (c) 2025-2026 Yume. All rights reserved.
 
 This software is provided as freeware. You may use this software free of
-charge for personal or commercial purposes, subject to the following terms:
+charge for personal or commercial purposes, subject to the following terms.
+Some capacity limits of the free tier are lifted by an optional paid license,
+which is covered in Sections 7 to 9.
 
 1. GRANT OF LICENSE
    You are granted a non-exclusive, non-transferable, worldwide, lifetime
@@ -20,9 +22,10 @@ charge for personal or commercial purposes, subject to the following terms:
    The source code of this software is proprietary and confidential.
    No rights to the source code are granted under this license.
 
-4. NO REFUNDS
-   This software is provided free of charge. No refunds, credits, or
-   compensation of any kind will be issued.
+4. NO REFUNDS FOR THE FREE TIER
+   The free tier is provided free of charge. No refunds, credits, or
+   compensation of any kind are due for it. Refunds for paid licenses are
+   governed by Section 9.
 
 5. NO WARRANTY
    THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS
@@ -37,3 +40,46 @@ charge for personal or commercial purposes, subject to the following terms:
    This license is effective until terminated. It will terminate automatically
    if you fail to comply with any term. Upon termination, you must destroy all
    copies of the software.
+
+7. PAID LICENSES (YUME PRO)
+   The software is fully functional at its free capacity. A paid license
+   ("Pro") raises the tab, pane and window limits. Two are offered, at the
+   prices shown at the point of purchase:
+
+   Monthly. A license to use the software at Pro capacity for as long as the
+   subscription is paid. It may be cancelled at any time and runs to the end of
+   the period already paid for.
+
+   Lifetime. A one-time payment for a perpetual license to use the software at
+   Pro capacity, with no recurring fee. It covers every version of the software
+   that is published, including versions published after your purchase. Nothing
+   in this agreement obliges the copyright holder to publish any further
+   version, and Section 5 applies to every version alike.
+
+   Both are non-exclusive and non-transferable. A license is granted to one
+   person, identified by the email address the key was issued to, and that
+   person may install the software on any number of machines they use
+   themselves. Licenses may not be shared, resold, or assigned. Keys for other
+   people must be issued by the copyright holder; passing your own key to
+   someone else is a breach of Section 1.
+
+   When a Pro license ends, by cancellation or expiry, the software reverts to
+   its free capacity. It does not stop working and no copies need be destroyed.
+   Termination under Section 6 is separate and does require destruction.
+
+8. VALIDATION
+   A Pro license key is checked against a licensing server when you activate it
+   and periodically afterwards. If the software cannot reach that server it
+   keeps Pro capacity for seven days, then reverts to free capacity until it can
+   check again. A permanent internet connection is not required, but a
+   permanently offline machine cannot hold a Pro license.
+
+9. REFUNDS FOR PAID LICENSES
+   A Lifetime purchase may be refunded in full within 14 days of purchase, for
+   any reason. Write to hi@yuru.be from the address you purchased with. The
+   license key is revoked when the refund is issued.
+
+   A Monthly subscription may be cancelled at any time and stops billing at the
+   end of the current period. Periods already paid for are not refunded in part.
+
+   A license terminated under Section 6 is not refunded.
