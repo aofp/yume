@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.43.0",
+  "latest": "0.43.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.43.1",
+      "date": "2026-09-05",
+      "notes": "9c757239 release 0.43.1\n4665d520 fix: 1M context window was silently disabled",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.43.1-1.aarch64.rpm",
+        "linux_rpm": "yume-0.43.1-1.x86_64.rpm",
+        "linux_deb": "yume_0.43.1_amd64.deb",
+        "windows_arm": "yume_0.43.1_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.43.1_arm64.deb",
+        "mac_arm": "yume_0.43.1_arm64.pkg",
+        "windows": "yume_0.43.1_x64-setup.exe",
+        "mac": "yume_0.43.1_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "e92c03f8cfb55aee753276f7b55ad4150e9129991530c852caec32a0e2343dca",
+        "linux_rpm": "652249129a5d4bb42d5db805b823044bcf9cd6cdd34738daab37ee912334a0b5",
+        "linux_deb": "6845a95fb01a47003b2afe1badac77eec1754ed29dcaa0513c01221b6a71e4da",
+        "windows_arm": "0ff2ee5c0b94e008dda3664c69cd0cdefa15735c00f700db72ee7e88da39c1d3",
+        "linux_deb_arm": "46d4ba638309a72cb28acea79d92b94f00ef6f982b2696c13550284b5e30bdb5",
+        "mac_arm": "b5806b480cbad3836aac4e7ad9c7964f6fb4772cf5e208d8a7ddd2dcbbc11c77",
+        "windows": "7a5d7d720e413086262556d9b487e820d11ce57b22d806b247e7476efe4ed1f6",
+        "mac": "7abef23bec513c1c04a2e6f81614ffa09fab17e4c5af2fe934cb282771555a62"
+      }
+    },
     {
       "version": "0.43.0",
       "date": "2026-09-04",
