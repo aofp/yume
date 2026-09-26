@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.44.0",
+  "latest": "0.45.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.45.0",
+      "date": "2026-09-26",
+      "notes": "303d4779 test: flush the micro flood stub before exiting so the cap test holds on linux pipes\nb5656f58 release 0.45.0\n7dc1ff2d opus 5.5 + codex 6, codex app-server transport, self-compaction, microtask, one bubble per subagent, askuser overhaul, windows bash path + msys fixes, usage freeze + monitor process leak fixes",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.45.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.45.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.45.0_amd64.deb",
+        "windows_arm": "yume_0.45.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.45.0_arm64.deb",
+        "mac_arm": "yume_0.45.0_arm64.pkg",
+        "windows": "yume_0.45.0_x64-setup.exe",
+        "mac": "yume_0.45.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "8a58d50f1c403418bda97cc32ee0e4338bd47016aa83b9943e008256f0306ec3",
+        "linux_rpm": "f69dd228c6e694246dd28357f7c44521e9134e9ca7675372bb29be4c78a700e9",
+        "linux_deb": "c7f91a0fea5e0e2763d7922d93491734dbecc6eaf8f9157ca2a2811bffc69949",
+        "windows_arm": "5b94fc6cd1a8a55291837dea8ff7fd95a976d15dd572763ff526ded8296b2884",
+        "linux_deb_arm": "1291924b2278be3084e9ce1e85ce39c527d54c2f5f79428d4dc361f2bd978e6a",
+        "mac_arm": "955e013273c63dbcd62be5efcc531930b8f007c1325ca40c464fe6b0d0c113c9",
+        "windows": "af1d81e11ab408b1d0e4c232723684f64c7a82efab68726c3084c5bcc8390705",
+        "mac": "1a20e48ee0e1130a86ac10013d2f0f2b5e8cf10302d8721bd36cd445e4ddcd64"
+      }
+    },
     {
       "version": "0.44.0",
       "date": "2026-09-05",
