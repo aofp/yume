@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.45.0",
+  "latest": "0.46.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.46.0",
+      "date": "2026-10-02",
+      "notes": "29ef295f sonnet 5.5, per-model effort defaults, self-compaction holds for background agents + tool-less summary turn, renderer freeze fix (compositor-only animations), bg agent oauth fix, windows monitor leak reaper, msys conversion off for native programs, usage loader fix (0.46.0)",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.46.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.46.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.46.0_amd64.deb",
+        "windows_arm": "yume_0.46.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.46.0_arm64.deb",
+        "mac_arm": "yume_0.46.0_arm64.pkg",
+        "windows": "yume_0.46.0_x64-setup.exe",
+        "mac": "yume_0.46.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "6c290b3c5746d0cca13c5baadbf6dd96d1e10ba910e00c3a1407b0b2f37adfe7",
+        "linux_rpm": "9474ccc878eb0b0c4a1402a92aee94e220b9abecbd0b0f9536782015643391c0",
+        "linux_deb": "a7aa990833483c652530348866304305808ee8bb4a98dc4875fc018feff39839",
+        "windows_arm": "2c319906f0ae283e67741406ebda76945661551379271e9784d927ad8ccfe61a",
+        "linux_deb_arm": "8512cdfe5763bde4330d378d89c18b1ba13bc7959619b81e8072d2b23945c34f",
+        "mac_arm": "ae78a599bc39f832365024c9819e83eae3866daa71c5431d5804a2147aa6ba4d",
+        "windows": "b2a3f28dbd4a8b7fdad5dac8438ac313ef4a9e4a8011c8e43729a181bd8ea630",
+        "mac": "37d4fa5752712337c2f2eabb73c2760b8f10cbebb44b13bfbb40c5fc0048b9cc"
+      }
+    },
     {
       "version": "0.45.0",
       "date": "2026-09-26",
