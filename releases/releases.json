@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.46.0",
+  "latest": "0.47.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.47.0",
+      "date": "2026-10-07",
+      "notes": "280f366e release 0.47.0: live answer streaming, live thinking in every pane, lost turn tails fixed, split-pane layout reconcile, auto tab titles, per-tab activity badge, 7d usage warning, 30+ minute build timeouts, windows runbash fixes, perf passes\n19804b47 7d usage badge shows a low-remaining ! mark under 10% left, brighter then bold then underlined as the window runs out\n7bc9b443 Stream Codex/yume-cli text progressively without per-token IPC\n396afef7 Stream Claude answer text live instead of per finished block\ncdc4412b lost turn tails fixed (batch queue drain at turn end), live thinking in every visible pane, one reconciled split-pane layout (multi-pane restore works), subagent traffic no longer evicts chat history, auto tab titles on haiku, per-tab running-work badge, 30+ minute build timeouts with cpu-aware idle watchdog, perf + ipc audits (store commit rate, hidden-tab gate, rust commands off the ui thread, per-repo git locks), runbash fixes (msys tree kill, quote-aware drive paths, powershell -command), build target hygiene",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.47.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.47.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.47.0_amd64.deb",
+        "windows_arm": "yume_0.47.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.47.0_arm64.deb",
+        "mac_arm": "yume_0.47.0_arm64.pkg",
+        "windows": "yume_0.47.0_x64-setup.exe",
+        "mac": "yume_0.47.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "43d70268448b1599bda84d13e99e96a244d2ac0929eae1988e5ef2bd8203a034",
+        "linux_rpm": "b761d65fc97f3bf43fb90e44503b489dc9526766405c160261371359dd912a6b",
+        "linux_deb": "34506f1dcdaebd36807950bbd32d7a9945818f8ccf54acbbf2fe8307661212cb",
+        "windows_arm": "1d13bd099848c164f66b08904fd33e1daef02b12b3d0754a6c7b0e674efe3ada",
+        "linux_deb_arm": "44c82fc6fb98a18b4103388687b8008d8efd2eceddc9999cba2a51f87bf0f9a5",
+        "mac_arm": "f31c9a8500f4190bf90b9bd6f5c65857fa07436f45b29170e3d1808b3993f461",
+        "windows": "bf8f2093f314f1931c110e8cf19da66d5ec01ff7e7ebc84925b2792e21f70158",
+        "mac": "2181c52c8c5a3ff4187ed62c21840ec8c1da91bfefb0af0c176d39dafe8797c4"
+      }
+    },
     {
       "version": "0.46.0",
       "date": "2026-10-02",
