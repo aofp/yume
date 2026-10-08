@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.47.0",
+  "latest": "0.48.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.48.0",
+      "date": "2026-10-08",
+      "notes": "da54383b test: allow CI time for exhaustive streaming Markdown rendering checks\na8199a44 release 0.48.0: Haiku 5.5, automatic model upgrades, provider streaming and session fixes",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.48.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.48.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.48.0_amd64.deb",
+        "windows_arm": "yume_0.48.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.48.0_arm64.deb",
+        "mac_arm": "yume_0.48.0_arm64.pkg",
+        "windows": "yume_0.48.0_x64-setup.exe",
+        "mac": "yume_0.48.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "08f318d35227d7c7cccd3515d695ef63937d02ff42aa0d4729c318d40ddc3bf4",
+        "linux_rpm": "3be55cb3c6fd932d1c3fcca547c9f0e48792780f1d7b49d0d5e903235e6cf8f9",
+        "linux_deb": "9e70ea2b9907bae92b1923d3032835a26491fda5c7634a966e78e596a24d7a36",
+        "windows_arm": "2b725467f1829e564ff499c25b37edaf588d41ad36bb51a01ce375b4166bd5eb",
+        "linux_deb_arm": "5922a6ee266b90fd3ab03dfcbca0007295970719a86736d4deca87414aad011a",
+        "mac_arm": "f6c98d80e4685c4b15fb53ab02682e5e4675db5a82a922b30ec4161733e2b60f",
+        "windows": "26827d1bff7f6068bbd9cdfe2ad83482b4de8da876cb8f38c268be4012476e65",
+        "mac": "6ca917ed2c9862d672d8cb451e2a34d74231245e5a2bd07973d4495a2d82c465"
+      }
+    },
     {
       "version": "0.47.0",
       "date": "2026-10-07",
