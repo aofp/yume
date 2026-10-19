@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.48.0",
+  "latest": "0.50.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.50.0",
+      "date": "2026-10-19",
+      "notes": "3cb931d9 test: make Windows analytics fixtures portable to Linux release runners\nd2c509ff release 0.50.0: native Codex workflows, portable builds, chat and backend performance",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.50.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.50.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.50.0_amd64.deb",
+        "windows_arm": "yume_0.50.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.50.0_arm64.deb",
+        "mac_arm": "yume_0.50.0_arm64.pkg",
+        "windows": "yume_0.50.0_x64-setup.exe",
+        "mac": "yume_0.50.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "0bff126dea26650fc5f506849c17e659d2742460a0c2f98d7ed00ec5a868164d",
+        "linux_rpm": "6919936da7c56403314e61548b402574b589b3b28856a556d951514606d0945f",
+        "linux_deb": "d2190e11266ae4afc03df9982f9895ce18929e241398fda765a38169bb268a15",
+        "windows_arm": "38a68d16c3d15d59fc8a335077a626b631901b1aeffb3144e9a87bc3c5a1ed25",
+        "linux_deb_arm": "ec448f9762b64f778b1d89def4c8716aa97911d021ac6181d20f801fd08b6ec0",
+        "mac_arm": "e7fef92f2ac8596cecf9f1c5129b9f1e6f8f853be007420e165d6d0c18cd4513",
+        "windows": "1913b40aabe9ab90e4cae4743f62dd0b7cc007a3943a095a922902cfcd051e0a",
+        "mac": "163c21ade87476c59302fb35c7fd43fca823ced17e99690e4732c351385a9374"
+      }
+    },
     {
       "version": "0.48.0",
       "date": "2026-10-08",
