@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.50.0",
+  "latest": "0.51.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.51.1",
+      "date": "2026-10-20",
+      "notes": "4d5f4a1d release 0.51.1: remove creator referral form and restore compact new-tab recent items",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.51.1-1.aarch64.rpm",
+        "linux_rpm": "yume-0.51.1-1.x86_64.rpm",
+        "linux_deb": "yume_0.51.1_amd64.deb",
+        "windows_arm": "yume_0.51.1_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.51.1_arm64.deb",
+        "mac_arm": "yume_0.51.1_arm64.pkg",
+        "windows": "yume_0.51.1_x64-setup.exe",
+        "mac": "yume_0.51.1_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "15ae9a1d78d4fe3ea644aa3101209a8861be59473f090feceb538f1f05760601",
+        "linux_rpm": "1e5a325d02f60de4571fdce9449b9928f3b774fdcb179cd305132fdd4ada4714",
+        "linux_deb": "b2744506bac0d811ee07cdce61324ca05c45f50857e4289af48356ebb42b844c",
+        "windows_arm": "eaec680e3db002567af6b5ee7ef6482b15baec18095101968797e6a4cf1d7ea7",
+        "linux_deb_arm": "87badd69455bb6e344b5d584670bd0f1c2788bc4d05bc7fb4eb8c265173990fd",
+        "mac_arm": "4f45d279ed42a6827f7252749395a54e2b8698726c498b2d0463ad5a825e900e",
+        "windows": "42fec79c78454053d0bed53c1d8b0376708d4ebc7e12ddda5e114bf2300e83ba",
+        "mac": "901eae068bfadfdac6da467f6eeb6b85f73c945db7cb8b02c75064758ff8bbdc"
+      }
+    },
     {
       "version": "0.50.0",
       "date": "2026-10-19",
