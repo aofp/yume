@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.51.1",
+  "latest": "0.53.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.53.0",
+      "date": "2026-11-01",
+      "notes": "bfeae64e ci: build macOS releases on macos-15 (macos-14 runner image is retired)\n12dbaa65 release 0.53.0: Codex 6.1 Sol, native Codex skills and structured responses, Codex chat that reads like Claude's, CLI notices and commands in the chat, no-5h-limit usage display, tab title and session search fixes",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.53.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.53.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.53.0_amd64.deb",
+        "windows_arm": "yume_0.53.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.53.0_arm64.deb",
+        "mac_arm": "yume_0.53.0_arm64.pkg",
+        "windows": "yume_0.53.0_x64-setup.exe",
+        "mac": "yume_0.53.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "4275660b04cd6b143e57769e38d51295adda291d142b918b0813dfd3c96cf71d",
+        "linux_rpm": "82a2f0781f9d4e02537e7cf58c348820b7ea4ae6e4832ac002b5d9911017f26f",
+        "linux_deb": "6f9b1f4a70032952002beaa00d85b7f1428a321671ea0fb7f6c2664889f355d1",
+        "windows_arm": "e6adb9d473229040f0dcd7cda3f5fed6acee31c0028950daf532e1c240a144e5",
+        "linux_deb_arm": "d3a0b6a8017066858d7e6e1b39aaa6bba7f472cc5b54e7cb75b8e2df8f3a64ef",
+        "mac_arm": "6b2c74340dde711149fbd0bd5157077e6bd065fbf71e962ed9001f5b25aec325",
+        "windows": "c5a3709988ba15c4cb1bec35f2c310a1fec743aca1496c409b53ac6d5c03c02f",
+        "mac": "6409541e2ceca28332d252d559b7699fe0caaa127b67577edb8557e756c019d1"
+      }
+    },
     {
       "version": "0.51.1",
       "date": "2026-10-20",
