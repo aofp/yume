@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.53.0",
+  "latest": "0.53.1",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.53.1",
+      "date": "2026-11-04",
+      "notes": "e7a0a156 release 0.53.1: fix Linux rendering on normal launch and preserve compositing overrides",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.53.1-1.aarch64.rpm",
+        "linux_rpm": "yume-0.53.1-1.x86_64.rpm",
+        "linux_deb": "yume_0.53.1_amd64.deb",
+        "windows_arm": "yume_0.53.1_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.53.1_arm64.deb",
+        "mac_arm": "yume_0.53.1_arm64.pkg",
+        "windows": "yume_0.53.1_x64-setup.exe",
+        "mac": "yume_0.53.1_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "621eddbd81e907064ad5e593fb9efd057171120041c19ceb0c8d153f56d628c7",
+        "linux_rpm": "b56896a27cf9020fa2f70d41ad19c1d24cb40cd3f7ae5b1a5e70e73ee3dcfea9",
+        "linux_deb": "4f8835bc702b0f98b5a5ed4357835714dd2c56950754b886c2a48c7356bad173",
+        "windows_arm": "54fbacf8227a0859c443be5e98693292f458af60e7967abec236c93b3d905faf",
+        "linux_deb_arm": "3a2f9ac09a2745ba72e80c06125638693e67114cd834558b64167899b78cb5d4",
+        "mac_arm": "1d2faf5a6ecca841c08e3e9560cf610cab9ab06b63173c2f5d7fb7394d7b972c",
+        "windows": "86b0f0f873872890dc4c0eea4d9eec1b6f31f8f3b0cd72ecf4351cfc3da915e5",
+        "mac": "5d53e50e6fff5a1f4250a4403bf9898bc9f48df96af3a486063be3a83657d4ee"
+      }
+    },
     {
       "version": "0.53.0",
       "date": "2026-11-01",
