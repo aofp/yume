@@ -6,7 +6,7 @@
     {
       "version": "0.53.1",
       "date": "2026-11-04",
-      "notes": "e7a0a156 release 0.53.1: fix Linux rendering on normal launch and preserve compositing overrides",
+      "notes": "fixes linux windows becoming invisible while hovering. update and launch normally; no environment settings or launcher workaround required. applies to x64 and arm64 deb/rpm builds and preserves explicit compositing settings.",
       "downloads": {
         "linux_rpm_arm": "yume-0.53.1-1.aarch64.rpm",
         "linux_rpm": "yume-0.53.1-1.x86_64.rpm",
