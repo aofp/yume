@@ -1,8 +1,33 @@
 {
   "product": "yume",
-  "latest": "0.53.1",
+  "latest": "0.54.0",
   "baseUrl": "https://github.com/aofp/yume/releases/download/",
   "releases": [
+    {
+      "version": "0.54.0",
+      "date": "2026-11-11",
+      "notes": "0e3f3b2f fix: RunBash idle-stop note no longer names its own python3 pty wrapper as the stuck process on linux/macos\n59273b4e release 0.54.0: Claude Fable 5.2 as the default model, crash recovery that reopens every tab, tabs that share heavy-work slots and message each other, agents that wait on background results, compaction-continued titles ('fix login [2]'), RunBash hang fixes",
+      "downloads": {
+        "linux_rpm_arm": "yume-0.54.0-1.aarch64.rpm",
+        "linux_rpm": "yume-0.54.0-1.x86_64.rpm",
+        "linux_deb": "yume_0.54.0_amd64.deb",
+        "windows_arm": "yume_0.54.0_arm64-setup.exe",
+        "linux_deb_arm": "yume_0.54.0_arm64.deb",
+        "mac_arm": "yume_0.54.0_arm64.pkg",
+        "windows": "yume_0.54.0_x64-setup.exe",
+        "mac": "yume_0.54.0_x64.pkg"
+      },
+      "checksums": {
+        "linux_rpm_arm": "7393c10ed5d9d9aade1cc703dc7759dbc3b210875516448cff52eb1086ffbcf6",
+        "linux_rpm": "ef1818730c58005a93c700f87e95a0aa5f0c4614118423be09fc5808cff46517",
+        "linux_deb": "3b628639885103e2d69fe2146900e21ba4fad28c07ebfcda5c599d364678d232",
+        "windows_arm": "192456e808f573cab64ad4b10159855e1c38fe646e60fd18b460b268d298bde6",
+        "linux_deb_arm": "fd47275ae026a2f1f48ea65041fbaf54394199b29287297b179ff0cde02dbd1c",
+        "mac_arm": "a43b168e70752bd4c3af71882969a3157de8304bf7c1e7f774fe73788aab1f7c",
+        "windows": "827c990791c7f4719f58d208c2ba22b2085a74a20ee0d9b75b4fa5bf4beca5d4",
+        "mac": "4d33e847a46299816207fc9c3825cfa8101bf1a5487743227731b216b1886c52"
+      }
+    },
     {
       "version": "0.53.1",
       "date": "2026-11-04",
